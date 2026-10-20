@@ -10,8 +10,7 @@ namespace Azure.Functions.WorkerProxy.State;
 internal enum SplitWorkerLinkState
 {
     Unlinked = 0,
-    Pending = 1,
-    Linked = 2
+    Linked = 1
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SplitWorkerStatus>))]
@@ -23,9 +22,7 @@ internal enum SplitWorkerStatus
     RemovalRequested
 }
 
-internal sealed record SplitWorkerLink(
-    SplitWorkerLinkState State,
-    SplitPodIdentity? Runtime = null);
+internal sealed record SplitWorkerLink(SplitWorkerLinkState State);
 
 internal sealed record SplitFunctionAppIdentity(
     string FunctionAppName,

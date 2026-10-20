@@ -23,7 +23,6 @@ internal sealed partial class HostLinkService(
     string workerId,
     string workerPodName,
     Guid workerPodGuid,
-    Guid runtimePodGuid,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
@@ -35,8 +34,6 @@ internal sealed partial class HostLinkService(
     private const string LegionStampName = "aspire-local";
     private const string AntaresStampName = "aspire-local";
     private const string WorkerPodType = "FunctionsSplitWorkerPod";
-    private const string RuntimePodType = "FunctionsSplitRuntimePod";
-    private const string RuntimePodName = "runtime-pod";
     private const int FunctionAppSiteId = 1;
 
     private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
@@ -86,7 +83,6 @@ internal sealed partial class HostLinkService(
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerGrpcEndpoint = grpcEndpoint,
-            runtime = CreateRuntimeIdentity(),
         }, cancellationToken);
 
         await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
@@ -173,22 +169,6 @@ internal sealed partial class HostLinkService(
             functionGroup = FunctionGroupName,
             configLastModifiedTime = 0,
             contentLastModifiedTime = 0,
-        };
-
-    private object CreateRuntimeIdentity() =>
-        new
-        {
-            resourceNamespace = ResourceNamespace,
-            podName = RuntimePodName,
-            podGuid = runtimePodGuid,
-            legionStampName = LegionStampName,
-            podType = RuntimePodType,
-            app = new
-            {
-                functionAppName = FunctionAppName,
-                functionAppSiteId = FunctionAppSiteId,
-                antaresStampName = AntaresStampName,
-            },
         };
 
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)

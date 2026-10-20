@@ -5,6 +5,5 @@ namespace Azure.Functions.WorkerProxy.State;
 
 internal static class SplitPodTypes
 {
-    public const string Runtime = "FunctionsSplitRuntimePod";
     public const string Worker = "FunctionsSplitWorkerPod";
 }

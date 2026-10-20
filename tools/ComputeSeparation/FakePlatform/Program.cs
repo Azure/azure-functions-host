@@ -108,9 +108,7 @@ simulate.MapPost("/worker/link", async (string? worker, IHttpClientFactory clien
         return Results.BadRequest(InvalidWorkerMessage);
     }
 
-    WorkerLink link = new(
-        selected.WorkerGrpcEndpoint.ToString(),
-        CreateRuntimeIdentity(options.RuntimePodGuid));
+    WorkerLink link = new(selected.WorkerGrpcEndpoint.ToString());
     using HttpResponseMessage response = await clients.CreateClient(HostClient)
         .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(selected.WorkerId)}", link, cancellationToken);
 
@@ -206,22 +204,6 @@ static object CreateWorkerStaticState(string podName, Guid podGuid) =>
         contentLastModifiedTime = 0,
     };
 
-static object CreateRuntimeIdentity(Guid podGuid) =>
-    new
-    {
-        resourceNamespace = ResourceNamespace,
-        podName = RuntimePodName,
-        podGuid,
-        legionStampName = LegionStampName,
-        podType = RuntimePodType,
-        app = new
-        {
-            functionAppName = AppName,
-            functionAppSiteId = FunctionAppSiteId,
-            antaresStampName = AntaresStampName,
-        },
-    };
-
 internal partial class Program
 {
     // The app name used for assignments, and the Host's site name (WEBSITE_SITE_NAME) in the
@@ -236,8 +218,6 @@ internal partial class Program
     private const string LegionStampName = "aspire-local";
     private const string AntaresStampName = "aspire-local";
     private const string WorkerPodType = "FunctionsSplitWorkerPod";
-    private const string RuntimePodType = "FunctionsSplitRuntimePod";
-    private const string RuntimePodName = "runtime-pod";
     private const int FunctionAppSiteId = 1;
 
     private sealed class FakePlatformOptions : WorkerOptions
@@ -245,8 +225,6 @@ internal partial class Program
         public required Uri HostUri { get; init; }
 
         public WorkerOptions? SecondWorker { get; init; }
-
-        public required Guid RuntimePodGuid { get; init; }
 
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
         public string? EncryptionKey { get; init; }
@@ -278,7 +256,7 @@ internal partial class Program
         string FunctionAppDirectory,
         object StaticState);
 
-    private sealed record WorkerLink(string WorkerGrpcEndpoint, object Runtime);
+    private sealed record WorkerLink(string WorkerGrpcEndpoint);
 
     private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 }

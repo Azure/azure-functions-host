@@ -30,7 +30,6 @@ if (useContainers && enableSecondWorker)
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
 string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
 Guid workerPodGuid = Guid.NewGuid();
-Guid runtimePodGuid = Guid.NewGuid();
 using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
@@ -149,8 +148,7 @@ else
         .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
         .WithEnvironment("FakePlatform__WorkerId", workerId)
         .WithEnvironment("FakePlatform__PodName", podName)
-        .WithEnvironment("FakePlatform__PodGuid", workerPodGuid.ToString("D"))
-        .WithEnvironment("FakePlatform__RuntimePodGuid", runtimePodGuid.ToString("D"));
+        .WithEnvironment("FakePlatform__PodGuid", workerPodGuid.ToString("D"));
 
     if (enableSecondWorker)
     {
@@ -196,7 +194,6 @@ if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
         workerId,
         podName,
         workerPodGuid,
-        runtimePodGuid,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
         services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>()));

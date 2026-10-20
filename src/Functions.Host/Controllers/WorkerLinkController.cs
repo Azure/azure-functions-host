@@ -37,22 +37,18 @@ public sealed partial class WorkerLinkController : Controller
 
     private readonly ILogger<WorkerLinkController> _logger;
     private readonly IWorkerChannelRegistry _registry;
-    private readonly IWorkerLinkAcknowledgementClient _acknowledgementClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
-    /// <param name="acknowledgementClient">The client that publishes accepted Runtime identity to WorkerProxy.</param>
     public WorkerLinkController(
         ILogger<WorkerLinkController> logger,
-        IWorkerChannelRegistry registry,
-        IWorkerLinkAcknowledgementClient acknowledgementClient)
+        IWorkerChannelRegistry registry)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _acknowledgementClient = acknowledgementClient ?? throw new ArgumentNullException(nameof(acknowledgementClient));
     }
 
     /// <summary>
@@ -84,12 +80,8 @@ public sealed partial class WorkerLinkController : Controller
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(
-            workerId,
-            request,
-            out Uri? grpcEndpoint,
-            out FunctionsSplitPodIdentity? runtime);
-        if (errors.Count > 0 || grpcEndpoint is null || runtime is null)
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
+        if (errors.Count > 0 || grpcEndpoint is null)
         {
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds);
@@ -97,14 +89,13 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, runtime, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
-        out Uri? grpcEndpoint, out FunctionsSplitPodIdentity? runtime)
+        out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
-        runtime = null;
         List<RequestValidationError> errors = [];
 
         if (string.IsNullOrWhiteSpace(workerId))
@@ -128,24 +119,17 @@ public sealed partial class WorkerLinkController : Controller
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
-        ValidateRuntimeIdentity(request.Runtime, errors, out runtime);
-
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        FunctionsSplitPodIdentity runtime,
-        long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
-            await _acknowledgementClient.AcknowledgeAsync(grpcEndpoint, runtime, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
@@ -172,62 +156,6 @@ public sealed partial class WorkerLinkController : Controller
             IOException or SocketException or ChannelClosedException or OperationCanceledException or UriFormatException)
         {
             return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.Unavailable, started, exception);
-        }
-    }
-
-    private static void ValidateRuntimeIdentity(
-        FunctionsSplitPodIdentity? request,
-        List<RequestValidationError> errors,
-        out FunctionsSplitPodIdentity? runtime)
-    {
-        runtime = null;
-        if (request is null)
-        {
-            errors.Add(new(ErrorCodes.Required, "runtime"));
-            return;
-        }
-
-        AddRequired(request.ResourceNamespace, "runtime.resourceNamespace", errors);
-        AddRequired(request.PodName, "runtime.podName", errors);
-        if (request.PodGuid is not { } podGuid || podGuid == Guid.Empty)
-        {
-            errors.Add(new(ErrorCodes.Required, "runtime.podGuid"));
-        }
-
-        AddRequired(request.LegionStampName, "runtime.legionStampName", errors);
-        if (!string.Equals(request.PodType, "FunctionsSplitRuntimePod", StringComparison.Ordinal))
-        {
-            errors.Add(new(
-                string.IsNullOrWhiteSpace(request.PodType) ? ErrorCodes.Required : ErrorCodes.InvalidValue,
-                "runtime.podType"));
-        }
-
-        if (request.App is not { } app)
-        {
-            errors.Add(new(ErrorCodes.Required, "runtime.app"));
-        }
-        else
-        {
-            AddRequired(app.FunctionAppName, "runtime.app.functionAppName", errors);
-            if (app.FunctionAppSiteId is null)
-            {
-                errors.Add(new(ErrorCodes.Required, "runtime.app.functionAppSiteId"));
-            }
-
-            AddRequired(app.AntaresStampName, "runtime.app.antaresStampName", errors);
-        }
-
-        if (errors.Count == 0)
-        {
-            runtime = request;
-        }
-    }
-
-    private static void AddRequired(string? value, string target, List<RequestValidationError> errors)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            errors.Add(new(ErrorCodes.Required, target));
         }
     }
 
@@ -270,7 +198,6 @@ public sealed partial class WorkerLinkController : Controller
     {
         public const string InvalidBody = nameof(InvalidBody);
         public const string InvalidEndpoint = nameof(InvalidEndpoint);
-        public const string InvalidValue = nameof(InvalidValue);
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
         public const string Required = nameof(Required);

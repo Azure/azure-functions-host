@@ -91,51 +91,26 @@ sequenceDiagram
     participant Worker
 
     Platform->>Proxy: PUT /admin/worker/assignment<br/>staticState
+    Worker->>Proxy: Open worker FunctionRpc stream<br/>StartStream
+    Platform->>Host: PUT /admin/workers/{workerId}
     Host->>Proxy: Open runtime FunctionRpc stream
-    Proxy->>Proxy: Publish Pending
-    Host->>Worker: LinkAsync initialization
-    Worker-->>Host: Initialization succeeds
-    Host->>Proxy: AcknowledgeLink(runtime identity)
-    Proxy->>Proxy: Publish Linked + exact Runtime identity
-    Proxy-->>Host: Acknowledgement succeeds
+    Proxy->>Proxy: Publish Linked
+    Host->>Worker: Relay FunctionRpc initialization
+    Worker-->>Host: Relay initialization response
     Host-->>Platform: LinkWorker success
 ```
 
-The runtime-facing FunctionRpc attachment changes `Unlinked` to `Pending`.
-This transition does not depend on assignment order or Worker readiness.
+The runtime-facing FunctionRpc attachment changes `Unlinked` directly to
+`Linked`. This transition does not depend on assignment order, Worker
+readiness, or completion of the Host's `LinkAsync` operation. `Linked` means
+that WorkerProxy currently has a Runtime-facing relay attachment; it does not
+identify the Runtime pod or independently prove that Host initialization
+completed.
 
 `WorkerInitResponse` is relayed and capability-finalized as before, but it does
 not change split link state.
 
-After `IWorkerChannelRegistry.LinkAsync` succeeds, the Host calls the unary
-`WorkerLinkControl.AcknowledgeLink` operation on the same runtime-facing gRPC
-listener. The request carries the exact Runtime identity:
-
-```json
-{
-  "runtime": {
-    "resourceNamespace": "runtime-namespace",
-    "podName": "runtime-pod",
-    "podGuid": "22222222-2222-2222-2222-222222222222",
-    "legionStampName": "legion-stamp",
-    "podType": "FunctionsSplitRuntimePod",
-    "app": {
-      "functionAppName": "example-app",
-      "functionAppSiteId": 42,
-      "antaresStampName": "antares-stamp"
-    }
-  }
-}
-```
-
-The acknowledgement is idempotent for the same identity. A different identity
-after `Linked` receives gRPC `AlreadyExists`; an acknowledgement without a
-pending runtime attachment receives `FailedPrecondition`. Any acknowledgement
-failure prevents the Host link API from returning success. No retry loop or
-rollback protocol is introduced.
-
-The Host link request therefore requires both the Worker endpoint and Runtime
-identity:
+The Host link request remains the existing endpoint-only contract:
 
 ```http
 PUT /admin/workers/{workerId}
@@ -143,19 +118,7 @@ PUT /admin/workers/{workerId}
 
 ```json
 {
-  "workerGrpcEndpoint": "http://worker-proxy:50053/",
-  "runtime": {
-    "resourceNamespace": "runtime-namespace",
-    "podName": "runtime-pod",
-    "podGuid": "22222222-2222-2222-2222-222222222222",
-    "legionStampName": "legion-stamp",
-    "podType": "FunctionsSplitRuntimePod",
-    "app": {
-      "functionAppName": "example-app",
-      "functionAppSiteId": 42,
-      "antaresStampName": "antares-stamp"
-    }
-  }
+  "workerGrpcEndpoint": "http://worker-proxy:50053/"
 }
 ```
 
@@ -165,14 +128,12 @@ WorkerProxy publishes `ReadyForWork` only when all three conditions are true:
 
 1. the customer Worker has sent a valid `StartStream`;
 2. assignment has been accepted; and
-3. the Runtime link has been explicitly acknowledged as `Linked`.
+3. a Runtime-facing FunctionRpc relay is attached.
 
 All other states currently publish `Starting`.
 
-When the relay terminates, Worker readiness is withdrawn. An unacknowledged
-`Pending` link returns to `Unlinked`. An acknowledged link remains `Linked`
-with the exact Runtime identity, matching the contract that `Linked` records
-accepted ownership and does not by itself prove current health.
+When the relay terminates, Worker readiness is withdrawn and the link returns
+to `Unlinked`.
 
 ## Compatibility and deferred work
 
@@ -180,14 +141,14 @@ accepted ownership and does not by itself prove current health.
 - Split transitions use the existing shared revision and can wake legacy state
   polls.
 - Every accepted BYOC assignment requires complete Worker `staticState`.
-- The platform must include exact Runtime identity in the Host link request.
+- No new Host-to-WorkerProxy acknowledgement RPC or Runtime identity contract
+  is introduced.
+- Exact Runtime association and proof that the Host completed `LinkAsync` are
+  deferred; `Linked` intentionally represents relay presence only.
 - Runtime `availableWorkerLinks`, capacity, and link counting are owned by the
   Runtime-side signal work.
 - Epoch/restart reconciliation, durable replay state, draining,
   removal-requested transitions, and reconnect ownership are deferred.
-- The acknowledgement inherits the existing runtime-listener network trust
-  boundary. Independent caller authentication, key rotation, and credential
-  replay hardening are deferred beyond the required NNA site-token validation.
 - Deployed control-plane convergence and stamp validation remain separate from
   these in-memory behavioral tests.
 
@@ -198,7 +159,7 @@ gRPC APIs and the Host's public Worker link HTTP route. It covers:
 
 - authenticated placeholder polling and assignment replacement;
 - required assignment static state;
-- `Unlinked -> Pending -> Linked` only after explicit acknowledgement;
-- acknowledgement replay, conflict, ordering, and failure direction;
+- direct `Unlinked -> Linked` transition on Runtime relay attachment;
+- `Linked -> Unlinked` transition on relay termination;
 - `ReadyForWork` gating; and
-- retained `Linked` Runtime identity after relay termination.
+- preservation of the existing Host Worker link request contract.

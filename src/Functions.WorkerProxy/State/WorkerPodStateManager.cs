@@ -221,11 +221,9 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            SplitWorkerLink? link = _state.SplitLink;
-            if (ownsRuntimeLink && link?.State != SplitWorkerLinkState.Linked)
-            {
-                link = new(SplitWorkerLinkState.Unlinked);
-            }
+            SplitWorkerLink? link = ownsRuntimeLink
+                ? new(SplitWorkerLinkState.Unlinked)
+                : _state.SplitLink;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -240,7 +238,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records attachment of the runtime-facing FunctionRpc stream.
+    /// Records attachment of the runtime-facing FunctionRpc stream as the active Runtime link.
     /// </summary>
     public void OnRuntimeAttached(long sessionId)
     {
@@ -259,39 +257,8 @@ internal sealed class WorkerPodStateManager
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
-                SplitLink = new(SplitWorkerLinkState.Pending)
+                SplitLink = new(SplitWorkerLinkState.Linked)
             });
-        }
-    }
-
-    /// <summary>
-    /// Records the Runtime Host's successful link acknowledgement.
-    /// </summary>
-    public RuntimeLinkAcknowledgementResult AcknowledgeRuntimeLink(SplitPodIdentity runtime)
-    {
-        ArgumentNullException.ThrowIfNull(runtime);
-
-        lock (_stateLock)
-        {
-            if (_state.SplitLink is { State: SplitWorkerLinkState.Linked, Runtime: { } acknowledged })
-            {
-                return acknowledged == runtime
-                    ? RuntimeLinkAcknowledgementResult.AlreadyAcknowledged
-                    : RuntimeLinkAcknowledgementResult.Conflict;
-            }
-
-            if (_runtimeLinkSessionId is null
-                || _state.SplitLink?.State != SplitWorkerLinkState.Pending)
-            {
-                return RuntimeLinkAcknowledgementResult.NotPending;
-            }
-
-            UpdateStateAndNotifyWaitersLocked(_state with
-            {
-                Revision = checked(_state.Revision + 1),
-                SplitLink = new(SplitWorkerLinkState.Linked, runtime)
-            });
-            return RuntimeLinkAcknowledgementResult.Acknowledged;
         }
     }
 

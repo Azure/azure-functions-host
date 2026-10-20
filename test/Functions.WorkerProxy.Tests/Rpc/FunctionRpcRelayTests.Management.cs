@@ -10,12 +10,10 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Control;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
-using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -405,7 +403,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitRuntimeLinkTransitionsPendingToLinkedState()
+    public async Task SplitRuntimeRelayPublishesLinkedUntilTermination()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -425,7 +423,7 @@ public partial class FunctionRpcRelayTests
         }
 
         using JsonDocument unlinked = await ReadSplitManagementStateAsync(management, timeout.Token);
-        Task<HttpResponseMessage> pendingPoll = PollSplitManagementStateAsync(
+        Task<HttpResponseMessage> linkedPoll = PollSplitManagementStateAsync(
             management,
             unlinked.RootElement.GetRawText(),
             timeout.Token);
@@ -433,33 +431,26 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         Assert.Equal("test-worker", (await runtime.ReadAsync(timeout.Token)).StartStream.WorkerId);
 
-        string pendingState;
-        using (HttpResponseMessage pendingResponse = await pendingPoll)
+        using (HttpResponseMessage linkedResponse = await linkedPoll)
         {
-            Assert.Equal(HttpStatusCode.OK, pendingResponse.StatusCode);
-            pendingState = await pendingResponse.Content.ReadAsStringAsync(timeout.Token);
-            using JsonDocument pending = JsonDocument.Parse(pendingState);
-            JsonElement dynamicState = pending.RootElement.GetProperty("dynamicState");
+            Assert.Equal(HttpStatusCode.OK, linkedResponse.StatusCode);
+            string linkedStateJson = await linkedResponse.Content.ReadAsStringAsync(timeout.Token);
+            using JsonDocument linked = JsonDocument.Parse(linkedStateJson);
+            JsonElement dynamicState = linked.RootElement.GetProperty("dynamicState");
             Assert.Equal(4, dynamicState.GetProperty("revisionId").GetInt64());
-            Assert.Equal("Starting", dynamicState.GetProperty("status").GetString());
+            Assert.Equal("ReadyForWork", dynamicState.GetProperty("status").GetString());
             JsonElement link = dynamicState.GetProperty("link");
-            Assert.Equal("Pending", link.GetProperty("state").GetString());
+            Assert.Equal("Linked", link.GetProperty("state").GetString());
             Assert.False(link.TryGetProperty("runtime", out _));
         }
 
-        Task<HttpResponseMessage> linkedPoll = PollSplitManagementStateAsync(
-            management,
-            pendingState,
-            timeout.Token);
-        await WaitForManagementPollAsync(manager, timeout.Token);
         await worker.WriteAsync(CreateInitResponse(string.Empty, httpUri: null), timeout.Token);
         Assert.NotNull((await runtime.ReadAsync(timeout.Token)).WorkerInitResponse);
-        Assert.False(linkedPoll.IsCompleted);
-        using (JsonDocument stillPending = await ReadSplitManagementStateAsync(management, timeout.Token))
+        using (JsonDocument stillLinked = await ReadSplitManagementStateAsync(management, timeout.Token))
         {
-            JsonElement stillPendingDynamicState = stillPending.RootElement.GetProperty("dynamicState");
-            Assert.Equal(4, stillPendingDynamicState.GetProperty("revisionId").GetInt64());
-            Assert.Equal("Pending", stillPendingDynamicState.GetProperty("link").GetProperty("state").GetString());
+            JsonElement dynamicState = stillLinked.RootElement.GetProperty("dynamicState");
+            Assert.Equal(4, dynamicState.GetProperty("revisionId").GetInt64());
+            Assert.Equal("Linked", dynamicState.GetProperty("link").GetProperty("state").GetString());
         }
 
         StreamingMessage init = new()
@@ -470,52 +461,22 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));
         await worker.WriteAsync(CreateInitResponse(string.Empty, httpUri: null), timeout.Token);
         Assert.NotNull((await runtime.ReadAsync(timeout.Token)).WorkerInitResponse);
-        Assert.False(linkedPoll.IsCompleted);
 
-        using GrpcChannel controlChannel = GrpcChannel.ForAddress(
-            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime));
-        WorkerLinkControl.WorkerLinkControlClient control = new(controlChannel);
-        AcknowledgeLinkRequest acknowledgement = CreateRuntimeAcknowledgement();
-        await control.AcknowledgeLinkAsync(acknowledgement, cancellationToken: timeout.Token);
-        using HttpResponseMessage linkedResponse = await linkedPoll;
-        Assert.Equal(HttpStatusCode.OK, linkedResponse.StatusCode);
-        string linkedStateJson = await linkedResponse.Content.ReadAsStringAsync(timeout.Token);
-        using JsonDocument linked = JsonDocument.Parse(linkedStateJson);
-        JsonElement linkedDynamicState = linked.RootElement.GetProperty("dynamicState");
-        Assert.Equal(5, linkedDynamicState.GetProperty("revisionId").GetInt64());
-        Assert.Equal("ReadyForWork", linkedDynamicState.GetProperty("status").GetString());
-        JsonElement linkedState = linkedDynamicState.GetProperty("link");
-        Assert.Equal("Linked", linkedState.GetProperty("state").GetString());
-        AssertRuntimeIdentity(linkedState.GetProperty("runtime"), "runtime-pod");
-
-        await control.AcknowledgeLinkAsync(acknowledgement, cancellationToken: timeout.Token);
-        Assert.Equal(5, manager.State.Revision);
-
-        AcknowledgeLinkRequest conflicting = CreateRuntimeAcknowledgement("other-runtime-pod");
-        Grpc.Core.RpcException conflict = await Assert.ThrowsAsync<Grpc.Core.RpcException>(
-            () => control.AcknowledgeLinkAsync(conflicting, cancellationToken: timeout.Token).ResponseAsync);
-        Assert.Equal(StatusCode.AlreadyExists, conflict.StatusCode);
-        Assert.Equal(5, manager.State.Revision);
-
-        Task<HttpResponseMessage> terminationPoll = PollSplitManagementStateAsync(
-            management,
-            linkedStateJson,
-            timeout.Token);
-        await WaitForManagementPollAsync(manager, timeout.Token);
-        await worker.CompleteRequestAsync(timeout.Token);
+        await runtime.CompleteRequestAsync(timeout.Token);
         Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
         Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+        while (manager.State.SplitLink?.State != SplitWorkerLinkState.Unlinked)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
 
-        using HttpResponseMessage terminatedResponse = await terminationPoll;
-        Assert.Equal(HttpStatusCode.OK, terminatedResponse.StatusCode);
-        using JsonDocument terminated = JsonDocument.Parse(
-            await terminatedResponse.Content.ReadAsStringAsync(timeout.Token));
+        using JsonDocument terminated = await ReadSplitManagementStateAsync(management, timeout.Token);
         JsonElement terminatedDynamic = terminated.RootElement.GetProperty("dynamicState");
-        Assert.Equal(6, terminatedDynamic.GetProperty("revisionId").GetInt64());
+        Assert.Equal(5, terminatedDynamic.GetProperty("revisionId").GetInt64());
         Assert.Equal("Starting", terminatedDynamic.GetProperty("status").GetString());
-        JsonElement retainedLink = terminatedDynamic.GetProperty("link");
-        Assert.Equal("Linked", retainedLink.GetProperty("state").GetString());
-        AssertRuntimeIdentity(retainedLink.GetProperty("runtime"), "runtime-pod");
+        JsonElement terminatedLink = terminatedDynamic.GetProperty("link");
+        Assert.Equal("Unlinked", terminatedLink.GetProperty("state").GetString());
+        Assert.False(terminatedLink.TryGetProperty("runtime", out _));
     }
 
     [Fact]
@@ -554,11 +515,10 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.AlreadyExists, exception.StatusCode);
 
         using JsonDocument split = await ReadSplitManagementStateAsync(management, timeout.Token);
-        string pendingState = split.RootElement.GetRawText();
         JsonElement dynamicState = split.RootElement.GetProperty("dynamicState");
         Assert.Equal(4, dynamicState.GetProperty("revisionId").GetInt64());
         JsonElement link = dynamicState.GetProperty("link");
-        Assert.Equal("Pending", link.GetProperty("state").GetString());
+        Assert.Equal("Linked", link.GetProperty("state").GetString());
         Assert.False(link.TryGetProperty("runtime", out _));
 
         using JsonDocument legacy = await ReadManagementStateAsync(management, lastKnownRevision: null, timeout.Token);
@@ -568,16 +528,14 @@ public partial class FunctionRpcRelayTests
         Assert.False(legacy.RootElement.TryGetProperty("staticState", out _));
         Assert.False(legacy.RootElement.TryGetProperty("dynamicState", out _));
 
-        Task<HttpResponseMessage> terminationPoll =
-            PollSplitManagementStateAsync(management, pendingState, timeout.Token);
-        await WaitForManagementPollAsync(manager, timeout.Token);
         await worker.CompleteRequestAsync(timeout.Token);
         Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
+        while (manager.State.SplitLink?.State != SplitWorkerLinkState.Unlinked)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
 
-        using HttpResponseMessage terminatedResponse = await terminationPoll;
-        Assert.Equal(HttpStatusCode.OK, terminatedResponse.StatusCode);
-        using JsonDocument terminated = JsonDocument.Parse(
-            await terminatedResponse.Content.ReadAsStringAsync(timeout.Token));
+        using JsonDocument terminated = await ReadSplitManagementStateAsync(management, timeout.Token);
         JsonElement terminatedDynamicState = terminated.RootElement.GetProperty("dynamicState");
         Assert.Equal(5, terminatedDynamicState.GetProperty("revisionId").GetInt64());
         Assert.Equal("Starting", terminatedDynamicState.GetProperty("status").GetString());
@@ -602,38 +560,6 @@ public partial class FunctionRpcRelayTests
         }
 
         return await client.SendAsync(request, cancellationToken);
-    }
-
-    private static AcknowledgeLinkRequest CreateRuntimeAcknowledgement(string podName = "runtime-pod") =>
-        new()
-        {
-            Runtime = new Azure.Functions.WorkerProxy.Control.SplitPodIdentity
-            {
-                ResourceNamespace = "runtime-namespace",
-                PodName = podName,
-                PodGuid = "22222222-2222-2222-2222-222222222222",
-                LegionStampName = "legion-runtime",
-                PodType = "FunctionsSplitRuntimePod",
-                App = new()
-                {
-                    FunctionAppName = "test-app",
-                    FunctionAppSiteId = 42,
-                    AntaresStampName = "antares-test"
-                }
-            }
-        };
-
-    private static void AssertRuntimeIdentity(JsonElement runtime, string podName)
-    {
-        Assert.Equal("runtime-namespace", runtime.GetProperty("resourceNamespace").GetString());
-        Assert.Equal(podName, runtime.GetProperty("podName").GetString());
-        Assert.Equal(Guid.Parse("22222222-2222-2222-2222-222222222222"), runtime.GetProperty("podGuid").GetGuid());
-        Assert.Equal("legion-runtime", runtime.GetProperty("legionStampName").GetString());
-        Assert.Equal("FunctionsSplitRuntimePod", runtime.GetProperty("podType").GetString());
-        JsonElement app = runtime.GetProperty("app");
-        Assert.Equal("test-app", app.GetProperty("functionAppName").GetString());
-        Assert.Equal(42, app.GetProperty("functionAppSiteId").GetInt32());
-        Assert.Equal("antares-test", app.GetProperty("antaresStampName").GetString());
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(

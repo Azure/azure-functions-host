@@ -272,7 +272,7 @@ public partial class FunctionRpcRelayTests
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             new BlockingStreamReader(), new TestServerStreamWriter(), runtimeCancellation.Token);
         Assert.Equal(initial.Revision + 1, manager.State.Revision);
-        Assert.Equal(SplitWorkerLinkState.Pending, manager.State.SplitLink?.State);
+        Assert.Equal(SplitWorkerLinkState.Linked, manager.State.SplitLink?.State);
 
         runtimeCancellation.Cancel();
         FunctionRpcRelayTerminalState terminated = await runtimeTask.WaitAsync(timeout.Token);

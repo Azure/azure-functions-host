@@ -7,7 +7,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -88,8 +87,6 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                     services.AddWebJobsScriptHostAuthorization();
                     services.AddWebJobsScriptHost(context.Configuration, ClientWorkerComposition.Instance);
                     services.Replace(ServiceDescriptor.Singleton(registry));
-                    services.Replace(ServiceDescriptor.Singleton<IWorkerLinkAcknowledgementClient>(
-                        new NoOpWorkerLinkAcknowledgementClient()));
                 })
                 .Configure(app => app.UseWebJobsScriptHost()))
             .Build();
@@ -98,33 +95,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
-            Content = new StringContent($$"""
-                {
-                  "workerGrpcEndpoint":"{{GrpcEndpoint}}",
-                  "runtime":{
-                    "resourceNamespace":"test-namespace",
-                    "podName":"runtime-pod",
-                    "podGuid":"22222222-2222-2222-2222-222222222222",
-                    "legionStampName":"legion-test",
-                    "podType":"FunctionsSplitRuntimePod",
-                    "app":{
-                      "functionAppName":"test-app",
-                      "functionAppSiteId":42,
-                      "antaresStampName":"antares-test"
-                    }
-                  }
-                }
-                """, Encoding.UTF8, "application/json"),
+            Content = new StringContent($$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}"}""", Encoding.UTF8, "application/json"),
         };
 
         return await client.SendAsync(request, cancellationToken);
-    }
-
-    private sealed class NoOpWorkerLinkAcknowledgementClient : IWorkerLinkAcknowledgementClient
-    {
-        public Task AcknowledgeAsync(
-            Uri workerGrpcEndpoint,
-            FunctionsSplitPodIdentity runtime,
-            CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
