@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -33,6 +34,7 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
     private readonly IWorkerChannelRegistry _channelRegistry;
     private readonly TimeSpan _channelWaitTimeout;
     private readonly ILogger<RpcClientWorkerFunctionMetadataProvider> _logger;
+    private readonly IOptions<FunctionMetadataOptions> _metadataOptions;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly WorkerFunctionMetadataValidator _validator;
     private FunctionMetadataResult _cachedResult;
@@ -40,8 +42,9 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
     public RpcClientWorkerFunctionMetadataProvider(
         IWorkerChannelRegistry channelRegistry,
         ILogger<RpcClientWorkerFunctionMetadataProvider> logger,
-        IWorkerRuntimeResolver workerRuntimeResolver)
-        : this(channelRegistry, logger, workerRuntimeResolver, DefaultChannelWaitTimeout)
+        IWorkerRuntimeResolver workerRuntimeResolver,
+        IOptions<FunctionMetadataOptions> metadataOptions)
+        : this(channelRegistry, logger, workerRuntimeResolver, metadataOptions, DefaultChannelWaitTimeout)
     {
     }
 
@@ -49,10 +52,12 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
         IWorkerChannelRegistry channelRegistry,
         ILogger<RpcClientWorkerFunctionMetadataProvider> logger,
         IWorkerRuntimeResolver workerRuntimeResolver,
+        IOptions<FunctionMetadataOptions> metadataOptions,
         TimeSpan channelWaitTimeout)
     {
         _channelRegistry = channelRegistry ?? throw new ArgumentNullException(nameof(channelRegistry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _metadataOptions = metadataOptions ?? throw new ArgumentNullException(nameof(metadataOptions));
         _validator = new(logger, workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver)));
 
         if (channelWaitTimeout <= TimeSpan.Zero)
@@ -105,7 +110,10 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
                 "Client-backed workers must provide function metadata and cannot request host metadata indexing.");
         }
 
-        ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions);
+        // Linked workers own their runtime. Do not replace their per-function language with Host configuration
+        // or feed it into a Host-wide runtime cache.
+        bool preserveWorkerLanguage = _metadataOptions.Value.UseWorkerRuntimeFromMetadata;
+        ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions, preserveWorkerLanguage);
         Log.FunctionsReturned(_logger, functions.Length, MetadataProviderName);
         _cachedResult = new(useDefaultMetadataIndexing: false, functions);
         return _cachedResult;

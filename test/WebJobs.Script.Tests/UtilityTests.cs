@@ -640,6 +640,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("Python", "python", "Python")]
+        [InlineData("python", "Python", "python")]
+        [InlineData("python", "python", "python")]
+        [InlineData("python", "node", null)]
+        public void GetWorkerRuntime_MetadataLanguagesUseCaseInsensitiveComparison(
+            string firstLanguage, string secondLanguage, string expectedRuntime)
+        {
+            FunctionMetadata[] functions =
+            [
+                new FunctionMetadata { Name = "func1", Language = firstLanguage },
+                new FunctionMetadata { Name = "func2", Language = secondLanguage }
+            ];
+
+            Assert.Equal(expectedRuntime is not null, Utility.IsSingleLanguage(functions, null));
+            Assert.Equal(expectedRuntime, Utility.GetWorkerRuntime(functions));
+        }
+
+        [Theory]
         [InlineData("node", "java")]
         [InlineData("java", "node")]
         [InlineData("python", "")]

@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -38,12 +39,15 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
             .Returns("dotnet-isolated");
     }
 
-    [Fact]
-    public async Task GetFunctionMetadataAsync_ReturnsValidatedWorkerMetadata()
+    [Theory]
+    [InlineData(true, "worker-language")]
+    [InlineData(false, "dotnet-isolated")]
+    public async Task GetFunctionMetadataAsync_ReturnsValidatedMetadataUsingRuntimeAuthorityOption(
+        bool useWorkerRuntimeFromMetadata, string expectedLanguage)
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
         _channels.Add(worker.Channel);
-        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider(useWorkerRuntimeFromMetadata: useWorkerRuntimeFromMetadata);
 
         Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
@@ -53,9 +57,11 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
         FunctionMetadata function = Assert.Single(result.Functions);
         Assert.False(result.UseDefaultMetadataIndexing);
         Assert.Equal("HttpFunction", function.Name);
-        Assert.Equal("dotnet-isolated", function.Language);
+        Assert.Equal(expectedLanguage, function.Language);
         Assert.Equal("httpTrigger", Assert.Single(function.Bindings).Type);
         Assert.Empty(provider.FunctionErrors);
+        _runtimeResolver.Verify(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()),
+            useWorkerRuntimeFromMetadata ? Times.Never() : Times.Once());
     }
 
     [Fact]
@@ -317,11 +323,13 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
             failure => Assert.Same(unlinkFailure, failure));
     }
 
-    private RpcClientWorkerFunctionMetadataProvider CreateProvider(TimeSpan? channelWaitTimeout = null)
+    private RpcClientWorkerFunctionMetadataProvider CreateProvider(
+        TimeSpan? channelWaitTimeout = null, bool useWorkerRuntimeFromMetadata = true)
         => new(
             _registry.Object,
             NullLogger<RpcClientWorkerFunctionMetadataProvider>.Instance,
             _runtimeResolver.Object,
+            Options.Create(new FunctionMetadataOptions { UseWorkerRuntimeFromMetadata = useWorkerRuntimeFromMetadata }),
             channelWaitTimeout ?? TimeSpan.FromSeconds(10));
 
     private async Task<WorkerChannel> WaitForChannelAsync(CancellationToken cancellationToken)
