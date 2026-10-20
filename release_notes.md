@@ -10,3 +10,4 @@
 - Add usage telemetry for worker custom metrics and Azure Monitor diagnostic logging (#12034)
 - Suppress Storage queue and blob listener polling noise from telemetry by event name, preserving listener lifecycle and diagnostic logs (#11947)
 - Update Python Worker Version to [4.46.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.46.2) (#12082)
+- Emit successful function execution counts in Flex Consumption metrics records (#12068)
