@@ -98,6 +98,10 @@ public sealed partial class WorkerFunctionMetadataValidator
                 {
                     function.Language = _workerRuntimeResolver.GetWorkerRuntime();
                 }
+                else if (string.IsNullOrEmpty(function.Language))
+                {
+                    throw new FormatException("The worker returned function metadata without a language.");
+                }
 
                 if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource))
                 {
