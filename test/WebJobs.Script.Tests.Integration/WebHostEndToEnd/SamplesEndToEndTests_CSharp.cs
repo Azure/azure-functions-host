@@ -1077,11 +1077,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Executing HTTP request", message);
             var details = log.FormattedMessage.Substring(idx + 1).Trim();
             var jo = JObject.Parse(details);
-            Assert.Equal(4, jo.Count);
+            Assert.Equal(2, jo.Count);
             Assert.Equal(requestId, jo["requestId"]);
             Assert.Equal("GET", jo["method"]);
-            Assert.Equal("/api/HttpTrigger", jo["uri"]);
-            Assert.Equal("TestAgent", jo["userAgent"]);
 
             // validate executed trace
             log = httpTraceLogs[1];
@@ -1092,9 +1090,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Executed HTTP request", message);
             details = log.FormattedMessage.Substring(idx + 1).Trim();
             jo = JObject.Parse(details);
-            Assert.Equal(4, jo.Count);
+            Assert.Equal(5, jo.Count);
             Assert.Equal(requestId, (string)jo["requestId"]);
             Assert.Equal(200, jo["status"]);
+            Assert.Equal("api/HttpTrigger", (string)jo["route"]);
             var duration = (long)jo["duration"];
             Assert.True(duration >= 0);
 
