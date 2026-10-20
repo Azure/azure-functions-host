@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -74,7 +75,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogDebug(new EventId(1, "ResetSecretManager"), "Reset SecretManager.");
         }
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        private ISecretManager Create()
+        {
+            var repository = CreateSecretsRepository();
+            var forceAzureWebsitesDataProtection = IsManagedLogicAppFileStorage(repository.GetType()) &&
+                !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteLocalEncryptionKey));
+            var converterFactory = new DefaultKeyValueConverterFactory(
+                repositorySupportsEncryption: repository.IsEncryptionSupported,
+                forceAzureWebsitesDataProtection: forceAzureWebsitesDataProtection);
+            return new SecretManager(repository, converterFactory, _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        }
 
         internal ISecretsRepository CreateSecretsRepository()
         {
@@ -138,6 +148,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation(new EventId(3, "CreatedSecretRespository"), "Resolved secret storage provider {provider}", repository.Name);
 
             return repository;
+        }
+
+        private bool IsManagedLogicAppFileStorage(Type repositoryType)
+        {
+            return repositoryType == typeof(FileSystemSecretsRepository) &&
+                _environment.IsManagedAppEnvironment() &&
+                _environment.IsLogicApp();
         }
 
         /// <summary>
