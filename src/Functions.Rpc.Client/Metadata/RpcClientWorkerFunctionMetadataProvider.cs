@@ -110,7 +110,7 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
                 "Client-backed workers must provide function metadata and cannot request host metadata indexing.");
         }
 
-        // Linked BYOC workers own their runtime. Do not replace their per-function language with Host configuration
+        // Linked workers own their runtime. Do not replace their per-function language with Host configuration
         // or feed it into a Host-wide runtime cache.
         bool preserveWorkerLanguage = _metadataOptions.Value.UseWorkerRuntimeFromMetadata;
         ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions, preserveWorkerLanguage);

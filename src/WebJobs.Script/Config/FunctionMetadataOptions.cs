@@ -19,7 +19,7 @@ public class FunctionMetadataOptions
 
     /// <summary>
     /// Gets or sets a value indicating whether worker metadata, rather than configured runtime or
-    /// profile settings, determines the ScriptHost runtime. Enabled for client-backed BYOC workers,
+    /// profile settings, determines the ScriptHost runtime. Enabled for linked workers,
     /// which report their own runtime through function metadata.
     /// </summary>
     public bool UseWorkerRuntimeFromMetadata { get; set; } = false;
