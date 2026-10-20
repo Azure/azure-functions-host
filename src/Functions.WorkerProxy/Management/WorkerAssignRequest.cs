@@ -9,8 +9,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// All fields except HttpProxyEndpoint are required. The directory may be empty for Preconfigured but must be nonblank
+/// for SpecializationRequired. Environment and directory are currently retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -34,4 +34,10 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
+
+    /// <summary>
+    /// Gets the actual externally mapped HTTP origin, supplied by the platform immediately before assignment.
+    /// Required for HTTP initialization, but optional for non-HTTP workers.
+    /// </summary>
+    public string? HttpProxyEndpoint { get; init; }
 }

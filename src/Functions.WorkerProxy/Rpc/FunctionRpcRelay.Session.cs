@@ -274,7 +274,8 @@ internal sealed partial class FunctionRpcRelay
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
-                Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
+                Uri? destination = capabilityFinalizer.FinalizeCapabilities(
+                    finalized.WorkerInitResponse.Capabilities, stateManager.GetAssignment(id));
                 ApplyFunctionGroupCapability(finalized.WorkerInitResponse.Capabilities);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)

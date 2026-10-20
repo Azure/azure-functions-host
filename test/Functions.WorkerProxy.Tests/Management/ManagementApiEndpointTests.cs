@@ -31,6 +31,78 @@ public class ManagementApiEndpointTests
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("relative")]
+    [InlineData("ftp://mapped.example:1234/")]
+    [InlineData("http://mapped.example:0/")]
+    [InlineData("http://0.0.0.0:1234/")]
+    [InlineData("http://[::]:1234/")]
+    [InlineData("http://*:1234/")]
+    [InlineData("http://+:1234/")]
+    [InlineData("http://{{status.podIP}}:1234/")]
+    [InlineData("http://user:password@mapped.example:1234/")]
+    [InlineData("http://mapped.example:1234/prefix/")]
+    [InlineData("http://mapped.example:1234/?query=value")]
+    [InlineData("http://mapped.example:1234/#fragment")]
+    public async Task MalformedHttpProxyEndpointIsRejectedWithoutClaimingAssignment(string endpoint)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        WorkerPodState before = manager.State;
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["httpProxyEndpoint"] = endpoint;
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertValidationAsync(response, timeout.Token, ("InvalidValue", "httpProxyEndpoint"));
+        Assert.Same(before, manager.State);
+        Assert.Null(manager.GetAssignment(1));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("http://mapped.example:49187/")]
+    [InlineData("https://mapped.example:49187/")]
+    [InlineData("http://[::1]:49187/")]
+    public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string? endpoint)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["httpProxyEndpoint"] = endpoint;
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(response, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        WorkerAssignment accepted = Assert.IsType<WorkerAssignment>(manager.GetAssignment(1));
+        Assert.Equal(endpoint, accepted.HttpProxyEndpoint);
+        Assert.Null(manager.GetAssignment(2));
+
+        using StringContent retryContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage retry = await client.PutAsync(AssignPath, retryContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(retry, HttpStatusCode.NoContent, timeout.Token);
+
+        body["httpProxyEndpoint"] = endpoint is null ? "http://different.example:49188/" : null;
+        using StringContent conflictContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+        Assert.Same(accepted, manager.GetAssignment(1));
+
+        manager.OnSessionTerminated(1);
+        Assert.Null(manager.GetAssignment(1));
+    }
+
     [Fact]
     public async Task OmittedRevisionReturnsRevisionZeroImmediately()
     {

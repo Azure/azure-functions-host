@@ -256,7 +256,7 @@ public partial class FunctionRpcRelayTests
 
         public int CallCount => Volatile.Read(ref _callCount);
 
-        public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities)
+        public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment = null)
         {
             Interlocked.Increment(ref _callCount);
             return finalize(capabilities);

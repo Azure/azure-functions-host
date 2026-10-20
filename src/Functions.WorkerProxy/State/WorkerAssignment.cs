@@ -29,7 +29,8 @@ internal sealed class WorkerAssignment
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
-        string functionAppDirectory)
+        string functionAppDirectory,
+        string? httpProxyEndpoint = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -45,6 +46,12 @@ internal sealed class WorkerAssignment
             ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
         }
 
+        if (httpProxyEndpoint is not null
+            && WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(httpProxyEndpoint) is null)
+        {
+            throw new ArgumentException("The HTTP proxy endpoint must be an absolute HTTP or HTTPS origin.", nameof(httpProxyEndpoint));
+        }
+
         foreach ((string key, string value) in environment)
         {
             ArgumentException.ThrowIfNullOrEmpty(key);
@@ -58,6 +65,7 @@ internal sealed class WorkerAssignment
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
+        HttpProxyEndpoint = httpProxyEndpoint;
     }
 
     /// <summary>
@@ -76,6 +84,12 @@ internal sealed class WorkerAssignment
     public string FunctionAppDirectory { get; }
 
     /// <summary>
+    /// Gets the optional mapped HTTP origin frozen by the accepted assignment.
+    /// The original string participates in ordinal retry equality, like other assignment strings.
+    /// </summary>
+    public string? HttpProxyEndpoint { get; }
+
+    /// <summary>
     /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
@@ -87,6 +101,7 @@ internal sealed class WorkerAssignment
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
+            || !string.Equals(HttpProxyEndpoint, other.HttpProxyEndpoint, StringComparison.Ordinal)
             || Environment.Count != other.Environment.Count)
         {
             return false;

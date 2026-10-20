@@ -91,7 +91,6 @@ else
             proxyProject.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
         context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
             proxyProject.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
-        context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxyProject.GetEndpoint(HttpEndpointName);
         context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
     });
 
@@ -128,6 +127,7 @@ else
     fakePlatform
         .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
         .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
+        .WithEnvironment("FakePlatform__HttpProxyEndpoint", proxyProject.GetEndpoint(HttpEndpointName))
         .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
         .WithEnvironment("FakePlatform__WorkerId", workerId);
 

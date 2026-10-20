@@ -10,6 +10,25 @@ namespace Azure.Functions.WorkerProxy.Tests.State;
 
 public class WorkerAssignmentTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("http://mapped.example:49188/")]
+    [InlineData("http://other.example:49187/")]
+    [InlineData("https://mapped.example:49187/")]
+    [InlineData("http://MAPPED.example:49187/")]
+    public void Equality_IncludesOriginalHttpProxyEndpoint(string? changedEndpoint)
+    {
+        WorkerAssignment original = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty,
+            "http://mapped.example:49187/");
+        WorkerAssignment identical = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty,
+            "http://mapped.example:49187/");
+        WorkerAssignment changed = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty, changedEndpoint);
+
+        Assert.True(original.IsEquivalentTo(identical));
+        Assert.False(original.IsEquivalentTo(changed));
+        Assert.False(changed.IsEquivalentTo(original));
+    }
+
     [Fact]
     public void Equality_IgnoresEnvironmentOrderAndCopiesInput()
     {
