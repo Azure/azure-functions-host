@@ -41,7 +41,10 @@ internal static class WorkerProxyApplication
         builder.WebHost.UseSetting(WebHostDefaults.HttpPortsKey, string.Empty);
         builder.WebHost.UseSetting(WebHostDefaults.HttpsPortsKey, string.Empty);
         builder.WebHost.UseSetting(WebHostDefaults.PreferHostingUrlsKey, bool.FalseString);
-        builder.Services.AddOptions<WorkerProxyOptions>().BindConfiguration(WorkerProxyOptions.SectionName).ValidateOnStart();
+        builder.Services.AddOptions<WorkerProxyOptions>()
+            .BindConfiguration(WorkerProxyOptions.SectionName)
+            .ValidateOnStart();
+        builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();

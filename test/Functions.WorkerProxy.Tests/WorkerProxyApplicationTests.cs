@@ -34,7 +34,7 @@ public class WorkerProxyApplicationTests
     [Fact]
     public async Task StateManager_ResolvesAsSingletonWithConfiguredIdentity()
     {
-        Dictionary<string, string?> configuration = new() { ["WorkerProxy:PodName"] = "configured-worker-pod" };
+        Dictionary<string, string?> configuration = new() { ["WEBSITE_POD_NAME"] = "configured-worker-pod" };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using IServiceScope scope = factory.Services.CreateScope();
@@ -77,7 +77,12 @@ public class WorkerProxyApplicationTests
     [InlineData(" ")]
     public async Task Startup_RejectsMissingOrBlankPodName(string? podName)
     {
-        Dictionary<string, string?> configuration = new() { ["WorkerProxy:PodName"] = podName };
+        Dictionary<string, string?> configuration = new()
+        {
+            ["WEBSITE_POD_NAME"] = podName,
+            ["CONTAINER_NAME"] = podName,
+            ["WorkerProxy:PodName"] = "explicit-worker-pod"
+        };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
 
         OptionsValidationException exception = Assert.Throws<OptionsValidationException>(
