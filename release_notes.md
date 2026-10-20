@@ -5,3 +5,4 @@
 -->
 
 - Suppress Storage queue and blob listener polling noise from telemetry by event name, preserving listener lifecycle and diagnostic logs (#11947)
+- Emit successful function execution counts in Flex Consumption metrics records (#12068)
