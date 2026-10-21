@@ -8,6 +8,7 @@ using System.Net.Http;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,7 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.RuntimeGrpcPort)}", "0");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerGrpcPort)}", "0");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpPort)}", "0");
+        values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.ManagedIdentityPort)}", "0");
         _configurationValues = values;
         _configureServices = configureServices;
         UseKestrel();
@@ -60,6 +62,11 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         {
             BaseAddress = NormalizeAddress(GetEndpoints().GetHttpAddress())
         };
+    }
+
+    public HttpClient CreateManagedIdentityClient()
+    {
+        return new HttpClient { BaseAddress = NormalizeAddress(GetEndpoints().GetManagedIdentityAddress()) };
     }
 
     private WorkerProxyEndpointConfiguration GetEndpoints()

@@ -3,6 +3,8 @@
 
 using System;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -28,6 +30,15 @@ public static class RpcClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
+        services.AddHttpClient(RpcClientWorkerChannel.ManagedIdentityTokenHttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
+            {
+                ActivityHeadersPropagator = null,
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.None,
+                UseCookies = false,
+                UseProxy = false
+            });
         services.AddDefaultHttpProxyService();
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();

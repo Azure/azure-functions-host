@@ -10,7 +10,9 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 /// <remarks>
 /// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// for SpecializationRequired. The environment remains private, participates in retry equality, and may
+/// supply the managed-identity startup credential before StartStream; the state model does not otherwise
+/// apply configuration or publish it in pod snapshots or logs.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {

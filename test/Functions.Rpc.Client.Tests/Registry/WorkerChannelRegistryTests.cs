@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -20,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -913,6 +915,8 @@ public sealed partial class WorkerChannelRegistryTests
             new ScriptEventManager(),
             hostManager.Object,
             Mock.Of<IEnvironment>(),
+            Mock.Of<IConfiguration>(),
+            Mock.Of<IHttpClientFactory>(),
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),

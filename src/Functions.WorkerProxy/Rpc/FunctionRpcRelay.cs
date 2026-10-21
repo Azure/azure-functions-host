@@ -30,6 +30,7 @@ internal sealed partial class FunctionRpcRelay(
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -61,6 +62,27 @@ internal sealed partial class FunctionRpcRelay(
                 return _currentSession?.WorkerHttpDestination;
             }
         }
+    }
+
+    internal async Task<(long SessionId, ManagedIdentityTokenResponse Response)> RequestManagedIdentityTokenAsync(
+        ManagedIdentityTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        FunctionRpcRelaySession session;
+        lock (_syncLock)
+        {
+            if (_stopping || _currentSession is null)
+            {
+                throw new ManagedIdentityTokenUnavailableException("The runtime FunctionRpc stream is not attached.");
+            }
+
+            session = _currentSession;
+        }
+
+        return (session.Id, await session.RequestManagedIdentityTokenAsync(request, cancellationToken));
     }
 
     /// <inheritdoc />
@@ -104,6 +126,23 @@ internal sealed partial class FunctionRpcRelay(
         {
             return _currentSession?.IsAttached(side) == true;
         }
+    }
+
+    internal bool TryGetActiveSessionId(FunctionRpcRelaySide side, out long sessionId)
+    {
+        lock (_syncLock)
+        {
+            if (!_stopping
+                && _currentSession is { } session
+                && session.IsActiveAndAttached(side))
+            {
+                sessionId = session.Id;
+                return true;
+            }
+        }
+
+        sessionId = default;
+        return false;
     }
 
     /// <summary>
@@ -245,3 +284,6 @@ internal sealed partial class FunctionRpcRelay(
         _currentSession = null;
     }
 }
+
+internal sealed class ManagedIdentityTokenUnavailableException(string message, Exception? innerException = null)
+    : Exception(message, innerException);

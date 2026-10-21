@@ -4,8 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -16,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -35,30 +40,68 @@ public sealed class RpcClientWorkerChannelTests
 
     public RpcClientWorkerChannelTests()
     {
-        Mock<IScriptHostManager> hostManager = new();
-        hostManager.As<IServiceProvider>()
-            .Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
-            .Returns(Options.Create(new ScriptJobHostOptions { RootScriptPath = "c:\\test" }));
+        _factory = CreateFactory();
+    }
 
-        Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationHostOptions = new();
-        applicationHostOptions.SetupGet(options => options.CurrentValue)
-            .Returns(new ScriptApplicationHostOptions { ScriptPath = "c:\\test" });
+    [Fact]
+    public async Task ManagedIdentityTokenRequest_BeforeStartStream_AcceptsUnsignedRequestAndForwardsRawResponse()
+    {
+        const string endpoint = "http://127.0.0.1:41741/msi/token?existing=value";
+        const string runtimeSecret = "runtime-secret";
+        byte[] responseBody = [0, 1, 2, 254, 255];
+        Uri requestUri = null;
+        string identityHeader = null;
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        RpcClientWorkerChannel channel = CreateFactory(
+            new Dictionary<string, string>
+            {
+                [EnvironmentSettingNames.MsiEndpoint] = endpoint,
+                [EnvironmentSettingNames.MsiSecret] = runtimeSecret
+            },
+            (request, _) =>
+            {
+                requestUri = request.RequestUri;
+                identityHeader = Assert.Single(request.Headers.GetValues("Secret"));
+                ByteArrayContent content = new(responseBody);
+                content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/problem+json; charset=utf-8");
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+                {
+                    Content = content
+                });
+            }).Create(WorkerId, duplexChannel);
+        Task start = channel.StartAsync(CancellationToken.None);
+        ManagedIdentityTokenRequest tokenRequest = new()
+        {
+            Resource = "https://storage.azure.com/",
+            ClientId = "client id",
+            ApiVersion = "2017-09-01",
+            RuntimeAccessKeySignature = ByteString.Empty
+        };
 
-        _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
-            .Returns(true);
+        await duplexChannel.SendResponseAsync(new()
+        {
+            RequestId = "token-request",
+            ManagedIdentityTokenRequest = tokenRequest
+        });
 
-        _factory = new(
-            new ScriptEventManager(),
-            hostManager.Object,
-            Mock.Of<IEnvironment>(),
-            NullLoggerFactory.Instance,
-            applicationHostOptions.Object,
-            Mock.Of<ISharedMemoryManager>(),
-            Options.Create(new WorkerConcurrencyOptions()),
-            Options.Create(new FunctionsHostingConfigOptions()),
-            _appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
-            _metricsLogger);
+        StreamingMessage response = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal("token-request", response.RequestId);
+        Assert.Equal(StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse, response.ContentCase);
+        Assert.Equal(StatusResult.Types.Status.Success, response.ManagedIdentityTokenResponse.Result.Status);
+        Assert.Equal((int)HttpStatusCode.TooManyRequests, response.ManagedIdentityTokenResponse.StatusCode);
+        Assert.Equal("application/problem+json; charset=utf-8", response.ManagedIdentityTokenResponse.ContentType);
+        Assert.Equal(responseBody, response.ManagedIdentityTokenResponse.Body.ToByteArray());
+        Assert.Equal(
+            "http://127.0.0.1:41741/msi/token?existing=value&resource=https%3A%2F%2Fstorage.azure.com%2F&api-version=2017-09-01&clientid=client%20id",
+            requestUri?.AbsoluteUri);
+        Assert.Equal(runtimeSecret, identityHeader);
+        Assert.False(start.IsCompleted);
+
+        await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        Assert.False(start.IsCompleted);
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
+        await start.WaitAsync(TestTimeout);
+        await channel.DisposeAsync();
     }
 
     [Fact]
@@ -277,6 +320,46 @@ public sealed class RpcClientWorkerChannelTests
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
         => _factory.Create(WorkerId, duplexChannel);
 
+    private RpcClientWorkerChannelFactory CreateFactory(
+        IReadOnlyDictionary<string, string> configurationValues = null,
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> sendAsync = null)
+    {
+        Mock<IScriptHostManager> hostManager = new();
+        hostManager.As<IServiceProvider>()
+            .Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
+            .Returns(Options.Create(new ScriptJobHostOptions { RootScriptPath = "c:\\test" }));
+
+        Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationHostOptions = new();
+        applicationHostOptions.SetupGet(options => options.CurrentValue)
+            .Returns(new ScriptApplicationHostOptions { ScriptPath = "c:\\test" });
+
+        _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
+            .Returns(true);
+
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configurationValues)
+            .Build();
+        Mock<IHttpClientFactory> httpClientFactory = new();
+        HttpClient httpClient = new(new StubHttpMessageHandler(
+            sendAsync ?? ((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)))));
+        httpClientFactory.Setup(factory => factory.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        return new(
+            new ScriptEventManager(),
+            hostManager.Object,
+            Mock.Of<IEnvironment>(),
+            configuration,
+            httpClientFactory.Object,
+            NullLoggerFactory.Instance,
+            applicationHostOptions.Object,
+            Mock.Of<ISharedMemoryManager>(),
+            Options.Create(new WorkerConcurrencyOptions()),
+            Options.Create(new FunctionsHostingConfigOptions()),
+            _appCapabilitiesStore.Object,
+            Mock.Of<IHttpProxyService>(),
+            _metricsLogger);
+    }
+
     private static WorkerInitResponse CreateSuccessfulInitResponse()
         => new()
         {
@@ -291,5 +374,14 @@ public sealed class RpcClientWorkerChannelTests
         });
 
         return await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+    }
+
+    private sealed class StubHttpMessageHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> sendAsync) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => sendAsync(request, cancellationToken);
     }
 }
