@@ -38,6 +38,10 @@ namespace System
         /// For FunctionInvocationException with innermost exception as RpcException, the remote message segment is replaced with a redacted
         /// placeholder containing a stable hash so that occurrences can still be correlated without exposing the original content.
         /// </summary>
+        /// <remarks>
+        /// Exception text is sanitized before matching the remote message so copies in remote stack traces are redacted as well.
+        /// An email sanitization timeout causes the affected exception output to be redacted in full.
+        /// </remarks>
         /// <param name="exception">
         /// The exception instance to inspect. Must not be null.
         /// </param>
@@ -67,13 +71,8 @@ namespace System
             {
                 var redacted = GetRedactedExceptionMessage(remoteMsg);
 
-                var innerExceptionMessage = string.IsNullOrWhiteSpace(originalMessage)
-                    ? string.Empty
-                    : Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, redacted, StringComparison.Ordinal));
-
-                var detailsSanitized = string.IsNullOrWhiteSpace(formattedDetails)
-                    ? string.Empty
-                    : Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, redacted, StringComparison.Ordinal));
+                var innerExceptionMessage = SanitizeAndRedactRemoteMessage(originalMessage, remoteMsg, redacted);
+                var detailsSanitized = SanitizeAndRedactRemoteMessage(formattedDetails, remoteMsg, redacted);
 
                 return (innerType, innerExceptionMessage, detailsSanitized, formattedMessage);
             }
@@ -82,6 +81,27 @@ namespace System
             var defaultDetails = Sanitizer.Sanitize(formattedDetails);
 
             return (innerType, defaultInnerExceptionMessage, defaultDetails, formattedMessage);
+        }
+
+        private static string SanitizeAndRedactRemoteMessage(string text, string remoteMessage, string redacted)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            if (string.Equals(remoteMessage, Sanitizer.EmailSanitizationTimeoutReplacement, StringComparison.Ordinal))
+            {
+                return Sanitizer.EmailSanitizationTimeoutReplacement;
+            }
+
+            string sanitized = Sanitizer.Sanitize(text);
+            if (string.Equals(sanitized, Sanitizer.EmailSanitizationTimeoutReplacement, StringComparison.Ordinal))
+            {
+                return sanitized;
+            }
+
+            return sanitized.Replace(remoteMessage, redacted, StringComparison.Ordinal);
         }
 
         private static string GetRedactedExceptionMessage(string msg)

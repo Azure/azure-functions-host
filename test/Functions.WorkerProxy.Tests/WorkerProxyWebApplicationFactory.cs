@@ -23,7 +23,7 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         IReadOnlyDictionary<string, string?>? configurationValues = null, Action<IServiceCollection>? configureServices = null)
     {
         Dictionary<string, string?> values = configurationValues is null ? [] : new Dictionary<string, string?>(configurationValues);
-        values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.PodName)}", "test-worker-pod");
+        values.TryAdd("WEBSITE_POD_NAME", "test-worker-pod");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.ManagementPort)}", "0");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.RuntimeGrpcPort)}", "0");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerGrpcPort)}", "0");

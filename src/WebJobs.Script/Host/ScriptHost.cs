@@ -289,13 +289,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
-                string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
-                _logger.FunctionsWorkerRuntimeValue(Sanitizer.Sanitize(workerRuntime));
-
-                if (workerRuntime is null)
+                string workerRuntime;
+                if (_metadataOptions.Value.UseWorkerRuntimeFromMetadata)
                 {
                     workerRuntime = Utility.GetWorkerRuntime(functionMetadataList);
                     _logger.ResolvedWorkerRuntimeFromMetadata(Sanitizer.Sanitize(workerRuntime));
+                }
+                else
+                {
+                    workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
+                    _logger.FunctionsWorkerRuntimeValue(Sanitizer.Sanitize(workerRuntime));
+
+                    if (workerRuntime is null)
+                    {
+                        workerRuntime = Utility.GetWorkerRuntime(functionMetadataList);
+                        _logger.ResolvedWorkerRuntimeFromMetadata(Sanitizer.Sanitize(workerRuntime));
+                    }
                 }
 
                 if (!_environment.IsPlaceholderModeEnabled())
@@ -450,7 +459,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            ValidateFunctionsWorkerRuntime(_workerRuntimeResolver, _hostingConfigOptions, _logger);
+            if (!_metadataOptions.Value.UseWorkerRuntimeFromMetadata)
+            {
+                ValidateFunctionsWorkerRuntime(_workerRuntimeResolver, _hostingConfigOptions, _logger);
+            }
 
             // Log whether App Insights is enabled
             if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey) || !string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))

@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
@@ -24,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,6 +40,55 @@ public class RpcClientScriptHostStartupIntegrationTests
 {
     private const string HostConfiguration = """{"version":"2.0","isDefaultHostConfig":true}""";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("node", null)]
+    [InlineData("python", "node")]
+    public async Task FirstLink_WorkerLanguageControlsRuntimeIndexingAndInvocation(
+        string? configuredRuntime, string? profileRuntime)
+    {
+        await using TestWorker worker = await TestWorker.StartAsync("worker", "python");
+        var configureBuilder = new Mock<IConfigureBuilder<IServiceCollection>>();
+        configureBuilder.Setup(builder => builder.Configure(It.IsAny<IServiceCollection>()))
+            .Callback<IServiceCollection>(services =>
+                services.Configure<ScriptJobHostOptions>(options => options.ProfileWorkerRuntime = profileRuntime));
+        await using ClientTestHost testHost = new(services =>
+        {
+            services.AddSingleton(configureBuilder.Object);
+            services.Configure<FunctionsHostingConfigOptions>(options =>
+            {
+                options.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime] = "1";
+                options.Features[RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled] = "true";
+            });
+        });
+        testHost.Configuration[EnvironmentSettingNames.FunctionWorkerRuntime] = configuredRuntime;
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+
+        await registry.LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token);
+        await coordinator.ActivationTask!.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        await worker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+
+        ScriptHost scriptHost = manager.Services!.GetRequiredService<ScriptHost>();
+        FunctionDescriptor function = Assert.Single(scriptHost.Functions);
+        Assert.Equal("python", function.Metadata.Language);
+        Assert.Empty(scriptHost.FunctionErrors);
+
+        DefaultHttpContext httpContext = new();
+        httpContext.Request.Method = "GET";
+        httpContext.Request.Scheme = "http";
+        httpContext.Request.Host = new HostString("localhost");
+        httpContext.Request.Path = "/api/Http";
+        await scriptHost.CallAsync("Http", new() { ["req"] = httpContext.Request }, timeout.Token);
+
+        Assert.Equal(1, worker.Service.Invocations);
+    }
 
     [Fact]
     public async Task FirstLink_IndexesWorkerMetadataWithExistingHostConfiguration_AndLaterLinksDoNotRestart()
@@ -261,13 +312,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TestWorkerService Service { get; } = service;
 
-        public static async Task<TestWorker> StartAsync(string workerId)
+        public static async Task<TestWorker> StartAsync(string workerId, string language = "dotnet-isolated")
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId);
+            TestWorkerService service = new(workerId, language);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -286,11 +337,14 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId) : FunctionRpc.FunctionRpcBase
+    public sealed class TestWorkerService(string workerId, string language) : FunctionRpc.FunctionRpcBase
     {
         private int _metadataRequests;
+        private int _invocations;
 
         public int MetadataRequests => Interlocked.CompareExchange(ref _metadataRequests, 0, 0);
+
+        public int Invocations => Interlocked.CompareExchange(ref _invocations, 0, 0);
 
         public TaskCompletionSource FunctionLoaded { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -318,7 +372,7 @@ public class RpcClientScriptHostStartupIntegrationTests
                             {
                                 FunctionId = "http",
                                 Name = "Http",
-                                Language = "dotnet-isolated",
+                                Language = language,
                                 ScriptFile = "Sample.dll",
                                 EntryPoint = "Sample.Http.Run",
                                 Status = Success(),
@@ -328,6 +382,15 @@ public class RpcClientScriptHostStartupIntegrationTests
                                     """{"name":"$return","type":"http","direction":"out"}""",
                                 },
                             });
+                            break;
+                        case StreamingMessage.ContentOneofCase.InvocationRequest:
+                            Interlocked.Increment(ref _invocations);
+                            response.InvocationResponse = new()
+                            {
+                                InvocationId = request.InvocationRequest.InvocationId,
+                                Result = Success(),
+                                ReturnValue = new TypedData { String = "worker response" },
+                            };
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionLoadRequest:
                             response.FunctionLoadResponse = new() { FunctionId = request.FunctionLoadRequest.FunctionId, Result = Success() };
