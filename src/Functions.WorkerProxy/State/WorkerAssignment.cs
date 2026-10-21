@@ -11,8 +11,9 @@ namespace Azure.Functions.WorkerProxy.State;
 /// Captures immutable assignment identity, including the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// Environment and app directory participate in retry equality only; this model does not apply them
-/// to the worker. Keep environment values out of published pod snapshots and diagnostic output.
+/// Environment and app directory remain private and participate in retry equality. Environment may also
+/// supply the managed-identity startup credential before StartStream; the state model does not otherwise
+/// apply configuration or publish it in pod snapshots or logs.
 /// </remarks>
 internal sealed class WorkerAssignment
 {

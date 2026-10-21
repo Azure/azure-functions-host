@@ -25,12 +25,19 @@ public partial class FunctionRpcRelayTests
     private const string TokenRequestPath =
         $"{ManagedIdentityEndpoint.Path}?resource=https%3A%2F%2Fstorage.azure.com%2F&api-version=2017-09-01&clientid=client-id";
 
-    [Fact]
-    public async Task ManagedIdentityStartup_AssignmentBeforeStartStreamRelaysUnsignedRequestAndBecomesReadyAfterStartStream()
+    [Theory]
+    [InlineData("2017-09-01", "Secret", "clientid")]
+    [InlineData("2019-08-01", "X-IDENTITY-HEADER", "client_id")]
+    public async Task ManagedIdentityStartup_AssignmentBeforeStartStreamRelaysUnsignedRequestAndBecomesReadyAfterStartStream(
+        string apiVersion,
+        string secretHeaderName,
+        string clientIdSelector)
     {
         const string secret = "worker-local-secret";
         const string responseBody =
             """{"access_token":"startup-token","token_type":"Bearer","expires_on":"4102444800","resource":"https://storage.azure.com/","client_id":"client-id"}""";
+        string tokenRequestPath =
+            $"{ManagedIdentityEndpoint.Path}?resource=https%3A%2F%2Fstorage.azure.com%2F&api-version={apiVersion}&{clientIdSelector}=client-id";
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -49,15 +56,16 @@ public partial class FunctionRpcRelayTests
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
         Task<HttpResponseMessage> tokenTask = SendTokenRequestAsync(
             managedIdentity,
-            TokenRequestPath,
+            tokenRequestPath,
             secret,
-            timeout.Token);
+            timeout.Token,
+            secretHeaderName);
         StreamingMessage tokenRequest = await runtime.ReadAsync(timeout.Token);
         Assert.False(string.IsNullOrWhiteSpace(tokenRequest.RequestId));
         Assert.Equal(StreamingMessage.ContentOneofCase.ManagedIdentityTokenRequest, tokenRequest.ContentCase);
         Assert.Equal("https://storage.azure.com/", tokenRequest.ManagedIdentityTokenRequest.Resource);
         Assert.Equal("client-id", tokenRequest.ManagedIdentityTokenRequest.ClientId);
-        Assert.Equal("2017-09-01", tokenRequest.ManagedIdentityTokenRequest.ApiVersion);
+        Assert.Equal(apiVersion, tokenRequest.ManagedIdentityTokenRequest.ApiVersion);
         Assert.True(tokenRequest.ManagedIdentityTokenRequest.RuntimeAccessKeySignature.IsEmpty);
 
         await WriteTokenResponseAsync(runtime, tokenRequest, HttpStatusCode.OK, responseBody, timeout.Token);
@@ -301,10 +309,11 @@ public partial class FunctionRpcRelayTests
         HttpClient client,
         string requestPath,
         string secret,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string secretHeaderName = "Secret")
     {
         using HttpRequestMessage request = new(HttpMethod.Get, requestPath);
-        request.Headers.TryAddWithoutValidation("Secret", secret);
+        request.Headers.TryAddWithoutValidation(secretHeaderName, secret);
         return await client.SendAsync(request, cancellationToken);
     }
 
