@@ -66,7 +66,6 @@ internal sealed partial class FunctionRpcRelay(
 
     internal async Task<(long SessionId, ManagedIdentityTokenResponse Response)> RequestManagedIdentityTokenAsync(
         ManagedIdentityTokenRequest request,
-        string? runtimeAccessKey,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -83,31 +82,7 @@ internal sealed partial class FunctionRpcRelay(
             session = _currentSession;
         }
 
-        Task<ManagedIdentityTokenResponse> requestTask =
-            session.RequestManagedIdentityTokenAsync(request, runtimeAccessKey);
-        try
-        {
-            return (session.Id, await requestTask.WaitAsync(cancellationToken));
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            _ = ObserveManagedIdentityTokenRequestAsync(requestTask);
-            throw;
-        }
-    }
-
-    private async Task ObserveManagedIdentityTokenRequestAsync(Task<ManagedIdentityTokenResponse> requestTask)
-    {
-        try
-        {
-            await requestTask;
-        }
-        catch (Exception exception)
-        {
-            logger.LogDebug(
-                exception,
-                "The managed identity token request completed after the HTTP caller stopped waiting.");
-        }
+        return (session.Id, await session.RequestManagedIdentityTokenAsync(request, cancellationToken));
     }
 
     /// <inheritdoc />

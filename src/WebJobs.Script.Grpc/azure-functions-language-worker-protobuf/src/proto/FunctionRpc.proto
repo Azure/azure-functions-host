@@ -475,7 +475,7 @@ message ManagedIdentityTokenRequest {
   string resource = 1;
   string client_id = 2;
   string api_version = 3;
-  // HMAC-SHA256 over the outer request ID and unsigned request using the runtime access key.
+  // Reserved for future approved relay authentication; empty and ignored by this implementation.
   bytes runtime_access_key_signature = 4;
 }
 

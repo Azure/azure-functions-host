@@ -49,7 +49,6 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope runtimeGrpcPort = new("WORKERPROXY__RUNTIMEGRPCPORT", "0");
         using EnvironmentVariableScope workerGrpcPort = new("WORKERPROXY__WORKERGRPCPORT", "0");
         using EnvironmentVariableScope httpPort = new("WORKERPROXY__HTTPPORT", "0");
-        using EnvironmentVariableScope managedIdentityPort = new("WORKERPROXY__MANAGEDIDENTITYPORT", "0");
         using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", "environment-worker-pod");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");

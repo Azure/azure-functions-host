@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 
 namespace Azure.Functions.WorkerProxy.ManagedIdentity;
@@ -28,7 +27,6 @@ internal static class ManagedIdentityEndpoint
     private const string ApiVersionQuery = "api-version";
     private const string ClientIdQuery = "client_id";
     private const string CurrentMsiApiVersion = "2019-08-01";
-    private const string IdentityHeaderEnvironment = "IDENTITY_HEADER";
     private const string IdentityHeaderName = "X-IDENTITY-HEADER";
     private const string LegacyClientIdQuery = "clientid";
     private const string LegacyMsiApiVersion = "2017-09-01";
@@ -55,14 +53,9 @@ internal static class ManagedIdentityEndpoint
         WorkerPodStateManager stateManager,
         FunctionRpcRelay relay,
         ManagedIdentityTokenCache tokenCache,
-        IConfiguration configuration,
         CancellationToken cancellationToken)
     {
-        if (!stateManager.TryGetAssignmentEnvironmentValues(
-            MsiSecretEnvironment,
-            IdentityHeaderEnvironment,
-            out string? msiSecret,
-            out string? identityHeader))
+        if (!stateManager.TryGetAssignmentEnvironmentValue(MsiSecretEnvironment, out string? msiSecret))
         {
             return RetryableFailure(request.HttpContext.Response, "The worker pod assignment is not ready.");
         }
@@ -75,15 +68,14 @@ internal static class ManagedIdentityEndpoint
                 "The request must specify a supported api-version.");
         }
 
-        string? expectedSecret = usesLegacyContract ? msiSecret : identityHeader;
         string expectedHeaderName = usesLegacyContract ? MsiSecretHeaderName : IdentityHeaderName;
-        if (string.IsNullOrEmpty(expectedSecret))
+        if (string.IsNullOrEmpty(msiSecret))
         {
             return RetryableFailure(request.HttpContext.Response,
                 "The worker pod assignment has no credential for the requested managed identity API version.");
         }
 
-        if (!HeaderMatches(request.Headers, expectedHeaderName, expectedSecret))
+        if (!HeaderMatches(request.Headers, expectedHeaderName, msiSecret))
         {
             return Error(StatusCodes.Status403Forbidden, "access_denied", "The managed identity secret header is invalid.");
         }
@@ -102,10 +94,7 @@ internal static class ManagedIdentityEndpoint
             ClientId = clientId ?? string.Empty,
             ApiVersion = apiVersion
         };
-        string? runtimeAccessKey =
-            configuration[ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable];
-        if (!string.IsNullOrWhiteSpace(runtimeAccessKey)
-            && relay.TryGetActiveSessionId(FunctionRpcRelaySide.Runtime, out long cachedSessionId)
+        if (relay.TryGetActiveSessionId(FunctionRpcRelaySide.Runtime, out long cachedSessionId)
             && tokenCache.Get(cachedSessionId, tokenRequest) is ManagedIdentityTokenResponse cachedResponse
             && relay.TryGetActiveSessionId(FunctionRpcRelaySide.Runtime, out long confirmedSessionId)
             && confirmedSessionId == cachedSessionId)
@@ -119,7 +108,6 @@ internal static class ManagedIdentityEndpoint
         {
             (responseSessionId, response) = await relay.RequestManagedIdentityTokenAsync(
                 tokenRequest,
-                runtimeAccessKey,
                 cancellationToken);
         }
         catch (ManagedIdentityTokenUnavailableException exception)

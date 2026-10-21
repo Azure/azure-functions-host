@@ -7,9 +7,7 @@ using System.Reflection;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -57,11 +55,9 @@ public class WorkerLinkContractTests
 
         var httpPut = link.GetCustomAttribute<Microsoft.AspNetCore.Mvc.HttpPutAttribute>();
         var route = link.GetCustomAttribute<Microsoft.AspNetCore.Mvc.RouteAttribute>();
-        var authorize = link.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(httpPut);
         Assert.NotNull(route);
-        Assert.Equal(PolicyNames.AdminAuthLevel, authorize?.Policy);
         Assert.Equal("admin/workers/{workerId}", route!.Template);
         ParameterInfo workerId = Assert.Single(link.GetParameters().Where(parameter =>
             string.Equals(parameter.Name, "workerId", StringComparison.Ordinal)));
@@ -100,7 +96,7 @@ public class WorkerLinkContractTests
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
-        Assert.Equal(new[] { "runtimeAccessKey", "workerContainerEncryptionKey", "workerGrpcEndpoint" },
+        Assert.Equal(new[] { "workerContainerEncryptionKey", "workerGrpcEndpoint" },
             body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 }

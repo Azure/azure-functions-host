@@ -53,21 +53,6 @@ internal sealed class RpcClientWorkerChannelFactory(
     private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions = workerConcurrencyOptions ?? throw new ArgumentNullException(nameof(workerConcurrencyOptions));
 
     public RpcClientWorkerChannel Create(string workerId, DuplexChannel<StreamingMessage> ownedChannel)
-        => CreateCore(workerId, ownedChannel, runtimeAccessKey: null);
-
-    public RpcClientWorkerChannel Create(
-        string workerId,
-        DuplexChannel<StreamingMessage> ownedChannel,
-        string runtimeAccessKey)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeAccessKey);
-        return CreateCore(workerId, ownedChannel, runtimeAccessKey);
-    }
-
-    private RpcClientWorkerChannel CreateCore(
-        string workerId,
-        DuplexChannel<StreamingMessage> ownedChannel,
-        string runtimeAccessKey)
     {
         ArgumentException.ThrowIfNullOrEmpty(workerId);
         ArgumentNullException.ThrowIfNull(ownedChannel);
@@ -99,7 +84,6 @@ internal sealed class RpcClientWorkerChannelFactory(
             _workerConcurrencyOptions,
             _hostingConfigOptions,
             _appCapabilitiesStore,
-            _httpProxyService,
-            runtimeAccessKey);
+            _httpProxyService);
     }
 }

@@ -50,7 +50,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly Lock _lifecycleLock = new();
     private readonly ILogger _logger;
-    private readonly string _runtimeAccessKey;
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
 
@@ -71,8 +70,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService,
-        string runtimeAccessKey)
+        IHttpProxyService httpProxyService)
         : base(
             workerId,
             ownedChannel,
@@ -93,7 +91,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _runtimeAccessKey = runtimeAccessKey;
         _managedIdentityTokenRequestCancellationToken = _managedIdentityTokenRequestCancellationSource.Token;
         Completion = ownedChannel.Reader.Completion;
     }
@@ -198,36 +195,25 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private async Task HandleManagedIdentityTokenRequestAsync(StreamingMessage message)
     {
         ManagedIdentityTokenResponse response;
-        if (!ManagedIdentityTokenRequestAuthenticator.IsValid(
-            _runtimeAccessKey,
-            message.RequestId,
-            message.ManagedIdentityTokenRequest))
+        try
         {
-            _logger.LogWarning("The runtime rejected an unauthenticated managed identity token request.");
-            response = CreateManagedIdentityFailure("The managed identity token request is not authenticated.");
+            response = await RequestManagedIdentityTokenAsync(
+                message.ManagedIdentityTokenRequest,
+                _managedIdentityTokenRequestCancellationToken);
         }
-        else
+        catch (OperationCanceledException) when (_managedIdentityTokenRequestCancellationToken.IsCancellationRequested)
         {
-            try
-            {
-                response = await RequestManagedIdentityTokenAsync(
-                    message.ManagedIdentityTokenRequest,
-                    _managedIdentityTokenRequestCancellationToken);
-            }
-            catch (OperationCanceledException) when (_managedIdentityTokenRequestCancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (OperationCanceledException exception)
-            {
-                _logger.LogWarning(exception, "The runtime managed identity token request timed out.");
-                response = CreateManagedIdentityFailure("The runtime managed identity token request timed out.");
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "The runtime managed identity token request failed.");
-                response = CreateManagedIdentityFailure("The runtime managed identity token request failed.");
-            }
+            return;
+        }
+        catch (OperationCanceledException exception)
+        {
+            _logger.LogWarning(exception, "The runtime managed identity token request timed out.");
+            response = CreateManagedIdentityFailure("The runtime managed identity token request timed out.");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "The runtime managed identity token request failed.");
+            response = CreateManagedIdentityFailure("The runtime managed identity token request failed.");
         }
 
         if (_managedIdentityTokenRequestCancellationToken.IsCancellationRequested)

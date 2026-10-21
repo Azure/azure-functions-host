@@ -6,9 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -31,7 +32,6 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed class RpcClientWorkerChannelTests
 {
     private const string WorkerId = "test-worker";
-    private const string RuntimeAccessKey = "runtime-access-key";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
@@ -43,20 +43,12 @@ public sealed class RpcClientWorkerChannelTests
         _factory = CreateFactory();
     }
 
-    [Theory]
-    [InlineData("2017-09-01", "clientid", "Secret")]
-    [InlineData("2019-08-01", "client_id", "X-IDENTITY-HEADER")]
-    public async Task ManagedIdentityTokenRequest_BeforeStartStream_ForwardsTokenServiceResponses(
-        string apiVersion,
-        string clientIdQuery,
-        string secretHeaderName)
+    [Fact]
+    public async Task ManagedIdentityTokenRequest_BeforeStartStream_AcceptsUnsignedRequestAndForwardsRawResponse()
     {
         const string endpoint = "http://127.0.0.1:41741/msi/token?existing=value";
         const string runtimeSecret = "runtime-secret";
-        const string tokenBody =
-            """{"access_token":"real-token","token_type":"Bearer","expires_on":"4102444800","resource":"https://storage.azure.com/","client_id":"client id"}""";
-        const string errorBody =
-            """{"error":"invalid_request","error_description":"The identity is not assigned."}""";
+        byte[] responseBody = [0, 1, 2, 254, 255];
         Uri requestUri = null;
         string identityHeader = null;
         TestDuplexChannel<StreamingMessage> duplexChannel = new();
@@ -69,25 +61,22 @@ public sealed class RpcClientWorkerChannelTests
             (request, _) =>
             {
                 requestUri = request.RequestUri;
-                identityHeader = Assert.Single(request.Headers.GetValues(secretHeaderName));
-                bool rejectRequest = requestUri?.Query.Contains("resource=unassigned", StringComparison.Ordinal) is true;
-                return Task.FromResult(new HttpResponseMessage(
-                    rejectRequest ? HttpStatusCode.BadRequest : HttpStatusCode.OK)
+                identityHeader = Assert.Single(request.Headers.GetValues("Secret"));
+                ByteArrayContent content = new(responseBody);
+                content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/problem+json; charset=utf-8");
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
                 {
-                    Content = new StringContent(
-                        rejectRequest ? errorBody : tokenBody,
-                        Encoding.UTF8,
-                        "application/json")
+                    Content = content
                 });
-            }).Create(WorkerId, duplexChannel, RuntimeAccessKey);
+            }).Create(WorkerId, duplexChannel);
         Task start = channel.StartAsync(CancellationToken.None);
         ManagedIdentityTokenRequest tokenRequest = new()
         {
             Resource = "https://storage.azure.com/",
             ClientId = "client id",
-            ApiVersion = apiVersion
+            ApiVersion = "2017-09-01",
+            RuntimeAccessKeySignature = ByteString.Empty
         };
-        ManagedIdentityTokenRequestAuthenticator.Sign(RuntimeAccessKey, "token-request", tokenRequest);
 
         await duplexChannel.SendResponseAsync(new()
         {
@@ -99,74 +88,17 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal("token-request", response.RequestId);
         Assert.Equal(StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse, response.ContentCase);
         Assert.Equal(StatusResult.Types.Status.Success, response.ManagedIdentityTokenResponse.Result.Status);
-        Assert.Equal((int)HttpStatusCode.OK, response.ManagedIdentityTokenResponse.StatusCode);
-        Assert.Equal("application/json; charset=utf-8", response.ManagedIdentityTokenResponse.ContentType);
-        Assert.Equal(tokenBody, response.ManagedIdentityTokenResponse.Body.ToStringUtf8());
+        Assert.Equal((int)HttpStatusCode.TooManyRequests, response.ManagedIdentityTokenResponse.StatusCode);
+        Assert.Equal("application/problem+json; charset=utf-8", response.ManagedIdentityTokenResponse.ContentType);
+        Assert.Equal(responseBody, response.ManagedIdentityTokenResponse.Body.ToByteArray());
         Assert.Equal(
-            $"http://127.0.0.1:41741/msi/token?existing=value&resource=https%3A%2F%2Fstorage.azure.com%2F&api-version={apiVersion}&{clientIdQuery}=client%20id",
+            "http://127.0.0.1:41741/msi/token?existing=value&resource=https%3A%2F%2Fstorage.azure.com%2F&api-version=2017-09-01&clientid=client%20id",
             requestUri?.AbsoluteUri);
         Assert.Equal(runtimeSecret, identityHeader);
         Assert.False(start.IsCompleted);
 
-        ManagedIdentityTokenRequest rejectedTokenRequest = new()
-        {
-            Resource = "unassigned",
-            ApiVersion = apiVersion
-        };
-        ManagedIdentityTokenRequestAuthenticator.Sign(
-            RuntimeAccessKey,
-            "rejected-token-request",
-            rejectedTokenRequest);
-
-        await duplexChannel.SendResponseAsync(new()
-        {
-            RequestId = "rejected-token-request",
-            ManagedIdentityTokenRequest = rejectedTokenRequest
-        });
-
-        StreamingMessage rejectedResponse = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
-        Assert.Equal(StatusResult.Types.Status.Success, rejectedResponse.ManagedIdentityTokenResponse.Result.Status);
-        Assert.Equal((int)HttpStatusCode.BadRequest, rejectedResponse.ManagedIdentityTokenResponse.StatusCode);
-        Assert.Equal(errorBody, rejectedResponse.ManagedIdentityTokenResponse.Body.ToStringUtf8());
-
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
         Assert.False(start.IsCompleted);
-        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
-        await start.WaitAsync(TestTimeout);
-        await channel.DisposeAsync();
-    }
-
-    [Theory]
-    [InlineData(true, "The runtime managed identity token request failed.")]
-    [InlineData(false, "The managed identity token request is not authenticated.")]
-    public async Task ManagedIdentityTokenRequest_InvalidRuntimeConfigurationOrAuthentication_ReturnsFailure(
-        bool authenticate,
-        string expectedMessage)
-    {
-        TestDuplexChannel<StreamingMessage> duplexChannel = new();
-        RpcClientWorkerChannel channel = CreateFactory().Create(WorkerId, duplexChannel, RuntimeAccessKey);
-        Task start = channel.StartAsync(CancellationToken.None);
-        ManagedIdentityTokenRequest tokenRequest = new()
-        {
-            Resource = "https://storage.azure.com/",
-            ApiVersion = "2019-08-01"
-        };
-        if (authenticate)
-        {
-            ManagedIdentityTokenRequestAuthenticator.Sign(RuntimeAccessKey, "token-request", tokenRequest);
-        }
-
-        await duplexChannel.SendResponseAsync(new()
-        {
-            RequestId = "token-request",
-            ManagedIdentityTokenRequest = tokenRequest
-        });
-
-        StreamingMessage response = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
-        Assert.Equal(StatusResult.Types.Status.Failure, response.ManagedIdentityTokenResponse.Result.Status);
-        Assert.Equal(expectedMessage, response.ManagedIdentityTokenResponse.Result.Exception.Message);
-
-        await SendStartStreamAndReadInitRequestAsync(duplexChannel);
         await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
         await start.WaitAsync(TestTimeout);
         await channel.DisposeAsync();

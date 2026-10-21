@@ -141,17 +141,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 audiences.Add(string.Format(SiteUriFormat, runtimeSiteName));
             }
 
-            if (SystemEnvironment.Instance.IsConsumptionOnLegion())
-            {
-                string podAudience = SystemEnvironment.Instance.IsFlexConsumptionSku()
-                    ? ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
-                    : ScriptSettingsManager.Instance.GetSetting(ContainerName);
-                if (!string.IsNullOrEmpty(podAudience))
-                {
-                    audiences.Add(podAudience);
-                }
-            }
-
             return audiences;
         }
 

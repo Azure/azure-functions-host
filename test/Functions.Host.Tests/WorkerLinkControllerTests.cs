@@ -291,17 +291,12 @@ public class WorkerLinkControllerTests
                 eventId = (EventId)call.Arguments[1];
                 rendered = call.Arguments[2].ToString();
             }));
-        _registry.Setup(registry => registry.LinkAsync(
-                WorkerId,
-                new Uri(ValidGrpcEndpoint),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
+        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
             .Returns(fail
                 ? Task.FromException<WorkerLinkResult>(new WorkerLinkException(WorkerLinkFailureReason.Conflict, "Conflict."))
                 : Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true)));
         WorkerLinkRequest request = ValidRequest();
-        request.RuntimeAccessKey = "runtime-access-key-do-not-log";
-        request.WorkerContainerEncryptionKey = "container-encryption-key-do-not-log";
+        request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
         WorkerLinkController controller = new(logger.Object, _registry.Object);
 
         await controller.LinkWorker(WorkerId, request);
@@ -311,7 +306,6 @@ public class WorkerLinkControllerTests
         Dictionary<string, object> loggedState = Assert.IsType<Dictionary<string, object>>(state);
         Assert.Equal(WorkerId, loggedState["workerId"]);
         Assert.True(Assert.IsType<double>(loggedState["elapsedMilliseconds"]) >= 0);
-        Assert.DoesNotContain(request.RuntimeAccessKey, rendered, StringComparison.Ordinal);
         Assert.DoesNotContain(request.WorkerContainerEncryptionKey, rendered, StringComparison.Ordinal);
         if (fail)
         {

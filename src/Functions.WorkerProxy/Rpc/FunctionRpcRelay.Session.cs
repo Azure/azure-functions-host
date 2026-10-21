@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
+using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -27,7 +28,6 @@ internal sealed partial class FunctionRpcRelay
         WorkerPodStateManager stateManager)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
-        private const int MaximumPendingManagedIdentityRequests = 16;
         private static readonly TimeSpan ManagedIdentityRequestTimeout = TimeSpan.FromSeconds(10);
         private readonly Lock _stateLock = new();
         private readonly Dictionary<string, TaskCompletionSource<ManagedIdentityTokenResponse>> _managedIdentityRequests =
@@ -41,7 +41,6 @@ internal sealed partial class FunctionRpcRelay
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private int _outboundManagedIdentityRequestCount;
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
@@ -141,16 +140,11 @@ internal sealed partial class FunctionRpcRelay
 
         public async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
             ManagedIdentityTokenRequest request,
-            string? runtimeAccessKey)
+            CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(runtimeAccessKey))
-            {
-                throw new ManagedIdentityTokenUnavailableException("The runtime access key is not configured.");
-            }
-
             string requestId = Guid.NewGuid().ToString("N");
-            ManagedIdentityTokenRequest authenticatedRequest = request.Clone();
-            ManagedIdentityTokenRequestAuthenticator.Sign(runtimeAccessKey, requestId, authenticatedRequest);
+            ManagedIdentityTokenRequest outboundRequest = request.Clone();
+            outboundRequest.RuntimeAccessKeySignature = ByteString.Empty;
             TaskCompletionSource<ManagedIdentityTokenResponse> completion =
                 new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -161,37 +155,23 @@ internal sealed partial class FunctionRpcRelay
                     throw new ManagedIdentityTokenUnavailableException("The runtime FunctionRpc stream is not attached.");
                 }
 
-                if (_managedIdentityRequests.Count >= MaximumPendingManagedIdentityRequests
-                    || _outboundManagedIdentityRequestCount >= MaximumPendingManagedIdentityRequests)
-                {
-                    throw new ManagedIdentityTokenUnavailableException("The managed identity request limit has been reached.");
-                }
-
                 _managedIdentityRequests.Add(requestId, completion);
-                _outboundManagedIdentityRequestCount++;
             }
 
             using CancellationTokenSource timeoutSource = new(ManagedIdentityRequestTimeout);
             using CancellationTokenSource linkedSource =
                 CancellationTokenSource.CreateLinkedTokenSource(
                     _terminationSource.Token,
-                    timeoutSource.Token);
+                    timeoutSource.Token,
+                    cancellationToken);
 
             try
             {
-                try
+                await _toRuntime.Writer.WriteAsync(new()
                 {
-                    await _toRuntime.Writer.WriteAsync(new()
-                    {
-                        RequestId = requestId,
-                        ManagedIdentityTokenRequest = authenticatedRequest
-                    }, linkedSource.Token);
-                }
-                catch
-                {
-                    ReleaseOutboundManagedIdentityRequest();
-                    throw;
-                }
+                    RequestId = requestId,
+                    ManagedIdentityTokenRequest = outboundRequest
+                }, linkedSource.Token);
 
                 return await completion.Task.WaitAsync(linkedSource.Token);
             }
@@ -203,7 +183,8 @@ internal sealed partial class FunctionRpcRelay
             }
             catch (OperationCanceledException exception)
                 when (!_terminationSource.IsCancellationRequested
-                    && timeoutSource.IsCancellationRequested)
+                    && timeoutSource.IsCancellationRequested
+                    && !cancellationToken.IsCancellationRequested)
             {
                 throw new TimeoutException("The runtime token request timed out.", exception);
             }
@@ -474,24 +455,6 @@ internal sealed partial class FunctionRpcRelay
                 // This is the only task that writes this response stream. The linked token
                 // releases an in-flight gRPC write during teardown.
                 await responseStream.WriteAsync(message, cancellationToken);
-                if (side == FunctionRpcRelaySide.Runtime
-                    && message.ContentCase == StreamingMessage.ContentOneofCase.ManagedIdentityTokenRequest)
-                {
-                    ReleaseOutboundManagedIdentityRequest();
-                }
-            }
-        }
-
-        private void ReleaseOutboundManagedIdentityRequest()
-        {
-            lock (_stateLock)
-            {
-                if (_outboundManagedIdentityRequestCount <= 0)
-                {
-                    throw new InvalidOperationException("There is no outbound managed identity request to release.");
-                }
-
-                _outboundManagedIdentityRequestCount--;
             }
         }
 

@@ -18,16 +18,4 @@ internal interface IRpcClientWorkerChannelFactory
     /// <param name="ownedChannel">The connected duplex transport.</param>
     /// <returns>The client-backed worker channel.</returns>
     RpcClientWorkerChannel Create(string workerId, DuplexChannel<StreamingMessage> ownedChannel);
-
-    /// <summary>
-    /// Creates an authenticated worker channel and takes ownership of <paramref name="ownedChannel"/> when this method succeeds.
-    /// </summary>
-    /// <param name="workerId">The worker identifier.</param>
-    /// <param name="ownedChannel">The connected duplex transport.</param>
-    /// <param name="runtimeAccessKey">The key used to authenticate WorkerProxy control messages.</param>
-    /// <returns>The client-backed worker channel.</returns>
-    RpcClientWorkerChannel Create(
-        string workerId,
-        DuplexChannel<StreamingMessage> ownedChannel,
-        string runtimeAccessKey);
 }

@@ -21,6 +21,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// </remarks>
 internal sealed class WorkerPodStateManager
 {
+    private const string MsiSecretEnvironment = "MSI_SECRET";
     private static readonly TimeSpan PollTimeout = TimeSpan.FromSeconds(60);
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
@@ -70,27 +71,20 @@ internal sealed class WorkerPodStateManager
         }
     }
 
-    internal bool TryGetAssignmentEnvironmentValues(
-        string firstName,
-        string secondName,
-        out string? firstValue,
-        out string? secondValue)
+    internal bool TryGetAssignmentEnvironmentValue(string name, out string? value)
     {
-        ArgumentException.ThrowIfNullOrEmpty(firstName);
-        ArgumentException.ThrowIfNullOrEmpty(secondName);
+        ArgumentException.ThrowIfNullOrEmpty(name);
 
         lock (_stateLock)
         {
             if (_assignment is not null)
             {
-                _assignment.Environment.TryGetValue(firstName, out firstValue);
-                _assignment.Environment.TryGetValue(secondName, out secondValue);
+                _assignment.Environment.TryGetValue(name, out value);
                 return true;
             }
         }
 
-        firstValue = null;
-        secondValue = null;
+        value = null;
         return false;
     }
 
@@ -276,6 +270,14 @@ internal sealed class WorkerPodStateManager
                 return _state.AssignmentState == WorkerAssignmentState.Failed
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
+            }
+
+            bool isManagedIdentityStartup =
+                assignment.Environment.TryGetValue(MsiSecretEnvironment, out string? msiSecret)
+                && !string.IsNullOrEmpty(msiSecret);
+            if (!_state.IsWorkerReady && !isManagedIdentityStartup)
+            {
+                return WorkerAssignmentResult.WorkerNotReady;
             }
 
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
