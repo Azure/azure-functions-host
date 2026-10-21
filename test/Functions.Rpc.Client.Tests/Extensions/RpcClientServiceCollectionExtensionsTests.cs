@@ -91,7 +91,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton(services, typeof(IWorkerFunctionDescriptorProviderFactory),
             "Microsoft.Azure.WebJobs.Script.Description.RpcWorkerFunctionDescriptorProviderFactory");
         AssertSingleton(services, typeof(IScriptHostLifecycleService),
-            "Microsoft.Azure.WebJobs.Script.Rpc.RpcScriptHostLifecycleService");
+            "Azure.Functions.Rpc.Client.RpcClientScriptHostLifecycleService");
     }
 
     [Fact]

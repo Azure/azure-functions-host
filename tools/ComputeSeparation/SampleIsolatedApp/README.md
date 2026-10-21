@@ -6,7 +6,7 @@ A small .NET isolated Functions app for manually trying compute separation. It r
 
 Follow the [ComputeSeparation run instructions](../README.md), select the `project` or `container` launch profile, and press F5.
 
-This project does not start its own Functions Host. The Aspire tool starts the Host and WorkerProxy and links the worker automatically in both modes.
+This project does not start its own Functions Host. The Aspire tool starts the Host and WorkerProxy and links the worker automatically in both modes. For manual linking of two workers, select `project-placeholder-manual-multiple-workers` and follow `compute-separation.http`.
 
 The sample keeps the Worker SDK's build and metadata generation, but disables its Core Tools launch targets and Visual Studio's `AzureFunctions` project capability so both launch the worker directly. Reload the sample project if Visual Studio previously loaded it as an Azure Functions project.
 
@@ -15,5 +15,9 @@ The sample keeps the Worker SDK's build and metadata generation, but disables it
 Once the Host has finished starting, send a GET or POST request to the **Host's** `/api/hello` endpoint. The anonymous `Hello` function returns HTTP 200 with this plain-text body:
 
 ```text
-Hello from the BYOC .NET isolated worker.
+Hello from the BYOC .NET isolated worker. Worker ID: aspire-<worker-guid>
 ```
+
+The ID is the actual `--functions-worker-id` supplied at startup, also used when linking this worker to the Host.
+Each worker's ID is generated independently. Aspire accepts overrides through `ComputeSeparation:WorkerId` and
+`ComputeSeparation:SecondWorker:WorkerId`. Repeated requests show which worker handled each invocation.
