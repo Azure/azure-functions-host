@@ -6,6 +6,7 @@ using System.Linq;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -94,6 +95,7 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton(metadataProvider);
         services.AddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
         services.AddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
+        services.AddSingleton<IScriptHostLifecycleService, RpcClientScriptHostLifecycleService>();
         services.AddSingleton<IScriptHostWorkerManager, RpcClientScriptHostWorkerManager>();
         services.AddRpcScriptHostCoreServices();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);

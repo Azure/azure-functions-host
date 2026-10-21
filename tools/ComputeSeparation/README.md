@@ -21,6 +21,7 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
+| `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
 `project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
@@ -30,6 +31,7 @@ The equivalent command-line launches are:
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multiple-workers
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile container
 ```
 
@@ -42,8 +44,12 @@ Open the dashboard URL printed at startup. Find `functions-host` in project mode
 Once the Host has started, GET or POST requests return:
 
 ```text
-Hello from the BYOC .NET isolated worker.
+Hello from the BYOC .NET isolated worker. Worker ID: aspire-<worker-guid>
 ```
+
+Each worker gets an independently generated GUID-based ID, matching the identity used for its Host link.
+Override the first with `ComputeSeparation:WorkerId` and the second with `ComputeSeparation:SecondWorker:WorkerId`;
+neither ID is derived from the other. The proxy names remain `worker-proxy-1` and `worker-proxy-2`.
 
 ## Fake platform
 
@@ -53,6 +59,11 @@ AppHost supplies `WEBSITE_POD_NAME` locally from `ComputeSeparation:PodName`.
 In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
+
+One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
+profile. Aspire supplies each entry's management address, runtime gRPC endpoint, and worker ID. Assign and link requests
+select an entry by name; an unknown name returns `404` instead of choosing a different worker. Each worker has a distinct
+worker ID, request ID, pod name, and proxy endpoints, and both link to the same Host.
 
 ## Endpoints
 
@@ -75,9 +86,9 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 
 | Endpoint on | Request | Effect |
 | --- | --- | --- |
-| Fake platform | `POST /simulate/worker/assign` | Sends step 1 to the WorkerProxy and returns its response. |
+| Fake platform | `POST /simulate/worker/{workerProxyName}/assign` | Sends step 1 to the named WorkerProxy and returns its response. |
 | Fake platform | `POST /simulate/host/assign` | Sends step 2 to the Host and returns its response; see [Placeholder mode](#placeholder-mode). |
-| Fake platform | `POST /simulate/worker/link` | Sends step 3 to the Host and returns its response. |
+| Fake platform | `POST /simulate/worker/{workerProxyName}/link` | Sends step 3 to the Host using the named proxy's worker ID and runtime gRPC endpoint. |
 
 ## Send requests manually
 
@@ -85,6 +96,34 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 
 > [!NOTE]
 > In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 4) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* can be sent at any time.
+
+### Add a second worker after startup
+
+Select `project-placeholder-manual-multiple-workers`, then use the same `compute-separation.http` file:
+
+1. Send steps 1 to 4 to assign the first pod, specialize the Host, link the first worker, and successfully invoke `/api/hello`.
+2. Send steps 5 and 6 to assign and link the second worker. Do not assign or restart the Host again.
+3. Repeat step 7 and compare the response's worker ID to see invocations served by both workers. You can also watch HTTP forwarding in the `worker-proxy-1` and `worker-proxy-2` console logs.
+
+| Endpoint | `worker-proxy-1` | `worker-proxy-2` |
+| --- | --- | --- |
+| Fake platform | `http://localhost:7060` | Same platform |
+| WorkerProxy management | `http://localhost:7081` | `http://localhost:7091` |
+| Shared Host | `http://127.0.0.1:7071` | Same Host |
+
+The runtime gRPC, worker gRPC, and proxy HTTP ports are allocated independently by Aspire. Nothing is assigned or linked
+automatically in this profile, and both worker/proxy pairs are available for independent inspection in the dashboard.
+Repeated link requests reuse the matching linked channel.
+
+For example, both requests go to the same fake platform; only the selected proxy name changes:
+
+```http
+POST http://localhost:7060/simulate/worker/worker-proxy-1/link
+
+###
+
+POST http://localhost:7060/simulate/worker/worker-proxy-2/link
+```
 
 ## Placeholder mode
 
@@ -103,7 +142,7 @@ The dashboard has two independent resources, each backed by its own Compose proj
 
 Stopping `worker-pod-1` removes only that pod's containers, leaving the same Host and network running. Stopping `runtime` stops the Host but keeps the network until AppHost shutdown. A small adapter runs these Compose groups because Aspire's native containers do not support the Proxy/worker shared-network arrangement.
 
-`worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Dynamic add/remove controls and invocation readiness for later-linked workers are not implemented yet.
+`worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Aspire does not currently create additional container pods automatically; use the multiple-worker project profile above for the manual late-link flow.
 
 Stop AppHost to stop the local run; normal shutdown removes worker pods before the runtime and its network. If AppHost is forcibly terminated, remove its `functions-aspire-...` groups in Docker Desktop. Relinking restarted workers is not automated; start a new AppHost session for another end-to-end run.
 

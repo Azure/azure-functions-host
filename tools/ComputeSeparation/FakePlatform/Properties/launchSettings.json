@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "FakePlatform": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:51343;http://localhost:51344"
+    }
+  }
+}

@@ -8,19 +8,22 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Owns initialized client-backed worker channels and terminal cleanup.
+/// Owns initialized client-backed worker channels, ScriptHost setup, and terminal cleanup.
 /// </summary>
 /// <remarks>
 /// Admission and replay decisions are atomic. Different workers can link concurrently.
-/// The registry publishes a channel only after its WorkerInit handshake succeeds and retains terminal identities.
+/// The registry publishes a channel after its WorkerInit handshake succeeds, configures it for the active ScriptHost
+/// context, and retains terminal identities. Initialized channels remain available for metadata bootstrap before a
+/// ScriptHost function set is known; only ready channels are available for invocation dispatch.
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 {
@@ -36,9 +39,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
+    private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    // Setup writers hold _stateLock; ready-channel readers observe this published signal without taking that lock.
+    private TaskCompletionSource<IReadOnlyList<WorkerChannel>> _readyChannelsAvailable = CreateReadyChannelsSignal();
 
     public WorkerChannelRegistry(
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
@@ -71,8 +78,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
         cancellationToken.ThrowIfCancellationRequested();
 
-        TaskCompletionSource start;
-        Task<WorkerChannel> link;
+        TaskCompletionSource<WorkerChannel> completion;
+        WorkerSlot slot;
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -93,31 +100,49 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
             }
 
-            start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
+            completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            slot = new() { Endpoint = grpcEndpoint, LinkTask = completion.Task };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
-            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
-            slot.LinkTask = link;
         }
 
-        // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
-        start.SetResult();
+        // The shared completion is published before I/O begins, and connection work runs outside the state lock.
+        _ = LinkAndCompleteAsync(workerId, grpcEndpoint, slot, completion, cancellationToken);
 
-        return CompleteLinkAsync(link, isNewLink: true);
+        return CompleteLinkAsync(completion.Task, isNewLink: true);
     }
 
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
         => new(await link.ConfigureAwait(false), isNewLink);
 
+    private async Task LinkAndCompleteAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        WorkerSlot slot,
+        TaskCompletionSource<WorkerChannel> completion,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            WorkerChannel channel = await LinkCoreAsync(workerId, grpcEndpoint, slot, cancellationToken);
+            completion.SetResult(channel);
+        }
+        catch (OperationCanceledException exception)
+        {
+            completion.SetCanceled(exception.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            completion.SetException(exception);
+        }
+    }
+
     private async Task<WorkerChannel> LinkCoreAsync(
         string workerId,
         Uri grpcEndpoint,
         WorkerSlot slot,
-        Task start,
         CancellationToken cancellationToken)
     {
-        await start;
         using SemaphoreLock gate = new(slot.Gate);
         bool initialized = false;
         try
@@ -185,9 +210,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
         finally
         {
-            RemoveEmptySlot(workerId, slot);
+            // Accepted links are cleaned up by monitor/unlink; completing Link must not wait for deferred setup.
             if (!initialized)
             {
+                RemoveEmptySlot(workerId, slot);
                 lock (_stateLock)
                 {
                     _linkAttempts.Remove(workerId);
@@ -283,6 +309,93 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
+    public Task ActivateAsync(
+        IReadOnlyList<FunctionMetadata> functions,
+        ManagedDependencyOptions managedDependencyOptions,
+        TimeSpan? functionTimeout,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(functions);
+        ArgumentNullException.ThrowIfNull(managedDependencyOptions);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        ChannelSetupContext setupContext = new(functions, managedDependencyOptions, functionTimeout);
+        Exception firstSetupException = null;
+        int attemptedChannels = 0;
+        int readyChannels = 0;
+
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            // Invalidate the prior ready snapshot before replacing the context, including an empty function set.
+            // An incomplete signal is retained so callers already waiting are not orphaned by a ScriptHost restart.
+            ResetReadyChannelsSignal();
+            _activeSetupContext = setupContext;
+
+            foreach (WorkerSlot slot in _slots.Values)
+            {
+                if (slot.Channel is null)
+                {
+                    continue;
+                }
+
+                attemptedChannels++;
+                ConfigureSlotLocked(slot);
+                if (slot.SetupException is null)
+                {
+                    readyChannels++;
+                }
+                else
+                {
+                    firstSetupException ??= slot.SetupException;
+                }
+            }
+        }
+
+        if (attemptedChannels > 0 && readyChannels == 0)
+        {
+            // Preserve the original failure; a single healthy channel otherwise lets this ScriptHost start.
+            ExceptionDispatchInfo.Capture(firstSetupException).Throw();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public ValueTask<IReadOnlyList<WorkerChannel>> GetReadyChannelsAsync()
+    {
+        // Retry only when another thread changes the signal before our CompareExchange succeeds; never poll for readiness.
+        // Rereading preserves the newer publication. Waiting callers receive a task instead of spinning.
+        while (true)
+        {
+            // Never wait for the setup lock. The published task is either a snapshot or the shared readiness wait.
+            TaskCompletionSource<IReadOnlyList<WorkerChannel>> signal = GetReadyChannelsSignal();
+            if (!signal.Task.IsCompletedSuccessfully)
+            {
+                return new(signal.Task);
+            }
+
+            IReadOnlyList<WorkerChannel> readyChannels = signal.Task.Result;
+            if (readyChannels.Any(channel => channel is not RpcClientWorkerChannel { IsReadyForInvocations: true }))
+            {
+                // Transport completion can precede registry cleanup, so exclude channels that stopped since publication.
+                readyChannels = [.. readyChannels.Where(channel => channel is RpcClientWorkerChannel { IsReadyForInvocations: true })];
+            }
+
+            if (readyChannels.Count > 0)
+            {
+                return new(readyChannels);
+            }
+
+            // Replace a stale completed signal only if a setup/cleanup writer has not published a newer snapshot.
+            TaskCompletionSource<IReadOnlyList<WorkerChannel>> replacement = CreateReadyChannelsSignal();
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _readyChannelsAvailable, replacement, signal), signal))
+            {
+                return new(replacement.Task);
+            }
+        }
+    }
+
     public async Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -326,6 +439,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
             _initializedChannelAvailable.TrySetResult();
+
+            // Publish disposal for new readers and release callers awaiting the previous shared signal.
+            ObjectDisposedException exception = new(GetType().FullName);
+            TaskCompletionSource<IReadOnlyList<WorkerChannel>> disposedSignal = CreateReadyChannelsSignal();
+            disposedSignal.SetException(exception);
+            Interlocked.Exchange(ref _readyChannelsAvailable, disposedSignal).TrySetException(exception);
         }
 
         Exception disposalException = null;
@@ -365,15 +484,22 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
 
         slot.Channel = null;
+        slot.AttemptedSetupContext = null;
+        slot.SetupException = null;
         if (slot.LinkTask is not null)
         {
             slot.Terminal = true;
             slot.LinkTask = null;
         }
 
-        if (!_disposed && !_slots.Values.Any(slot => slot.Channel is not null))
+        if (!_disposed)
         {
-            _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Remove the detached channel from the published snapshot before channel disposal begins.
+            SignalReadyChannelsLocked();
+            if (!_slots.Values.Any(slot => slot.Channel is not null))
+            {
+                _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
         }
 
         return channel;
@@ -487,9 +613,111 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             _initializedChannelAvailable.TrySetResult();
         }
 
+        _ = ConfigureSlotInBackgroundAsync(slot);
         _ = monitorTask.ContinueWith(static (task, state) => ((WorkerChannelRegistry)state).OnMonitorCompleted(task), this,
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
+
+    private async Task ConfigureSlotInBackgroundAsync(WorkerSlot slot)
+    {
+        // Keep function setup out of the WorkerInit/link call path.
+        await Task.Yield();
+
+        lock (_stateLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            ConfigureSlotLocked(slot);
+        }
+    }
+
+    private void ConfigureSlotLocked(WorkerSlot slot)
+    {
+        // Read the context when deferred setup runs, not when the channel linked, to handle ScriptHost restarts.
+        ChannelSetupContext setupContext = _activeSetupContext;
+        RpcClientWorkerChannel channel = slot.Channel;
+        if (setupContext is null ||
+            channel is null ||
+            ReferenceEquals(slot.AttemptedSetupContext, setupContext))
+        {
+            return;
+        }
+
+        // Each slot gets one attempt per context. Failed setup stays excluded until a new activation retries it.
+        slot.AttemptedSetupContext = setupContext;
+        slot.SetupException = null;
+        try
+        {
+            channel.SetupFunctionInvocationBuffers(setupContext.Functions);
+            channel.SendFunctionLoadRequests(setupContext.ManagedDependencyOptions, setupContext.FunctionTimeout);
+            SignalReadyChannelsLocked();
+        }
+        catch (Exception exception)
+        {
+            slot.SetupException = exception;
+            Log.ChannelSetupFailed(_logger, exception, channel.Id);
+        }
+    }
+
+    private IReadOnlyList<WorkerChannel> GetReadyChannelsLocked()
+    {
+        ChannelSetupContext setupContext = _activeSetupContext;
+        if (setupContext is null)
+        {
+            return [];
+        }
+
+        // Invocation buffers alone are insufficient: sending load requests must also succeed for this context.
+        return [.. _slots.Values
+            .Where(slot =>
+                ReferenceEquals(slot.AttemptedSetupContext, setupContext) &&
+                slot.SetupException is null &&
+                slot.Channel is { IsReadyForInvocations: true })
+            .Select(slot => (WorkerChannel)slot.Channel)];
+    }
+
+    private void SignalReadyChannelsLocked()
+    {
+        IReadOnlyList<WorkerChannel> readyChannels = GetReadyChannelsLocked();
+        if (readyChannels.Count == 0)
+        {
+            ResetReadyChannelsSignal();
+            return;
+        }
+
+        // Publish the current snapshot for new readers, then complete the shared wait with the same snapshot.
+        TaskCompletionSource<IReadOnlyList<WorkerChannel>> readySignal = CreateReadyChannelsSignal();
+        readySignal.SetResult(readyChannels);
+        Interlocked.Exchange(ref _readyChannelsAvailable, readySignal).TrySetResult(readyChannels);
+    }
+
+    private void ResetReadyChannelsSignal()
+    {
+        while (true)
+        {
+            TaskCompletionSource<IReadOnlyList<WorkerChannel>> signal = GetReadyChannelsSignal();
+            if (!signal.Task.IsCompleted)
+            {
+                return;
+            }
+
+            // Readers can concurrently replace stale signals; preserve whichever incomplete wait wins.
+            TaskCompletionSource<IReadOnlyList<WorkerChannel>> replacement = CreateReadyChannelsSignal();
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _readyChannelsAvailable, replacement, signal), signal))
+            {
+                return;
+            }
+        }
+    }
+
+    private TaskCompletionSource<IReadOnlyList<WorkerChannel>> GetReadyChannelsSignal()
+        => Interlocked.CompareExchange(ref _readyChannelsAvailable, null, null);
+
+    private static TaskCompletionSource<IReadOnlyList<WorkerChannel>> CreateReadyChannelsSignal()
+        => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private async Task<Exception> ShutdownSlotAsync(string workerId, WorkerSlot slot)
     {
@@ -523,6 +751,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private sealed class WorkerSlot
     {
+        // The exact active setup context attempted for this channel.
+        public ChannelSetupContext AttemptedSetupContext { get; set; }
+
         public RpcClientWorkerChannel Channel { get; set; }
 
         // The initial link owns this gate before its slot is published.
@@ -534,9 +765,17 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }
 
+        // The original failure from the attempted setup context, or null after successful setup.
+        public Exception SetupException { get; set; }
+
         // Indicates that a previously accepted link has terminated and cannot be replayed.
         public bool Terminal { get; set; }
     }
+
+    private sealed record ChannelSetupContext(
+        IReadOnlyList<FunctionMetadata> Functions,
+        ManagedDependencyOptions ManagedDependencyOptions,
+        TimeSpan? FunctionTimeout);
 
     private static partial class Log
     {
@@ -554,5 +793,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         [LoggerMessage(4, LogLevel.Error, "Failed to shut down the completed FunctionRpc channel for worker {WorkerId}.")]
         public static partial void ChannelShutdownFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
+        public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
     }
 }

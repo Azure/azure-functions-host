@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
@@ -78,6 +77,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     }
 
     internal Task Completion { get; }
+
+    // Transport completion can precede monitor cleanup and the base channel's disposal state.
+    internal bool IsReadyForInvocations => !Completion.IsCompleted && IsChannelReadyForInvocations();
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
