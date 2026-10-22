@@ -29,8 +29,7 @@ RouteGroupBuilder simulate = app.MapGroup("/simulate");
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false,
-        new() { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = options.AppAuthKey }, string.Empty);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
     using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -64,8 +63,8 @@ simulate.MapPost("/worker/link", async (IHttpClientFactory clients, Cancellation
 {
     var link = new
     {
+        workerPodName = options.WorkerId,
         workerGrpcEndpoint = options.WorkerGrpcEndpoint.ToString(),
-        workerHttpEndpoint = options.WorkerHttpEndpoint.ToString(),
         runtimeAccessKey = options.RuntimeAccessKey
     };
     using HttpResponseMessage response = await clients.CreateClient(HostClient)
@@ -126,8 +125,6 @@ internal partial class Program
         public required Uri WorkerProxyUri { get; init; }
 
         public required Uri WorkerGrpcEndpoint { get; init; }
-
-        public required Uri WorkerHttpEndpoint { get; init; }
 
         public required string RuntimeAccessKey { get; init; }
 

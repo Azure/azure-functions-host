@@ -639,7 +639,6 @@ public class ManagementApiHandlersTests
         string? startupMode = nameof(WorkerStartupMode.Preconfigured))
     {
         environment ??= new() { ["SETTING"] = "private-value" };
-        environment.TryAdd("WEBSITE_AUTH_ENCRYPTION_KEY", RuntimeAuthenticationTestData.EncodedAppKey);
 
         return new()
         {

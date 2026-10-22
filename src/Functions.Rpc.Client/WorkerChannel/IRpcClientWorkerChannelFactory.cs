@@ -18,8 +18,7 @@ internal interface IRpcClientWorkerChannelFactory
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="ownedChannel">The connected duplex transport.</param>
     /// <param name="credentials">The admitted worker's runtime credentials.</param>
-    /// <param name="httpEndpoint">The protected Link HTTP origin, if supplied.</param>
     /// <returns>The client-backed worker channel.</returns>
     RpcClientWorkerChannel Create(
-        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials, Uri httpEndpoint);
+        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials);
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -16,7 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -32,6 +33,7 @@ public sealed class RpcClientWorkerChannelTests
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
     private readonly RpcClientWorkerChannelFactory _factory;
     private readonly IMetricsLogger _metricsLogger = Mock.Of<IMetricsLogger>();
+    private readonly ConcurrentQueue<string> _logs = new();
 
     public RpcClientWorkerChannelTests()
     {
@@ -46,12 +48,20 @@ public sealed class RpcClientWorkerChannelTests
 
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
+        Mock<ILogger> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        logger.Setup(value => value.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(new InvocationAction(call => _logs.Enqueue((string)((Delegate)call.Arguments[4])
+                .DynamicInvoke(call.Arguments[2], call.Arguments[3]))));
+        Mock<ILoggerFactory> loggers = new();
+        loggers.Setup(value => value.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
 
         _factory = new(
             new ScriptEventManager(),
             hostManager.Object,
             Mock.Of<IEnvironment>(),
-            NullLoggerFactory.Instance,
+            loggers.Object,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),
             Options.Create(new WorkerConcurrencyOptions()),
@@ -59,6 +69,35 @@ public sealed class RpcClientWorkerChannelTests
             _appCapabilitiesStore.Object,
             Mock.Of<IHttpProxyService>(),
             _metricsLogger);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartAsync_ReverseProofIsRemovedBeforeLoggingOrCapabilityPublication(bool valid)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        string proof = RuntimeWorkerTestData.CreateAppProof(WorkerId) + (valid ? string.Empty : "A");
+        response.Capabilities["WorkerProxyAppToken"] = proof;
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+        if (valid)
+        {
+            await start.WaitAsync(TestTimeout);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+            _appCapabilitiesStore.Verify(value => value.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never);
+        }
+
+        Assert.False(response.Capabilities.ContainsKey("WorkerProxyAppToken"));
+        string log = string.Join(Environment.NewLine, _logs);
+        Assert.DoesNotContain(proof, log, StringComparison.Ordinal);
+        Assert.DoesNotContain("WorkerProxyAppToken", log, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -78,7 +117,7 @@ public sealed class RpcClientWorkerChannelTests
             RuntimeVersion = "24.0",
         };
 
-        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, WorkerId) });
         await start.WaitAsync(TestTimeout);
 
         Assert.Equal(StreamingMessage.ContentOneofCase.WorkerInitRequest, initRequest.ContentCase);
@@ -109,7 +148,7 @@ public sealed class RpcClientWorkerChannelTests
             },
         };
 
-        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, WorkerId) });
 
         Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException exception =
             await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(() => start.WaitAsync(TestTimeout));
@@ -275,13 +314,13 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
-        => _factory.Create(WorkerId, duplexChannel, RuntimeWorkerTestData.CreateCredentials(WorkerId), null);
+        => _factory.Create(WorkerId, duplexChannel, RuntimeWorkerTestData.CreateCredentials(WorkerId));
 
     private static WorkerInitResponse CreateSuccessfulInitResponse()
-        => new()
+        => RuntimeWorkerTestData.Authenticate(new()
         {
             Result = new() { Status = StatusResult.Types.Status.Success },
-        };
+        }, WorkerId);
 
     private static async Task<StreamingMessage> SendStartStreamAndReadInitRequestAsync(TestDuplexChannel<StreamingMessage> duplexChannel)
     {

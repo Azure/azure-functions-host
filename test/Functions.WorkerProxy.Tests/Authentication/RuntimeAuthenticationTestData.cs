@@ -20,21 +20,15 @@ internal static class RuntimeAuthenticationTestData
 
     public static RuntimeAuthenticationKeys Keys => new(WorkerId, AppName, WorkerKey, AppKey);
 
-    public static (string WorkerToken, string AppToken) CreateTokens(DateTimeOffset? now = null)
-        => (
-            RuntimeWorkerAuthentication.CreateToken(WorkerKey, RuntimeWorkerAuthentication.WorkerAudience(WorkerId),
-                RuntimeWorkerAuthentication.WorkerPurpose, now ?? DateTimeOffset.UtcNow),
-            RuntimeWorkerAuthentication.CreateToken(AppKey, RuntimeWorkerAuthentication.AppAudience(AppName),
-                RuntimeWorkerAuthentication.AppPurpose, now ?? DateTimeOffset.UtcNow));
+    public static string CreateCallerToken(DateTimeOffset? now = null)
+        => RuntimeWorkerAuthentication.CreateToken(WorkerKey, RuntimeWorkerAuthentication.WorkerAudience(WorkerId),
+            RuntimeWorkerAuthentication.WorkerPurpose, now ?? DateTimeOffset.UtcNow);
 
     public static Metadata CreateHeaders()
     {
-        (string workerToken, string appToken) = CreateTokens();
-
         return new()
         {
-            { RuntimeWorkerAuthentication.WorkerTokenHeader, workerToken },
-            { RuntimeWorkerAuthentication.AppTokenHeader, appToken }
+            { RuntimeWorkerAuthentication.WorkerTokenHeader, CreateCallerToken() }
         };
     }
 }

@@ -32,6 +32,7 @@ internal sealed class RuntimeAuthenticationKeys(
 internal sealed class RuntimeAuthenticationKeyProvider : IRuntimeAuthenticationKeyProvider
 {
     private readonly WorkerPodStateManager _manager;
+    private readonly IConfiguration _configuration;
     private readonly string _workerId;
     private readonly byte[] _workerKey;
 
@@ -39,17 +40,22 @@ internal sealed class RuntimeAuthenticationKeyProvider : IRuntimeAuthenticationK
         IConfiguration configuration, IOptions<WorkerProxyOptions> options, WorkerPodStateManager manager)
     {
         _manager = manager;
+        _configuration = configuration;
         _workerId = options.Value.PodName;
         RuntimeWorkerAuthentication.TryDecodeWorkerKey(configuration[RuntimeWorkerAuthentication.WorkerKeySetting], out _workerKey);
     }
 
     public RuntimeAuthenticationKeys? GetKeys()
     {
-        if (_workerKey.Length < 32 || _manager.RuntimeAuthentication is not { } application || application.Key.IsEmpty)
+        WorkerPodState state = _manager.State;
+        if (_workerKey.Length < 32 || state.AssignmentState is not WorkerAssignmentState.Ready
+            || string.IsNullOrWhiteSpace(state.FunctionAppName))
         {
             return null;
         }
 
-        return new(_workerId, application.AppName, _workerKey, application.Key);
+        RuntimeWorkerAuthentication.TryDecodeAppKey(_configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey);
+
+        return new(_workerId, state.FunctionAppName, _workerKey, appKey);
     }
 }

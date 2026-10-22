@@ -23,7 +23,7 @@ internal sealed class RuntimeWorkerCredentials
     {
         if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(runtimeAccessKey, out _workerKey))
         {
-            throw new ArgumentException("A base64 worker key containing at least 256 bits is required.", nameof(runtimeAccessKey));
+            throw new ArgumentException("A hexadecimal or base64 WorkerProxy container key containing at least 256 bits is required.", nameof(runtimeAccessKey));
         }
 
         _workerId = workerId;
@@ -36,6 +36,9 @@ internal sealed class RuntimeWorkerCredentials
             && CryptographicOperations.FixedTimeEquals(_workerKey, key);
 
     public IReadOnlyDictionary<string, string> CreateHeaders()
+        => RuntimeWorkerAuthentication.CreateHeaders(_workerKey, _workerId, _timeProvider.GetUtcNow());
+
+    public void ValidateAppProof(string proof)
     {
         string appName = _configuration[RuntimeWorkerAuthentication.AppNameSetting];
         if (string.IsNullOrWhiteSpace(appName)
@@ -45,8 +48,9 @@ internal sealed class RuntimeWorkerCredentials
                 "The specialized application authentication configuration is unavailable.");
         }
 
-        DateTimeOffset now = _timeProvider.GetUtcNow();
-
-        return RuntimeWorkerAuthentication.CreateHeaders(_workerKey, _workerId, appKey, appName, now);
+        if (!RuntimeWorkerAuthentication.ValidateAppProof(proof, appKey, appName, _workerId, _timeProvider.GetUtcNow()))
+        {
+            throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable, "WorkerProxy application authentication failed.");
+        }
     }
 }

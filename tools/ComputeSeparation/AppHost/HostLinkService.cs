@@ -18,12 +18,10 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
     ReferenceExpression proxyEndpoint,
-    ReferenceExpression httpEndpoint,
     ReferenceExpression managementEndpoint,
     EndpointReference? platformEndpoint,
     string workerId,
     string runtimeAccessKey,
-    string appAuthKey,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
@@ -68,8 +66,6 @@ internal sealed partial class HostLinkService(
     {
         string grpcEndpoint = await proxyEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
-        string httpOrigin = await httpEndpoint.GetValueAsync(cancellationToken)
-            ?? throw new InvalidOperationException("The WorkerProxy runtime HTTP endpoint was not allocated.");
         string managementOrigin = await managementEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
         using HttpClient management = new() { BaseAddress = new Uri(managementOrigin), Timeout = Timeout.InfiniteTimeSpan };
@@ -80,13 +76,13 @@ internal sealed partial class HostLinkService(
             functionGroupName = "http",
             isAlwaysReady = false,
             functionAppDirectory = string.Empty,
-            environment = new Dictionary<string, string> { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = appAuthKey }
+            environment = new Dictionary<string, string>()
         }, cancellationToken), cancellationToken);
         using HttpClient client = new() { BaseAddress = new Uri(hostAddress), Timeout = Timeout.InfiniteTimeSpan };
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
+            workerPodName = workerId,
             workerGrpcEndpoint = grpcEndpoint,
-            workerHttpEndpoint = httpOrigin,
             runtimeAccessKey,
         }, cancellationToken);
 

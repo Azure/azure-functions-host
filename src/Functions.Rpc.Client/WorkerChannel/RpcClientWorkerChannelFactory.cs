@@ -47,7 +47,7 @@ internal sealed class RpcClientWorkerChannelFactory(
     private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions = workerConcurrencyOptions ?? throw new ArgumentNullException(nameof(workerConcurrencyOptions));
 
     public RpcClientWorkerChannel Create(
-        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials, Uri httpEndpoint)
+        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials)
     {
         ArgumentException.ThrowIfNullOrEmpty(workerId);
         ArgumentNullException.ThrowIfNull(ownedChannel);
@@ -78,7 +78,7 @@ internal sealed class RpcClientWorkerChannelFactory(
             _workerConcurrencyOptions,
             _hostingConfigOptions,
             _appCapabilitiesStore,
-            new WorkerProxyHttpProxyService(_httpProxyService, credentials, httpEndpoint),
-            httpEndpoint);
+            new WorkerProxyHttpProxyService(_httpProxyService, credentials),
+            credentials);
     }
 }

@@ -33,6 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Functions.WorkerProxy.Tests\TestCertificateFiles.cs" Link="TestCertificateFiles.cs" />
     <ProjectReference Include="..\..\src\Functions.Host\Functions.Host.csproj" />
     <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" Aliases="workerproxy" />
   </ItemGroup>

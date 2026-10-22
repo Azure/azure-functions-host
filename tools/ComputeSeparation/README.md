@@ -54,9 +54,11 @@ In project mode, the `fake-platform` resource is a local stand-in for the platfo
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
-Each run generates independent synthetic worker and app authentication keys. The worker key is provisioned to WorkerProxy and delivered to the Host through Link; the app key goes to the Host's normal configuration and WorkerProxy's private assignment. Runtime-facing gRPC and HTTP endpoints use HTTPS with the proxy's per-process self-signed certificate. Local worker gRPC and management endpoints remain unchanged.
+Each run generates independent synthetic WorkerProxy container and app keys. The container key is configured as WorkerProxy's `CONTAINER_ENCRYPTION_KEY` and delivered to Host as `runtimeAccessKey` in Link. The app key is explicitly supplied to each process's normal configuration for this local fixture, not injected through WorkerProxy assignment. This does not establish the corresponding production provisioning path.
 
-Link uses the pod name as its protected worker identity and supplies both HTTPS origins explicitly. The Host never derives an external HTTP port from gRPC or trusts a customer worker's advertised HTTP destination. See [the runtime connection contract](../../src/Functions.WorkerProxy/README.md).
+Link uses `PUT /admin/workers/{workerId}` with the WorkerProxy pod name in the path and the existing three-field body: `workerPodName`, `workerGrpcEndpoint`, `runtimeAccessKey`. Host sends one caller JWT. WorkerProxy returns its worker-bound app-key proof in `WorkerInitResponse.capabilities["WorkerProxyAppToken"]` before Host accepts Link.
+
+HTTP routing remains negotiated through `HttpUri`; AppHost explicitly configures the actual HTTPS proxy origin. It never guesses an external port. AppHost also creates synthetic PEM files outside WorkerProxy, supplies their paths in project mode and mounts them read-only in container mode. Production images instead generate the PEM pair in their container-startup script. WorkerProxy never generates a replacement. The scoped runtime certificate policy checks expiry only. See [the runtime connection contract](../../src/Functions.WorkerProxy/README.md).
 
 ## Endpoints
 

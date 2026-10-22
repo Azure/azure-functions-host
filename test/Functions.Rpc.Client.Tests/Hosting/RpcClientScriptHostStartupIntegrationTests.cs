@@ -364,7 +364,7 @@ public class RpcClientScriptHostStartupIntegrationTests
                     switch (request.ContentCase)
                     {
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
-                            response.WorkerInitResponse = new() { Result = Success() };
+                            response.WorkerInitResponse = RuntimeWorkerTestData.Authenticate(new() { Result = Success() }, workerId);
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionsMetadataRequest:
                             Interlocked.Increment(ref _metadataRequests);

@@ -116,15 +116,14 @@ public class WorkerHttpCapabilityProviderTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void FinalizeCapabilities_MissingProxyEndpoint_PreservesLocalCapabilityUntilLinkSuppliesExternalOrigin(string? proxyEndpoint)
+    public void FinalizeCapabilities_MissingProxyEndpoint_RejectsLocalDestinationFallback(string? proxyEndpoint)
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = proxyEndpoint });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
 
-        Uri? destination = provider.FinalizeCapabilities(capabilities);
-
-        Assert.Equal(new Uri("http://localhost:5678"), destination);
-        Assert.Equal("http://localhost:5678/", capabilities["HttpUri"]);
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities));
+        Assert.Contains(nameof(WorkerProxyOptions.HttpProxyEndpoint), error.Message);
+        Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
     }
 
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)

@@ -4,24 +4,19 @@
 using System;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Authentication;
 
 /// <summary>
-/// Owns a self-signed certificate and private key for this proxy process only.
+/// Loads and owns the certificate and private key provisioned before this proxy starts.
 /// </summary>
 internal sealed class WorkerProxyCertificate : IDisposable
 {
-    public WorkerProxyCertificate()
+    public WorkerProxyCertificate(IOptions<WorkerProxyOptions> options)
     {
-        using ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        CertificateRequest request = new("CN=WorkerProxy", key, HashAlgorithmName.SHA256);
-        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
-        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
-        request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
-            new OidCollection { new("1.3.6.1.5.5.7.3.1") }, true));
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        Certificate = request.CreateSelfSigned(now.AddMinutes(-1), now.AddYears(1));
+        WorkerProxyOptions configured = options.Value;
+        Certificate = X509Certificate2.CreateFromPemFile(configured.CertificatePath, configured.CertificateKeyPath);
         if (OperatingSystem.IsWindows())
         {
             // Schannel cannot serve a certificate backed by an ephemeral CNG key.

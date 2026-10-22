@@ -13,16 +13,15 @@ public sealed partial class WorkerChannelRegistryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LinkAsync_DifferentCredentialOrHttpOriginConflictsWithoutReinitialization(bool changeKey)
+    public async Task LinkAsync_DifferentCredentialOrGrpcOriginConflictsWithoutReinitialization(bool changeKey)
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker", blockStart: true);
         harness.Enqueue(channel);
         await using WorkerChannelRegistry registry = harness.Registry;
         Uri grpcEndpoint = CreateEndpoint("worker");
-        Uri httpEndpoint = new("https://protected-http:48801");
         string differentKey = Convert.ToBase64String(SHA256.HashData("different-worker-key"u8));
-        Task<WorkerLinkResult> first = registry.LinkAsync("worker", grpcEndpoint, RuntimeWorkerTestData.WorkerKey, httpEndpoint);
+        Task<WorkerLinkResult> first = registry.LinkAsync("worker", grpcEndpoint, RuntimeWorkerTestData.WorkerKey);
         await channel.StartEntered.WaitAsync(TestTimeout);
 
         foreach (bool ready in new[] { false, true })
@@ -34,8 +33,8 @@ public sealed partial class WorkerChannelRegistryTests
             }
 
             WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(() =>
-                registry.LinkAsync("worker", grpcEndpoint, changeKey ? differentKey : RuntimeWorkerTestData.WorkerKey,
-                    changeKey ? httpEndpoint : new Uri("https://different-http:48802")));
+                registry.LinkAsync("worker", changeKey ? grpcEndpoint : new Uri("https://different-proxy:48802"),
+                    changeKey ? differentKey : RuntimeWorkerTestData.WorkerKey));
             Assert.Equal(WorkerLinkFailureReason.Conflict, failure.Reason);
             Assert.DoesNotContain(differentKey, failure.Message, StringComparison.Ordinal);
             Assert.DoesNotContain(RuntimeWorkerTestData.WorkerKey, failure.Message, StringComparison.Ordinal);

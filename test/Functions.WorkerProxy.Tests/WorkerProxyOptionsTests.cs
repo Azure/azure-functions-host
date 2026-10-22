@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -128,7 +129,9 @@ public class WorkerProxyOptionsTests
 
     private static WorkerProxyOptions GetOptions(params string[] args)
     {
-        using WebApplication app = WorkerProxyApplication.Build(["--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
+        using TestCertificateFiles certificates = new();
+        using WebApplication app = WorkerProxyApplication.Build(
+            [.. certificates.Arguments, "--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }

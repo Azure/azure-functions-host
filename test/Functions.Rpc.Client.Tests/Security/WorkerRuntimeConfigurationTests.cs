@@ -25,7 +25,8 @@ public class WorkerRuntimeConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder().Add(new ScriptEnvironmentVariablesConfigurationSource()).Build();
         RuntimeWorkerCredentials credentials = new("worker-pod", RuntimeWorkerTestData.WorkerKey, configuration, TimeProvider.System);
 
-        WorkerLinkException missing = Assert.Throws<WorkerLinkException>(() => credentials.CreateHeaders());
+        Assert.Single(credentials.CreateHeaders());
+        WorkerLinkException missing = Assert.Throws<WorkerLinkException>(() => credentials.ValidateAppProof("missing-proof"));
         Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, missing.Reason);
 
         byte[] appKey = SHA256.HashData("specialized-test-app-key"u8);
@@ -36,8 +37,7 @@ public class WorkerRuntimeConfigurationTests
         Assert.True(RuntimeWorkerAuthentication.ValidateToken(headers[RuntimeWorkerAuthentication.WorkerTokenHeader],
             Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey),
             RuntimeWorkerAuthentication.WorkerAudience("worker-pod"), RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
-        Assert.True(RuntimeWorkerAuthentication.ValidateToken(headers[RuntimeWorkerAuthentication.AppTokenHeader], appKey,
-            RuntimeWorkerAuthentication.AppAudience("specialized-app"), RuntimeWorkerAuthentication.AppPurpose, DateTimeOffset.UtcNow));
+        credentials.ValidateAppProof(RuntimeWorkerAuthentication.CreateAppProof(appKey, "specialized-app", "worker-pod", DateTimeOffset.UtcNow));
     }
 
     private sealed class EnvironmentVariableScope : IDisposable

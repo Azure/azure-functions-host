@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,6 +34,17 @@ internal static class RuntimeWorkerTestData
     public static RuntimeWorkerCredentials CreateCredentials(string workerId = "worker")
         => new(workerId, WorkerKey, CreateConfiguration(), TimeProvider.System);
 
+    public static string CreateAppProof(string workerId)
+        => RuntimeWorkerAuthentication.CreateAppProof(
+            Convert.FromHexString(AppKey), "test-app", workerId, DateTimeOffset.UtcNow);
+
+    public static WorkerInitResponse Authenticate(WorkerInitResponse response, string workerId)
+    {
+        RuntimeWorkerAuthentication.SetAppProof(response.Capabilities, CreateAppProof(workerId));
+
+        return response;
+    }
+
     // Existing lifecycle tests use these authenticated fixture overloads, never an anonymous product path.
     public static Task<WorkerLinkResult> LinkAsync(
         this IWorkerChannelRegistry registry, string workerId, Uri endpoint, CancellationToken cancellationToken = default)
@@ -43,10 +55,10 @@ internal static class RuntimeWorkerTestData
         where T : class
         => factory.ConnectAsync(endpoint, CreateCredentials(), cancellationToken);
 
-    public static void ConfigureTlsListener(WebApplicationBuilder builder)
+    public static void ConfigureTlsListener(WebApplicationBuilder builder, DateTimeOffset? expires = null)
     {
         builder.WebHost.UseKestrelHttpsConfiguration();
-        builder.Services.AddSingleton<TestCertificate>();
+        builder.Services.AddSingleton(_ => new TestCertificate(expires));
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
@@ -56,11 +68,12 @@ internal static class RuntimeWorkerTestData
 
     private sealed class TestCertificate : IDisposable
     {
-        public TestCertificate()
+        public TestCertificate(DateTimeOffset? expires)
         {
             using ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             CertificateRequest request = new("CN=test-worker", key, HashAlgorithmName.SHA256);
-            Certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(1));
+            DateTimeOffset end = expires ?? DateTimeOffset.UtcNow.AddDays(1);
+            Certificate = request.CreateSelfSigned(end.AddDays(-2), end);
             if (OperatingSystem.IsWindows())
             {
                 using X509Certificate2 ephemeral = Certificate;

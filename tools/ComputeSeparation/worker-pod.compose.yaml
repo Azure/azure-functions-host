@@ -6,8 +6,20 @@ services:
     environment:
       WORKERPROXY__HTTPPROXYENDPOINT: https://${WORKER_PROXY_ALIAS:?Aspire must supply a unique Proxy alias}:28080
       WEBSITE_POD_NAME: ${WORKER_POD_NAME:?Aspire must supply the pod identity}
-      FUNCTIONS_WORKER_RUNTIME_ACCESS_KEY: ${WORKER_RUNTIME_ACCESS_KEY:?Aspire must supply the worker key}
+      CONTAINER_ENCRYPTION_KEY: ${WORKER_RUNTIME_ACCESS_KEY:?Aspire must supply the WorkerProxy container key}
+      WEBSITE_AUTH_ENCRYPTION_KEY: ${WORKER_APP_AUTH_KEY:?Aspire must supply the synthetic app key}
+      WORKERPROXY__CERTIFICATEPATH: /etc/ssl/workerproxy/server.crt
+      WORKERPROXY__CERTIFICATEKEYPATH: /etc/ssl/workerproxy/server.key
       Logging__LogLevel__Azure.Functions.WorkerProxy.Http: Debug
+    volumes:
+      - type: bind
+        source: ${WORKER_PROXY_CERTIFICATE_PATH:?Aspire must supply the test certificate}
+        target: /etc/ssl/workerproxy/server.crt
+        read_only: true
+      - type: bind
+        source: ${WORKER_PROXY_CERTIFICATE_KEY_PATH:?Aspire must supply the test private key}
+        target: /etc/ssl/workerproxy/server.key
+        read_only: true
     ports:
       - "127.0.0.1:${WORKER_PROXY_MANAGEMENT_PORT:?Aspire must allocate the management port}:80"
     networks:

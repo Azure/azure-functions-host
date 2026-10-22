@@ -1,48 +1,59 @@
 # Runtime connection authentication
 
-WorkerProxy requires TLS and two JWTs on its runtime-facing HTTP listener (28080) and FunctionRpc listener (50053). Both tokens are checked before admitting an HTTP request or opening a gRPC stream. Missing or invalid authentication returns HTTP 401 or gRPC `Unauthenticated`.
+WorkerProxy requires TLS and a worker-specific caller JWT on its runtime-facing HTTP listener (28080) and FunctionRpc listener (50053). WorkerProxy returns a separate app-key proof during initialization on the same runtime-initiated duplex stream. Host must validate that proof before accepting Link or publishing the worker.
 
-The loopback worker FunctionRpc listener (50054) and the management listener retain their separate responsibilities. They do not require these runtime tokens.
+The loopback worker FunctionRpc listener (50054) and management listener retain their separate responsibilities. They do not use these runtime caller tokens.
 
-## Keys and trusted identities
+## Keys and identities
 
-The platform supplies the per-worker base64 `FUNCTIONS_WORKER_RUNTIME_ACCESS_KEY` to WorkerProxy at startup and sends the same value to Functions Host in `runtimeAccessKey` on `PUT /admin/workers/{workerId}`. This key is independent of management credentials.
+The platform sends the target WorkerProxy's `CONTAINER_ENCRYPTION_KEY` to Host as `runtimeAccessKey` in Link. Host retains that key by worker identity and uses it only for that worker's caller tokens. WorkerProxy validates them using its own startup container key, not a runtime or customer container key. There is no separate runtime-access-key environment setting.
 
-The Host reads `WEBSITE_AUTH_ENCRYPTION_KEY` and `WEBSITE_SITE_NAME` through its existing live specialization configuration. WorkerProxy obtains the same app key from its accepted management assignment's `environment.WEBSITE_AUTH_ENCRYPTION_KEY`, and the expected app name from `functionAppName`. Assignment authentication configuration remains private: it is not installed in the proxy process environment, forwarded to the customer worker, or published in state responses.
+Host reads its app name and `WEBSITE_AUTH_ENCRYPTION_KEY` through normal live specialization configuration. WorkerProxy reads its already-provisioned app key through normal configuration and takes the expected app name from its accepted assignment's `functionAppName`. Assignment environment entries are not installed into the process or used as an app-key fallback. This does not filter or change customer app settings.
 
-This does not filter or change customer app settings delivered through the Host's normal specialization path.
+Both key types use the platform convention: 64-character hexadecimal, otherwise base64, with at least 32 decoded bytes. There is no fallback from a missing app key to a container/management key.
 
-The Link route's `workerId` must be the protected WorkerProxy pod name. It is not selected from JWT claims. WorkerProxy uses its platform-provided pod name when checking the worker audience.
-
-Worker keys are base64. App keys follow the existing platform convention: 64-character hexadecimal, otherwise base64. Decoded keys must contain at least 32 bytes. There is no fallback to a container-management key, and an unassigned proxy cannot accept runtime traffic.
+The protected WorkerProxy pod name is the Link route identity, not the customer worker's protobuf `worker_id`. The reverse proof includes that pod name as a signed claim and Host compares it ordinally with the expected route identity.
 
 ## Wire contract
 
-`RuntimeWorkerAuthentication.cs` is shared source compiled into the runtime client and WorkerProxy. It centralizes header names, audiences, purposes, key decoding, signing, validation, lifetime and skew without reflection-based JSON serialization.
+`RuntimeWorkerAuthentication.cs` is shared source compiled into both sides. It centralizes the two directional token layouts, claims, signing, validation, reserved headers and protobuf-map entry.
 
-| Token | HTTP header / gRPC metadata | Expected `aud` | Expected `purpose` |
-| --- | --- | --- | --- |
-| Worker | `x-ms-functions-worker-token` | `azure-functions-worker:<workerId>` | `worker` |
-| App | `x-ms-functions-app-token` | `azure-functions-app:<appName>` | `app` |
+| Direction | Carrier | Expected `aud` | Expected `purpose` | Additional required claim |
+| --- | --- | --- | --- | --- |
+| Host to WorkerProxy | `x-ms-functions-worker-token` HTTP header / gRPC metadata | `azure-functions-worker:<workerId>` | `worker` | None |
+| WorkerProxy to Host | `WorkerInitResponse.capabilities["WorkerProxyAppToken"]` | `azure-functions-app:<appName>` | `app` | `worker_id: <workerId>` |
 
-Tokens use HS256 with `typ: JWT` and integer UTC Unix timestamps `iat`, `nbf` and `exp`. Issuance and not-before timestamps match; expiry is five minutes after issuance. Validation allows 30 seconds of clock skew and rejects a signed lifetime longer than five minutes. Both signatures, audiences, purposes and lifetimes must be valid.
+Both use HS256 with `typ: JWT`, integer UTC Unix timestamps `iat = nbf`, and `exp = iat + 300`. Validation allows 30 seconds of skew and rejects longer signed lifetimes.
 
-The runtime issues fresh tokens for each HTTP invocation and newly opened gRPC call. Caller-supplied platform token headers are overwritten. WorkerProxy removes both platform token headers before forwarding customer HTTP traffic; the customer's `Authorization` header is preserved. Rejected authentication is logged without tokens, key values or assignment environment entries.
+`WorkerProxyAppToken` is a reserved entry in an existing protobuf map, not a new protobuf field or callback connection. WorkerProxy discards any customer-supplied value before capability snapshotting and appends its own proof only to the runtime-facing transport clone. Host validates and removes it before logging capabilities, completing initialization or publishing the channel. It is not an app capability, telemetry property or public state entry.
 
-## HTTPS endpoints and HTTP capability negotiation
+HTTP requests and newly opened gRPC calls need only the caller token, not an outbound app JWT. The runtime overwrites caller-supplied platform auth headers. WorkerProxy strips them before customer forwarding, including the reserved legacy `x-ms-functions-app-token` header; ordinary customer `Authorization` remains intact.
 
-Link requires an HTTPS authority in `workerGrpcEndpoint`. Its optional `workerHttpEndpoint` must also be an HTTPS authority; it is required if the worker negotiates HTTP support. Neither endpoint may contain credentials, a path prefix, a query or a fragment.
+## Link and HTTP negotiation
 
-The Host pins HTTP forwarding to the origin supplied by Link. A worker capability cannot replace that origin, including during capability reload. An HTTP-capable worker without an HTTP Link origin fails initialization rather than guessing a port or falling back to an untrusted destination.
+The management route is `PUT /admin/workers/{workerId}`. Worker identity comes only from the path; body `workerPodName` is ignored. The existing platform payload is `{workerPodName, workerGrpcEndpoint, runtimeAccessKey}`. The gRPC endpoint must be an HTTPS authority without credentials, path prefix, query or fragment. There is no collection-root Link alias or Link HTTP endpoint.
 
-WorkerProxy still validates and probes the customer worker's local HTTP destination. When an external mapped port is unavailable at proxy startup, `HttpProxyEndpoint` may be omitted: the local `HttpUri` is retained only as an HTTP-support signal, and the Host substitutes its protected Link origin before using the capability.
+HTTP support and routing remain negotiated through `HttpUri`. WorkerProxy validates the customer's local HTTP destination separately and advertises its configured `WorkerProxy:HttpProxyEndpoint`, which must be the actual reachable HTTPS forwarding origin. If an HTTP-capable worker has no usable external origin, initialization fails instead of forwarding a local/customer address or guessing an allocated port.
 
-## TLS and limitations
+Capability reloads are rewritten to the same configured proxy origin. Raw customer origins and customer-supplied authentication proofs are not forwarded as runtime destinations. Host rejects a changed initialized proxy origin before it can receive caller credentials.
 
-Each proxy process generates and owns its self-signed certificate and private key. Both runtime-facing listeners use that certificate. Certificates and private keys are not shared or baked into an image.
+## Startup-provisioned TLS certificate
 
-Only the compute-separated runtime's WorkerProxy HTTP/gRPC clients accept arbitrary server certificates. Ordinary Host outbound clients and WorkerProxy's customer-facing forwarding client retain their normal certificate validation.
+The image startup script must generate a fresh self-signed PEM certificate and unencrypted PEM private key before starting WorkerProxy. The serving identity must not be baked into an image.
 
-**This does not authenticate the server's identity.** Deployment must protect key-bearing Link and assignment delivery, authorize the endpoint supplied to each runtime, keep worker keys unavailable to customer code, and establish cross-app containment before release. The tokens prove possession of worker and app keys, not a unique runtime identity.
+| Option | Environment variable | Default file |
+| --- | --- | --- |
+| `WorkerProxy:CertificatePath` | `WORKERPROXY__CERTIFICATEPATH` | `/etc/ssl/workerproxy/server.crt` |
+| `WorkerProxy:CertificateKeyPath` | `WORKERPROXY__CERTIFICATEKEYPATH` | `/etc/ssl/workerproxy/server.key` |
 
-JWT expiry is checked at call admission. It does not renew, revoke or close an already-open stream. Worker reuse, in-place key rotation, stream renewal and mutual TLS are not implemented by this protocol.
+WorkerProxy loads those files for both runtime-facing TLS listeners. Missing, malformed or mismatched files fail startup. There is no C# certificate generation or plaintext fallback.
+
+The WorkerProxy-specific Host HTTP/gRPC clients share an expiry-only UTC certificate callback: absent or expired certificates are rejected, but chain, issuer, hostname and pin are not checked. Ordinary Host outbound clients and WorkerProxy's customer-facing forwarding client retain their normal validation.
+
+## Release conditions and limitations
+
+The code does not establish the platform delivery path for WorkerProxy's already-provisioned app key or its actual mapped HTTPS HTTP origin. Matching configuration and image startup integration must be verified before release; neither is silently replaced with assignment injection or an untrusted destination.
+
+The app proof demonstrates app-key possession and worker association, not a uniquely trusted WorkerProxy process. Certificate expiry checking does not establish server identity. Correct endpoint authorization, protected key-bearing management delivery, worker-key isolation and cross-app containment remain release conditions.
+
+Expiry is checked at call admission; it does not revoke or renew open streams. Worker reuse, in-place key rotation, stream renewal and mTLS are outside this implementation.

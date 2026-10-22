@@ -49,8 +49,8 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var timeout = new CancellationTokenSource(TestTimeout);
         TaskCompletionSource invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()))
-            .Returns((string _, Uri _, string _, Uri? _, CancellationToken token) =>
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+            .Returns((string _, Uri _, string _, CancellationToken token) =>
             {
                 invoked.TrySetResult();
                 return completion.Task.WaitAsync(token);
@@ -74,8 +74,8 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
         TaskCompletionSource<CancellationToken> invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()))
-            .Returns((string _, Uri _, string _, Uri? _, CancellationToken token) =>
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+            .Returns((string _, Uri _, string _, CancellationToken token) =>
             {
                 invoked.TrySetResult(token);
                 return completion.Task.WaitAsync(token);
@@ -164,7 +164,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         JsonElement[] errors = await ReadValidationErrorsAsync(response, timeout.Token);
 
         Assert.Equal(
-            [("workerGrpcEndpoint", "InvalidEndpoint"), ("workerHttpEndpoint", "InvalidEndpoint"), ("runtimeAccessKey", "Required")],
+            [("workerGrpcEndpoint", "InvalidEndpoint"), ("runtimeAccessKey", "Required")],
             errors.Select(error => (error.GetProperty("target").GetString(), error.GetProperty("code").GetString())));
         _registry.VerifyNoOtherCalls();
     }
@@ -223,7 +223,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
     public async Task Put_BodyWorkerId_DoesNotBypassEndpointConflict()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new WorkerLinkException(WorkerLinkFailureReason.Conflict, "Endpoint conflict."));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = JsonSerializer.Serialize(new
@@ -353,7 +353,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         const string privateDiagnostic = "private-worker-detail-do-not-return";
         using var timeout = new CancellationTokenSource(TestTimeout);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new WorkerLinkException(reason, privateDiagnostic, new Exception(privateDiagnostic)));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
@@ -370,8 +370,8 @@ public sealed class WorkerLinkEndpointIntegrationTests
         const string privateDiagnostic = "private-timeout-detail-do-not-return";
         using var timeout = new CancellationTokenSource(TestTimeout);
         CancellationToken registryToken = default;
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()))
-            .Callback<string, Uri, string, Uri?, CancellationToken>((_, _, _, _, token) => registryToken = token)
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+            .Callback<string, Uri, string, CancellationToken>((_, _, _, token) => registryToken = token)
             .ThrowsAsync(new TimeoutException(privateDiagnostic));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
@@ -387,12 +387,12 @@ public sealed class WorkerLinkEndpointIntegrationTests
         => JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.AbsoluteUri, runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey });
 
     [Fact]
-    public async Task Put_ProtectedHttpOriginAndWorkerKey_BindWireFields()
+    public async Task Put_RemovedHttpOrigin_IsIgnored()
     {
         using CancellationTokenSource timeout = new(TestTimeout);
         Uri httpEndpoint = new("https://worker-proxy:48801");
         _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey,
-            httpEndpoint, It.IsAny<CancellationToken>()))
+            It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, true));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = JsonSerializer.Serialize(new
@@ -406,17 +406,17 @@ public sealed class WorkerLinkEndpointIntegrationTests
 
         await AssertLinkResponseAsync(response, HttpStatusCode.Created, timeout.Token);
         _registry.Verify(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey,
-            httpEndpoint, It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 
     private void SetupLink(string workerId = WorkerId, bool isNewLink = true)
-        => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()))
+        => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, isNewLink));
 
     private void VerifyLink(string workerId = WorkerId)
     {
-        _registry.Verify(value => value.LinkAsync(workerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, null, It.IsAny<CancellationToken>()), Times.Once);
+        _registry.Verify(value => value.LinkAsync(workerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 

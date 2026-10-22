@@ -15,7 +15,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
-    private const string HttpUriCapability = "HttpUri";
+    internal const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -39,11 +39,12 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        // External ports may be allocated after startup. In that case HttpUri is only a support signal:
-        // the runtime substitutes the protected HTTP origin supplied by Link before using this capability.
-        Uri proxyEndpoint = string.IsNullOrWhiteSpace(_options.HttpProxyEndpoint)
-            ? advertisedDestination
-            : ResolveRequiredEndpoint(_options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        Uri proxyEndpoint = ResolveRequiredEndpoint(
+            _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        if (!string.Equals(proxyEndpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The runtime-facing HTTP origin must use HTTPS.");
+        }
 
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
         Log.HttpCapabilityFinalized(_logger,

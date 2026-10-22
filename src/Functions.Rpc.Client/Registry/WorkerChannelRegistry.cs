@@ -75,16 +75,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         string workerId,
         Uri grpcEndpoint,
         string runtimeAccessKey,
-        Uri httpEndpoint = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
-        if (httpEndpoint is not null)
-        {
-            RpcClientFactory.ValidateEndpoint(httpEndpoint);
-        }
-
         RuntimeWorkerCredentials credentials = new(workerId, runtimeAccessKey, _configuration, _timeProvider);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -96,7 +90,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
                 if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal)
-                    || !string.Equals(existing.HttpEndpoint?.AbsoluteUri, httpEndpoint?.AbsoluteUri, StringComparison.Ordinal)
                     || !existing.Credentials.MatchesKey(runtimeAccessKey))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
@@ -113,7 +106,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint, HttpEndpoint = httpEndpoint, Credentials = credentials };
+            WorkerSlot slot = new() { Endpoint = grpcEndpoint, Credentials = credentials };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
             link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
@@ -154,7 +147,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, slot.Credentials, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
-                candidate = _channelFactory.Create(workerId, ownedChannel, slot.Credentials, slot.HttpEndpoint)
+                candidate = _channelFactory.Create(workerId, ownedChannel, slot.Credentials)
                     ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
                 ownedChannel = null;
 
@@ -549,8 +542,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
-
-        public Uri HttpEndpoint { get; init; }
 
         public RuntimeWorkerCredentials Credentials { get; init; }
 

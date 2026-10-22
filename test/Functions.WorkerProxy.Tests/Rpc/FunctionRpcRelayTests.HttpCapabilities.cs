@@ -166,9 +166,10 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_MissingAdvertisedProxyOrigin_PreservesLocalDestinationForProtectedLinkNegotiation()
+    public async Task Relay_MissingAdvertisedProxyOrigin_FailsWithoutAdvertisingLocalDestination()
     {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        await using WorkerProxyWebApplicationFactory factory = new(
+            new Dictionary<string, string?> { ["WorkerProxy:HttpProxyEndpoint"] = null });
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
@@ -178,9 +179,10 @@ public partial class FunctionRpcRelayTests
         StreamingMessage initialized = CreateInitResponse("init", "http://localhost:1234/");
         await worker.WriteAsync(initialized, timeout.Token);
 
-        Assert.Equal(initialized, await runtime.ReadAsync(timeout.Token));
-        Assert.Equal(new Uri("http://localhost:1234"), relay.WorkerHttpDestination);
-        Assert.Null(relay.LastTerminalState);
+        Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+        await WaitForReleaseAsync(relay, timeout.Token);
+        Assert.Null(relay.WorkerHttpDestination);
     }
 
     [Theory]
@@ -375,6 +377,54 @@ public partial class FunctionRpcRelayTests
         {
             [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}"] = proxyEndpoint
         });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Relay_ReloadNeverAdvertisesCustomerDestinationOrCustomerAuthenticationProof(bool replace, bool failed)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        using HttpClient http = factory.CreateHttpForwardingClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234"), timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+        StreamingMessage reload = new()
+        {
+            FunctionEnvironmentReloadResponse = new()
+            {
+                Result = new() { Status = failed ? StatusResult.Types.Status.Failure : StatusResult.Types.Status.Success },
+                CapabilitiesUpdateStrategy = replace
+                    ? FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace
+                    : FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Merge,
+                Capabilities =
+                {
+                    ["HttpUri"] = "http://localhost:5678/customer/",
+                    ["WorkerProxyAppToken"] = "customer-proof-must-not-escape"
+                }
+            }
+        };
+        await worker.WriteAsync(reload, timeout.Token);
+
+        StreamingMessage received = await runtime.ReadAsync(timeout.Token);
+
+        Assert.False(received.FunctionEnvironmentReloadResponse.Capabilities.ContainsKey("WorkerProxyAppToken"));
+        if (failed)
+        {
+            Assert.False(received.FunctionEnvironmentReloadResponse.Capabilities.ContainsKey("HttpUri"));
+        }
+        else
+        {
+            Assert.Equal(http.BaseAddress!.AbsoluteUri, received.FunctionEnvironmentReloadResponse.Capabilities["HttpUri"]);
+        }
+
+        Assert.Equal(new Uri(failed ? "http://localhost:1234" : "http://localhost:5678/customer/"),
+            factory.Services.GetRequiredService<FunctionRpcRelay>().WorkerHttpDestination);
     }
 
     private static StreamingMessage CreateInitResponse(string requestId, string? httpUri)

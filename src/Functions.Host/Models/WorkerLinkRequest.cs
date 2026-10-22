@@ -18,13 +18,7 @@ public sealed class WorkerLinkRequest
     public string? WorkerGrpcEndpoint { get; set; }
 
     /// <summary>
-    /// Gets or sets the protected HTTPS forwarding origin. Required when the worker supports HTTP proxying.
-    /// </summary>
-    [JsonProperty("workerHttpEndpoint")]
-    public string? WorkerHttpEndpoint { get; set; }
-
-    /// <summary>
-    /// Gets or sets the required per-worker base64 runtime access key. Never log or return this value.
+    /// Gets or sets the target WorkerProxy's container encryption key. Never log or return this value.
     /// </summary>
     [JsonProperty("runtimeAccessKey")]
     public string? RuntimeAccessKey { get; set; }

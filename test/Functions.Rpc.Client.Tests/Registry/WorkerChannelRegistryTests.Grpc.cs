@@ -135,7 +135,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_GrpcHttpCapabilityWithoutLinkOrigin_FailsInitializationAndAllowsRetry()
+    public async Task LinkAsync_GrpcInvalidNegotiatedHttpOrigin_FailsInitializationAndAllowsRetry()
     {
         using var timeout = new CancellationTokenSource(GrpcTestTimeout);
         await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
@@ -143,15 +143,13 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(
+        await Assert.ThrowsAsync<UriFormatException>(
             () => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
-        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
 
         Assert.Empty(registry.GetInitializedChannels());
         await worker.Disconnected.WaitAsync(timeout.Token);
-        server.AddWorker(GrpcWorkerId, httpUri: "http://worker-proxy:28080");
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, RuntimeWorkerTestData.WorkerKey,
-            new Uri("https://protected-proxy:28080"), timeout.Token);
+        server.AddWorker(GrpcWorkerId, httpUri: "https://worker-proxy:28080");
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(2, server.StreamCount);

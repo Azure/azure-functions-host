@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Security;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
@@ -219,9 +220,26 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             // Only the compute-separation WorkerProxy client uses this handler. Server identity is not authenticated.
             SslOptions = new SslClientAuthenticationOptions
             {
-                RemoteCertificateValidationCallback = static (_, _, _, _) => true
+                RemoteCertificateValidationCallback = static (_, certificate, _, _) => IsCertificateUnexpired(certificate, DateTimeOffset.UtcNow)
             },
         };
+    }
+
+    internal static bool IsCertificateUnexpired(X509Certificate certificate, DateTimeOffset now)
+    {
+        if (certificate is null)
+        {
+            return false;
+        }
+
+        if (certificate is X509Certificate2 certificate2)
+        {
+            return now.UtcDateTime < certificate2.NotAfter.ToUniversalTime();
+        }
+
+        using X509Certificate2 loaded = X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
+
+        return now.UtcDateTime < loaded.NotAfter.ToUniversalTime();
     }
 
     /// <summary>

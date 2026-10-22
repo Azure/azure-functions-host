@@ -8,6 +8,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -252,9 +254,46 @@ internal sealed partial class FunctionRpcRelay
                 }
             }
 
-            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
-                ? FinalizeCapabilities(message)
-                : message;
+            if (message.WorkerInitResponse is not null)
+            {
+                StreamingMessage sanitized = message.Clone();
+                RuntimeWorkerAuthentication.RemoveAppProof(sanitized.WorkerInitResponse.Capabilities);
+
+                return sanitized.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+                    ? FinalizeCapabilities(sanitized)
+                    : sanitized;
+            }
+
+            if (message.FunctionEnvironmentReloadResponse is { } reload)
+            {
+                StreamingMessage sanitized = message.Clone();
+                RuntimeWorkerAuthentication.RemoveAppProof(sanitized.FunctionEnvironmentReloadResponse.Capabilities);
+                if (reload is not { Result.Status: StatusResult.Types.Status.Success })
+                {
+                    sanitized.FunctionEnvironmentReloadResponse.Capabilities.Remove(WorkerHttpCapabilityProvider.HttpUriCapability);
+
+                    return sanitized;
+                }
+
+                if (reload.Capabilities.TryGetValue(WorkerHttpCapabilityProvider.HttpUriCapability, out string? httpUri)
+                    && !string.IsNullOrWhiteSpace(httpUri))
+                {
+                    Uri? destination = capabilityFinalizer.FinalizeCapabilities(sanitized.FunctionEnvironmentReloadResponse.Capabilities);
+                    lock (_stateLock)
+                    {
+                        if (_terminalState is not null)
+                        {
+                            return null;
+                        }
+
+                        _workerHttpDestination = destination;
+                    }
+                }
+
+                return sanitized;
+            }
+
+            return message;
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)

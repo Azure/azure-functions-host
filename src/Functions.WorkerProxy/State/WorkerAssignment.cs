@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using Azure.Functions.Authentication;
 
 namespace Azure.Functions.WorkerProxy.State;
 
@@ -12,9 +11,8 @@ namespace Azure.Functions.WorkerProxy.State;
 /// Captures immutable assignment identity, including the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// Environment and app directory participate in retry equality. The application authentication key is
-/// retained privately; environment entries are never applied to the process or worker.
-/// Keep environment values out of published pod snapshots and diagnostic output.
+/// Environment and app directory participate in retry equality only; this model does not apply them
+/// to the worker. Keep environment values out of published pod snapshots and diagnostic output.
 /// </remarks>
 internal sealed class WorkerAssignment
 {
@@ -59,9 +57,6 @@ internal sealed class WorkerAssignment
         IsAlwaysReady = isAlwaysReady;
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
-        environment.TryGetValue(RuntimeWorkerAuthentication.AppKeySetting, out string? appKey);
-        RuntimeWorkerAuthentication.TryDecodeAppKey(appKey, out byte[] decodedAppKey);
-        AppAuthenticationKey = decodedAppKey;
         FunctionAppDirectory = functionAppDirectory;
     }
 
@@ -77,8 +72,6 @@ internal sealed class WorkerAssignment
     public bool IsAlwaysReady { get; }
 
     public FrozenDictionary<string, string> Environment { get; }
-
-    internal ReadOnlyMemory<byte> AppAuthenticationKey { get; }
 
     public string FunctionAppDirectory { get; }
 

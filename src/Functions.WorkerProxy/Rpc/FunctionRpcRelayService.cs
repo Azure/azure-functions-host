@@ -1,7 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy;
 using Azure.Functions.WorkerProxy.Authentication;
 using Grpc.AspNetCore.Server;
@@ -40,7 +42,10 @@ internal sealed class FunctionRpcRelayService(
         FunctionRpcRelayTerminalState terminalState;
         try
         {
-            terminalState = await relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
+            IServerStreamWriter<StreamingMessage> writer = side is FunctionRpcRelaySide.Runtime
+                ? new RuntimeResponseWriter(responseStream, authenticator)
+                : responseStream;
+            terminalState = await relay.AttachAsync(side, requestStream, writer, context.CancellationToken);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
@@ -74,5 +79,39 @@ internal sealed class FunctionRpcRelayService(
         }
 
         return;
+    }
+
+    private sealed class RuntimeResponseWriter(
+        IServerStreamWriter<StreamingMessage> inner, RuntimeRequestAuthenticator authentication) : IServerStreamWriter<StreamingMessage>
+    {
+        public WriteOptions? WriteOptions
+        {
+            get => inner.WriteOptions;
+            set => inner.WriteOptions = value;
+        }
+
+        public Task WriteAsync(StreamingMessage message) => inner.WriteAsync(Prepare(message));
+
+        public Task WriteAsync(StreamingMessage message, CancellationToken cancellationToken)
+            => inner.WriteAsync(Prepare(message), cancellationToken);
+
+        private StreamingMessage Prepare(StreamingMessage message)
+        {
+            if (message.WorkerInitResponse is not { } response)
+            {
+                return message;
+            }
+
+            // This transport clone is created after the relay has frozen its ordinary capabilities.
+            StreamingMessage transport = message.Clone();
+            RuntimeWorkerAuthentication.RemoveAppProof(transport.WorkerInitResponse.Capabilities);
+            if (response is { Result.Status: StatusResult.Types.Status.Success })
+            {
+                RuntimeWorkerAuthentication.SetAppProof(
+                    transport.WorkerInitResponse.Capabilities, authentication.CreateAppProof());
+            }
+
+            return transport;
+        }
     }
 }

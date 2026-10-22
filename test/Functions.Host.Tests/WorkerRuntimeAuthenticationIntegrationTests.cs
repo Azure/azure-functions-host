@@ -15,9 +15,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Azure.Functions.Host.Controllers;
-using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Builder;
@@ -25,7 +24,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -45,6 +43,7 @@ using Moq;
 using Xunit;
 using ProxyApplication = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyApplication;
 using ProxyEndpoints = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyEndpointConfiguration;
+using ProxyOptions = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyOptions;
 using ProxyRelaySide = workerproxy::Azure.Functions.WorkerProxy.Rpc.FunctionRpcRelaySide;
 using ProxyStateManager = workerproxy::Azure.Functions.WorkerProxy.State.WorkerPodStateManager;
 
@@ -56,12 +55,19 @@ public class WorkerRuntimeAuthenticationIntegrationTests
     private const string AppTokenHeader = "x-ms-functions-app-token";
     private const string AppKeySetting = "WEBSITE_AUTH_ENCRYPTION_KEY";
 
-    [Fact]
-    public async Task LinkAndHttpInvocation_UseBothJwtsOverTlsThroughRealWorkerProxy()
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("missing-proxy-key")]
+    [InlineData("wrong-proxy-key")]
+    [InlineData("missing-runtime-key")]
+    public async Task LinkAndHttpInvocation_UseCanonicalMvcRouteAndBidirectionalProofsOverTls(string scenario)
     {
         const string workerId = "test-worker-pod";
         const string appName = "test-app";
         string appKey = Convert.ToHexString(SHA256.HashData("integration-test-app-key"u8));
+        bool native = string.Equals(scenario, "valid", StringComparison.Ordinal)
+            && Environment.GetEnvironmentVariable("FUNCTIONS_WORKERPROXY_NATIVE_MANAGEMENT_URI") is not null;
+        using TestCertificateFiles certificates = new();
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         WebApplicationBuilder workerBuilder = WebApplication.CreateSlimBuilder();
         workerBuilder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -78,55 +84,81 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         string customerAddress = customerHttp.Services.GetRequiredService<IServer>()
             .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
 
-        await using WebApplication proxy = ProxyApplication.Build(
+        await using WebApplication? proxy = native ? null : ProxyApplication.Build(
         [
             "--WEBSITE_POD_NAME", workerId,
-            "--FUNCTIONS_WORKER_RUNTIME_ACCESS_KEY", WorkerLinkTestData.RuntimeAccessKey,
+            "--CONTAINER_ENCRYPTION_KEY", WorkerLinkTestData.RuntimeAccessKey,
+            "--WEBSITE_AUTH_ENCRYPTION_KEY", scenario switch
+            {
+                "missing-proxy-key" => string.Empty,
+                "wrong-proxy-key" => Convert.ToHexString(SHA256.HashData("different-app-key"u8)),
+                _ => appKey
+            },
+            "--WorkerProxy:CertificatePath", certificates.CertificatePath,
+            "--WorkerProxy:CertificateKeyPath", certificates.KeyPath,
             "--WorkerProxy:ManagementPort", "0",
             "--WorkerProxy:RuntimeGrpcPort", "0",
             "--WorkerProxy:WorkerGrpcPort", "0",
             "--WorkerProxy:HttpPort", "0",
             "--Logging:LogLevel:Default", "Warning"
         ]);
-        await proxy.StartAsync(timeout.Token);
-        ProxyEndpoints endpoints = proxy.Services.GetRequiredService<ProxyEndpoints>();
-        Uri grpcEndpoint = Loopback(endpoints.GetRelayAddress(ProxyRelaySide.Runtime));
-        Uri httpEndpoint = Loopback(endpoints.GetHttpAddress());
+        if (proxy is not null)
+        {
+            await proxy.StartAsync(timeout.Token);
+        }
+
+        ProxyEndpoints? endpoints = proxy?.Services.GetRequiredService<ProxyEndpoints>();
+        Uri grpcEndpoint = endpoints is null ? NativeAddress("GRPC") : Loopback(endpoints.GetRelayAddress(ProxyRelaySide.Runtime));
+        Uri httpEndpoint = endpoints is null ? NativeAddress("HTTP") : Loopback(endpoints.GetHttpAddress());
+        if (proxy is not null)
+        {
+            proxy.Services.GetRequiredService<IOptions<ProxyOptions>>().Value.HttpProxyEndpoint = httpEndpoint.AbsoluteUri;
+        }
         Assert.Equal(Uri.UriSchemeHttps, grpcEndpoint.Scheme);
         Assert.Equal(Uri.UriSchemeHttps, httpEndpoint.Scheme);
 
-        using GrpcChannel localWorkerChannel = GrpcChannel.ForAddress(Loopback(endpoints.GetRelayAddress(ProxyRelaySide.Worker)));
+        using GrpcChannel localWorkerChannel = GrpcChannel.ForAddress(
+            endpoints is null ? NativeAddress("WORKER_GRPC") : Loopback(endpoints.GetRelayAddress(ProxyRelaySide.Worker)));
         FunctionRpc.FunctionRpcClient localWorker = new(localWorkerChannel);
         using AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> workerCall =
             localWorker.EventStream(cancellationToken: timeout.Token);
         await workerCall.RequestStream.WriteAsync(new StreamingMessage { StartStream = new() { WorkerId = workerId } }, timeout.Token);
-        ProxyStateManager manager = proxy.Services.GetRequiredService<ProxyStateManager>();
-        while (!manager.State.IsWorkerReady)
+        using HttpClient management = new()
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+            BaseAddress = endpoints is null ? NativeAddress("MANAGEMENT") : Loopback(endpoints.GetManagementAddress())
+        };
+        HttpStatusCode assignmentStatus;
+        do
+        {
+            using HttpResponseMessage assignment = await HttpClientJsonExtensions.PutAsJsonAsync(management, "/admin/worker/assignment", new
+            {
+                startupMode = "Preconfigured",
+                functionAppName = appName,
+                functionGroupName = "group",
+                isAlwaysReady = false,
+                functionAppDirectory = string.Empty,
+                environment = new Dictionary<string, string>()
+            }, timeout.Token);
+            assignmentStatus = assignment.StatusCode;
+            if (assignmentStatus is HttpStatusCode.ServiceUnavailable)
+            {
+                await Task.Delay(10, timeout.Token);
+            }
         }
+        while (assignmentStatus is HttpStatusCode.ServiceUnavailable);
+        Assert.Equal(HttpStatusCode.Created, assignmentStatus);
 
-        using HttpClient management = new() { BaseAddress = Loopback(endpoints.GetManagementAddress()) };
-        using HttpResponseMessage assignment = await HttpClientJsonExtensions.PutAsJsonAsync(management, "/admin/worker/assignment", new
-        {
-            startupMode = "Preconfigured",
-            functionAppName = appName,
-            functionGroupName = "group",
-            isAlwaysReady = false,
-            functionAppDirectory = string.Empty,
-            environment = new Dictionary<string, string> { [AppKeySetting] = appKey }
-        }, timeout.Token);
-        Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
-
-        await using ServiceProvider runtime = CreateRuntime(appName, appKey);
+        await using ServiceProvider runtime = CreateRuntime(appName, appKey,
+            includeAppKey: !string.Equals(scenario, "missing-runtime-key", StringComparison.Ordinal));
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
-        WorkerLinkController controller = new(NullLogger<WorkerLinkController>.Instance, registry);
-        Task<IActionResult> linking = controller.LinkWorker(workerId, new WorkerLinkRequest
-        {
-            WorkerGrpcEndpoint = grpcEndpoint.AbsoluteUri,
-            WorkerHttpEndpoint = httpEndpoint.AbsoluteUri,
-            RuntimeAccessKey = WorkerLinkTestData.RuntimeAccessKey
-        }, timeout.Token);
+        await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(
+            timeout.Token, registry, useKestrel: true);
+        string json = $$"""
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.AbsoluteUri}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            """;
+        using StringContent content = new(json, Encoding.UTF8, "application/json");
+        Task<HttpResponseMessage> linking = managementReceiver.Client.PutAsync(
+            $"/admin/workers/{Uri.EscapeDataString(workerId)}", content, timeout.Token);
         StreamingMessage init = await ReadAsync(workerCall, timeout.Token);
         Assert.NotNull(init.WorkerInitRequest);
         await workerCall.RequestStream.WriteAsync(new StreamingMessage
@@ -138,7 +170,17 @@ public class WorkerRuntimeAuthenticationIntegrationTests
                 Capabilities = { ["HttpUri"] = customerAddress }
             }
         }, timeout.Token);
-        Assert.Equal(StatusCodes.Status201Created, Assert.IsType<StatusCodeResult>(await linking).StatusCode);
+        using HttpResponseMessage linkResponse = await linking;
+        if (!string.Equals(scenario, "valid", StringComparison.Ordinal))
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, linkResponse.StatusCode);
+            Assert.Empty(registry.GetInitializedChannels());
+
+            return;
+        }
+
+        Assert.Equal(HttpStatusCode.Created, linkResponse.StatusCode);
+        Assert.Empty(await linkResponse.Content.ReadAsStringAsync(timeout.Token));
         Assert.True(registry.TryGetInitializedChannel(workerId, out WorkerChannel channel));
 
         FunctionMetadata function = new() { Name = "Http", Language = "external" };
@@ -194,7 +236,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         Assert.DoesNotContain(WorkerLinkTestData.RuntimeAccessKey, state, StringComparison.Ordinal);
     }
 
-    private static ServiceProvider CreateRuntime(string appName, string appKey)
+    private static ServiceProvider CreateRuntime(string appName, string appKey, bool includeAppKey)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>().Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
@@ -209,7 +251,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["WEBSITE_SITE_NAME"] = appName,
-            [AppKeySetting] = appKey
+            [AppKeySetting] = includeAppKey ? appKey : null
         }).Build());
         services.AddSingleton<IScriptEventManager>(new ScriptEventManager());
         services.AddSingleton(hostManager.Object);
@@ -236,4 +278,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests
     }
 
     private static Uri Loopback(Uri uri) => new UriBuilder(uri) { Host = IPAddress.Loopback.ToString() }.Uri;
+
+    private static Uri NativeAddress(string role)
+        => new(Environment.GetEnvironmentVariable($"FUNCTIONS_WORKERPROXY_NATIVE_{role}_URI")
+            ?? throw new InvalidOperationException($"The native {role} test endpoint is required."));
 }

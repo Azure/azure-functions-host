@@ -16,74 +16,50 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public class RuntimeWorkerCredentialsTests
 {
     [Fact]
-    public void SharedContract_DefinesCompleteHeaderLayoutAndValidatesBothProofs()
+    public void SharedContract_UsesOneCallerHeaderAndASeparateWorkerBoundAppProof()
     {
         RuntimeWorkerCredentials credentials = RuntimeWorkerTestData.CreateCredentials("worker");
         IReadOnlyDictionary<string, string> headers = credentials.CreateHeaders();
+        Assert.Equal(["x-ms-functions-worker-token"], headers.Keys);
         byte[] workerKey = Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey);
-        byte[] appKey = Convert.FromHexString(RuntimeWorkerTestData.AppKey);
-
-        Assert.Equal(["x-ms-functions-app-token", "x-ms-functions-worker-token"], headers.Keys.Order(StringComparer.Ordinal));
-        Assert.Equal(headers.Keys.Order(StringComparer.Ordinal), RuntimeWorkerAuthentication.TokenHeaders.Order(StringComparer.Ordinal));
-        Assert.True(RuntimeWorkerAuthentication.ValidateHeaders(name => headers[name],
-            workerKey, "worker", appKey, "test-app", DateTimeOffset.UtcNow));
-        Assert.False(RuntimeWorkerAuthentication.ValidateHeaders(
-            name => string.Equals(name, "x-ms-functions-app-token", StringComparison.Ordinal) ? null : headers[name],
-            workerKey, "worker", appKey, "test-app", DateTimeOffset.UtcNow));
+        Assert.True(RuntimeWorkerAuthentication.ValidateHeaders(name => headers[name], workerKey, "worker", DateTimeOffset.UtcNow));
+        Assert.False(RuntimeWorkerAuthentication.ValidateHeaders(_ => null, workerKey, "worker", DateTimeOffset.UtcNow));
+        string proof = RuntimeWorkerTestData.CreateAppProof("worker");
+        Dictionary<string, string> capabilities = new();
+        RuntimeWorkerAuthentication.SetAppProof(capabilities, proof);
+        Assert.Equal(["WorkerProxyAppToken"], capabilities.Keys);
+        Assert.Equal(proof, RuntimeWorkerAuthentication.RemoveAppProof(capabilities));
+        Assert.Empty(capabilities);
+        credentials.ValidateAppProof(proof);
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CreateHeaders_InteroperatesWithStandardJwtValidation(bool workerToken)
+    public void BothDirections_InteroperateWithStandardJwtValidation(bool appProof)
     {
-        RuntimeWorkerCredentials credentials = RuntimeWorkerTestData.CreateCredentials("expected-worker");
-        IReadOnlyDictionary<string, string> headers = credentials.CreateHeaders();
-        byte[] key = workerToken ? Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey)
-            : Convert.FromHexString(RuntimeWorkerTestData.AppKey);
-        string audience = workerToken ? RuntimeWorkerAuthentication.WorkerAudience("expected-worker")
-            : RuntimeWorkerAuthentication.AppAudience("test-app");
+        RuntimeWorkerCredentials credentials = RuntimeWorkerTestData.CreateCredentials("worker");
+        string encoded = appProof ? RuntimeWorkerTestData.CreateAppProof("worker")
+            : credentials.CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader];
+        byte[] key = appProof ? Convert.FromHexString(RuntimeWorkerTestData.AppKey) : Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey);
+        string audience = appProof ? RuntimeWorkerAuthentication.AppAudience("test-app") : RuntimeWorkerAuthentication.WorkerAudience("worker");
         JwtSecurityTokenHandler handler = new();
-        TokenValidationParameters parameters = new()
+        handler.ValidateToken(encoded, new TokenValidationParameters
         {
             IssuerSigningKey = new SymmetricSecurityKey(key),
             ValidateIssuer = false,
-            ValidateAudience = true,
             ValidAudience = audience,
             RequireExpirationTime = true,
             ValidateLifetime = true,
             ClockSkew = RuntimeWorkerAuthentication.ClockSkew,
             ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
-        };
-
-        handler.ValidateToken(headers[workerToken ? RuntimeWorkerAuthentication.WorkerTokenHeader : RuntimeWorkerAuthentication.AppTokenHeader],
-            parameters, out SecurityToken validated);
-
-        Assert.Equal(audience, Assert.Single(Assert.IsType<JwtSecurityToken>(validated).Audiences));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ValidateToken_AcceptsStandardHs256Jwt(bool workerToken)
-    {
-        byte[] key = SHA256.HashData("standard-jwt-test-key"u8);
-        string audience = workerToken ? RuntimeWorkerAuthentication.WorkerAudience("worker")
-            : RuntimeWorkerAuthentication.AppAudience("app");
-        string purpose = workerToken ? RuntimeWorkerAuthentication.WorkerPurpose : RuntimeWorkerAuthentication.AppPurpose;
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        JwtPayload payload = new()
+        }, out SecurityToken token);
+        JwtSecurityToken jwt = Assert.IsType<JwtSecurityToken>(token);
+        Assert.Equal(audience, Assert.Single(jwt.Audiences));
+        if (appProof)
         {
-            ["aud"] = audience,
-            ["purpose"] = purpose,
-            ["iat"] = now.ToUnixTimeSeconds(),
-            ["nbf"] = now.ToUnixTimeSeconds(),
-            ["exp"] = now.AddMinutes(5).ToUnixTimeSeconds()
-        };
-        JwtSecurityToken token = new(new JwtHeader(new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)), payload);
-        string encoded = new JwtSecurityTokenHandler().WriteToken(token);
-
-        Assert.True(RuntimeWorkerAuthentication.ValidateToken(encoded, key, audience, purpose, now));
+            Assert.Equal("worker", jwt.Payload["worker_id"]);
+        }
     }
 
     [Theory]
@@ -91,17 +67,30 @@ public class RuntimeWorkerCredentialsTests
     [InlineData("WEBSITE_SITE_NAME", " ")]
     [InlineData("WEBSITE_AUTH_ENCRYPTION_KEY", null)]
     [InlineData("WEBSITE_AUTH_ENCRYPTION_KEY", "invalid-key")]
-    public void CreateHeaders_MissingAppConfigurationFailsWithoutManagementKeyFallback(string setting, string value)
+    public void MissingAppConfiguration_DoesNotBlockCallerSigningButRejectsReverseProof(string setting, string value)
     {
         IConfiguration configuration = RuntimeWorkerTestData.CreateConfiguration();
         configuration[setting] = value;
         configuration["CONTAINER_ENCRYPTION_KEY"] = RuntimeWorkerTestData.AppKey;
         RuntimeWorkerCredentials credentials = new("worker", RuntimeWorkerTestData.WorkerKey, configuration, TimeProvider.System);
 
-        WorkerLinkException failure = Assert.Throws<WorkerLinkException>(() => credentials.CreateHeaders());
+        Assert.Single(credentials.CreateHeaders());
+        WorkerLinkException error = Assert.Throws<WorkerLinkException>(() => credentials.ValidateAppProof(RuntimeWorkerTestData.CreateAppProof("worker")));
+        Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, error.Reason);
+        Assert.DoesNotContain(RuntimeWorkerTestData.AppKey, error.Message, StringComparison.Ordinal);
+    }
 
-        Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, failure.Reason);
-        Assert.DoesNotContain(RuntimeWorkerTestData.AppKey, failure.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain(RuntimeWorkerTestData.WorkerKey, failure.Message, StringComparison.Ordinal);
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ContainerKey_UsesPlatformHexOrBase64Convention(bool hex)
+    {
+        byte[] key = RandomNumberGenerator.GetBytes(32);
+        string encoded = hex ? Convert.ToHexString(key) : Convert.ToBase64String(key);
+        RuntimeWorkerCredentials credentials = new("worker", encoded, new ConfigurationBuilder().Build(), TimeProvider.System);
+        string token = credentials.CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader];
+
+        Assert.True(RuntimeWorkerAuthentication.ValidateToken(token, key,
+            RuntimeWorkerAuthentication.WorkerAudience("worker"), RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
     }
 }

@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Azure.Functions.Authentication;
+using Azure.Functions.Tests;
 using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Hosting;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -22,14 +25,20 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
     private readonly IReadOnlyDictionary<string, string?> _configurationValues;
     private readonly Action<IServiceCollection>? _configureServices;
     private readonly bool _useTestAuthentication;
+    private readonly TestCertificateFiles _certificates = new();
+    private readonly bool _supplyHttpOrigin;
 
     public WorkerProxyWebApplicationFactory(
         IReadOnlyDictionary<string, string?>? configurationValues = null, Action<IServiceCollection>? configureServices = null,
         bool useTestAuthentication = true)
     {
         Dictionary<string, string?> values = configurationValues is null ? [] : new Dictionary<string, string?>(configurationValues);
+        _supplyHttpOrigin = !values.ContainsKey("WorkerProxy:HttpProxyEndpoint");
         values.TryAdd("WEBSITE_POD_NAME", "test-worker-pod");
         values.TryAdd(RuntimeWorkerAuthentication.WorkerKeySetting, RuntimeAuthenticationTestData.EncodedWorkerKey);
+        values.TryAdd(RuntimeWorkerAuthentication.AppKeySetting, RuntimeAuthenticationTestData.EncodedAppKey);
+        values.TryAdd("WorkerProxy:CertificatePath", _certificates.CertificatePath);
+        values.TryAdd("WorkerProxy:CertificateKeyPath", _certificates.KeyPath);
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.ManagementPort)}", "0");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.RuntimeGrpcPort)}", "0");
         values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerGrpcPort)}", "0");
@@ -84,9 +93,8 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         };
         if (authenticate)
         {
-            (string workerToken, string appToken) = RuntimeAuthenticationTestData.CreateTokens();
+            string workerToken = RuntimeAuthenticationTestData.CreateCallerToken();
             client.DefaultRequestHeaders.Add(RuntimeWorkerAuthentication.WorkerTokenHeader, workerToken);
-            client.DefaultRequestHeaders.Add(RuntimeWorkerAuthentication.AppTokenHeader, appToken);
         }
 
         return client;
@@ -94,7 +102,20 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
 
     private WorkerProxyEndpointConfiguration GetEndpoints()
     {
-        return Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
+        WorkerProxyEndpointConfiguration endpoints = Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
+        if (_supplyHttpOrigin)
+        {
+            Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value.HttpProxyEndpoint =
+                NormalizeAddress(endpoints.GetHttpAddress()).AbsoluteUri;
+        }
+
+        return endpoints;
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        _certificates.Dispose();
     }
 
     private static Uri NormalizeAddress(Uri address)

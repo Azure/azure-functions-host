@@ -18,11 +18,12 @@ namespace Azure.Functions.Authentication;
 /// </summary>
 internal static class RuntimeWorkerAuthentication
 {
-    public const string WorkerKeySetting = "FUNCTIONS_WORKER_RUNTIME_ACCESS_KEY";
+    public const string WorkerKeySetting = "CONTAINER_ENCRYPTION_KEY";
     public const string AppKeySetting = "WEBSITE_AUTH_ENCRYPTION_KEY";
     public const string AppNameSetting = "WEBSITE_SITE_NAME";
     public const string WorkerTokenHeader = "x-ms-functions-worker-token";
     public const string AppTokenHeader = "x-ms-functions-app-token";
+    public const string AppProofCapability = "WorkerProxyAppToken";
     public const string WorkerPurpose = "worker";
     public const string AppPurpose = "app";
     public static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(5);
@@ -37,31 +38,52 @@ internal static class RuntimeWorkerAuthentication
 
     public static string AppAudience(string appName) => $"azure-functions-app:{appName}";
 
-    public static bool TryDecodeWorkerKey(string? value, out byte[] key) => TryDecodeKey(value, allowHex: false, out key);
+    public static bool TryDecodeWorkerKey(string? value, out byte[] key) => TryDecodeKey(value, allowHex: true, out key);
 
     public static bool TryDecodeAppKey(string? value, out byte[] key) => TryDecodeKey(value, allowHex: true, out key);
 
     public static IReadOnlyDictionary<string, string> CreateHeaders(
-        ReadOnlySpan<byte> workerKey, string workerId, ReadOnlySpan<byte> appKey, string appName, DateTimeOffset now)
+        ReadOnlySpan<byte> workerKey, string workerId, DateTimeOffset now)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(appName);
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            [WorkerTokenHeader] = CreateToken(workerKey, WorkerAudience(workerId), WorkerPurpose, now),
-            [AppTokenHeader] = CreateToken(appKey, AppAudience(appName), AppPurpose, now)
+            [WorkerTokenHeader] = CreateToken(workerKey, WorkerAudience(workerId), WorkerPurpose, now)
         };
     }
 
     public static bool ValidateHeaders(
-        Func<string, string?> readToken, ReadOnlySpan<byte> workerKey, string workerId,
-        ReadOnlySpan<byte> appKey, string appName, DateTimeOffset now)
-        => !string.IsNullOrWhiteSpace(workerId) && !string.IsNullOrWhiteSpace(appName)
-            && ValidateToken(readToken(WorkerTokenHeader), workerKey, WorkerAudience(workerId), WorkerPurpose, now)
-            && ValidateToken(readToken(AppTokenHeader), appKey, AppAudience(appName), AppPurpose, now);
+        Func<string, string?> readToken, ReadOnlySpan<byte> workerKey, string workerId, DateTimeOffset now)
+        => !string.IsNullOrWhiteSpace(workerId)
+            && ValidateToken(readToken(WorkerTokenHeader), workerKey, WorkerAudience(workerId), WorkerPurpose, now);
 
-    public static string CreateToken(ReadOnlySpan<byte> key, string audience, string purpose, DateTimeOffset now)
+    public static string CreateAppProof(ReadOnlySpan<byte> appKey, string appName, string workerId, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+
+        return CreateToken(appKey, AppAudience(appName), AppPurpose, now, workerId);
+    }
+
+    public static bool ValidateAppProof(
+        string? token, ReadOnlySpan<byte> appKey, string appName, string workerId, DateTimeOffset now)
+        => !string.IsNullOrWhiteSpace(appName) && !string.IsNullOrWhiteSpace(workerId)
+            && ValidateToken(token, appKey, AppAudience(appName), AppPurpose, now, workerId);
+
+    public static string? RemoveAppProof(IDictionary<string, string> capabilities)
+    {
+        capabilities.TryGetValue(AppProofCapability, out string? proof);
+        capabilities.Remove(AppProofCapability);
+
+        return proof;
+    }
+
+    public static void SetAppProof(IDictionary<string, string> capabilities, string proof)
+        => capabilities[AppProofCapability] = proof;
+
+    public static string CreateToken(
+        ReadOnlySpan<byte> key, string audience, string purpose, DateTimeOffset now, string? workerId = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(key.Length, 32);
         ArgumentException.ThrowIfNullOrWhiteSpace(audience);
@@ -73,6 +95,10 @@ internal static class RuntimeWorkerAuthentication
             writer.WriteStartObject();
             writer.WriteString("aud", audience);
             writer.WriteString("purpose", purpose);
+            if (workerId is not null)
+            {
+                writer.WriteString("worker_id", workerId);
+            }
             writer.WriteNumber("iat", now.ToUnixTimeSeconds());
             writer.WriteNumber("nbf", now.ToUnixTimeSeconds());
             writer.WriteNumber("exp", now.Add(TokenLifetime).ToUnixTimeSeconds());
@@ -85,7 +111,8 @@ internal static class RuntimeWorkerAuthentication
         return $"{content}.{signature}";
     }
 
-    public static bool ValidateToken(string? token, ReadOnlySpan<byte> key, string audience, string purpose, DateTimeOffset now)
+    public static bool ValidateToken(
+        string? token, ReadOnlySpan<byte> key, string audience, string purpose, DateTimeOffset now, string? workerId = null)
     {
         if (key.Length < 32 || string.IsNullOrEmpty(token) || token.Length > MaximumTokenLength)
         {
@@ -118,6 +145,7 @@ internal static class RuntimeWorkerAuthentication
                 || header.RootElement.TryGetProperty("b64", out _)
                 || !HasString(claims, "aud", audience)
                 || !HasString(claims, "purpose", purpose)
+                || (workerId is not null && !HasString(claims, "worker_id", workerId))
                 || !TryGetTimestamp(claims, "iat", out long issued)
                 || !TryGetTimestamp(claims, "nbf", out long notBefore)
                 || !TryGetTimestamp(claims, "exp", out long expires))

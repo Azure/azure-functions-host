@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -49,12 +48,6 @@ internal static class WorkerAssignRequestValidator
         }
 
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
-        if (errors.Count == 0
-            && (!environment.TryGetValue(RuntimeWorkerAuthentication.AppKeySetting, out string? appKey)
-                || !RuntimeWorkerAuthentication.TryDecodeAppKey(appKey, out _)))
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, $"environment.{RuntimeWorkerAuthentication.AppKeySetting}"));
-        }
 
         if (errors.Count > 0
             || startupMode is not { } selectedStartupMode

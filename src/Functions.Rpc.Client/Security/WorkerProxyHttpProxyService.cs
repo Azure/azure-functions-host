@@ -14,20 +14,17 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Adds platform credentials only to the HTTPS HTTP origin admitted by this worker's Link.
+/// Adds the worker-specific caller proof to negotiated WorkerProxy HTTPS requests.
 /// </summary>
 internal sealed class WorkerProxyHttpProxyService(
-    IHttpProxyService inner, RuntimeWorkerCredentials credentials, Uri httpEndpoint) : IHttpProxyService
+    IHttpProxyService inner, RuntimeWorkerCredentials credentials) : IHttpProxyService
 {
     public Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context) => inner.EnsureSuccessfulForwardingAsync(context);
 
     public void StartForwarding(ScriptInvocationContext context, Uri httpUri)
     {
         ArgumentNullException.ThrowIfNull(context);
-        if (httpEndpoint is null || !string.Equals(httpEndpoint.AbsoluteUri, httpUri.AbsoluteUri, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("HTTP forwarding requires the HTTPS origin supplied by the worker Link.");
-        }
+        RpcClientFactory.ValidateEndpoint(httpUri);
 
         if (!context.TryGetHttpRequest(out HttpRequest request))
         {
@@ -45,6 +42,6 @@ internal sealed class WorkerProxyHttpProxyService(
             request.Headers[name] = token;
         }
 
-        inner.StartForwarding(context, httpEndpoint);
+        inner.StartForwarding(context, httpUri);
     }
 }

@@ -26,7 +26,7 @@ internal sealed partial class RuntimeRequestAuthenticator(
 
         if (!RuntimeWorkerAuthentication.ValidateHeaders(
             name => context.Request.Headers[name] is [string token] ? token : null,
-            keys.WorkerKey.Span, keys.WorkerId, keys.AppKey.Span, keys.AppName, timeProvider.GetUtcNow()))
+            keys.WorkerKey.Span, keys.WorkerId, timeProvider.GetUtcNow()))
         {
             Log.AuthenticationRejected(logger);
 
@@ -39,6 +39,18 @@ internal sealed partial class RuntimeRequestAuthenticator(
         }
 
         return true;
+    }
+
+    public string CreateAppProof()
+    {
+        RuntimeAuthenticationKeys? keys = keyProvider.GetKeys();
+        if (keys is null || keys.AppKey.Length < 32)
+        {
+            throw new InvalidOperationException("WorkerProxy application authentication configuration is unavailable.");
+        }
+
+        return RuntimeWorkerAuthentication.CreateAppProof(
+            keys.AppKey.Span, keys.AppName, keys.WorkerId, timeProvider.GetUtcNow());
     }
 
     private static partial class Log

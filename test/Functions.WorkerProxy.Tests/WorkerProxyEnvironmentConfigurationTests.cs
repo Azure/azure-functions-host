@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Tests;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,9 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope explicitIdentity = new("WORKERPROXY__PODNAME", explicitPodName);
         using EnvironmentVariableScope platformIdentity = new("WEBSITE_POD_NAME", platformPodName);
         using EnvironmentVariableScope containerIdentity = new("CONTAINER_NAME", containerName);
+        using TestCertificateFiles certificates = new();
+        using EnvironmentVariableScope certificatePath = new("WORKERPROXY__CERTIFICATEPATH", certificates.CertificatePath);
+        using EnvironmentVariableScope certificateKeyPath = new("WORKERPROXY__CERTIFICATEKEYPATH", certificates.KeyPath);
         await using WebApplication app = WorkerProxyApplication.Build([]);
 
         Assert.Equal(expectedPodName, app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
@@ -52,6 +56,9 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", "environment-worker-pod");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
+        using TestCertificateFiles certificates = new();
+        using EnvironmentVariableScope certificatePath = new("WORKERPROXY__CERTIFICATEPATH", certificates.CertificatePath);
+        using EnvironmentVariableScope certificateKeyPath = new("WORKERPROXY__CERTIFICATEKEYPATH", certificates.KeyPath);
         await using WebApplication app = WorkerProxyApplication.Build([]);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         await app.StartAsync(timeout.Token);

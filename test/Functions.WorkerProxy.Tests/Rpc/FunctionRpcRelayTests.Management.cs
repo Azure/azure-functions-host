@@ -20,9 +20,9 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
-    private static readonly string ManagementAssignment = $$"""
+    private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1","WEBSITE_AUTH_ENCRYPTION_KEY":"{{RuntimeAuthenticationTestData.EncodedAppKey}}"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot"}
         """;
 
     [Theory]

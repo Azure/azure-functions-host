@@ -29,6 +29,10 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);
         ValidatePort(options.HttpPort, nameof(options.HttpPort), failures);
+        if (string.IsNullOrWhiteSpace(options.CertificatePath) || string.IsNullOrWhiteSpace(options.CertificateKeyPath))
+        {
+            failures.Add("CertificatePath and CertificateKeyPath must specify startup-provisioned PEM files.");
+        }
 
         HashSet<int> configuredPorts = [];
         AddDistinctPort(options.ManagementPort, nameof(options.ManagementPort), configuredPorts, failures);
