@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Host;
@@ -73,8 +74,11 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.FunctionRpcDuplexChannelFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IRpcClientWorkerChannelFactory",
             "Azure.Functions.Rpc.Client.RpcClientWorkerChannelFactory");
-        AssertSingleton(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry",
+        AssertSingleton(services, "Azure.Functions.Rpc.Client.WorkerChannelRegistry",
             "Azure.Functions.Rpc.Client.WorkerChannelRegistry");
+        ServiceDescriptor registry = Assert.Single(services.Where(service => service.ServiceType == typeof(IWorkerChannelRegistry)));
+        Assert.Equal(ServiceLifetime.Singleton, registry.Lifetime);
+        Assert.NotNull(registry.ImplementationFactory);
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IWorkerFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
@@ -198,6 +202,7 @@ public class ClientWorkerCompositionTests
             Type registryType = GetServiceType(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry");
 
             object registry = rootHost.Services.GetRequiredService(registryType);
+            IHostJsonConfigurationSourceProvider configurationSource = rootHost.Services.GetRequiredService<IHostJsonConfigurationSourceProvider>();
             IWorkerFunctionMetadataProvider metadataProvider =
                 rootHost.Services.GetRequiredService<IWorkerFunctionMetadataProvider>();
             IFunctionMetadataManager metadataManager = rootHost.Services.GetRequiredService<IFunctionMetadataManager>();
@@ -205,6 +210,8 @@ public class ClientWorkerCompositionTests
             WorkerLinkController controller = ActivatorUtilities.CreateInstance<WorkerLinkController>(rootHost.Services);
 
             Assert.NotNull(controller);
+            Assert.Same(registry, configurationSource);
+            Assert.Null(configurationSource.GetConfigurationSource());
             Assert.Equal("Azure.Functions.Rpc.Client.WorkerChannelRegistry", registry.GetType().FullName);
             Assert.Equal("Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider",
                 metadataProvider.GetType().FullName);
@@ -244,6 +251,30 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostJsonConfigurationSourceProvider));
+    }
+
+    [Fact]
+    public async Task WorkerHostJsonOptIn_OnlyUsesRootConfigurationInClientComposition()
+    {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["AzureFunctionsWebHost:EnableWorkerHostJson"] = "true",
+        }).Build();
+        IHost host = CreateRootHost(out _, configuration);
+        try
+        {
+            IHostJsonConfigurationSourceProvider source = host.Services.GetRequiredService<IHostJsonConfigurationSourceProvider>();
+            Assert.Throws<InvalidOperationException>(() => source.GetConfigurationSource());
+
+            ServiceCollection standard = new();
+            standard.AddWebJobsScriptHost(configuration);
+            Assert.DoesNotContain(standard, descriptor => descriptor.ServiceType == typeof(IHostJsonConfigurationSourceProvider));
+        }
+        finally
+        {
+            await ((IAsyncDisposable)host).DisposeAsync();
+        }
     }
 
     [Fact]
@@ -317,10 +348,10 @@ public class ClientWorkerCompositionTests
         Assert.True(string.Equals("ComputeFilesToPublish", publishFilter.Attribute("AfterTargets")?.Value, StringComparison.Ordinal));
     }
 
-    private static IHost CreateRootHost(out IServiceCollection services)
+    private static IHost CreateRootHost(out IServiceCollection services, IConfiguration? rootConfiguration = null)
     {
         IServiceCollection capturedServices = null!;
-        IConfiguration configuration = new ConfigurationBuilder().Build();
+        IConfiguration configuration = rootConfiguration ?? new ConfigurationBuilder().Build();
         IHost host = new HostBuilder()
             .ConfigureWebHostDefaults(webBuilder =>
             {

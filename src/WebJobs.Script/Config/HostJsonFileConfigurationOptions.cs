@@ -4,6 +4,7 @@
 #nullable enable
 
 using System;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -36,6 +37,22 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             IsLogicApp = environment.IsLogicApp();
         }
 
+        /// <summary>
+        /// Initializes host.json processing settings from root bootstrap configuration.
+        /// </summary>
+        /// <param name="configuration">Configuration available before reading customer host.json.</param>
+        /// <param name="hostOptions">The application host settings.</param>
+        public HostJsonFileConfigurationOptions(IConfiguration configuration, ScriptApplicationHostOptions hostOptions)
+            : this(hostOptions)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            ConfigProfile = configuration[$"{ConfigurationSectionNames.JobHost}:{ConfigProfileKey}"];
+            WorkerRuntime = configuration[EnvironmentSettingNames.FunctionWorkerRuntime] ?? string.Empty;
+            IsLogicApp = configuration[EnvironmentSettingNames.AppKind]?.Contains(
+                ScriptConstants.WorkFlowAppKind, StringComparison.OrdinalIgnoreCase) is true;
+        }
+
         public string? ConfigProfile { get; init; }
 
         public string WorkerRuntime { get; init; } = string.Empty;
@@ -48,9 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             ArgumentNullException.ThrowIfNull(hostFile);
 
-            // Right now this is ONLY set via env variable, which will always take precedence over host.json.
-            // If in the future we allow this to be set via other means (e.g. CLI arg), we may need to revisit precedence.
-            // If config profile is not set via env, check host.json for the value.
+            // Bootstrap configuration takes precedence over the profile in host.json.
             string profile = ConfigProfile ?? hostFile.GetValue(ConfigProfileKey)?.Value<string>() ?? string.Empty;
 
             return HostConfigurationProfile.Get(profile);

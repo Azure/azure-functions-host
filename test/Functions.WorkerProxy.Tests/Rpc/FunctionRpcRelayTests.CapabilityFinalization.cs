@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
+using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,57 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(100)]
+    public async Task Relay_PreservesOpaqueHostJsonThroughInitialAndRepeatedCapabilityFinalization(int status)
+    {
+        TestCapabilityFinalizer finalizer = new(capabilities =>
+        {
+            capabilities["custom-capability"] = "finalized";
+            return null;
+        });
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+            services.Replace(ServiceDescriptor.Singleton<IWorkerCapabilityFinalizer>(finalizer)));
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        StreamingMessage request = new() { WorkerInitRequest = new() };
+        request.WorkerInitRequest.Capabilities["HostJson"] = "1";
+        await runtime.WriteAsync(request, timeout.Token);
+        Assert.Equal(request, await worker.ReadAsync(timeout.Token));
+
+        StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.HostJson = new()
+        {
+            Status = (HostJsonConfiguration.Types.Status)status,
+            Content = ByteString.CopyFrom(new byte[65_537]),
+        };
+        StreamingMessage expected = response.Clone();
+        expected.WorkerInitResponse.Capabilities["custom-capability"] = "finalized";
+        await worker.WriteAsync(response, timeout.Token);
+        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+
+        StreamingMessage repeated = CreateInitResponse("repeated", null);
+        repeated.WorkerInitResponse.HostJson = new()
+        {
+            Status = (HostJsonConfiguration.Types.Status)status,
+            Content = ByteString.CopyFrom([0xFF, 0x00, 0xFE]),
+        };
+        StreamingMessage repeatedExpected = repeated.Clone();
+        repeatedExpected.WorkerInitResponse.Capabilities.Clear();
+        repeatedExpected.WorkerInitResponse.Capabilities.Add(expected.WorkerInitResponse.Capabilities);
+        await worker.WriteAsync(repeated, timeout.Token);
+        Assert.Equal(repeatedExpected, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(1, finalizer.CallCount);
+    }
 
     [Theory]
     [InlineData(true)]

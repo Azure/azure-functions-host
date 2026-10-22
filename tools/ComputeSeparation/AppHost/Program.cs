@@ -23,6 +23,7 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
 string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
+bool enableWorkerHostJson = builder.Configuration.GetValue("ComputeSeparation:EnableWorkerHostJson", false);
 using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
@@ -42,6 +43,7 @@ if (topology is not null)
             name: HttpEndpointName, env: "COMPUTE_HOST_PORT")
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
+        .WithEnvironment("COMPUTE_ENABLE_WORKER_HOST_JSON", enableWorkerHostJson.ToString())
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.Runtime.ProjectName)
         .WithEnvironment(context => context.EnvironmentVariables[ComposeSession.GenerationVariable] = topology.Runtime.Generation)
         .OnBeforeResourceStarted((_, _, cancellationToken) => topology.Runtime.BeforeStartAsync(cancellationToken))
@@ -118,6 +120,7 @@ else
         .WithEnvironment("FUNCTIONS_SECRETS_PATH", runDirectory.SecretsPath)
         .WithEnvironment("AzureFunctionsWebHost__hostid", "aspire-worker")
         .WithEnvironment("AzureFunctionsWebHost__IsFileSystemReadOnly", "true")
+        .WithEnvironment("AzureFunctionsWebHost__EnableWorkerHostJson", enableWorkerHostJson.ToString())
         .WithEnvironment("AzureFunctionsJobHost__logging__logLevel__default", "Information")
         .WithEnvironment("AzureFunctionsJobHost__logging__console__isEnabled", "true")
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName);

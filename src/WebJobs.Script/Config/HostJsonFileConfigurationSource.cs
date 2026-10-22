@@ -2,11 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -56,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             ];
 
             private readonly HostJsonFileConfigurationSource _configurationSource;
-            private readonly Stack<string> _path = new();
             private readonly ILogger _logger;
             private readonly IMetricsLogger _metricsLogger;
 
@@ -77,64 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 // Apply profile settings first, so that they can be overridden by host.json settings.
                 HostConfigurationProfile profile = GetConfigProfile(hostJson);
                 _logger.LogDebug("Loading host configuration profile '{profileName}'.", profile.Name);
-                foreach ((string key, string value) in profile.Configuration)
+                foreach ((string key, string value) in HostJsonConfigurationSnapshot.Flatten(hostJson, profile))
                 {
-                    Data[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, key)] = value;
-                }
-
-                ProcessObject(hostJson);
-            }
-
-            private void ProcessObject(JObject hostJson)
-            {
-                foreach (var property in hostJson.Properties())
-                {
-                    _path.Push(property.Name);
-                    ProcessProperty(property);
-                    _path.Pop();
-                }
-            }
-
-            private void ProcessProperty(JProperty property)
-            {
-                ProcessToken(property.Value);
-            }
-
-            private void ProcessToken(JToken token)
-            {
-                switch (token.Type)
-                {
-                    case JTokenType.Object:
-                        ProcessObject(token.Value<JObject>());
-                        break;
-                    case JTokenType.Array:
-                        ProcessArray(token.Value<JArray>());
-                        break;
-
-                    case JTokenType.Integer:
-                    case JTokenType.Float:
-                    case JTokenType.String:
-                    case JTokenType.Boolean:
-                    case JTokenType.Null:
-                    case JTokenType.Date:
-                    case JTokenType.Raw:
-                    case JTokenType.Bytes:
-                    case JTokenType.TimeSpan:
-                        string key = ConfigurationSectionNames.JobHost + ConfigurationPath.KeyDelimiter + ConfigurationPath.Combine(_path.Reverse());
-                        Data[key] = token.Value<JValue>().ToString(CultureInfo.InvariantCulture);
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            private void ProcessArray(JArray jArray)
-            {
-                for (int i = 0; i < jArray.Count; i++)
-                {
-                    _path.Push(i.ToString());
-                    ProcessToken(jArray[i]);
-                    _path.Pop();
+                    Data[key] = value;
                 }
             }
 
@@ -183,23 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         TryWriteHostJson(hostJsonPath, hostConfigObject);
                     }
 
-                    string hostJsonVersion = hostConfigObject["version"]?.Value<string>();
-                    if (string.IsNullOrEmpty(hostJsonVersion))
-                    {
-                        throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
-                    }
-
-                    if (!hostJsonVersion.Equals("2.0"))
-                    {
-                        StringBuilder errorMsg = new StringBuilder($"'{hostJsonVersion}' is an invalid value for {ScriptConstants.HostMetadataFileName} 'version' property. We recommend you set the 'version' property to '2.0'. ");
-                        if (hostJsonVersion.StartsWith("3", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // In case the customer has confused host.json version with the fact that they're running Functions v3
-                            errorMsg.Append($"This does not correspond to the function runtime version, only to the schema version of the {ScriptConstants.HostMetadataFileName} file. ");
-                        }
-                        errorMsg.Append($"See https://aka.ms/functions-hostjson for more information on this configuration file.");
-                        throw new HostConfigurationException(errorMsg.ToString());
-                    }
+                    HostJsonConfigurationSnapshot.ValidateVersion(hostConfigObject);
                 }
 
                 return hostConfigObject;
@@ -236,16 +161,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         // There isn't a clean way to create a new function app resource with host.json as initial payload.
                         // So a newly created function app from the portal would have no host.json. In that case we need to
                         // create a new function app with host.json that includes a matching extension bundle based on the app kind.
-                        hostConfigObject = GetDefaultHostConfigObject();
-                        string bundleId = Options.IsLogicApp ?
-                                            ScriptConstants.WorkFlowExtensionBundleId :
-                                            ScriptConstants.DefaultExtensionBundleId;
+                        hostConfigObject = HostJsonConfigurationSnapshot.CreateDefault(Options, includeBundle: true);
+                        if (hostConfigObject["extensionBundle"] is JObject bundle)
+                        {
+                            string bundleConfiguration = "{ 'id': '" + bundle["id"] + "', 'version': '" + bundle["version"] + "'}";
+                            _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
+                        }
 
-                        string bundleVersion = Options.IsLogicApp ?
-                                            ScriptConstants.LogicAppDefaultExtensionBundleVersion :
-                                            ScriptConstants.DefaultExtensionBundleVersion;
-
-                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject, bundleId, bundleVersion);
                         // Add bundle configuration if no file exists and file system is not read only
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
@@ -256,29 +178,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject GetDefaultHostConfigObject()
             {
-                // isDefaultHostConfig is used to determine if the host.json file was created by the system
-                var hostJsonJObj = JObject.Parse("{'version': '2.0', 'isDefaultHostConfig': true}");
-                if (string.Equals(Options.WorkerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase)
-                    && !Options.Host.IsFileSystemReadOnly)
-                {
-                    hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));
-                }
-
-                return hostJsonJObj;
+                return HostJsonConfigurationSnapshot.CreateDefault(Options);
             }
 
             private HostConfigurationProfile GetConfigProfile(JObject hostFile)
             {
                 ArgumentNullException.ThrowIfNull(hostFile);
 
-                try
-                {
-                    return Options.GetConfigProfile(hostFile);
-                }
-                catch (NotSupportedException ex)
-                {
-                    throw new HostConfigurationException(ex.Message, ex);
-                }
+                return HostJsonConfigurationSnapshot.GetProfile(hostFile, Options);
             }
 
             private void TryWriteHostJson(string filePath, JObject content)
@@ -298,17 +205,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     _logger.HostConfigFileSystemReadOnly();
                 }
-            }
-
-            private JObject TryAddBundleConfiguration(JObject content, string bundleId, string bundleVersion)
-            {
-                if (!Options.Host.IsFileSystemReadOnly)
-                {
-                    string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '" + bundleVersion + "'}";
-                    content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
-                    _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
-                }
-                return content;
             }
         }
     }

@@ -113,6 +113,7 @@ message WorkerInitRequest {
   string host_version = 1;
 
   // A map of host supported features/capabilities
+  // HostJson = "1" opts in to HostJsonConfiguration delivery; other values do not.
   map<string, string> capabilities = 2;
 
   // inform worker of supported categories and their levels
@@ -145,6 +146,31 @@ message WorkerInitResponse {
   // A map of application-level capabilities
   // These features/capabilities are queried from admin endpoints in the host by third parties
   map<string, string> app_capabilities = 5;
+
+  // Present only when the host advertises HostJson = "1" and the worker supports it.
+  // Absence means unsupported/not delivered, not a missing host.json file.
+  HostJsonConfiguration host_json = 6;
+}
+
+// Immutable worker-local host.json snapshot. See README.md for the delivery contract.
+// Configuration acceptance is separate from WorkerInitResponse.result.
+message HostJsonConfiguration {
+  enum Status {
+    Unspecified = 0;
+    Available = 1;
+    Missing = 2;
+    AppDirectoryUnavailable = 3;
+    ReadError = 4;
+    TooLarge = 5;
+  }
+
+  // Unspecified and unrecognized values are not valid delivery outcomes.
+  Status status = 1;
+
+  // Raw file bytes, at most 65,536 bytes including any BOM.
+  // Only Available may carry content; empty Available content means an empty file.
+  // The worker bounds the actual read and the host independently enforces the cap.
+  bytes content = 2;
 }
 
 message WorkerMetadata {

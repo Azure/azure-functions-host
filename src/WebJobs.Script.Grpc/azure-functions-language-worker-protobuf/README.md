@@ -36,6 +36,100 @@ From within the Azure Functions language worker repo:
     -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Tag: <tag-name>. Commit: <commit hash>"`
     -	`git push`
 
+## Worker-delivered host.json configuration
+
+`HostJsonConfiguration` carries a worker-local `host.json` snapshot in
+`WorkerInitResponse.host_json` (field 6), separately from capabilities and worker
+metadata. This is an opt-in protocol contract for
+[APP-01](https://github.com/Azure/azure-functions-host/issues/12049), not a
+production rollout. Compatible Host and worker implementations and maintainer
+contract review are still required; other worker languages remain follow-ups.
+
+### Negotiation and ownership
+
+The Host opts in by setting `WorkerInitRequest.capabilities["HostJson"]` to the
+exact string `"1"`. A supporting worker reads and sends the document only for
+that exact key/value. An absent capability or any unrecognized value leaves
+existing initialization behavior unchanged: the worker neither reads the file
+for this contract nor sends `host_json`. An older or unsupported worker can omit
+the envelope even when the Host opts in. A missing envelope means unsupported or
+not delivered; it never means that the file is missing.
+
+The worker owns the file and resolves `host.json` from its explicit local
+application root. In compute mode it must not use the Host's
+`WorkerInitRequest.function_app_directory`, which can identify a different
+filesystem. An unavailable local application root is a structured outcome, not
+a reason to fall back to the Host's path or the process working directory.
+Proxies forward the envelope opaquely, without reading, decoding, or rewriting
+its contents. The Host remains authoritative for text decoding, JSON parsing,
+schema validation, and `host.json` version validation.
+Delivery is not UTF-8-only: workers preserve bytes without decoding, including
+any BOM. Host decoding preserves its local-file semantics (UTF-8 by default,
+with BOM detection for UTF-8, UTF-16 LE/BE, and UTF-32 LE/BE) and rejects malformed
+encoding without disclosing customer content or paths.
+
+### Delivery outcomes
+
+`HostJsonConfiguration` has a nested `Status` enum, `Status status = 1`, and
+`bytes content = 2`.
+
+| Status | Value | Meaning |
+|---|---|---|
+| `Unspecified` | 0 | No valid outcome was supplied; the Host must not treat this as a missing file. |
+| `Available` | 1 | The entire file was read within the document cap; `content` is the original file bytes. |
+| `Missing` | 2 | The worker has an application root, but `host.json` does not exist. |
+| `AppDirectoryUnavailable` | 3 | The worker cannot obtain or use its explicit local application root. |
+| `ReadError` | 4 | The file could not be read for another reason, such as an access or I/O error. |
+| `TooLarge` | 5 | The document exceeds the document cap; no partial document is sent. |
+
+`Available` with empty `content` represents an empty file, not `Missing`; the Host
+applies its normal parsing and validation rules to that empty file. All
+non-`Available` statuses must have empty `content`. `Unspecified`, unknown status
+values, and non-`Available` outcomes carrying content are invalid deliveries.
+Read failures use these structured outcomes, not free-form exceptions or
+customer JSON in `StatusResult`, capabilities, or worker metadata.
+
+### Bounds and privacy
+
+The document cap is **65,536 bytes (64 KiB), including any byte-order mark (BOM)**.
+A file exactly at the cap is permitted. The worker must bound the actual read,
+not just inspect a file-length value that can change before or during the read:
+it can read up to the cap plus one detection byte to distinguish an oversized
+file, then return `TooLarge` with no content. It must not read the entire file
+and truncate it or allocate according to an untrusted file length.
+
+The Host independently rejects delivered content above the cap before decoding
+or parsing, even if a worker claims `Available`. This document cap is not the
+overall gRPC message-size or process-memory budget: protobuf framing, other
+fields, transport limits, allocations, and decoded/parsed representations have
+their own bounds.
+
+The document, path-bearing read exceptions, and arbitrary configuration values
+must not appear in system telemetry, including logs, exceptions, capabilities,
+or worker metadata. Diagnostics may describe the structured outcome without
+including customer content or paths.
+
+### Initialization and snapshot lifetime
+
+A supporting worker captures one immutable outcome (status and any file bytes)
+per process/application generation after opt-in. It replays that snapshot on
+same-generation initialization retries rather than rereading the file, including
+when the captured outcome is a missing file or read failure. There is no live
+reload.
+
+`WorkerInitResponse.result` retains its process-initialization meaning. A
+successful process initialization and acceptance of its configuration are
+separate decisions; a configuration read failure does not rewrite an otherwise
+successful process-initialization result.
+
+The Host validates delivery and applies its configuration acceptance rules
+before releasing first-link startup. It retains the first accepted snapshot;
+later initialization responses must not replace that configuration or reset the
+startup gate. A missing or invalid envelope cannot stand in for `Missing` or
+bypass configuration acceptance. Comparing later snapshots is reserved for
+APP-02. This contract adds no hashes, comparison or generation protocol,
+chunking, CLI switch, or restart-on-configuration-change behavior.
+
 ## Consuming FunctionRPC.proto
 *Note: Update versionNumber before running following commands*
 

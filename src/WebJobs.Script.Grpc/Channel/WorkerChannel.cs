@@ -534,12 +534,31 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal WorkerInitRequest GetWorkerInitRequest()
         {
-            return new WorkerInitRequest()
+            WorkerInitRequest request = new()
             {
                 HostVersion = ScriptHost.Version,
                 WorkerDirectory = _workerConfig.Description.WorkerDirectory,
                 FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
             };
+            ConfigureWorkerInitRequest(request);
+
+            return request;
+        }
+
+        /// <summary>
+        /// Configures topology-specific initialization capabilities.
+        /// </summary>
+        /// <param name="request">The initialization request to send to the worker.</param>
+        protected virtual void ConfigureWorkerInitRequest(WorkerInitRequest request)
+        {
+        }
+
+        /// <summary>
+        /// Captures topology-specific data from a successful initialization response.
+        /// </summary>
+        /// <param name="response">The successful worker initialization response.</param>
+        protected virtual void OnWorkerInitResponse(WorkerInitResponse response)
+        {
         }
 
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
@@ -594,6 +613,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
+            OnWorkerInitResponse(_initMessage);
             _state = _state | RpcWorkerChannelState.Initialized;
 
             if (!_environment.IsLogicApp())
