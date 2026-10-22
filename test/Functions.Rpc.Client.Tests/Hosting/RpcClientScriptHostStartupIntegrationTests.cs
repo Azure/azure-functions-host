@@ -244,6 +244,8 @@ public class RpcClientScriptHostStartupIntegrationTests
             {
                 [EnvironmentSettingNames.FunctionWorkerRuntime] = "dotnet-isolated",
                 [EnvironmentSettingNames.AzureWebJobsSecretStorageType] = "Files",
+                ["WEBSITE_SITE_NAME"] = "test-app",
+                ["WEBSITE_AUTH_ENCRYPTION_KEY"] = RuntimeWorkerTestData.AppKey,
                 ["AzureFunctionsWebHost:ScriptPath"] = ScriptPath,
                 ["AzureFunctionsWebHost:LogPath"] = Path.Combine(_directory, "logs"),
                 ["AzureFunctionsWebHost:SecretsPath"] = Path.Combine(_directory, "secrets"),
@@ -316,8 +318,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
-            builder.WebHost.ConfigureKestrel(options =>
-                options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
+            RuntimeWorkerTestData.ConfigureTlsListener(builder);
             TestWorkerService service = new(workerId, language);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();

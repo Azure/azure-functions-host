@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
@@ -476,7 +477,7 @@ public partial class FunctionRpcRelayTests
         return CreateClient(factory.GetFunctionRpcAddress(side), cancellationToken);
     }
 
-    private static RelayClient CreateClient(Uri address, CancellationToken cancellationToken)
+    private static RelayClient CreateClient(Uri address, CancellationToken cancellationToken, Metadata? headers = null)
     {
         UriBuilder normalizedAddress = new(address);
         if (IPAddress.TryParse(address.Host.Trim('[', ']'), out IPAddress? ipAddress)
@@ -485,10 +486,19 @@ public partial class FunctionRpcRelayTests
             normalizedAddress.Host = IPAddress.Loopback.ToString();
         }
 
-        GrpcChannel channel = GrpcChannel.ForAddress(normalizedAddress.Uri);
+        GrpcChannel channel = GrpcChannel.ForAddress(normalizedAddress.Uri, new GrpcChannelOptions
+        {
+            HttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }
+        });
         AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> call =
             channel.CreateCallInvoker().AsyncDuplexStreamingCall(EventStreamMethod, host: null,
-                new CallOptions(cancellationToken: cancellationToken));
+                new CallOptions(
+                    headers: string.Equals(address.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
+                        ? headers ?? RuntimeAuthenticationTestData.CreateHeaders() : null,
+                    cancellationToken: cancellationToken));
 
         return new RelayClient(channel, call);
     }

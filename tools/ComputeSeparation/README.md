@@ -54,6 +54,10 @@ In project mode, the `fake-platform` resource is a local stand-in for the platfo
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
+Each run generates independent synthetic worker and app authentication keys. The worker key is provisioned to WorkerProxy and delivered to the Host through Link; the app key goes to the Host's normal configuration and WorkerProxy's private assignment. Runtime-facing gRPC and HTTP endpoints use HTTPS with the proxy's per-process self-signed certificate. Local worker gRPC and management endpoints remain unchanged.
+
+Link uses the pod name as its protected worker identity and supplies both HTTPS origins explicitly. The Host never derives an external HTTP port from gRPC or trusts a customer worker's advertised HTTP destination. See [the runtime connection contract](../../src/Functions.WorkerProxy/README.md).
+
 ## Endpoints
 
 ### Expected flow
@@ -90,7 +94,7 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 
 `project-placeholder-manual` runs the Host the way it starts before it is assigned to an app: in placeholder mode (`WEBSITE_PLACEHOLDER_MODE=1`), with placeholder content, until it is assigned. It exercises how the Host behaves when specialization and the worker link overlap.
 
-AppHost generates a random key for each run and gives it to both the Host and the fake platform. The fake platform uses it to authenticate and encrypt its `POST /admin/instance/assign` request, as the Host expects. The Host answers `202`, leaves placeholder mode, and specializes on its next request. Specialization completes only after the first worker links, so if the Host holds the link until specialization completes, step 3 never returns and the Host's health check stops responding.
+AppHost generates a separate random management key for each run and gives it to both the Host and the fake platform. The fake platform uses it to authenticate and encrypt its `POST /admin/instance/assign` request, as the Host expects, and supplies the app authentication key in the normal specialization environment. The Host answers `202`, leaves placeholder mode, and specializes on its next request. Specialization completes only after the first worker links, so if the Host holds the link until specialization completes, step 3 never returns and the Host's health check stops responding.
 
 ## Container behavior
 
@@ -102,6 +106,8 @@ The dashboard has two independent resources, each backed by its own Compose proj
 | `worker-pod-1` | WorkerProxy and the sample worker, sharing a network namespace. |
 
 Stopping `worker-pod-1` removes only that pod's containers, leaving the same Host and network running. Stopping `runtime` stops the Host but keeps the network until AppHost shutdown. A small adapter runs these Compose groups because Aspire's native containers do not support the Proxy/worker shared-network arrangement.
+
+The container profile assigns WorkerProxy through its mapped management endpoint before linking its HTTPS runtime endpoints, using the same authentication contract as project mode.
 
 `worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Dynamic add/remove controls and invocation readiness for later-linked workers are not implemented yet.
 

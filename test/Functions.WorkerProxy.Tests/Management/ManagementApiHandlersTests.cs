@@ -154,7 +154,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_ExplicitBooleanAndEmptyEnvironmentAreAccepted(bool isAlwaysReady)
+    public void AssignWorker_ExplicitBooleanAndAuthenticationEnvironmentAreAccepted(bool isAlwaysReady)
     {
         WorkerPodStateManager manager = CreateReadyManager();
         WorkerPodState before = manager.State;
@@ -636,16 +636,21 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
-        new()
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured))
+    {
+        environment ??= new() { ["SETTING"] = "private-value" };
+        environment.TryAdd("WEBSITE_AUTH_ENCRYPTION_KEY", RuntimeAuthenticationTestData.EncodedAppKey);
+
+        return new()
         {
             StartupMode = startupMode,
             FunctionAppName = functionAppName,
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" }
+            Environment = environment
         };
+    }
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)
     {

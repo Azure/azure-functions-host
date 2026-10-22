@@ -22,15 +22,15 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed class RpcClientHttpInvocationTests
 {
-    private static readonly Uri HttpEndpoint = new("http://platform-proxy:28080");
+    private static readonly Uri HttpEndpoint = new("https://platform-proxy:28080");
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Theory]
     [InlineData("http://platform-proxy:28080")]
     [InlineData("http://worker-advertised:8080")]
-    public async Task InvokeAsync_UsesNegotiatedHttpCapability(string advertisedHttpUri)
+    public async Task InvokeAsync_UsesProtectedLinkOriginInsteadOfNegotiatedDestination(string advertisedHttpUri)
     {
-        Uri endpoint = new(advertisedHttpUri);
+        Uri endpoint = HttpEndpoint;
         Mock<IHttpProxyService> proxy = CreateProxy(endpoint);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
             "worker", advertisedHttpUri: advertisedHttpUri, httpProxyService: proxy.Object);
@@ -55,9 +55,9 @@ public sealed class RpcClientHttpInvocationTests
     [Theory]
     [InlineData(CapabilitiesUpdateStrategy.Merge, "http://replacement-advertised:8080")]
     [InlineData(CapabilitiesUpdateStrategy.Replace, "http://replacement-advertised:8080")]
-    public async Task InvokeAsync_CapabilityReloadUpdatesHttpEndpoint(CapabilitiesUpdateStrategy strategy, string advertisedHttpUri)
+    public async Task InvokeAsync_CapabilityReloadCannotChangeProtectedHttpEndpoint(CapabilitiesUpdateStrategy strategy, string advertisedHttpUri)
     {
-        Uri endpoint = new(advertisedHttpUri);
+        Uri endpoint = HttpEndpoint;
         Mock<IHttpProxyService> proxy = CreateProxy(endpoint);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
             "worker", advertisedHttpUri: HttpEndpoint.AbsoluteUri, httpProxyService: proxy.Object);
@@ -116,6 +116,7 @@ public sealed class RpcClientHttpInvocationTests
         ScriptInvocationContext invocation = CreateInvocation(function);
         using MemoryStream body = new(Encoding.UTF8.GetBytes("HTTP body must not be serialized over gRPC"));
         HttpRequest httpRequest = new DefaultHttpContext().Request;
+        httpRequest.HttpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
         httpRequest.Method = "POST";
         httpRequest.Host = new("incoming.example");
         httpRequest.Body = body;

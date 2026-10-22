@@ -37,11 +37,12 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
     internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
-        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null)
+        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null, Uri linkedHttpEndpoint = null)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
         RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
-            .Create(workerId, transport);
+            .Create(workerId, transport, RuntimeWorkerTestData.CreateCredentials(workerId),
+                linkedHttpEndpoint ?? new Uri("https://platform-proxy:28080"));
         Task start = channel.StartAsync(CancellationToken.None);
 
         await transport.SendResponseAsync(new()

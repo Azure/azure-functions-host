@@ -26,14 +26,17 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>. Function metadata has not been requested, invocation buffers
     /// have not been created, and function load requests have not been sent, so the channel is not yet ready for
     /// invocations.
-    /// Matching worker IDs and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
-    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through worker capabilities.
+    /// Matching worker IDs, credentials and endpoint URIs share initialization. Endpoints are compared using ordinal
+    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP support is negotiated through capabilities, but its destination
+    /// comes only from the protected Link, not from customer worker capabilities.
     /// Different workers can link concurrently.
     /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
     /// A new attempt's deadline is shared with its waiters; a retry's deadline only ends its own wait.
     /// </remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
+    /// <param name="runtimeAccessKey">The per-worker base64 runtime access key. Never log this value.</param>
+    /// <param name="httpEndpoint">The optional HTTPS forwarding origin, required for HTTP-capable workers.</param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <returns>
     /// The initialized and registered channel, and whether this caller started the successful attempt.
@@ -44,6 +47,8 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
+        string runtimeAccessKey,
+        Uri httpEndpoint = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

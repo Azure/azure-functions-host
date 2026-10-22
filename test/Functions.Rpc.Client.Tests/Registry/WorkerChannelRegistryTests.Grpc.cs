@@ -135,7 +135,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_GrpcInvalidHttpUri_FailsInitializationAndAllowsRetry()
+    public async Task LinkAsync_GrpcHttpCapabilityWithoutLinkOrigin_FailsInitializationAndAllowsRetry()
     {
         using var timeout = new CancellationTokenSource(GrpcTestTimeout);
         await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
@@ -143,12 +143,15 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        await Assert.ThrowsAsync<UriFormatException>(() => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
 
         Assert.Empty(registry.GetInitializedChannels());
         await worker.Disconnected.WaitAsync(timeout.Token);
         server.AddWorker(GrpcWorkerId, httpUri: "http://worker-proxy:28080");
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, RuntimeWorkerTestData.WorkerKey,
+            new Uri("https://protected-proxy:28080"), timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(2, server.StreamCount);
@@ -275,7 +278,7 @@ public sealed partial class WorkerChannelRegistryTests
         RpcClientWorkerChannelFactory channelFactory = CreateRealChannelFactory();
 
         return linkTimeout.HasValue
-            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
-            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance);
+            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, linkTimeout.Value)
+            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System);
     }
 }

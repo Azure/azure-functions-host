@@ -45,8 +45,7 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(options =>
-            options.Listen(IPAddress.Loopback, 0, listen => listen.Protocols = HttpProtocols.Http2));
+        RuntimeWorkerTestData.ConfigureTlsListener(builder);
         TestFunctionRpcService service = new();
         builder.Services.AddSingleton(service);
         builder.Services.AddGrpc();

@@ -70,6 +70,19 @@ internal sealed class WorkerPodStateManager
         }
     }
 
+    internal (string AppName, ReadOnlyMemory<byte> Key)? RuntimeAuthentication
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _state.AssignmentState is WorkerAssignmentState.Ready && _assignment is not null
+                    ? (_assignment.FunctionAppName, _assignment.AppAuthenticationKey)
+                    : null;
+            }
+        }
+    }
+
     /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
     /// </summary>

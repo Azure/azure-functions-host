@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -30,13 +32,23 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     }
 
     /// <inheritdoc />
-    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint, RuntimeWorkerCredentials credentials, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(credentials);
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyDictionary<string, string> tokens = credentials.CreateHeaders();
         FunctionRpc.FunctionRpcClient client = await _clientFactory.CreateAsync(endpoint, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        var call = client.EventStream();
+        Metadata headers = new();
+        foreach ((string name, string token) in tokens)
+        {
+            headers.Add(name, token);
+        }
+
+        var call = client.EventStream(headers);
         try
         {
             return call.AsChannel();

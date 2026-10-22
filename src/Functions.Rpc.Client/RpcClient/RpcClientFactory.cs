@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Security;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -214,6 +215,12 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             KeepAlivePingDelay = DefaultKeepAlivePingDelay,
             KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
             KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
+            UseProxy = false,
+            // Only the compute-separation WorkerProxy client uses this handler. Server identity is not authenticated.
+            SslOptions = new SslClientAuthenticationOptions
+            {
+                RemoteCertificateValidationCallback = static (_, _, _, _) => true
+            },
         };
     }
 
@@ -226,11 +233,10 @@ internal sealed class RpcClientFactory : IRpcClientFactory
         ArgumentNullException.ThrowIfNull(endpoint);
 
         if (!endpoint.IsAbsoluteUri ||
-            (!string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
-             !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) ||
-            string.IsNullOrWhiteSpace(endpoint.Host))
+            !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(endpoint.Host) || endpoint.Port <= 0)
         {
-            throw new ArgumentException("The endpoint must be an absolute HTTP or HTTPS URI with a host.", nameof(endpoint));
+            throw new ArgumentException("The endpoint must be an absolute HTTPS URI with a host.", nameof(endpoint));
         }
 
         if (!string.IsNullOrEmpty(endpoint.UserInfo) ||

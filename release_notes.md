@@ -4,6 +4,7 @@
 - My change description (#PR)
 -->
 
+- Require worker-scoped and app-scoped JWTs over TLS for compute-separated WorkerProxy runtime connections.
 - `Executing HTTP request` no longer logs the user agent or request URI, `Executed HTTP request` now logs matched function and MVC route templates, `Sanitizer` redacts email addresses, host status startup errors are sanitized, and trace context attribute values are no longer logged. (#12039)
 - Fix false AzureWebJobsStorage health failures for identities with documented blob data permissions while retaining low-cost connectivity probes (#12086)
 - Require exact canonical master key secret names in the Key Vault secrets repository (#12083)

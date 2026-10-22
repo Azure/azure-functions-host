@@ -275,7 +275,7 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
-        => _factory.Create(WorkerId, duplexChannel);
+        => _factory.Create(WorkerId, duplexChannel, RuntimeWorkerTestData.CreateCredentials(WorkerId), null);
 
     private static WorkerInitResponse CreateSuccessfulInitResponse()
         => new()

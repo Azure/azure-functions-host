@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -32,6 +33,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Uri _httpEndpoint;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -49,7 +51,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService)
+        IHttpProxyService httpProxyService,
+        Uri httpEndpoint)
         : base(
             workerId,
             ownedChannel,
@@ -67,6 +70,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
+        _httpEndpoint = httpEndpoint;
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -118,6 +122,26 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+
+    internal override void UpdateCapabilities(IDictionary<string, string> fields, GrpcCapabilitiesUpdateStrategy strategy)
+    {
+        if (fields.TryGetValue(RpcWorkerConstants.HttpUri, out string advertisedHttpUri)
+            && !string.IsNullOrEmpty(advertisedHttpUri))
+        {
+            if (_httpEndpoint is null)
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "An HTTP-capable worker requires an HTTPS HTTP origin in its Link.");
+            }
+
+            fields = new Dictionary<string, string>(fields, StringComparer.Ordinal)
+            {
+                [RpcWorkerConstants.HttpUri] = _httpEndpoint.AbsoluteUri
+            };
+        }
+
+        base.UpdateCapabilities(fields, strategy);
+    }
 
     protected override void Dispose(bool disposing)
     {

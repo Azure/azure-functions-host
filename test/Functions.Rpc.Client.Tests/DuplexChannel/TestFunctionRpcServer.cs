@@ -35,13 +35,7 @@ internal sealed class TestFunctionRpcServer : IAsyncDisposable
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            options.Listen(IPAddress.Loopback, 0, listenOptions =>
-            {
-                listenOptions.Protocols = HttpProtocols.Http2;
-            });
-        });
+        RuntimeWorkerTestData.ConfigureTlsListener(builder);
         builder.Services.AddSingleton<TestFunctionRpcService>();
         builder.Services.AddGrpc(options =>
         {

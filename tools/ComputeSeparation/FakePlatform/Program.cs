@@ -29,7 +29,8 @@ RouteGroupBuilder simulate = app.MapGroup("/simulate");
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false,
+        new() { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = options.AppAuthKey }, string.Empty);
     using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -46,7 +47,8 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
     }
 
     byte[] key = Convert.FromHexString(options.EncryptionKey);
-    string context = JsonSerializer.Serialize(new HostAssignmentContext(1, AppName, []), JsonSerializerOptions.Web);
+    string context = JsonSerializer.Serialize(new HostAssignmentContext(1, AppName,
+        new() { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = options.AppAuthKey }), JsonSerializerOptions.Web);
     using HttpRequestMessage request = new(HttpMethod.Post, "/admin/instance/assign")
     {
         Content = JsonContent.Create(new HostAssignmentRequest(Encrypt(key, context))),
@@ -60,7 +62,12 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
 // Called by AppHost or a developer, after assignment, to link the worker to the Host (PUT /admin/workers/{workerId}).
 simulate.MapPost("/worker/link", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerLink link = new(options.WorkerGrpcEndpoint.ToString());
+    var link = new
+    {
+        workerGrpcEndpoint = options.WorkerGrpcEndpoint.ToString(),
+        workerHttpEndpoint = options.WorkerHttpEndpoint.ToString(),
+        runtimeAccessKey = options.RuntimeAccessKey
+    };
     using HttpResponseMessage response = await clients.CreateClient(HostClient)
         .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}", link, cancellationToken);
 
@@ -120,6 +127,12 @@ internal partial class Program
 
         public required Uri WorkerGrpcEndpoint { get; init; }
 
+        public required Uri WorkerHttpEndpoint { get; init; }
+
+        public required string RuntimeAccessKey { get; init; }
+
+        public required string AppAuthKey { get; init; }
+
         public required string WorkerId { get; init; }
 
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
@@ -132,6 +145,4 @@ internal partial class Program
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
         bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory);
-
-    private sealed record WorkerLink(string WorkerGrpcEndpoint);
 }

@@ -3,6 +3,7 @@
 
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy;
+using Azure.Functions.WorkerProxy.Authentication;
 using Grpc.AspNetCore.Server;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
@@ -18,7 +19,8 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// The local listener port determines stream ownership, so callers cannot select or change
 /// ownership through headers or FunctionRpc messages.
 /// </remarks>
-internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints) : FunctionRpc.FunctionRpcBase
+internal sealed class FunctionRpcRelayService(
+    FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints, RuntimeRequestAuthenticator authenticator) : FunctionRpc.FunctionRpcBase
 {
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
@@ -28,6 +30,11 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
         if (!endpoints.TryGetRelaySide(httpContext.Connection.LocalPort, out FunctionRpcRelaySide side))
         {
             throw new GrpcRpcException(new Status(StatusCode.Unimplemented, "FunctionRpc is unavailable on this listener."));
+        }
+
+        if (side is FunctionRpcRelaySide.Runtime && !authenticator.TryAuthenticate(httpContext))
+        {
+            throw new GrpcRpcException(new Status(StatusCode.Unauthenticated, "Runtime authentication is required."));
         }
 
         FunctionRpcRelayTerminalState terminalState;

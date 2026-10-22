@@ -24,9 +24,9 @@ public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
     private const string StatePath = "/admin/worker/state";
-    private const string ValidAssignment = """
+    private static readonly string ValidAssignment = $$"""
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"SETTING":"private-value","WEBSITE_AUTH_ENCRYPTION_KEY":"{{RuntimeAuthenticationTestData.EncodedAppKey}}"},"functionAppDirectory":"/home/site/wwwroot"}
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
@@ -380,7 +380,10 @@ public class ManagementApiEndpointTests
         using CancellationTokenSource timeout = new(TestTimeout);
         foreach (FunctionRpcRelaySide side in new[] { FunctionRpcRelaySide.Runtime, FunctionRpcRelaySide.Worker })
         {
-            using HttpClient rpcClient = new() { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            using HttpClient rpcClient = new(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }) { BaseAddress = factory.GetFunctionRpcAddress(side) };
             using HttpRequestMessage request = new(new HttpMethod(method), path)
             {
                 Version = HttpVersion.Version20,
@@ -622,6 +625,10 @@ public class ManagementApiEndpointTests
         WorkerPodState assigned = manager.State;
         JsonObject different = JsonNode.Parse(ValidAssignment)!.AsObject();
         different[field] = JsonNode.Parse(value);
+        if (string.Equals(field, "environment", StringComparison.Ordinal))
+        {
+            different[field]!["WEBSITE_AUTH_ENCRYPTION_KEY"] = RuntimeAuthenticationTestData.EncodedAppKey;
+        }
         using StringContent conflictingContent = JsonBody(different.ToJsonString());
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
         await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
@@ -666,6 +673,7 @@ public class ManagementApiEndpointTests
         assignment["functionAppName"] = "other-app";
         assignment["startupMode"] = "Preconfigured";
         assignment["environment"] = JsonNode.Parse(environment);
+        assignment["environment"]!["WEBSITE_AUTH_ENCRYPTION_KEY"] = RuntimeAuthenticationTestData.EncodedAppKey;
         using StringContent content = JsonBody(assignment.ToJsonString());
         using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
         await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
@@ -688,7 +696,7 @@ public class ManagementApiEndpointTests
         JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
         body["startupMode"] = "Preconfigured";
         body["functionAppDirectory"] = directory;
-        body["environment"] = new JsonObject();
+        body["environment"] = new JsonObject { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = RuntimeAuthenticationTestData.EncodedAppKey };
         using StringContent content = JsonBody(body.ToJsonString());
         using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 

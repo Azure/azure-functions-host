@@ -13,13 +13,17 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 /// </summary>
 /// <remarks>
 /// With a fake platform, the calls go through it in order: assign the pod on the WorkerProxy, then link the worker to
-/// the Host. Without one, only the link request is sent, directly to the Host.
+/// the Host. Without one, assignment and Link are sent directly to WorkerProxy and Host.
 /// </remarks>
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
     ReferenceExpression proxyEndpoint,
+    ReferenceExpression httpEndpoint,
+    ReferenceExpression managementEndpoint,
     EndpointReference? platformEndpoint,
     string workerId,
+    string runtimeAccessKey,
+    string appAuthKey,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
@@ -64,10 +68,26 @@ internal sealed partial class HostLinkService(
     {
         string grpcEndpoint = await proxyEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
+        string httpOrigin = await httpEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy runtime HTTP endpoint was not allocated.");
+        string managementOrigin = await managementEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
+        using HttpClient management = new() { BaseAddress = new Uri(managementOrigin), Timeout = Timeout.InfiniteTimeSpan };
+        await AssignWorkerAsync(() => management.PutAsJsonAsync("/admin/worker/assignment", new
+        {
+            startupMode = "Preconfigured",
+            functionAppName = "aspire-sample-app",
+            functionGroupName = "http",
+            isAlwaysReady = false,
+            functionAppDirectory = string.Empty,
+            environment = new Dictionary<string, string> { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = appAuthKey }
+        }, cancellationToken), cancellationToken);
         using HttpClient client = new() { BaseAddress = new Uri(hostAddress), Timeout = Timeout.InfiniteTimeSpan };
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerGrpcEndpoint = grpcEndpoint,
+            workerHttpEndpoint = httpOrigin,
+            runtimeAccessKey,
         }, cancellationToken);
 
         await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
@@ -79,24 +99,29 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
-        // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
-        HttpResponseMessage assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
+        await AssignWorkerAsync(() => client.PostAsync("/simulate/worker/assign", null, cancellationToken), cancellationToken);
+
+        Log.WorkerAssigned(logger, workerId);
+
+        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/link", null, cancellationToken);
+        await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
+    }
+
+    private async Task AssignWorkerAsync(Func<Task<HttpResponseMessage>> send, CancellationToken cancellationToken)
+    {
+        // WorkerProxy answers 503 until the local worker has connected, which can trail the worker's start.
+        HttpResponseMessage assign = await send();
         while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
         {
             assign.Dispose();
             await Task.Delay(AssignRetryDelay, cancellationToken);
-            assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
+            assign = await send();
         }
 
         using (assign)
         {
             await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
         }
-
-        Log.WorkerAssigned(logger, workerId);
-
-        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/link", null, cancellationToken);
-        await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }
 
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)

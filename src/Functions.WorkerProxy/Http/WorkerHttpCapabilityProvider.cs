@@ -39,8 +39,11 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        Uri proxyEndpoint = ResolveRequiredEndpoint(
-            _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        // External ports may be allocated after startup. In that case HttpUri is only a support signal:
+        // the runtime substitutes the protected HTTP origin supplied by Link before using this capability.
+        Uri proxyEndpoint = string.IsNullOrWhiteSpace(_options.HttpProxyEndpoint)
+            ? advertisedDestination
+            : ResolveRequiredEndpoint(_options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
 
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
         Log.HttpCapabilityFinalized(_logger,
