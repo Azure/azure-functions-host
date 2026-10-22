@@ -128,6 +128,9 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Exception exception = await Assert.ThrowsAnyAsync<Exception>(
             () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
         Assert.Contains("function load failed", exception.ToString(), StringComparison.Ordinal);
+        Assert.False(worker.Channel.FunctionLoadFailure.IsCompleted);
+        Assert.False(worker.Channel.IsTerminated);
+        Assert.True(worker.Channel.IsReadyForInvocations);
     }
 
     [Fact]
@@ -378,7 +381,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
-    public async Task ShutdownAsync_DrainsCurrentReadySnapshot()
+    public async Task ShutdownAsync_DrainsInitializedChannelSnapshot()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
         FunctionMetadata function = CreateFunction();
@@ -398,7 +401,47 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await shutdown.WaitAsync(TestTimeout);
 
         Assert.Equal(FunctionInvocationDispatcherState.Disposing, dispatcher.State);
-        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
+        _registry.Verify(registry => registry.GetInitializedChannels(), Times.Once);
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShutdownAsync_DrainsInitializedChannelsExcludedFromActiveReadiness(bool readinessPending)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        await using ClientWorkerChannelTestHarness otherWorker = await ClientWorkerChannelTestHarness.CreateAsync("other-worker");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        await PrepareReadyChannelAsync(otherWorker, function);
+        PublishReady(worker.Channel);
+        _initializedChannels.Add(otherWorker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext invocation = CreateInvocation(function);
+        await dispatcher.InvokeAsync(invocation);
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        TaskCompletionSource<IReadOnlyList<WorkerChannel>> replacementReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!readinessPending)
+        {
+            replacementReady.SetResult([otherWorker.Channel]);
+        }
+
+        _registry.Setup(registry => registry.GetReadyChannelsAsync())
+            .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>(replacementReady.Task));
+
+        Task shutdown = dispatcher.ShutdownAsync();
+        Assert.False(shutdown.IsCompleted);
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
+        await invocation.ResultSource.Task.WaitAsync(TestTimeout);
+        await shutdown.WaitAsync(TestTimeout);
+
+        Assert.Equal(!readinessPending, replacementReady.Task.IsCompleted);
+        Assert.Equal(0, worker.Transport.DisposeCount);
+        Assert.Equal(0, otherWorker.Transport.DisposeCount);
+        _registry.Verify(registry => registry.GetInitializedChannels(), Times.Once);
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Once);
     }
 
     [Fact]
@@ -410,7 +453,8 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await dispatcher.ShutdownAsync().WaitAsync(TestTimeout);
 
         Assert.False(_readySignal.Task.IsCompleted);
-        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Once);
+        _registry.Verify(registry => registry.GetInitializedChannels(), Times.Once);
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Never);
     }
 
     [Fact]

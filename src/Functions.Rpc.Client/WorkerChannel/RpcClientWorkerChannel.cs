@@ -29,6 +29,7 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
@@ -78,8 +79,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task Completion { get; }
 
-    // Transport completion can precede monitor cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations => !Completion.IsCompleted && IsChannelReadyForInvocations();
+    internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
+
+    internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+
+    // Terminal signals can precede registry cleanup and the base channel's disposal state.
+    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -116,6 +121,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         return _startCompletion.Task.WaitAsync(cancellationToken);
     }
+
+    protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 

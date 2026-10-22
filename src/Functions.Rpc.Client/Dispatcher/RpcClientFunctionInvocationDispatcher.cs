@@ -150,12 +150,16 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     {
         PreShutdown();
 
-        // The registry owns channel disposal; the dispatcher drains only the current snapshot and never waits for a
-        // future ready channel during shutdown.
-        ValueTask<IReadOnlyList<WorkerChannel>> readyChannels = _channelRegistry.GetReadyChannelsAsync();
-        Task[] drainTasks = readyChannels.IsCompletedSuccessfully
-            ? [.. readyChannels.Result.Where(IsReadyForInvocations).Select(channel => channel.DrainInvocationsAsync())]
-            : [];
+        // Existing invocations must drain even if replacement setup invalidated the active ready snapshot.
+        // The registry owns disposal; shutdown never waits for a future channel.
+        List<Task> drainTasks = [];
+        foreach (WorkerChannel channel in _channelRegistry.GetInitializedChannels())
+        {
+            if (IsReadyForInvocations(channel))
+            {
+                drainTasks.Add(channel.DrainInvocationsAsync());
+            }
+        }
 
         try
         {

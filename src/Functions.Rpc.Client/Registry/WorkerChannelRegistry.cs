@@ -78,7 +78,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
         cancellationToken.ThrowIfCancellationRequested();
 
-        TaskCompletionSource<WorkerChannel> completion;
+        TaskCompletionSource<WorkerChannel> linkCompletion;
         WorkerSlot slot;
         lock (_stateLock)
         {
@@ -91,7 +91,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         "The worker is already associated with a different gRPC endpoint.");
                 }
 
-                if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
+                if (existing.Terminal || existing.Channel is { IsTerminated: true })
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.WorkerTerminated,
                         "The worker's initialized channel has terminated.");
@@ -100,16 +100,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
             }
 
-            completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            slot = new() { Endpoint = grpcEndpoint, LinkTask = completion.Task };
+            linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            slot = new() { Endpoint = grpcEndpoint, LinkTask = linkCompletion.Task };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
         }
 
         // The shared completion is published before I/O begins, and connection work runs outside the state lock.
-        _ = LinkAndCompleteAsync(workerId, grpcEndpoint, slot, completion, cancellationToken);
+        _ = LinkAndCompleteAsync(workerId, grpcEndpoint, slot, linkCompletion, cancellationToken);
 
-        return CompleteLinkAsync(completion.Task, isNewLink: true);
+        return CompleteLinkAsync(linkCompletion.Task, isNewLink: true);
     }
 
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
@@ -119,21 +119,21 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         string workerId,
         Uri grpcEndpoint,
         WorkerSlot slot,
-        TaskCompletionSource<WorkerChannel> completion,
+        TaskCompletionSource<WorkerChannel> linkCompletion,
         CancellationToken cancellationToken)
     {
         try
         {
             WorkerChannel channel = await LinkCoreAsync(workerId, grpcEndpoint, slot, cancellationToken);
-            completion.SetResult(channel);
+            linkCompletion.SetResult(channel);
         }
         catch (OperationCanceledException exception)
         {
-            completion.SetCanceled(exception.CancellationToken);
+            linkCompletion.SetCanceled(exception.CancellationToken);
         }
         catch (Exception exception)
         {
-            completion.SetException(exception);
+            linkCompletion.SetException(exception);
         }
     }
 
@@ -180,7 +180,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                RegisterInitializedChannel(workerId, slot, candidate);
+                RegisterInitializedChannel(workerId, slot, candidate, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
                 candidate = null;
@@ -327,6 +327,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Invalidate the prior ready snapshot before replacing the context, including an empty function set.
             // An incomplete signal is retained so callers already waiting are not orphaned by a ScriptHost restart.
@@ -522,8 +523,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         Exception terminalException = null;
         try
         {
-            // The Client topology has no local worker process to monitor, so transport completion is its terminal signal.
-            await channel.Completion.WaitAsync(_shutdownSource.Token);
+            // Client workers are external; transport completion and fatal protocol failures end their channel lifetime.
+            await Task.WhenAny(channel.Completion, channel.FunctionLoadFailure).WaitAsync(_shutdownSource.Token);
+            if (channel.FunctionLoadFailure.IsCompletedSuccessfully)
+            {
+                terminalException = channel.FunctionLoadFailure.Result;
+            }
+            else
+            {
+                await channel.Completion;
+            }
         }
         catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
         {
@@ -598,13 +607,23 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private void RegisterInitializedChannel(string workerId, WorkerSlot slot, RpcClientWorkerChannel channel)
+    private void RegisterInitializedChannel(string workerId, WorkerSlot slot, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
     {
         Task monitorTask;
 
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            // Setup can hold this lock past the link deadline or transport lifetime.
+            cancellationToken.ThrowIfCancellationRequested();
+            if (channel.IsTerminated)
+            {
+                Exception failure = channel.FunctionLoadFailure.IsCompletedSuccessfully
+                    ? channel.FunctionLoadFailure.Result
+                    : channel.Completion.Exception?.GetBaseException();
+                throw new IOException("The worker channel terminated before initialization was registered.", failure);
+            }
+
             slot.Channel = channel;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);
