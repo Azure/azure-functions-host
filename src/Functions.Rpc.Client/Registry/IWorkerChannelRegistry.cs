@@ -85,10 +85,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// channels or at least one channel is configured successfully. If every current channel fails, the first original
     /// setup exception is rethrown.
     /// </remarks>
-    Task ActivateAsync(
-        IReadOnlyList<FunctionMetadata> functions,
-        ManagedDependencyOptions managedDependencyOptions,
-        TimeSpan? functionTimeout,
+    Task ActivateAsync(IReadOnlyList<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout,
         CancellationToken cancellationToken = default);
 
     /// <summary>

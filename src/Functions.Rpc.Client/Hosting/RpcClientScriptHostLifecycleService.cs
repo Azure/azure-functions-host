@@ -18,11 +18,8 @@ namespace Azure.Functions.Rpc.Client;
 /// <summary>
 /// Activates root-owned client worker channels for one ScriptHost and initializes its local dispatcher lifecycle.
 /// </summary>
-internal sealed class RpcClientScriptHostLifecycleService(
-    IWorkerChannelRegistry channelRegistry,
-    IRpcClientFunctionInvocationDispatcher dispatcher,
-    IOptions<ScriptJobHostOptions> scriptHostOptions,
-    IOptions<ManagedDependencyOptions> managedDependencyOptions) : IScriptHostLifecycleService
+internal sealed class RpcClientScriptHostLifecycleService(IWorkerChannelRegistry channelRegistry, IRpcClientFunctionInvocationDispatcher dispatcher,
+    IOptions<ScriptJobHostOptions> scriptHostOptions, IOptions<ManagedDependencyOptions> managedDependencyOptions) : IScriptHostLifecycleService
 {
     private readonly IWorkerChannelRegistry _channelRegistry =
         channelRegistry ?? throw new ArgumentNullException(nameof(channelRegistry));
@@ -51,11 +48,7 @@ internal sealed class RpcClientScriptHostLifecycleService(
         }
 
         // Even an empty function set replaces the previous ScriptHost's channel setup context.
-        await _channelRegistry.ActivateAsync(
-            functionArray,
-            _managedDependencyOptions,
-            _scriptHostOptions.FunctionTimeout,
-            cancellationToken);
+        await _channelRegistry.ActivateAsync(functionArray, _managedDependencyOptions, _scriptHostOptions.FunctionTimeout, cancellationToken);
 
         // Channel setup belongs to the root registry; only this child's invocation lifecycle remains to initialize.
         await _dispatcher.InitializeAsync(functionArray, cancellationToken);
