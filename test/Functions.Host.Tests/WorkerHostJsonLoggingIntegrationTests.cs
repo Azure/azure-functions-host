@@ -40,6 +40,8 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
 
     [Theory]
     [InlineData(null, "The worker did not deliver the requested host.json configuration.")]
+    [InlineData((HostJsonConfiguration.Types.Status)3, "The worker host.json delivery status is unspecified or unsupported.")]
+    [InlineData(HostJsonConfiguration.Types.Status.ReadError, "The worker could not read host.json.")]
     [InlineData(HostJsonConfiguration.Types.Status.TooLarge, "The worker host.json exceeds the 65,536-byte limit.")]
     [InlineData(HostJsonConfiguration.Types.Status.Available, "The worker host.json exceeds the 65,536-byte limit.")]
     public async Task RejectedConfiguration_UsesRootSystemEventSinkBeforeScriptHostStarts(

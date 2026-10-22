@@ -58,8 +58,8 @@ not delivered; it never means that the file is missing.
 The worker owns the file and resolves `host.json` from its explicit local
 application root. In compute mode it must not use the Host's
 `WorkerInitRequest.function_app_directory`, which can identify a different
-filesystem. An unavailable local application root is a structured outcome, not
-a reason to fall back to the Host's path or the process working directory.
+filesystem. An unavailable or invalid local application root produces
+`ReadError`, not a fallback to the Host's path or the process working directory.
 Proxies forward the envelope opaquely, without reading, decoding, or rewriting
 its contents. The Host remains authoritative for text decoding, JSON parsing,
 schema validation, and `host.json` version validation.
@@ -78,9 +78,11 @@ encoding without disclosing customer content or paths.
 | `Unspecified` | 0 | No valid outcome was supplied; the Host must not treat this as a missing file. |
 | `Available` | 1 | The entire file was read within the document cap; `content` is the original file bytes. |
 | `Missing` | 2 | The worker has an application root, but `host.json` does not exist. |
-| `AppDirectoryUnavailable` | 3 | The worker cannot obtain or use its explicit local application root. |
-| `ReadError` | 4 | The file could not be read for another reason, such as an access or I/O error. |
+| `ReadError` | 4 | The local application root is unavailable or invalid, or the file could not be read (for example, due to an access or I/O error). |
 | `TooLarge` | 5 | The document exceeds the document cap; no partial document is sent. |
+
+Enum number `3` and the old name `AppDirectoryUnavailable` are reserved and must
+not be reused.
 
 `Available` with empty `content` represents an empty file, not `Missing`; the Host
 applies its normal parsing and validation rules to that empty file. All

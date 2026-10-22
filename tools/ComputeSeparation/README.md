@@ -54,7 +54,9 @@ The Host requests capability `HostJson=1` during `WorkerInit`. The worker reads 
 | `Available` with empty bytes | Reject as an empty file, not as a missing file. An empty object `{}` retains existing empty-object normalization. |
 | Explicit `Missing` with no bytes | Apply the existing missing-file defaults, including the normal read-only/app-kind/runtime rules, without creating a Host-side file. |
 | Absent envelope | Reject as unsupported/not delivered, not as `Missing`. This includes old workers that ignore the requested capability. |
-| `ReadError`, `AppDirectoryUnavailable`, `TooLarge`, unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid text encoding, JSON, version, and profile also reject it; no parser exception or document content is logged. |
+| `ReadError`, `TooLarge`, reserved/unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid text encoding, JSON, version, and profile also reject it; no parser exception or document content is logged. |
+
+An unavailable or invalid worker application root is reported as `ReadError`, just like other file-read failures. Enum number `3` and the old name `AppDirectoryUnavailable` are reserved. A received numeric status `3` is rejected as unsupported, never treated as `Missing`.
 
 This application-document cap is independent of gRPC message limits. Failed links remain retryable after cleanup. With the feature disabled, the Host neither requests nor applies the envelope and retains the legacy file path.
 

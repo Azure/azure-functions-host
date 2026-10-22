@@ -56,7 +56,6 @@ internal sealed partial class WorkerHostJsonConfiguration(
         {
             HostJsonConfiguration.Types.Status.Available => Decode(delivery.Content.Span),
             HostJsonConfiguration.Types.Status.Missing => null,
-            HostJsonConfiguration.Types.Status.AppDirectoryUnavailable => throw Reject("The worker application directory is unavailable for host.json delivery."),
             HostJsonConfiguration.Types.Status.ReadError => throw Reject("The worker could not read host.json."),
             HostJsonConfiguration.Types.Status.TooLarge => throw Reject("The worker host.json exceeds the 65,536-byte limit."),
             _ => throw Reject("The worker host.json delivery status is unspecified or unsupported."),

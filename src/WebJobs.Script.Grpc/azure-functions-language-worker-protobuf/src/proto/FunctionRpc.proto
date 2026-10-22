@@ -156,10 +156,13 @@ message WorkerInitResponse {
 // Configuration acceptance is separate from WorkerInitResponse.result.
 message HostJsonConfiguration {
   enum Status {
+    reserved 3;
+    reserved "AppDirectoryUnavailable";
+
     Unspecified = 0;
     Available = 1;
     Missing = 2;
-    AppDirectoryUnavailable = 3;
+    // The local application root is unavailable/invalid, or the file could not be read.
     ReadError = 4;
     TooLarge = 5;
   }
