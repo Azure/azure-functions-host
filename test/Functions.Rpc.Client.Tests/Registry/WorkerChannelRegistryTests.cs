@@ -1433,11 +1433,10 @@ public sealed partial class WorkerChannelRegistryTests
             functionTimeout: null);
 
         Task<WorkerChannel> link = LinkAsync(registry, channel.Id);
-        await channel.SetupEntered.WaitAsync(TestTimeout);
         try
         {
-            Assert.True(link.IsCompletedSuccessfully);
-            Assert.Same(channel.Channel, await link);
+            await channel.SetupEntered.WaitAsync(TestTimeout);
+            Assert.Same(channel.Channel, await link.WaitAsync(TestTimeout));
         }
         finally
         {
@@ -1628,7 +1627,7 @@ public sealed partial class WorkerChannelRegistryTests
         try
         {
             await late.SetupEntered.WaitAsync(TestTimeout);
-            Assert.True(lateLink.IsCompletedSuccessfully);
+            Assert.Same(late.Channel, await lateLink.WaitAsync(TestTimeout));
             replacementActivation = Task.Run(() => registry.ActivateAsync(
                 [replacementFunction],
                 new ManagedDependencyOptions(),

@@ -383,10 +383,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
             // Replace a stale completed signal only if a setup/cleanup writer has not published a newer snapshot.
             TaskCompletionSource<IReadOnlyList<WorkerChannel>> replacement = CreateReadyChannelsSignal();
-            if (ReferenceEquals(Interlocked.CompareExchange(ref _readyChannelsAvailable, replacement, signal), signal))
+            TaskCompletionSource<IReadOnlyList<WorkerChannel>> observedSignal =
+                Interlocked.CompareExchange(ref _readyChannelsAvailable, replacement, signal);
+
+            if (!ReferenceEquals(observedSignal, signal))
             {
-                return new(replacement.Task);
+                // Another thread changed the signal; retry against the newer publication.
+                continue;
             }
+
+            return new(replacement.Task);
         }
     }
 
