@@ -352,6 +352,111 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(replacement.Channel, linked.Channel);
     }
 
+    [Theory]
+    [InlineData(typeof(OperationCanceledException), false)]
+    [InlineData(typeof(TimeoutException), false)]
+    [InlineData(typeof(IOException), false)]
+    [InlineData(typeof(IOException), true)]
+    public async Task LinkAsync_InvalidatedWhileWaitingForStateLockDoesNotPublish(Type expectedExceptionType, bool faultTransport)
+    {
+        RegistryHarness harness = new(expectedExceptionType == typeof(TimeoutException) ? TestTimeout / 2 : null);
+        ChannelControl first = new("first", blockSetup: true);
+        ChannelControl waiting = new("waiting");
+        harness.Enqueue(first);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, first.Id);
+
+        // Complete WorkerInit so the resumed link cannot suspend between the factory and the registration lock.
+        await using RpcClientWorkerChannel waitingChannel = CreateRealChannelFactory(waiting.MetricsLogger.Object)
+            .Create(waiting.Id, waiting.Transport);
+        waiting.Attach(waitingChannel);
+        waiting.BeginHandshake();
+        await waitingChannel.StartAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Uri endpoint = CreateEndpoint(waiting.Id);
+        TaskCompletionSource<DuplexChannel<StreamingMessage>> connection = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<CancellationToken> connectionStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<Thread> registrationStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(endpoint, It.IsAny<CancellationToken>()))
+            .Returns((Uri _, CancellationToken token) =>
+            {
+                connectionStarted.SetResult(token);
+                return connection.Task;
+            });
+        harness.ChannelFactory.Setup(factory => factory.Create(waiting.Id, waiting.Transport))
+            .Returns(() =>
+            {
+                registrationStarted.SetResult(Thread.CurrentThread);
+                return waitingChannel;
+            });
+        using CancellationTokenSource cancellation = new();
+        Task<WorkerLinkResult> link = Task.Run(() => registry.LinkAsync(waiting.Id, endpoint, cancellation.Token));
+        CancellationToken operationToken = await connectionStarted.Task.WaitAsync(TestTimeout);
+        IOException transportFailure = faultTransport ? new("transport failed") : null;
+        Task activation = Task.Run(() => registry.ActivateAsync(
+            [CreateFunction("TestFunction")], new ManagedDependencyOptions(), functionTimeout: null));
+        try
+        {
+            await first.SetupEntered.WaitAsync(TestTimeout);
+            connection.SetResult(waiting.Transport);
+            Thread registrationThread = await registrationStarted.Task.WaitAsync(TestTimeout);
+            await WaitUntilAsync(() => registrationThread.ThreadState.HasFlag(ThreadState.WaitSleepJoin));
+            Assert.False(operationToken.IsCancellationRequested);
+            Assert.False(link.IsCompleted);
+
+            if (expectedExceptionType == typeof(OperationCanceledException))
+            {
+                cancellation.Cancel();
+            }
+            else if (expectedExceptionType == typeof(TimeoutException))
+            {
+                TaskCompletionSource deadlineElapsed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                using CancellationTokenRegistration registration = operationToken.Register(() => deadlineElapsed.TrySetResult());
+                await deadlineElapsed.Task.WaitAsync(TestTimeout);
+            }
+            else
+            {
+                waiting.Complete(transportFailure);
+                await WaitUntilAsync(() => waitingChannel.Completion.IsCompleted);
+            }
+        }
+        finally
+        {
+            first.AllowSetup();
+            await activation.WaitAsync(TestTimeout);
+        }
+
+        if (expectedExceptionType == typeof(OperationCanceledException))
+        {
+            OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => link.WaitAsync(TestTimeout));
+            Assert.Equal(operationToken, exception.CancellationToken);
+        }
+        else if (expectedExceptionType == typeof(TimeoutException))
+        {
+            TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => link.WaitAsync(TestTimeout));
+            Assert.Equal("The worker link initialization deadline expired.", exception.Message);
+            Assert.IsAssignableFrom<OperationCanceledException>(exception.InnerException);
+        }
+        else
+        {
+            IOException exception = await Assert.ThrowsAsync<IOException>(() => link.WaitAsync(TestTimeout));
+            Assert.Same(transportFailure, exception.InnerException);
+        }
+
+        Assert.Equal(1, waiting.DisposeCount);
+        Assert.Equal(0, waiting.SetupAttempts);
+        Assert.False(registry.TryGetInitializedChannel(waiting.Id, out _));
+        Assert.Same(first.Channel, Assert.Single(registry.GetInitializedChannels()));
+        Assert.Same(first.Channel, Assert.Single(await registry.GetReadyChannelsAsync()));
+
+        ChannelControl replacement = new(waiting.Id);
+        Uri replacementEndpoint = CreateEndpoint("replacement");
+        harness.Enqueue(replacementEndpoint, replacement);
+        WorkerLinkResult retry = await registry.LinkAsync(waiting.Id, replacementEndpoint).WaitAsync(TestTimeout);
+        Assert.True(retry.IsNewLink);
+        Assert.Same(replacement.Channel, retry.Channel);
+    }
+
     [Fact]
     public async Task LinkAsync_TerminalWorkerCannotBeResurrected()
     {
@@ -369,6 +474,40 @@ public sealed partial class WorkerChannelRegistryTests
             () => linker.LinkAsync("worker", CreateEndpoint("worker")));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, failure.Reason);
         Assert.Single(harness.Transports);
+    }
+
+    [Fact]
+    public async Task FunctionLoadFailure_RemovesOnlyFailedChannelAndRetainsTerminalIdentity()
+    {
+        RegistryHarness harness = new();
+        ChannelControl failed = new("failed");
+        ChannelControl healthy = new("healthy");
+        harness.Enqueue(failed);
+        harness.Enqueue(healthy);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, failed.Id);
+        await LinkAsync(registry, healthy.Id);
+        FunctionMetadata function = CreateFunction("TestFunction");
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        object healthyBuffer = healthy.Channel.FunctionInputBuffers[function.GetFunctionId()];
+        Task<List<RawFunctionMetadata>> metadata = failed.Channel.GetFunctionMetadata();
+        await failed.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+
+        Exception failure = await failed.FailFunctionLoadAsync();
+        await failed.DisposeStarted.WaitAsync(TestTimeout);
+        await WaitUntilAsync(() => !registry.TryGetInitializedChannel(failed.Id, out _));
+
+        Exception metadataFailure = await Assert.ThrowsAsync<KeyNotFoundException>(() => metadata.WaitAsync(TestTimeout));
+        Assert.Same(failure, metadataFailure);
+        Assert.Equal(1, failed.DisposeCount);
+        Assert.Equal(0, healthy.DisposeCount);
+        Assert.Same(healthy.Channel, Assert.Single(registry.GetInitializedChannels()));
+        Assert.Same(healthy.Channel, Assert.Single(await registry.GetReadyChannelsAsync()));
+        Assert.Same(healthyBuffer, healthy.Channel.FunctionInputBuffers[function.GetFunctionId()]);
+        WorkerLinkException terminated = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => registry.LinkAsync(failed.Id, CreateEndpoint(failed.Id)));
+        Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminated.Reason);
+        Assert.Equal(2, harness.Transports.Count);
     }
 
     [Fact]
@@ -1032,8 +1171,10 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    [Fact]
-    public async Task GetReadyChannelsAsync_ExcludesCompletedTransportDuringSetup()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetReadyChannelsAsync_ExcludesTerminatedChannelDuringSetup(bool functionLoadFailure)
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
@@ -1050,8 +1191,16 @@ public sealed partial class WorkerChannelRegistryTests
         try
         {
             await later.SetupEntered.WaitAsync(TestTimeout);
-            first.Complete();
-            await first.Channel.Completion.WaitAsync(TestTimeout);
+            if (functionLoadFailure)
+            {
+                await first.FailFunctionLoadAsync();
+                Assert.False(first.Channel.Completion.IsCompleted);
+            }
+            else
+            {
+                first.Complete();
+                await first.Channel.Completion.WaitAsync(TestTimeout);
+            }
 
             ValueTask<IReadOnlyList<WorkerChannel>> snapshot = registry.GetReadyChannelsAsync();
             Assert.True(snapshot.IsCompletedSuccessfully);
@@ -1065,8 +1214,10 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    [Fact]
-    public async Task GetReadyChannelsAsync_CompletedTransportDuringSetupReturnsSharedWait()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetReadyChannelsAsync_TerminatedChannelDuringSetupReturnsSharedWait(bool functionLoadFailure)
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
@@ -1081,8 +1232,16 @@ public sealed partial class WorkerChannelRegistryTests
         try
         {
             await later.SetupEntered.WaitAsync(TestTimeout);
-            first.Complete();
-            await first.Channel.Completion.WaitAsync(TestTimeout);
+            if (functionLoadFailure)
+            {
+                await first.FailFunctionLoadAsync();
+                Assert.False(first.Channel.Completion.IsCompleted);
+            }
+            else
+            {
+                first.Complete();
+                await first.Channel.Completion.WaitAsync(TestTimeout);
+            }
 
             readyWait = registry.GetReadyChannelsAsync().AsTask();
             Assert.False(readyWait.IsCompleted);
@@ -1378,6 +1537,51 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(secondFunction.GetFunctionId(), request.FunctionLoadRequest.FunctionId);
         Assert.Equal(2, channel.SetupAttempts);
         Assert.Same(channel.Channel, Assert.Single((await registry.GetReadyChannelsAsync()).ToArray()));
+    }
+
+    [Fact]
+    public async Task ActivateAsync_CanceledWhileWaitingForStateLockPreservesContext()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockSetup: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, channel.Id);
+        FunctionMetadata activeFunction = CreateFunction("ActiveFunction");
+        FunctionMetadata replacementFunction = CreateFunction("ReplacementFunction");
+        using CancellationTokenSource cancellation = new();
+        Task activation = Task.Run(() => registry.ActivateAsync([activeFunction], new ManagedDependencyOptions(), functionTimeout: null));
+        Task canceledActivation = null;
+        Task<IReadOnlyList<WorkerChannel>> readiness = registry.GetReadyChannelsAsync().AsTask();
+        try
+        {
+            await channel.SetupEntered.WaitAsync(TestTimeout);
+            TaskCompletionSource<Thread> activationStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            canceledActivation = Task.Run(() =>
+            {
+                activationStarted.SetResult(Thread.CurrentThread);
+                return registry.ActivateAsync([replacementFunction], new ManagedDependencyOptions(), functionTimeout: null, cancellation.Token);
+            });
+            Thread activationThread = await activationStarted.Task.WaitAsync(TestTimeout);
+            await WaitUntilAsync(() => activationThread.ThreadState.HasFlag(ThreadState.WaitSleepJoin));
+            cancellation.Cancel();
+        }
+        finally
+        {
+            channel.AllowSetup();
+            await activation.WaitAsync(TestTimeout);
+        }
+
+        OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceledActivation.WaitAsync(TestTimeout));
+        Assert.Equal(cancellation.Token, exception.CancellationToken);
+        IReadOnlyList<WorkerChannel> readyChannels = await readiness.WaitAsync(TestTimeout);
+        Assert.Same(readyChannels, await registry.GetReadyChannelsAsync());
+        Assert.Same(channel.Channel, Assert.Single(readyChannels));
+        Assert.Equal(1, channel.SetupAttempts);
+        Assert.DoesNotContain(replacementFunction.GetFunctionId(), channel.Channel.FunctionInputBuffers.Keys);
+        StreamingMessage request = await channel.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        Assert.Equal(activeFunction.GetFunctionId(), request.FunctionLoadRequest.FunctionId);
+        Assert.False(channel.Transport.Requests.TryRead(out _));
     }
 
     [Fact]
@@ -1791,6 +1995,20 @@ public sealed partial class WorkerChannelRegistryTests
         {
             Interlocked.Exchange(ref _startFailure, exception);
             _startRelease.TrySetResult();
+        }
+
+        internal async Task<Exception> FailFunctionLoadAsync()
+        {
+            await Transport.SendResponseAsync(new()
+            {
+                FunctionLoadResponse = new()
+                {
+                    FunctionId = "unknown-function",
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                },
+            });
+
+            return await Channel.FunctionLoadFailure.WaitAsync(TestTimeout);
         }
 
         internal async Task<StreamingMessage> ReadRequestAsync(
