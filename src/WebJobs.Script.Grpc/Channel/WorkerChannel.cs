@@ -534,23 +534,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal WorkerInitRequest GetWorkerInitRequest()
         {
-            WorkerInitRequest request = new()
+            return new WorkerInitRequest()
             {
                 HostVersion = ScriptHost.Version,
                 WorkerDirectory = _workerConfig.Description.WorkerDirectory,
                 FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
             };
-            ConfigureWorkerInitRequest(request);
-
-            return request;
-        }
-
-        /// <summary>
-        /// Configures topology-specific initialization capabilities.
-        /// </summary>
-        /// <param name="request">The initialization request to send to the worker.</param>
-        protected virtual void ConfigureWorkerInitRequest(WorkerInitRequest request)
-        {
         }
 
         /// <summary>

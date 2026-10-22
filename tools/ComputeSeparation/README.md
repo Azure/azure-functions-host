@@ -2,7 +2,7 @@
 
 A local development tool for running the real Functions Host, WorkerProxy, and .NET isolated `SampleIsolatedApp` together.
 
-The tool supplies no Host-side `host.json`. By default, it sets the Host's existing read-only app-content option and uses local missing-file defaults. Worker-owned configuration delivery is an explicit opt-in until compatible workers are deployed.
+The tool supplies no Host-side `host.json` and sets the Host's existing read-only app-content option. The compute Host automatically uses worker-delivered configuration. If the first admitted worker sends no envelope, it selects the legacy file path, which uses local missing-file defaults in this tool.
 
 ## Prerequisites
 
@@ -35,38 +35,31 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 
 Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
 
-## Worker-owned host.json (opt-in)
+## Worker-owned host.json
 
-With a worker build that implements negotiated `HostJson` version `1` delivery, enable it in either project or container mode:
+Supporting workers include their `host.json` snapshot automatically in both project and container modes. No Host flag, capability request, or worker command-line switch is required. The existing sample's published worker package must be replaced with a compatible worker build to deliver its configuration. An older worker can still start using the legacy configuration path. Ordinary co-located Host execution stays on its existing file source.
 
-```powershell
-$env:ComputeSeparation__EnableWorkerHostJson = "true"
-dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
-```
+The worker reads its own application file and returns the typed `WorkerInitResponse.host_json` envelope. The Host's synthetic script directory is not the worker's application directory. WorkerProxy only relays the envelope, including through capability/HTTP endpoint rewriting; it never reads, parses, defaults, or merges the file.
 
-AppHost forwards this setting as `AzureFunctionsWebHost__EnableWorkerHostJson=true` to the dedicated Host. Outside this harness, set that Host environment variable directly. It is root/bootstrap configuration, not a customer `host.json` setting, and defaults to `false`. Ordinary co-located execution does not register this feature. The existing sample's published worker package must be replaced with a compatible worker build before enabling it; an older worker will be rejected rather than silently using Host defaults. No worker command-line switch is required.
-
-The Host requests capability `HostJson=1` during `WorkerInit`. The worker reads its own application file and returns the typed `WorkerInitResponse.host_json` envelope. The Host's synthetic script directory is not the worker's application directory. WorkerProxy only relays the envelope, including through capability/HTTP endpoint rewriting; it never reads, parses, defaults, or merges the file.
-
-| Delivery | Host behavior when enabled |
+| Delivery | Compute Host behavior |
 | --- | --- |
 | `Available` | Accept at most **65,536 raw bytes**, including any BOM. Decode strictly as UTF-8 by default or BOM-detected UTF-8, UTF-16 LE/BE, or UTF-32 LE/BE. Require a JSON object, supported host.json schema version (`2.0`), and supported configuration profile. |
 | `Available` with empty bytes | Reject as an empty file, not as a missing file. An empty object `{}` retains existing empty-object normalization. |
 | Explicit `Missing` with no bytes | Apply the existing missing-file defaults, including the normal read-only/app-kind/runtime rules, without creating a Host-side file. |
-| Absent envelope | Reject as unsupported/not delivered, not as `Missing`. This includes old workers that ignore the requested capability. |
+| Absent envelope | If this is the first admitted worker, select the legacy Host file/configuration path. This is not explicit `Missing` and emits no rejection warning. Later absence leaves the selected source unchanged. |
 | `ReadError`, `TooLarge`, reserved/unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid text encoding, JSON, version, and profile also reject it; no parser exception or document content is logged. |
 
 An unavailable or invalid worker application root is reported as `ReadError`, just like other file-read failures. Enum number `3` and the old name `AppDirectoryUnavailable` are reserved. A received numeric status `3` is rejected as unsupported, never treated as `Missing`.
 
-This application-document cap is independent of gRPC message limits. Failed links remain retryable after cleanup. With the feature disabled, the Host neither requests nor applies the envelope and retains the legacy file path.
+This application-document cap is independent of gRPC message limits. Failed links remain retryable after cleanup. A present failure or invalid document never falls back to the legacy source.
 
-Rejected deliveries emit the `HostJsonConfigurationRejected` warning in the Host's `Azure.Functions.Rpc.Client.WorkerHostJsonConfiguration` log category. Its fixed, bounded reason distinguishes missing delivery, oversize, encoding, and document errors without logging worker values, paths, content, or parser exceptions. The public link response retains the existing generic `WorkerUnavailable` error.
+Rejected deliveries emit the `HostJsonConfigurationRejected` warning in the Host's `Azure.Functions.Rpc.Client.WorkerHostJsonConfiguration` log category. Its fixed, bounded reason distinguishes read, status, size, encoding, and document errors without logging worker values, paths, content, or parser exceptions. The public link response retains the existing generic `WorkerUnavailable` error.
 
 These warnings use the existing platform system-log sink without changing customer logging filters. On Windows, capture `FunctionsSystemLogsEventSource` through an `EventListener`, ETW, or EventPipe: event `RaiseFunctionsEventWarning` (65522, Warning) carries `EventName=HostJsonConfigurationRejected`, `Source` for the category, and `Summary` for the safe message. The development root console's default category filter excludes `Azure.Functions.*`; customer `AzureFunctionsJobHost` console settings apply to the child ScriptHost and do not make these pre-start warnings appear on stdout.
 
-Validation completes before initialized-channel publication and the first-link ScriptHost startup signal. The registry atomically admits the channel and retains the first accepted immutable configuration. ScriptHost installs a synchronous source at the original `host.json` position, before the extension-discovery configuration pre-build. Existing profile/default processing, `AzureFunctionsJobHost` key prefixing, unknown extension sections, arrays/scalars, and environment precedence are preserved. The source does not await RPC, write process environment variables, read worker files, or log even a sanitized copy of the document.
+Validation completes before initialized-channel publication and the first-link ScriptHost startup signal. The first successfully admitted worker atomically selects either its validated snapshot or the legacy source. Rejected or canceled candidates select neither; requesting a source before admission fails instead of choosing legacy early. ScriptHost installs a snapshot at the original `host.json` position, before the extension-discovery configuration pre-build. Existing profile/default processing, `AzureFunctionsJobHost` key prefixing, unknown extension sections, arrays/scalars, and environment precedence are preserved. Snapshot loading is synchronous and does not await RPC, write process environment variables, read worker files, or log even a sanitized copy of the document.
 
-The snapshot survives worker loss and child ScriptHost restarts. Later workers must provide a valid delivery, but this draft **does not compare their documents**, replace the first configuration, or restart ScriptHost when a different valid document arrives. Multi-worker agreement is deferred to [APP-02 (#12048)](https://github.com/Azure/azure-functions-host/issues/12048). Initialized/configuration-accepted does not mean invocation-ready; channel setup remains a separate concern. There is no file watching or live configuration reload. Other language-worker deliveries and cross-repository completion remain tracked by [APP-01 (#12049)](https://github.com/Azure/azure-functions-host/issues/12049).
+The source choice survives worker loss and child ScriptHost restarts, including when the first choice was legacy. Later supplied envelopes are still validated, but never replace that choice or a selected snapshot. Later workers may omit the envelope without replacing a snapshot with legacy. This draft **does not compare documents** or restart ScriptHost for a different valid delivery. Multi-worker agreement is deferred to [APP-02 (#12048)](https://github.com/Azure/azure-functions-host/issues/12048). Initialized/configuration-accepted does not mean invocation-ready; channel setup remains a separate concern. No worker-file watching or live reload is added. Other language-worker deliveries and cross-repository completion remain tracked by [APP-01 (#12049)](https://github.com/Azure/azure-functions-host/issues/12049).
 
 ## Try the sample
 

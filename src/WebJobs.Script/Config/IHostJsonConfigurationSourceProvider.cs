@@ -13,11 +13,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration;
 public interface IHostJsonConfigurationSourceProvider
 {
     /// <summary>
-    /// Gets an already accepted configuration source, or <see langword="null"/> to use the local file.
+    /// Gets the selected snapshot, or <see langword="null"/> when the legacy file source was selected.
     /// </summary>
-    /// <returns>A synchronous, immutable configuration source, or <see langword="null"/> when disabled.</returns>
+    /// <returns>A synchronous, immutable configuration source, or <see langword="null"/> for the legacy file source.</returns>
     /// <remarks>
-    /// An enabled provider must fail if configuration has not been accepted. It must not perform file or RPC I/O here.
+    /// The source choice lasts for the root lifetime. This method performs no file or RPC I/O.
     /// </remarks>
+    /// <exception cref="System.InvalidOperationException">No worker has been admitted to select a source.</exception>
     IConfigurationSource? GetConfigurationSource();
 }

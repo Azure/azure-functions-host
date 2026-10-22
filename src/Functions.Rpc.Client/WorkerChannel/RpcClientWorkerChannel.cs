@@ -32,7 +32,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly bool _enableWorkerHostJson;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -50,8 +49,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService,
-        bool enableWorkerHostJson = false)
+        IHttpProxyService httpProxyService)
         : base(
             workerId,
             ownedChannel,
@@ -70,7 +68,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         Completion = ownedChannel.Reader.Completion;
-        _enableWorkerHostJson = enableWorkerHostJson;
     }
 
     private enum LifecycleState
@@ -120,26 +117,15 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return _startCompletion.Task.WaitAsync(cancellationToken);
     }
 
-    protected override void ConfigureWorkerInitRequest(WorkerInitRequest request)
-    {
-        if (_enableWorkerHostJson)
-        {
-            request.Capabilities.Add(WorkerHostJsonConfiguration.Capability, WorkerHostJsonConfiguration.CapabilityVersion);
-        }
-    }
-
     protected override void OnWorkerInitResponse(WorkerInitResponse response)
     {
-        if (_enableWorkerHostJson)
+        if (response.HostJson is not null && response.Result.Status is not StatusResult.Types.Status.Success)
         {
-            if (response.Result.Status is not StatusResult.Types.Status.Success)
-            {
-                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
-                    "The worker did not report successful initialization for host.json delivery.");
-            }
-
-            HostJson = response.HostJson?.Clone();
+            throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                "The worker did not report successful initialization for host.json delivery.");
         }
+
+        HostJson = response.HostJson?.Clone();
     }
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);

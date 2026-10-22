@@ -13,7 +13,7 @@ namespace Azure.Functions.Rpc.Client;
 /// Defines initialized client-backed worker channel ownership keyed by worker ID.
 /// </summary>
 /// <remarks>
-/// An initialized channel has completed its transport connection, WorkerInit handshake, and any requested host.json
+/// An initialized channel has completed its transport connection, WorkerInit handshake, and any supplied host.json
 /// delivery validation. Invocation readiness remains a dispatcher concern. The registry owns disposal of returned channels.
 /// </remarks>
 public interface IWorkerChannelRegistry : IAsyncDisposable
@@ -23,8 +23,9 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// </summary>
     /// <remarks>
     /// This method returns after the outbound transport connects, the worker sends <c>StartStream</c>, and the channel
-    /// processes a successful <c>WorkerInitResponse</c>, and validates host.json delivery when enabled. The first accepted
-    /// configuration is retained for the root lifetime; later documents are validated but not compared or applied.
+    /// processes a successful <c>WorkerInitResponse</c>, and validates any supplied host.json. The first admitted worker
+    /// selects its snapshot or, when absent, the legacy file source for the root lifetime. Later documents are validated
+    /// but not compared or applied; later absent envelopes do not change the source.
     /// Function metadata has not been requested, invocation buffers
     /// have not been created, and function load requests have not been sent, so the channel is not yet ready for
     /// invocations.

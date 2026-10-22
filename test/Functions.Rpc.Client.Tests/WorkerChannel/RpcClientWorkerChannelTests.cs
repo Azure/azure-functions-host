@@ -36,10 +36,10 @@ public sealed class RpcClientWorkerChannelTests
 
     public RpcClientWorkerChannelTests()
     {
-        _factory = CreateFactory(enableWorkerHostJson: false);
+        _factory = CreateFactory();
     }
 
-    private RpcClientWorkerChannelFactory CreateFactory(bool enableWorkerHostJson)
+    private RpcClientWorkerChannelFactory CreateFactory()
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -64,8 +64,7 @@ public sealed class RpcClientWorkerChannelTests
             Options.Create(new FunctionsHostingConfigOptions()),
             _appCapabilitiesStore.Object,
             Mock.Of<IHttpProxyService>(),
-            _metricsLogger,
-            Options.Create(new RpcClientOptions { EnableWorkerHostJson = enableWorkerHostJson }));
+            _metricsLogger);
     }
 
     [Fact]
@@ -128,25 +127,28 @@ public sealed class RpcClientWorkerChannelTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StartAsync_NegotiatesAndCapturesHostJsonOnlyWhenEnabled(bool enabled)
+    public async Task StartAsync_CapturesOptionalHostJsonWithoutCapability(bool delivered)
     {
         TestDuplexChannel<StreamingMessage> duplexChannel = new();
-        await using RpcClientWorkerChannel channel = CreateFactory(enabled).Create(WorkerId, duplexChannel);
+        await using RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
         Task start = channel.StartAsync(CancellationToken.None);
         StreamingMessage request = await SendStartStreamAndReadInitRequestAsync(duplexChannel);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
-        response.HostJson = new()
+        if (delivered)
         {
-            Status = HostJsonConfiguration.Types.Status.Available,
-            Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
-        };
+            response.HostJson = new()
+            {
+                Status = HostJsonConfiguration.Types.Status.Available,
+                Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
+            };
+        }
 
         await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = response });
         await start.WaitAsync(TestTimeout);
 
-        if (enabled)
+        Assert.False(request.WorkerInitRequest.Capabilities.ContainsKey("HostJson"));
+        if (delivered)
         {
-            Assert.Equal("1", request.WorkerInitRequest.Capabilities["HostJson"]);
             Assert.Equal(response.HostJson, channel.HostJson);
             Assert.NotSame(response.HostJson, channel.HostJson);
             response.HostJson.Content = ByteString.CopyFromUtf8("changed");
@@ -154,7 +156,6 @@ public sealed class RpcClientWorkerChannelTests
         }
         else
         {
-            Assert.False(request.WorkerInitRequest.Capabilities.ContainsKey("HostJson"));
             Assert.Null(channel.HostJson);
         }
     }

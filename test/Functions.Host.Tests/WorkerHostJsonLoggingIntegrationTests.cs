@@ -39,13 +39,12 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData(null, "The worker did not deliver the requested host.json configuration.")]
     [InlineData((HostJsonConfiguration.Types.Status)3, "The worker host.json delivery status is unspecified or unsupported.")]
     [InlineData(HostJsonConfiguration.Types.Status.ReadError, "The worker could not read host.json.")]
     [InlineData(HostJsonConfiguration.Types.Status.TooLarge, "The worker host.json exceeds the 65,536-byte limit.")]
     [InlineData(HostJsonConfiguration.Types.Status.Available, "The worker host.json exceeds the 65,536-byte limit.")]
     public async Task RejectedConfiguration_UsesRootSystemEventSinkBeforeScriptHostStarts(
-        HostJsonConfiguration.Types.Status? status, string expectedReason)
+        HostJsonConfiguration.Types.Status status, string expectedReason)
     {
         using EnvironmentVariableScope environment = new(EnvironmentSettingNames.EnvironmentNameKey, Environments.Development);
         using SystemLogListener listener = new();
@@ -54,9 +53,9 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
         string directory = Path.Combine(Path.GetTempPath(), $"WorkerHostJsonLogging-{Guid.NewGuid():N}");
         string scriptPath = Path.Combine(directory, "app");
         Directory.CreateDirectory(scriptPath);
-        HostJsonConfiguration? delivery = status is null ? null : new()
+        HostJsonConfiguration delivery = new()
         {
-            Status = status.Value,
+            Status = status,
             Content = status is HostJsonConfiguration.Types.Status.Available
                 ? ByteString.CopyFromUtf8("customer-secret".PadRight(65_537, 'x'))
                 : ByteString.Empty,
@@ -92,7 +91,7 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
 
                 Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
                 Assert.Equal(expectedReason, failure.Message);
-                Assert.Equal("1", service.InitRequest!.Capabilities["HostJson"]);
+                Assert.False(service.InitRequest!.Capabilities.ContainsKey("HostJson"));
                 Assert.Empty(registry.GetInitializedChannels());
                 Assert.Null(services.GetRequiredService<IScriptHostManager>().Services);
                 Assert.Empty(Directory.EnumerateFiles(scriptPath));
@@ -133,7 +132,6 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
                 configuration.Sources.Clear();
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["AzureFunctionsWebHost:EnableWorkerHostJson"] = "true",
                     ["AzureFunctionsWebHost:ScriptPath"] = scriptPath,
                     ["AzureFunctionsWebHost:LogPath"] = Path.Combine(directory, "logs"),
                     ["AzureFunctionsWebHost:SecretsPath"] = Path.Combine(directory, "secrets"),

@@ -898,7 +898,7 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(bool enableWorkerHostJson = false)
+    private static RpcClientWorkerChannelFactory CreateRealChannelFactory()
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -922,8 +922,7 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
             Mock.Of<IHttpProxyService>(),
-            Mock.Of<IMetricsLogger>(),
-            Options.Create(new RpcClientOptions { EnableWorkerHostJson = enableWorkerHostJson }));
+            Mock.Of<IMetricsLogger>());
     }
 
     private sealed class QueuedSynchronizationContext : SynchronizationContext
@@ -968,15 +967,14 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
-        public RegistryHarness(TimeSpan? linkTimeout, bool enableWorkerHostJson = false, IConfiguration configuration = null)
+        public RegistryHarness(TimeSpan? linkTimeout, IConfiguration configuration = null)
         {
-            _realChannelFactory = CreateRealChannelFactory(enableWorkerHostJson);
+            _realChannelFactory = CreateRealChannelFactory();
             HostJsonLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationOptions = new();
             applicationOptions.SetupGet(options => options.CurrentValue)
                 .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = true, ScriptPath = "c:\\test" });
             WorkerHostJsonConfiguration hostJson = new(
-                Options.Create(new RpcClientOptions { EnableWorkerHostJson = enableWorkerHostJson }),
                 configuration ?? new ConfigurationBuilder().Build(),
                 applicationOptions.Object,
                 HostJsonLogger.Object);

@@ -40,6 +40,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly Lock _stateLock = new();
     private readonly WorkerHostJsonConfiguration _hostJsonConfiguration;
     private HostJsonConfigurationSnapshot _hostJsonSnapshot;
+    private bool _hostJsonSourceSelected;
     private Task _disposeTask;
     private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -48,7 +49,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        WorkerHostJsonConfiguration hostJsonConfiguration = null)
+        WorkerHostJsonConfiguration hostJsonConfiguration)
         : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, hostJsonConfiguration)
     {
     }
@@ -58,7 +59,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout,
-        WorkerHostJsonConfiguration hostJsonConfiguration = null)
+        WorkerHostJsonConfiguration hostJsonConfiguration)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -66,7 +67,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
-        _hostJsonConfiguration = hostJsonConfiguration;
+        _hostJsonConfiguration = hostJsonConfiguration ?? throw new ArgumentNullException(nameof(hostJsonConfiguration));
     }
 
     public Task<WorkerLinkResult> LinkAsync(
@@ -162,9 +163,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                HostJsonConfigurationSnapshot configuration = _hostJsonConfiguration?.Enabled is true
-                    ? _hostJsonConfiguration.Validate(candidate.HostJson)
-                    : null;
+                HostJsonConfigurationSnapshot configuration = _hostJsonConfiguration.Validate(candidate.HostJson);
                 RegisterInitializedChannel(workerId, slot, candidate, configuration, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
@@ -297,13 +296,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     {
         lock (_stateLock)
         {
-            if (_hostJsonConfiguration?.Enabled is not true)
+            if (!_hostJsonSourceSelected)
             {
-                return null;
+                throw new InvalidOperationException("Worker host.json configuration source has not been selected.");
             }
 
-            return _hostJsonSnapshot
-                ?? throw new InvalidOperationException("Worker host.json configuration has not been accepted.");
+            return _hostJsonSnapshot;
         }
     }
 
@@ -520,8 +518,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 throw new IOException("The worker channel closed before initialization could be published.");
             }
 
-            // APP-02 owns cross-worker comparison. A later valid delivery never replaces the first accepted snapshot.
-            _hostJsonSnapshot ??= configuration;
+            // Retain the first snapshot or legacy-source choice for the root lifetime.
+            if (!_hostJsonSourceSelected)
+            {
+                _hostJsonSnapshot = configuration;
+                _hostJsonSourceSelected = true;
+            }
+
             slot.Channel = channel;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);

@@ -40,20 +40,23 @@ From within the Azure Functions language worker repo:
 
 `HostJsonConfiguration` carries a worker-local `host.json` snapshot in
 `WorkerInitResponse.host_json` (field 6), separately from capabilities and worker
-metadata. This is an opt-in protocol contract for
+metadata. This is a draft protocol contract for
 [APP-01](https://github.com/Azure/azure-functions-host/issues/12049), not a
 production rollout. Compatible Host and worker implementations and maintainer
 contract review are still required; other worker languages remain follow-ups.
 
-### Negotiation and ownership
+### Delivery and ownership
 
-The Host opts in by setting `WorkerInitRequest.capabilities["HostJson"]` to the
-exact string `"1"`. A supporting worker reads and sends the document only for
-that exact key/value. An absent capability or any unrecognized value leaves
-existing initialization behavior unchanged: the worker neither reads the file
-for this contract nor sends `host_json`. An older or unsupported worker can omit
-the envelope even when the Host opts in. A missing envelope means unsupported or
-not delivered; it never means that the file is missing.
+Supporting workers always include `host_json` in `WorkerInitResponse` during
+initialization. No capability request or Host feature flag gates delivery. Updated
+workers read the local document once per process/application generation even
+when the Host has not requested it. Older or co-located Hosts may ignore the
+extra field.
+
+An older or unsupported worker can omit the envelope. Absence means unsupported
+or not delivered, not a missing file. In compute mode, the Host uses its legacy
+configuration path rather than rejecting initialization solely because the
+envelope is absent.
 
 The worker owns the file and resolves `host.json` from its explicit local
 application root. In compute mode it must not use the Host's
@@ -85,9 +88,13 @@ Enum number `3` and the old name `AppDirectoryUnavailable` are reserved and must
 not be reused.
 
 `Available` with empty `content` represents an empty file, not `Missing`; the Host
-applies its normal parsing and validation rules to that empty file. All
-non-`Available` statuses must have empty `content`. `Unspecified`, unknown status
-values, and non-`Available` outcomes carrying content are invalid deliveries.
+applies its normal parsing and validation rules to that empty file. A present
+`Available` envelope must pass configuration validation; explicit `Missing` with
+empty content allows the existing defaults. All non-`Available` statuses must
+have empty `content`. `Unspecified`, unknown status values, and non-`Available`
+outcomes carrying content are invalid deliveries.
+`ReadError`, `TooLarge`, and invalid deliveries fail configuration acceptance;
+they must never be treated as absence or trigger legacy-source fallback.
 Read failures use these structured outcomes, not free-form exceptions or
 customer JSON in `StatusResult`, capabilities, or worker metadata.
 
@@ -114,23 +121,31 @@ including customer content or paths.
 ### Initialization and snapshot lifetime
 
 A supporting worker captures one immutable outcome (status and any file bytes)
-per process/application generation after opt-in. It replays that snapshot on
-same-generation initialization retries rather than rereading the file, including
-when the captured outcome is a missing file or read failure. There is no live
-reload.
+per process/application generation during initialization. It replays that
+snapshot on same-generation initialization retries rather than rereading the
+file, including when the captured outcome is a missing file or read failure.
+There is no live reload.
 
 `WorkerInitResponse.result` retains its process-initialization meaning. A
 successful process initialization and acceptance of its configuration are
 separate decisions; a configuration read failure does not rewrite an otherwise
 successful process-initialization result.
 
-The Host validates delivery and applies its configuration acceptance rules
-before releasing first-link startup. It retains the first accepted snapshot;
-later initialization responses must not replace that configuration or reset the
-startup gate. A missing or invalid envelope cannot stand in for `Missing` or
-bypass configuration acceptance. Comparing later snapshots is reserved for
-APP-02. This contract adds no hashes, comparison or generation protocol,
-chunking, CLI switch, or restart-on-configuration-change behavior.
+In compute mode, the Host validates supplied envelopes and applies its
+configuration acceptance rules before releasing first-link startup. The first
+successfully admitted worker selects the configuration source: its supplied
+snapshot (including explicit `Missing` defaults), or the legacy source when its
+envelope is absent. Rejected or canceled candidates must not select a source.
+
+That source choice stays fixed across later links and child-Host restarts. Later
+supplied envelopes are still validated, but never replace the selected source
+or its configuration, even when the first choice was the legacy source. Later
+responses must not reset the startup gate. Errors and invalid deliveries cannot
+bypass configuration acceptance by being treated as absent.
+
+Comparing later snapshots is reserved for APP-02. This contract adds no hashes,
+comparison or generation protocol, chunking, CLI switch, or
+restart-on-configuration-change behavior.
 
 ## Consuming FunctionRPC.proto
 *Note: Update versionNumber before running following commands*

@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void AddWebScriptHost_EnabledSourceWithoutAcceptedConfigurationDoesNotFallBackToFile()
+        public void AddWebScriptHost_PendingSourceDoesNotFallBackToFile()
         {
             var sourceProvider = new Mock<IHostJsonConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource())

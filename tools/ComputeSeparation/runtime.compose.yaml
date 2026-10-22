@@ -6,7 +6,6 @@ services:
     environment:
       AzureFunctionsWebHost__hostid: aspire-worker
       AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
-      AzureFunctionsWebHost__EnableWorkerHostJson: "${COMPUTE_ENABLE_WORKER_HOST_JSON:-false}"
       AzureFunctionsJobHost__logging__logLevel__default: Information
       AzureFunctionsJobHost__logging__console__isEnabled: "true"
     ports:

@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Google.Protobuf;
@@ -12,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -23,7 +25,6 @@ public sealed class WorkerHostJsonConfigurationTests
 {
     public static IEnumerable<object?[]> InvalidDeliveries()
     {
-        yield return [null, "The worker did not deliver the requested host.json configuration."];
         foreach ((HostJsonConfiguration.Types.Status status, string reason) in new[]
         {
             (HostJsonConfiguration.Types.Status.Unspecified, "The worker host.json delivery status is unspecified or unsupported."),
@@ -89,7 +90,7 @@ public sealed class WorkerHostJsonConfigurationTests
 
     [Theory]
     [MemberData(nameof(InvalidDeliveries))]
-    public void Validate_InvalidDeliveryRejectsWithBoundedContentFreeError(HostJsonConfiguration? delivery, string expectedReason)
+    public void Validate_InvalidDeliveryRejectsWithBoundedContentFreeError(HostJsonConfiguration delivery, string expectedReason)
     {
         WorkerLinkException exception = Assert.Throws<WorkerLinkException>(() => CreateValidator().Validate(delivery));
 
@@ -98,6 +99,49 @@ public sealed class WorkerHostJsonConfigurationTests
         Assert.Null(exception.InnerException);
         Assert.InRange(exception.Message.Length, 1, 160);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_AbsentEnvelopeSelectsLegacyWithoutReadingConfiguration()
+    {
+        var configuration = new Mock<IConfiguration>(MockBehavior.Strict);
+        var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>(MockBehavior.Strict);
+        var logger = new Mock<ILogger<WorkerHostJsonConfiguration>>(MockBehavior.Strict);
+        WorkerHostJsonConfiguration validator = new(configuration.Object, applicationOptions.Object, logger.Object);
+
+        Assert.Null(validator.Validate(null));
+
+        configuration.VerifyNoOtherCalls();
+        applicationOptions.VerifyNoOtherCalls();
+        logger.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("fr-FR")]
+    [InlineData("de-DE")]
+    [InlineData("ar-SA")]
+    public void Validate_SizeLimitReasonIsCultureIndependent(string culture)
+    {
+        CultureInfo previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+            HostJsonConfiguration[] deliveries =
+            [
+                new() { Status = HostJsonConfiguration.Types.Status.TooLarge },
+                Available(ByteString.CopyFrom(new byte[WorkerHostJsonConfiguration.MaximumContentLength + 1])),
+            ];
+
+            foreach (HostJsonConfiguration delivery in deliveries)
+            {
+                WorkerLinkException exception = Assert.Throws<WorkerLinkException>(() => CreateValidator().Validate(delivery));
+                Assert.Equal("The worker host.json exceeds the 65,536-byte limit.", exception.Message);
+            }
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
     }
 
     [Theory]
@@ -152,7 +196,7 @@ public sealed class WorkerHostJsonConfigurationTests
         var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
         applicationOptions.SetupGet(options => options.CurrentValue).Returns(new ScriptApplicationHostOptions());
         WorkerHostJsonConfiguration validator = new(
-            Options.Create(new RpcClientOptions { EnableWorkerHostJson = true }), configuration.Object, applicationOptions.Object,
+            configuration.Object, applicationOptions.Object,
             NullLogger<WorkerHostJsonConfiguration>.Instance);
 
         IConfigurationRoot result = new ConfigurationBuilder().Add(validator.Validate(
@@ -175,7 +219,6 @@ public sealed class WorkerHostJsonConfigurationTests
             .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = readOnly });
 
         return new(
-            Options.Create(new RpcClientOptions { EnableWorkerHostJson = true }),
             new ConfigurationBuilder().Build(),
             applicationOptions.Object,
             NullLogger<WorkerHostJsonConfiguration>.Instance);

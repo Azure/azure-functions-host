@@ -211,7 +211,7 @@ public class ClientWorkerCompositionTests
 
             Assert.NotNull(controller);
             Assert.Same(registry, configurationSource);
-            Assert.Null(configurationSource.GetConfigurationSource());
+            Assert.Throws<InvalidOperationException>(() => configurationSource.GetConfigurationSource());
             Assert.Equal("Azure.Functions.Rpc.Client.WorkerChannelRegistry", registry.GetType().FullName);
             Assert.Equal("Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider",
                 metadataProvider.GetType().FullName);
@@ -252,29 +252,6 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostJsonConfigurationSourceProvider));
-    }
-
-    [Fact]
-    public async Task WorkerHostJsonOptIn_OnlyUsesRootConfigurationInClientComposition()
-    {
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["AzureFunctionsWebHost:EnableWorkerHostJson"] = "true",
-        }).Build();
-        IHost host = CreateRootHost(out _, configuration);
-        try
-        {
-            IHostJsonConfigurationSourceProvider source = host.Services.GetRequiredService<IHostJsonConfigurationSourceProvider>();
-            Assert.Throws<InvalidOperationException>(() => source.GetConfigurationSource());
-
-            ServiceCollection standard = new();
-            standard.AddWebJobsScriptHost(configuration);
-            Assert.DoesNotContain(standard, descriptor => descriptor.ServiceType == typeof(IHostJsonConfigurationSourceProvider));
-        }
-        finally
-        {
-            await ((IAsyncDisposable)host).DisposeAsync();
-        }
     }
 
     [Fact]

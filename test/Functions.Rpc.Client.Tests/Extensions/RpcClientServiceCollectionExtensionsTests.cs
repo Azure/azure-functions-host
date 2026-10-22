@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -12,7 +11,6 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -23,21 +21,6 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed class RpcClientServiceCollectionExtensionsTests
 {
-    [Theory]
-    [InlineData("AzureFunctionsWebHost:EnableWorkerHostJson", "true", true)]
-    [InlineData("AzureFunctionsWebHost:EnableWorkerHostJson", "false", false)]
-    [InlineData("AzureFunctionsJobHost:EnableWorkerHostJson", "true", false)]
-    public void WorkerHostJson_UsesOnlyRootBootstrapOptIn(string key, string value, bool expected)
-    {
-        ServiceCollection services = new();
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string> { [key] = value }).Build());
-        services.AddRpcClientServices();
-        using ServiceProvider provider = services.BuildServiceProvider();
-
-        Assert.Equal(expected, provider.GetRequiredService<IOptions<RpcClientOptions>>().Value.EnableWorkerHostJson);
-    }
-
     [Fact]
     public void AddRpcClientServices_RegistersClientLifecycleAsSingletons()
     {
@@ -46,6 +29,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
+        AssertSingleton<WorkerHostJsonConfiguration, WorkerHostJsonConfiguration>(services);
         AssertSingleton(services, typeof(IHttpProxyService), "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);

@@ -42,7 +42,6 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
         StreamingMessage request = new() { WorkerInitRequest = new() };
-        request.WorkerInitRequest.Capabilities["HostJson"] = "1";
         await runtime.WriteAsync(request, timeout.Token);
         Assert.Equal(request, await worker.ReadAsync(timeout.Token));
 
