@@ -115,11 +115,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
         => new(await link.ConfigureAwait(false), isNewLink);
 
-    private async Task LinkAndCompleteAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        WorkerSlot slot,
-        TaskCompletionSource<WorkerChannel> linkCompletion,
+    private async Task LinkAndCompleteAsync(string workerId, Uri grpcEndpoint, WorkerSlot slot, TaskCompletionSource<WorkerChannel> linkCompletion,
         CancellationToken cancellationToken)
     {
         try
@@ -309,10 +305,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    public Task ActivateAsync(
-        IReadOnlyList<FunctionMetadata> functions,
-        ManagedDependencyOptions managedDependencyOptions,
-        TimeSpan? functionTimeout,
+    public Task ActivateAsync(IReadOnlyList<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(functions);
