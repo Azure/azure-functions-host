@@ -47,9 +47,9 @@ The worker reads its own application file and returns the typed `WorkerInitRespo
 | `Available` with empty bytes | Reject as an empty file, not as a missing file. An empty object `{}` retains existing empty-object normalization. |
 | Explicit `Missing` with no bytes | Apply the existing missing-file defaults, including the normal read-only/app-kind/runtime rules, without creating a Host-side file. |
 | Absent envelope | If this is the first admitted worker, select the legacy Host file/configuration path. This is not explicit `Missing` and emits no rejection warning. Later absence leaves the selected source unchanged. |
-| `ReadError`, `TooLarge`, reserved/unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid text encoding, JSON, version, and profile also reject it; no parser exception or document content is logged. |
+| `ReadError`, `TooLarge`, unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid text encoding, JSON, version, and profile also reject it; no parser exception or document content is logged. |
 
-An unavailable or invalid worker application root is reported as `ReadError`, just like other file-read failures. Enum number `3` and the old name `AppDirectoryUnavailable` are reserved. A received numeric status `3` is rejected as unsupported, never treated as `Missing`.
+An unavailable or invalid worker application root is reported as `ReadError`, just like other file-read failures.
 
 This application-document cap is independent of gRPC message limits. Failed links remain retryable after cleanup. A present failure or invalid document never falls back to the legacy source.
 

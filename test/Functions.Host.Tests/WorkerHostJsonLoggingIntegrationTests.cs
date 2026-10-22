@@ -39,7 +39,7 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData((HostJsonConfiguration.Types.Status)3, "The worker host.json delivery status is unspecified or unsupported.")]
+    [InlineData((HostJsonConfiguration.Types.Status)5, "The worker host.json delivery status is unspecified or unsupported.")]
     [InlineData(HostJsonConfiguration.Types.Status.ReadError, "The worker could not read host.json.")]
     [InlineData(HostJsonConfiguration.Types.Status.TooLarge, "The worker host.json exceeds the 65,536-byte limit.")]
     [InlineData(HostJsonConfiguration.Types.Status.Available, "The worker host.json exceeds the 65,536-byte limit.")]

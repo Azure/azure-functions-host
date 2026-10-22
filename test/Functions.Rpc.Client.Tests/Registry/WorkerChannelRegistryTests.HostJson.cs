@@ -161,8 +161,8 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData(true, HostJsonConfiguration.Types.Status.ReadError)]
     [InlineData(false, HostJsonConfiguration.Types.Status.TooLarge)]
     [InlineData(true, HostJsonConfiguration.Types.Status.TooLarge)]
-    [InlineData(false, (HostJsonConfiguration.Types.Status)3)]
-    [InlineData(true, (HostJsonConfiguration.Types.Status)3)]
+    [InlineData(false, (HostJsonConfiguration.Types.Status)5)]
+    [InlineData(true, (HostJsonConfiguration.Types.Status)5)]
     public async Task LinkAsync_LaterInvalidDeliveryRejectsWithoutReplacingSource(
         bool firstSuppliesConfiguration, HostJsonConfiguration.Types.Status invalidStatus)
     {

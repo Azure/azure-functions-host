@@ -28,7 +28,7 @@ public sealed class WorkerHostJsonConfigurationTests
         foreach ((HostJsonConfiguration.Types.Status status, string reason) in new[]
         {
             (HostJsonConfiguration.Types.Status.Unspecified, "The worker host.json delivery status is unspecified or unsupported."),
-            ((HostJsonConfiguration.Types.Status)3, "The worker host.json delivery status is unspecified or unsupported."),
+            ((HostJsonConfiguration.Types.Status)5, "The worker host.json delivery status is unspecified or unsupported."),
             (HostJsonConfiguration.Types.Status.ReadError, "The worker could not read host.json."),
             (HostJsonConfiguration.Types.Status.TooLarge, "The worker host.json exceeds the 65,536-byte limit."),
             ((HostJsonConfiguration.Types.Status)100, "The worker host.json delivery status is unspecified or unsupported."),
@@ -38,7 +38,7 @@ public sealed class WorkerHostJsonConfigurationTests
         }
 
         foreach (HostJsonConfiguration.Types.Status status in Enum.GetValues<HostJsonConfiguration.Types.Status>()
-            .Append((HostJsonConfiguration.Types.Status)3)
+            .Append((HostJsonConfiguration.Types.Status)5)
             .Where(status => status != HostJsonConfiguration.Types.Status.Available))
         {
             yield return
