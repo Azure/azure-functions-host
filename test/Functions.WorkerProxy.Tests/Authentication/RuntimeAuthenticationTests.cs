@@ -272,6 +272,19 @@ public partial class FunctionRpcRelayTests
         }
     }
 
+    [Fact]
+    public void Certificate_RejectsMismatchedCertificateAndPrivateKey()
+    {
+        using TestCertificateFiles first = new();
+        using TestCertificateFiles second = new();
+
+        Assert.Throws<ArgumentException>(() => new WorkerProxyCertificate(Options.Create(new WorkerProxyOptions
+        {
+            CertificatePath = first.CertificatePath,
+            CertificateKeyPath = second.KeyPath
+        })));
+    }
+
     private static void AssignForAuthentication(WorkerProxyWebApplicationFactory factory)
     {
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -283,7 +296,11 @@ public partial class FunctionRpcRelayTests
     private static void AssignAuthenticationState(WorkerPodStateManager manager)
         => Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(new(
             WorkerStartupMode.Preconfigured, RuntimeAuthenticationTestData.AppName, "group", false,
-            new Dictionary<string, string> { [RuntimeWorkerAuthentication.AppKeySetting] = "not-the-normal-key" }, string.Empty)));
+            new Dictionary<string, string>
+            {
+                [RuntimeWorkerAuthentication.AppKeySetting] =
+                    Convert.ToHexString(SHA256.HashData("assignment-is-not-the-proof-key-source"u8))
+            }, string.Empty)));
 
     private static async Task<RelayClient> StartAssignedWorkerAsync(WorkerProxyWebApplicationFactory factory, CancellationToken token)
     {

@@ -93,4 +93,22 @@ public class RuntimeWorkerCredentialsTests
         Assert.True(RuntimeWorkerAuthentication.ValidateToken(token, key,
             RuntimeWorkerAuthentication.WorkerAudience("worker"), RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
     }
+
+    [Fact]
+    public void CallerSigning_UsesLinkedProxyKeyInsteadOfRuntimeOwnContainerOrAppKey()
+    {
+        IConfiguration configuration = RuntimeWorkerTestData.CreateConfiguration();
+        byte[] runtimeKey = SHA256.HashData("runtime-container-key-is-not-worker-key"u8);
+        configuration["CONTAINER_ENCRYPTION_KEY"] = Convert.ToHexString(runtimeKey);
+        RuntimeWorkerCredentials credentials = new("worker", RuntimeWorkerTestData.WorkerKey, configuration, TimeProvider.System);
+        string token = credentials.CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader];
+        string audience = RuntimeWorkerAuthentication.WorkerAudience("worker");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        Assert.True(RuntimeWorkerAuthentication.ValidateToken(token, Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey),
+            audience, RuntimeWorkerAuthentication.WorkerPurpose, now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateToken(token, runtimeKey, audience, RuntimeWorkerAuthentication.WorkerPurpose, now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateToken(token, Convert.FromHexString(RuntimeWorkerTestData.AppKey),
+            audience, RuntimeWorkerAuthentication.WorkerPurpose, now));
+    }
 }
