@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Ctor_NullEnvironment_Throws()
         {
-            Action action = () => new HostJsonFileConfigurationOptions(null, new ScriptApplicationHostOptions());
+            Action action = () => new HostJsonFileConfigurationOptions((IEnvironment)null, new ScriptApplicationHostOptions());
             action.Should().ThrowExactly<ArgumentNullException>().WithParameterName("environment");
         }
 
@@ -87,6 +88,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             HostConfigurationProfile profile = options.GetConfigProfile(hostFile);
 
             profile.Name.Should().Be("mcp-custom-handler");
+        }
+
+        [Fact]
+        public void Ctor_BootstrapConfiguration_PreservesProfileRuntimeAndAppKind()
+        {
+            IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["AzureFunctionsJobHost:configurationProfile"] = "mcp-custom-handler",
+                ["FUNCTIONS_WORKER_RUNTIME"] = "powershell",
+                ["APP_KIND"] = "workflowApp",
+            }).Build();
+            ScriptApplicationHostOptions hostOptions = new();
+
+            HostJsonFileConfigurationOptions options = new(configuration, hostOptions);
+
+            Assert.Same(hostOptions, options.Host);
+            Assert.True(options.IsLogicApp);
+            Assert.Equal("powershell", options.WorkerRuntime);
+            JObject hostFile = JObject.Parse("""{"configurationProfile":"default"}""");
+            Assert.Equal("mcp-custom-handler", options.GetConfigProfile(hostFile).Name);
         }
 
         private record EnvironmentTest(

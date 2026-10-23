@@ -8,9 +8,11 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
@@ -22,7 +24,7 @@ namespace Azure.Functions.Rpc.Client;
 /// Admission and replay decisions are atomic. Different workers can link concurrently.
 /// The registry publishes a channel only after its WorkerInit handshake succeeds and retains terminal identities.
 /// </remarks>
-internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
+internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
 
@@ -36,6 +38,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
+    private readonly HostConfigurationDeliveryValidator _hostConfigurationDeliveryValidator;
+    private HostConfigurationSnapshot _hostConfigurationSnapshot;
+    private bool _hostConfigurationSourceSelected;
     private Task _disposeTask;
     private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -43,8 +48,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     public WorkerChannelRegistry(
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
-        ILogger<WorkerChannelRegistry> logger)
-        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout)
+        ILogger<WorkerChannelRegistry> logger,
+        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
+        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, hostConfigurationDeliveryValidator)
     {
     }
 
@@ -52,7 +58,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        TimeSpan linkTimeout)
+        TimeSpan linkTimeout,
+        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -60,6 +67,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
+        _hostConfigurationDeliveryValidator = hostConfigurationDeliveryValidator ?? throw new ArgumentNullException(nameof(hostConfigurationDeliveryValidator));
     }
 
     public Task<WorkerLinkResult> LinkAsync(
@@ -155,7 +163,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                RegisterInitializedChannel(workerId, slot, candidate);
+                HostConfigurationSnapshot configuration = _hostConfigurationDeliveryValidator.Validate(candidate.HostConfiguration);
+                RegisterInitializedChannel(workerId, slot, candidate, configuration, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
                 candidate = null;
@@ -280,6 +289,19 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             return [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)];
+        }
+    }
+
+    public IConfigurationSource GetConfigurationSource()
+    {
+        lock (_stateLock)
+        {
+            if (!_hostConfigurationSourceSelected)
+            {
+                throw new InvalidOperationException("Host configuration source has not been selected.");
+            }
+
+            return _hostConfigurationSnapshot;
         }
     }
 
@@ -472,13 +494,37 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private void RegisterInitializedChannel(string workerId, WorkerSlot slot, RpcClientWorkerChannel channel)
+    private void RegisterInitializedChannel(
+        string workerId,
+        WorkerSlot slot,
+        RpcClientWorkerChannel channel,
+        HostConfigurationSnapshot configuration,
+        CancellationToken cancellationToken)
     {
         Task monitorTask;
 
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_slots.TryGetValue(workerId, out WorkerSlot currentSlot) || !ReferenceEquals(currentSlot, slot) ||
+                slot.Terminal || slot.Channel is not null)
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Conflict, "The worker link is no longer available for admission.");
+            }
+
+            if (channel.Completion.IsCompleted)
+            {
+                throw new IOException("The worker channel closed before initialization could be published.");
+            }
+
+            // Retain the first snapshot or file-based loading choice for the root lifetime.
+            if (!_hostConfigurationSourceSelected)
+            {
+                _hostConfigurationSnapshot = configuration;
+                _hostConfigurationSourceSelected = true;
+            }
+
             slot.Channel = channel;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);

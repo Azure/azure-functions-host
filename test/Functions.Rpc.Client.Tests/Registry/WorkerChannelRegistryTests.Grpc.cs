@@ -7,7 +7,11 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
 
@@ -273,9 +277,14 @@ public sealed partial class WorkerChannelRegistryTests
     {
         FunctionRpcDuplexChannelFactory duplexFactory = new(clientFactory, NullLogger<FunctionRpcDuplexChannelFactory>.Instance);
         RpcClientWorkerChannelFactory channelFactory = CreateRealChannelFactory();
+        var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+        applicationOptions.SetupGet(options => options.CurrentValue)
+            .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = true });
+        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator = new(
+            new ConfigurationBuilder().Build(), applicationOptions.Object, NullLogger<HostConfigurationDeliveryValidator>.Instance);
 
         return linkTimeout.HasValue
-            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
-            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance);
+            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, hostConfigurationDeliveryValidator)
+            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, hostConfigurationDeliveryValidator);
     }
 }

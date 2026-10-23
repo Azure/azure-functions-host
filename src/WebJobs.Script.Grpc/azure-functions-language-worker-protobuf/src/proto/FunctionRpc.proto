@@ -113,6 +113,8 @@ message WorkerInitRequest {
   string host_version = 1;
 
   // A map of host supported features/capabilities
+  // Compute/BYOC hosts always set capabilities["HostConfiguration"] = "1".
+  // Regular hosts use file-based loading and omit this capability.
   map<string, string> capabilities = 2;
 
   // inform worker of supported categories and their levels
@@ -145,6 +147,44 @@ message WorkerInitResponse {
   // A map of application-level capabilities
   // These features/capabilities are queried from admin endpoints in the host by third parties
   map<string, string> app_capabilities = 5;
+
+  // Supporting workers capture and attach only for HostConfiguration = "1".
+  // Otherwise omit this field without reading host.json.
+  // Absence means unsupported/not delivered, not a missing configuration file.
+  // The compute host uses file-based loading if the first admitted worker omits this.
+  HostConfiguration host_configuration = 6;
+}
+
+// Immutable Host configuration snapshot, currently acquired from host.json at the
+// worker's explicit local app root, never the host's function_app_directory.
+// Capture once per process/app generation on the first HostConfiguration = "1" request;
+// replay on same-generation requested retries.
+// Configuration acceptance is separate from WorkerInitResponse.result.
+// The host validates delivery before startup; the first successfully admitted worker
+// fixes snapshot/defaults or file-based loading across later links and child-host restarts.
+// Rejected/canceled candidates select nothing; later envelopes are validated, not adopted.
+message HostConfiguration {
+  enum Status {
+    Unspecified = 0;
+    Available = 1;
+    // The file is absent from a known local application root; allows existing defaults.
+    Missing = 2;
+    // The local application root is unavailable/invalid, or the file could not be read.
+    ReadError = 3;
+    TooLarge = 4;
+  }
+
+  // Unspecified and unrecognized values are not valid delivery outcomes.
+  // ReadError, TooLarge, and invalid deliveries fail acceptance, never trigger fallback.
+  Status status = 1;
+
+  // Raw configuration bytes, at most 65,536 bytes including any BOM.
+  // Only Available may carry content; empty Available content means an empty file.
+  // The worker bounds the actual read and the host independently enforces the cap.
+  // This document cap is separate from gRPC message-size and process-memory budgets.
+  // Proxies forward opaquely; the host owns decoding, parsing, and schema/version validation.
+  // Never put content, arbitrary configuration values, or path-bearing read errors in telemetry.
+  bytes content = 2;
 }
 
 message WorkerMetadata {
