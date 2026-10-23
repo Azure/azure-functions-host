@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 // Local stand-in for the platform in the compute harness. It sends the assign and link requests to the WorkerProxy and
-// Host.
+// Host, and receives the Host's capacity snapshots through a prototype AppServer endpoint.
 
 using System.Buffers.Text;
 using System.Security.Cryptography;
@@ -21,12 +21,34 @@ foreach (WorkerProxyOptions workerProxy in options.WorkerProxies)
 
 WebApplication app = builder.Build();
 ILogger logger = app.Logger;
+Lock hostStateLock = new();
+HostState? acceptedHostState = null;
 
 // Called by the AppHost health check.
 app.MapHealthChecks("/health");
 
+// This local prototype records arrival order; timestamps do not establish causal order across Host restarts.
+app.MapPut("/admin/infra/host/state", (HostState state) =>
+{
+    lock (hostStateLock)
+    {
+        acceptedHostState = state;
+    }
+
+    Log.HostStateReceived(logger, state.CreatedTime, state.HttpCapacity, state.LinkedWorkerCount);
+    return Results.Ok();
+});
+
 // Simulation routes: harness-only, never called by the Host or WorkerProxy.
 RouteGroupBuilder simulate = app.MapGroup("/simulate");
+
+simulate.MapGet("/host/state", () =>
+{
+    lock (hostStateLock)
+    {
+        return acceptedHostState is null ? Results.NoContent() : Results.Ok(acceptedHostState);
+    }
+});
 
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyName, IHttpClientFactory clients, CancellationToken cancellationToken) =>
@@ -159,9 +181,15 @@ internal partial class Program
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
 
+    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
+
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Warning, "No worker proxy named {WorkerProxyName} is configured.")]
         public static partial void UnknownWorkerProxy(ILogger logger, string workerProxyName);
+
+        [LoggerMessage(1, LogLevel.Information,
+            "Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}, linked worker count {LinkedWorkerCount}.")]
+        public static partial void HostStateReceived(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int linkedWorkerCount);
     }
 }
