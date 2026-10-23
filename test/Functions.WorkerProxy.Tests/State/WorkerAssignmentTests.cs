@@ -138,6 +138,46 @@ public class WorkerAssignmentTests
         Assert.Throws<ArgumentNullException>(() => Create(new Dictionary<string, string>()).IsEquivalentTo(null!));
     }
 
+    [Theory]
+    [InlineData("http", null, 16)]
+    [InlineData("HtTp", null, 16)]
+    [InlineData("http", 10, 10)]
+    [InlineData("http", 1, 1)]
+    [InlineData("http", 1000, 1000)]
+    [InlineData("background", null, null)]
+    [InlineData("background", 10, 10)]
+    public void Construction_NormalizesOnlyMissingHttpConcurrency(string group, int? supplied, int? effective)
+    {
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", group, false, new Dictionary<string, string>(), "/app", supplied);
+
+        Assert.Equal(effective, assignment.MaxHttpConcurrency);
+    }
+
+    [Theory]
+    [InlineData("http", 0)]
+    [InlineData("http", -1)]
+    [InlineData("http", 1001)]
+    [InlineData("background", 0)]
+    [InlineData("background", 1001)]
+    public void Construction_RejectsInvalidSuppliedConcurrency(string group, int supplied)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", group, false, new Dictionary<string, string>(), "/app", supplied));
+    }
+
+    [Fact]
+    public void Equality_UsesEffectiveConcurrency()
+    {
+        WorkerAssignment omitted = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app");
+        WorkerAssignment explicitDefault = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app", 16);
+        WorkerAssignment different = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app", 10);
+
+        Assert.True(omitted.IsEquivalentTo(explicitDefault));
+        Assert.True(explicitDefault.IsEquivalentTo(omitted));
+        Assert.False(omitted.IsEquivalentTo(different));
+        Assert.False(different.IsEquivalentTo(omitted));
+    }
+
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment)
         => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot");
 }

@@ -73,6 +73,13 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     IReadOnlyList<WorkerChannel> GetInitializedChannels();
 
     /// <summary>
+    /// Gets a one-shot task invalidated by the next initialized membership, readiness, or setup-context change.
+    /// </summary>
+    /// <returns>A shared task that completes on a change or disposal. Obtain it before sampling registry inputs.</returns>
+    /// <remarks>Cancel only the caller's wait, not this shared task. Getting a task after disposal throws.</remarks>
+    Task GetChangeTask();
+
+    /// <summary>
     /// Activates a new ScriptHost setup context and configures every currently initialized channel for it.
     /// </summary>
     /// <param name="functions">The final valid functions for the ScriptHost.</param>

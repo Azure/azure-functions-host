@@ -107,6 +107,16 @@ public class ManagementApiEndpointTests
     [InlineData("functionAppName", "\" \"", "Required")]
     [InlineData("functionGroupName", null, "Required")]
     [InlineData("functionGroupName", "\"\"", "Required")]
+    [InlineData("maxHttpConcurrency", "0", "InvalidValue")]
+    [InlineData("maxHttpConcurrency", "-1", "InvalidValue")]
+    [InlineData("maxHttpConcurrency", "1001", "InvalidValue")]
+    [InlineData("maxHttpConcurrency", "null", null)]
+    [InlineData("maxHttpConcurrency", "\"10\"", null)]
+    [InlineData("maxHttpConcurrency", "\"\"", null)]
+    [InlineData("maxHttpConcurrency", "1.5", null)]
+    [InlineData("maxHttpConcurrency", "2147483648", null)]
+    [InlineData("maxHttpConcurrency", "true", null)]
+    [InlineData("maxHttpConcurrency", "{}", null)]
     [InlineData("functionAppDirectory", null, "Required")]
     [InlineData("functionAppDirectory", "null", "Required")]
     [InlineData("functionAppDirectory", "\"\"", "Required")]
@@ -185,6 +195,60 @@ public class ManagementApiEndpointTests
         }
 
         Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("http", null, 16)]
+    [InlineData("hTtP", 10, 10)]
+    [InlineData("http", 1, 1)]
+    [InlineData("http", 1000, 1000)]
+    [InlineData("background", null, null)]
+    public async Task Assignment_NormalizesHttpConcurrencyAndReplaysEffectiveIdentity(string group, int? supplied, int? effective)
+    {
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["functionGroupName"] = group;
+        if (supplied is { } concurrency)
+        {
+            body["maxHttpConcurrency"] = concurrency;
+        }
+
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(effective, assigned.MaxHttpConcurrency);
+
+        if (effective is { } value)
+        {
+            body["maxHttpConcurrency"] = value;
+        }
+
+        string acceptedIdentity = body.ToJsonString();
+        using StringContent replayContent = JsonBody(acceptedIdentity);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        body["maxHttpConcurrency"] = effective is 10 ? 11 : 10;
+        using StringContent conflictingContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Same(assigned, manager.State);
+
+        manager.OnSessionTerminated(1);
+        WorkerPodState failed = manager.State;
+        using StringContent terminalReplayContent = JsonBody(acceptedIdentity);
+        using HttpResponseMessage terminalReplay = await client.PutAsync(AssignPath, terminalReplayContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, terminalReplay.StatusCode);
+        using JsonDocument error = JsonDocument.Parse(await terminalReplay.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal("WorkerTerminated", error.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Same(failed, manager.State);
     }
 
     [Theory]

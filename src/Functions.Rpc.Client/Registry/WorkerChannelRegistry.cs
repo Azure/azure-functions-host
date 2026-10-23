@@ -53,6 +53,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
+    private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // Setup writers hold _stateLock; ready-channel readers observe this published signal without taking that lock.
@@ -369,6 +370,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
     }
 
+    /// <inheritdoc />
+    public Task GetChangeTask()
+    {
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _changed.Task;
+        }
+    }
+
     public Task ActivateAsync(IReadOnlyList<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout,
         CancellationToken cancellationToken = default)
     {
@@ -390,6 +401,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             // An incomplete signal is retained so callers already waiting are not orphaned by a ScriptHost restart.
             ResetReadyChannelsSignal();
             _activeSetupContext = setupContext;
+            SignalChangeLocked();
 
             foreach (WorkerSlot slot in _slots.Values)
             {
@@ -503,6 +515,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
             _initializedChannelAvailable.TrySetResult();
+            _changed.TrySetResult();
 
             // Publish disposal for new readers and release callers awaiting the previous shared signal.
             ObjectDisposedException exception = new(GetType().FullName);
@@ -560,6 +573,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         {
             // Remove the detached channel from the published snapshot before channel disposal begins.
             SignalReadyChannelsLocked();
+            SignalChangeLocked();
             if (!_slots.Values.Any(slot => slot.Channel is not null))
             {
                 _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -711,6 +725,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             // Signal initialized-channel availability without starting ScriptHost here.
             _initializedChannelAvailable.TrySetResult();
+            SignalChangeLocked();
         }
 
         _ = ConfigureSlotInBackgroundAsync(slot);
@@ -759,6 +774,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         {
             slot.SetupException = exception;
             Log.ChannelSetupFailed(_logger, exception, channel.Id);
+        }
+        finally
+        {
+            SignalChangeLocked();
         }
     }
 
@@ -818,6 +837,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
     private static TaskCompletionSource<IReadOnlyList<WorkerChannel>> CreateReadyChannelsSignal()
         => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private void SignalChangeLocked()
+    {
+        TaskCompletionSource changed = _changed;
+        _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
+    }
 
     private async Task<Exception> ShutdownSlotAsync(string workerId, WorkerSlot slot)
     {

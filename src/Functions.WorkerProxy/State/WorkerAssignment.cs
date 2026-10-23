@@ -22,6 +22,7 @@ internal sealed class WorkerAssignment
     /// <remarks>
     /// Copies environment entries using ordinal key equality. A directory is required in both modes,
     /// but only SpecializationRequired requires it to be nonblank. No filesystem check is performed.
+    /// An omitted HTTP concurrency is normalized here so retry identity and capability publication use the same effective value.
     /// </remarks>
     public WorkerAssignment(
         WorkerStartupMode startupMode,
@@ -29,7 +30,8 @@ internal sealed class WorkerAssignment
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
-        string functionAppDirectory)
+        string functionAppDirectory,
+        int? maxHttpConcurrency = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -45,6 +47,11 @@ internal sealed class WorkerAssignment
             ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
         }
 
+        if (maxHttpConcurrency is < 1 or > 1000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxHttpConcurrency), "HTTP concurrency must be between 1 and 1000.");
+        }
+
         foreach ((string key, string value) in environment)
         {
             ArgumentException.ThrowIfNullOrEmpty(key);
@@ -54,6 +61,7 @@ internal sealed class WorkerAssignment
         StartupMode = startupMode;
         FunctionAppName = functionAppName;
         FunctionGroupName = functionGroupName;
+        MaxHttpConcurrency = maxHttpConcurrency ?? (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) ? 16 : null);
         IsAlwaysReady = isAlwaysReady;
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
@@ -68,6 +76,11 @@ internal sealed class WorkerAssignment
     public string FunctionAppName { get; }
 
     public string FunctionGroupName { get; }
+
+    /// <summary>
+    /// Gets the assignment's effective HTTP concurrency, with no default for non-HTTP groups.
+    /// </summary>
+    public int? MaxHttpConcurrency { get; }
 
     public bool IsAlwaysReady { get; }
 
@@ -85,6 +98,7 @@ internal sealed class WorkerAssignment
         if (StartupMode != other.StartupMode
             || !string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
+            || MaxHttpConcurrency != other.MaxHttpConcurrency
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
             || Environment.Count != other.Environment.Count)
