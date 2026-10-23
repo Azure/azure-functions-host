@@ -21,6 +21,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using GrpcRpcException = Grpc.Core.RpcException;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
@@ -72,8 +73,7 @@ public partial class FunctionRpcRelayTests
     [Theory]
     [InlineData(StatusResult.Types.Status.Failure)]
     [InlineData(StatusResult.Types.Status.Cancelled)]
-    [InlineData(null)]
-    public async Task Relay_UnsuccessfulInitialization_DoesNotCaptureOrRewriteCapabilities(StatusResult.Types.Status? status)
+    public async Task Relay_UnsuccessfulInitialization_DoesNotCaptureOrRewriteCapabilities(StatusResult.Types.Status status)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -85,12 +85,41 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(start, timeout.Token);
         Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
         StreamingMessage response = CreateInitResponse("failed-init", "http://localhost:1234");
-        response.WorkerInitResponse.Result = status is { } result ? new() { Status = result } : null;
+        response.WorkerInitResponse.Result = new()
+        {
+            Status = status,
+            Exception = new() { Message = "original-worker-initialization-error" }
+        };
 
         await worker.WriteAsync(response, timeout.Token);
 
         Assert.Equal(response, await runtime.ReadAsync(timeout.Token));
         Assert.Null(relay.WorkerHttpDestination);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData((StatusResult.Types.Status)42)]
+    public async Task Relay_MalformedInitializationResult_FaultsWithoutForwardingResponseOrCapturingCapabilities(StatusResult.Types.Status? status)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        StreamingMessage response = CreateInitResponse("malformed-init", "http://localhost:1234");
+        response.WorkerInitResponse.Result = status is { } result ? new() { Status = result } : null;
+
+        await worker.WriteAsync(response, timeout.Token);
+
+        GrpcRpcException exception = await Assert.ThrowsAsync<GrpcRpcException>(() => runtime.ReadAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
+        Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+        await WaitForReleaseAsync(relay, timeout.Token);
+        Assert.Null(relay.WorkerHttpDestination);
+        Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, relay.LastTerminalState?.Reason);
+        Assert.IsType<InvalidDataException>(relay.LastTerminalState?.Exception);
     }
 
     [Fact]
