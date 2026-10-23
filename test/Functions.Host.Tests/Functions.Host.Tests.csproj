@@ -17,6 +17,13 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <!-- Match WorkerProxy's AOT-compatible transport versions in the cross-product integration fixture only. -->
+    <PackageReference Include="Google.Protobuf" VersionOverride="3.35.1" />
+    <PackageReference Include="Grpc.AspNetCore" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
+    <PackageReference Include="Yarp.ReverseProxy" VersionOverride="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,7 +33,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Functions.WorkerProxy.Tests\TestCertificateFiles.cs" Link="TestCertificateFiles.cs" />
     <ProjectReference Include="..\..\src\Functions.Host\Functions.Host.csproj" />
+    <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" Aliases="workerproxy" />
   </ItemGroup>
 
 </Project>

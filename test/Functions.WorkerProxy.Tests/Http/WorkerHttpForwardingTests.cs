@@ -583,7 +583,7 @@ public class WorkerHttpForwardingTests
         Assert.Equal("Microsoft.AspNetCore", activity.Source.Name);
         Assert.Equal(ActivityKind.Server, activity.Kind);
         Assert.Equal(method, activity.GetTagItem("http.request.method"));
-        Assert.Equal("http", activity.GetTagItem("url.scheme"));
+        Assert.Equal("https", activity.GetTagItem("url.scheme"));
         Assert.Equal(path, activity.GetTagItem("url.path"));
         Assert.Single(activity.TagObjects.Where(tag => string.Equals(
             tag.Key, "http.request.method", StringComparison.Ordinal)));

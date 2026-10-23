@@ -15,7 +15,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
-    private const string HttpUriCapability = "HttpUri";
+    internal const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -41,6 +41,10 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
         Uri proxyEndpoint = ResolveRequiredEndpoint(
             _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        if (!string.Equals(proxyEndpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The runtime-facing HTTP origin must use HTTPS.");
+        }
 
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
         Log.HttpCapabilityFinalized(_logger,

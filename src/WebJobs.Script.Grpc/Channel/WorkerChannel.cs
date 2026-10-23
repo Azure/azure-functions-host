@@ -571,7 +571,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             latencyEvent.Dispose();
         }
 
-        internal void WorkerInitResponse(StreamingMessage initMessage)
+        internal virtual void WorkerInitResponse(StreamingMessage initMessage)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;

@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Security;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
@@ -214,7 +216,30 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             KeepAlivePingDelay = DefaultKeepAlivePingDelay,
             KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
             KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
+            UseProxy = false,
+            // Only the compute-separation WorkerProxy client uses this handler. Server identity is not authenticated.
+            SslOptions = new SslClientAuthenticationOptions
+            {
+                RemoteCertificateValidationCallback = static (_, certificate, _, _) => IsCertificateUnexpired(certificate, DateTimeOffset.UtcNow)
+            },
         };
+    }
+
+    internal static bool IsCertificateUnexpired(X509Certificate certificate, DateTimeOffset now)
+    {
+        if (certificate is null)
+        {
+            return false;
+        }
+
+        if (certificate is X509Certificate2 certificate2)
+        {
+            return now.UtcDateTime < certificate2.NotAfter.ToUniversalTime();
+        }
+
+        using X509Certificate2 loaded = X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
+
+        return now.UtcDateTime < loaded.NotAfter.ToUniversalTime();
     }
 
     /// <summary>
@@ -226,11 +251,10 @@ internal sealed class RpcClientFactory : IRpcClientFactory
         ArgumentNullException.ThrowIfNull(endpoint);
 
         if (!endpoint.IsAbsoluteUri ||
-            (!string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
-             !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) ||
-            string.IsNullOrWhiteSpace(endpoint.Host))
+            !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(endpoint.Host) || endpoint.Port <= 0)
         {
-            throw new ArgumentException("The endpoint must be an absolute HTTP or HTTPS URI with a host.", nameof(endpoint));
+            throw new ArgumentException("The endpoint must be an absolute HTTPS URI with a host.", nameof(endpoint));
         }
 
         if (!string.IsNullOrEmpty(endpoint.UserInfo) ||

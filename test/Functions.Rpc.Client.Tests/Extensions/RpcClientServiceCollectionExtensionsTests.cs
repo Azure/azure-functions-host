@@ -28,7 +28,9 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
-        AssertSingleton(services, typeof(IHttpProxyService), "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
+        ServiceDescriptor httpProxy = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IHttpProxyService)));
+        Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
+        Assert.NotNull(httpProxy.ImplementationFactory);
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);

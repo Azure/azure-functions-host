@@ -31,7 +31,7 @@ jobs:
       # Build the product test graphs without bootstrapping the manual Aspire tool.
       projects: test/Functions.*.Tests/*.csproj
 
-  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
+  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev openssl
     displayName: Install Native AOT prerequisites
 
   - task: DotNetCoreCLI@2
@@ -53,23 +53,36 @@ jobs:
 
   - script: |
       set -euo pipefail
-      echo "Starting WorkerProxy image: $(localImage)"
-      containerId="$(docker run --detach \
-        --publish 127.0.0.1::80 \
-        --env WEBSITE_POD_NAME=ci-worker-pod \
-        $(localImage))"
-      echo "Started WorkerProxy container: $containerId"
+      certificateDirectory="$(mktemp -d)"
+      containerId=""
       cleanup() {
         exitCode=$?
         trap - EXIT
-        if [ "$exitCode" -ne 0 ]; then
-          docker logs "$containerId" || true
+        if [ -n "$containerId" ]; then
+          if [ "$exitCode" -ne 0 ]; then
+            docker logs "$containerId" || true
+          fi
+          docker rm --force "$containerId" >/dev/null 2>&1 || true
         fi
 
-        docker rm --force "$containerId" >/dev/null 2>&1 || true
+        rm -f -- "$certificateDirectory/server.crt" "$certificateDirectory/server.key"
+        rmdir -- "$certificateDirectory"
         exit "$exitCode"
       }
       trap cleanup EXIT
+
+      umask 077
+      openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+        -subj /CN=ci-worker-proxy -days 1 \
+        -out "$certificateDirectory/server.crt" -keyout "$certificateDirectory/server.key"
+      chmod 644 "$certificateDirectory/server.crt"
+      echo "Starting WorkerProxy image: $(localImage)"
+      containerId="$(docker run --detach \
+        --publish 127.0.0.1::80 \
+        --mount "type=bind,source=$certificateDirectory,target=/etc/ssl/workerproxy,readonly" \
+        --env WEBSITE_POD_NAME=ci-worker-pod \
+        $(localImage))"
+      echo "Started WorkerProxy container: $containerId"
 
       managementPort="$(docker port "$containerId" 80/tcp | head -n 1 | sed 's/.*://')"
       test -n "$managementPort"

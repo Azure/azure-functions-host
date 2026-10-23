@@ -49,7 +49,7 @@ public class RpcClientFactoryTests
     public async Task FailedConnectionIsRemovedFromCache()
     {
         int unusedPort = GetUnusedPort();
-        Uri endpoint = new($"http://{IPAddress.Loopback}:{unusedPort}");
+        Uri endpoint = new($"https://{IPAddress.Loopback}:{unusedPort}");
         await using RpcClientFactory factory = CreateFactory();
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
@@ -71,7 +71,7 @@ public class RpcClientFactoryTests
         }
 
         await using RpcClientFactory factory = CreateFactory(ConnectAsync);
-        Uri endpoint = new("http://localhost:5001");
+        Uri endpoint = new("https://localhost:5001");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => factory.CreateAsync(endpoint).AsTask());
         FunctionRpc.FunctionRpcClient client = await factory.CreateAsync(endpoint);
@@ -108,7 +108,7 @@ public class RpcClientFactoryTests
         }
 
         await using RpcClientFactory factory = CreateFactory(ConnectAsync);
-        Uri endpoint = new("http://localhost:5001");
+        Uri endpoint = new("https://localhost:5001");
         using CancellationTokenSource firstSource = new();
         using CancellationTokenSource secondSource = new();
         Task<FunctionRpc.FunctionRpcClient> first = factory.CreateAsync(endpoint, firstSource.Token).AsTask();
@@ -160,7 +160,7 @@ public class RpcClientFactoryTests
         }
 
         RpcClientFactory factory = CreateFactory(ConnectAsync);
-        Task<FunctionRpc.FunctionRpcClient> creation = factory.CreateAsync(new Uri("http://localhost:5001")).AsTask();
+        Task<FunctionRpc.FunctionRpcClient> creation = factory.CreateAsync(new Uri("https://localhost:5001")).AsTask();
         await connectionStarted.Task.WaitAsync(TestTimeout);
 
         await factory.DisposeAsync();
@@ -216,9 +216,9 @@ public class RpcClientFactoryTests
     }
 
     [Theory]
-    [InlineData("http://localhost/functions")]
-    [InlineData("http://localhost?query=value")]
-    [InlineData("http://localhost#fragment")]
+    [InlineData("https://localhost/functions")]
+    [InlineData("https://localhost?query=value")]
+    [InlineData("https://localhost#fragment")]
     public void ValidateEndpointRejectsCallSpecificComponents(string endpoint)
     {
         Assert.Throws<ArgumentException>(() => RpcClientFactory.ValidateEndpoint(new Uri(endpoint)));

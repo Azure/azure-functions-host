@@ -380,7 +380,10 @@ public class ManagementApiEndpointTests
         using CancellationTokenSource timeout = new(TestTimeout);
         foreach (FunctionRpcRelaySide side in new[] { FunctionRpcRelaySide.Runtime, FunctionRpcRelaySide.Worker })
         {
-            using HttpClient rpcClient = new() { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            using HttpClient rpcClient = new(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }) { BaseAddress = factory.GetFunctionRpcAddress(side) };
             using HttpRequestMessage request = new(new HttpMethod(method), path)
             {
                 Version = HttpVersion.Version20,

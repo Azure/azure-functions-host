@@ -13,6 +13,9 @@
 !src/
 !src/Functions.WorkerProxy/
 !src/Functions.WorkerProxy/**
+!src/Functions.Rpc.Client/
+!src/Functions.Rpc.Client/Security/
+!src/Functions.Rpc.Client/Security/RuntimeWorkerAuthentication.cs
 !src/WebJobs.Script.Grpc/
 !src/WebJobs.Script.Grpc/azure-functions-language-worker-protobuf/
 !src/WebJobs.Script.Grpc/azure-functions-language-worker-protobuf/src/

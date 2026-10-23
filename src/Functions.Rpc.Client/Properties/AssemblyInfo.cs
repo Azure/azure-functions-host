@@ -4,4 +4,5 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Azure.Functions.Rpc.Client.Tests")]
+[assembly: InternalsVisibleTo("Azure.Functions.Host")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

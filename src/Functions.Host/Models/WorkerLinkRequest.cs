@@ -11,11 +11,17 @@ namespace Azure.Functions.Host.WorkerLink;
 public sealed class WorkerLinkRequest
 {
     /// <summary>
-    /// Gets or sets the required HTTP or HTTPS authority of WorkerProxy's runtime-facing
+    /// Gets or sets the required HTTPS authority of WorkerProxy's runtime-facing
     /// gRPC listener. The endpoint must be reachable from this runtime.
     /// </summary>
     [JsonProperty("workerGrpcEndpoint")]
     public string? WorkerGrpcEndpoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets the target WorkerProxy's container encryption key. Never log or return this value.
+    /// </summary>
+    [JsonProperty("runtimeAccessKey")]
+    public string? RuntimeAccessKey { get; set; }
 
     /// <summary>
     /// Gets or sets the reserved worker-pod container encryption key. It is not used to authenticate

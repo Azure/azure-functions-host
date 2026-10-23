@@ -22,4 +22,7 @@ public enum WorkerLinkFailureReason
 
     /// <summary>The connection or worker initialization deadline expired.</summary>
     Timeout,
+
+    /// <summary>The specialized application authentication key or identity is missing or invalid.</summary>
+    AuthenticationUnavailable,
 }

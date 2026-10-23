@@ -4,6 +4,8 @@ services:
       context: ../..
       dockerfile: tools/ComputeSeparation/FunctionsHost/Dockerfile
     environment:
+      WEBSITE_SITE_NAME: aspire-sample-app
+      WEBSITE_AUTH_ENCRYPTION_KEY: ${COMPUTE_APP_AUTH_KEY:?Aspire must supply the app key}
       AzureFunctionsWebHost__hostid: aspire-worker
       AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
       AzureFunctionsJobHost__logging__logLevel__default: Information

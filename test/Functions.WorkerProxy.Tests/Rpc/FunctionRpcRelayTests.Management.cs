@@ -33,7 +33,7 @@ public partial class FunctionRpcRelayTests
     public async Task ManagementApis_ObserveNormalStartupAssignmentAndTerminalFailure(bool runtimeFirst, string startupMode)
     {
         string assignmentBody = ManagementAssignment.Replace("SpecializationRequired", startupMode, StringComparison.Ordinal);
-        const string proxyEndpoint = "http://worker-pod:28080/";
+        const string proxyEndpoint = "https://worker-pod:28080/";
         await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory(proxyEndpoint);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();

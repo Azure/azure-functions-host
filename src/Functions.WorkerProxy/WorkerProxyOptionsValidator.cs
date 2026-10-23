@@ -29,6 +29,10 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);
         ValidatePort(options.HttpPort, nameof(options.HttpPort), failures);
+        if (string.IsNullOrWhiteSpace(options.CertificatePath) || string.IsNullOrWhiteSpace(options.CertificateKeyPath))
+        {
+            failures.Add("CertificatePath and CertificateKeyPath must specify startup-provisioned PEM files.");
+        }
 
         HashSet<int> configuredPorts = [];
         AddDistinctPort(options.ManagementPort, nameof(options.ManagementPort), configuredPorts, failures);
@@ -40,11 +44,12 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         {
             Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, options.HttpProxyEndpoint);
             if (endpoint is null
+                || !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
                 || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
                     && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
             {
-                failures.Add($"{nameof(options.HttpProxyEndpoint)} must be an absolute HTTP or HTTPS origin with a concrete host, "
+                failures.Add($"{nameof(options.HttpProxyEndpoint)} must be an absolute HTTPS origin with a concrete host, "
                     + "a nonzero port, and no credentials, path prefix, query, or fragment.");
             }
         }

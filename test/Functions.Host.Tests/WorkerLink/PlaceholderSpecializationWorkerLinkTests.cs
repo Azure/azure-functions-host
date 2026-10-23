@@ -29,7 +29,7 @@ namespace Azure.Functions.Host.Tests.WorkerLink;
 public sealed class PlaceholderSpecializationWorkerLinkTests
 {
     private const string WorkerId = "worker-pod-1";
-    private const string GrpcEndpoint = "http://100.64.1.12:50053";
+    private const string GrpcEndpoint = "https://100.64.1.12:50053";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Fact]
@@ -40,7 +40,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
-        registry.Setup(value => value.LinkAsync(WorkerId, new Uri(GrpcEndpoint), It.IsAny<CancellationToken>()))
+        registry.Setup(value => value.LinkAsync(WorkerId, new Uri(GrpcEndpoint), WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 linkedWithStandbyConfiguration = hostOptions!.CurrentValue.IsStandbyConfiguration;
@@ -95,7 +95,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
-            Content = new StringContent($$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}"}""", Encoding.UTF8, "application/json"),
+            Content = new StringContent(
+                $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}""",
+                Encoding.UTF8, "application/json"),
         };
 
         return await client.SendAsync(request, cancellationToken);

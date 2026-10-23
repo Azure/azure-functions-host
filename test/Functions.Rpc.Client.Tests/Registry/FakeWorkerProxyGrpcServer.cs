@@ -45,8 +45,7 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(options =>
-            options.Listen(IPAddress.Loopback, 0, listen => listen.Protocols = HttpProtocols.Http2));
+        RuntimeWorkerTestData.ConfigureTlsListener(builder);
         TestFunctionRpcService service = new();
         builder.Services.AddSingleton(service);
         builder.Services.AddGrpc();
@@ -112,7 +111,7 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
 
         internal Task Disconnected => _disconnected.Task;
 
-        internal void CompleteInitialization(string? httpUri = null)
+        internal void CompleteInitialization(string? httpUri = null, string? appProof = null, bool includeProof = true)
         {
             WorkerInitResponse response = new() { Result = new StatusResult { Status = StatusResult.Types.Status.Success } };
             if (httpUri is not null)
@@ -120,18 +119,23 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
                 response.Capabilities.Add(RpcWorkerConstants.HttpUri, httpUri);
             }
 
+            if (includeProof)
+            {
+                response.Capabilities["WorkerProxyAppToken"] = appProof ?? RuntimeWorkerTestData.CreateAppProof(WorkerId);
+            }
+
             _initializationResponse.SetResult(response);
         }
 
         internal void FailInitialization(string detail)
-            => _initializationResponse.SetResult(new WorkerInitResponse
+            => _initializationResponse.SetResult(RuntimeWorkerTestData.Authenticate(new WorkerInitResponse
             {
                 Result = new StatusResult
                 {
                     Status = StatusResult.Types.Status.Failure,
                     Exception = new() { Message = detail, StackTrace = detail },
                 },
-            });
+            }, WorkerId));
 
         internal Task<WorkerInitResponse> GetInitializationResponseAsync(CancellationToken cancellationToken)
         {

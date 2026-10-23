@@ -58,7 +58,10 @@ public class WorkerProxyKestrelTests
 
         foreach (FunctionRpcRelaySide side in Enum.GetValues<FunctionRpcRelaySide>())
         {
-            using HttpClient grpcClient = new() { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            using HttpClient grpcClient = new(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }) { BaseAddress = factory.GetFunctionRpcAddress(side) };
             using HttpRequestMessage readyRequest = new(HttpMethod.Get, "/admin/instance/ready")
             {
                 Version = HttpVersion.Version20,
@@ -68,7 +71,10 @@ public class WorkerProxyKestrelTests
             Assert.Equal(HttpStatusCode.NotFound, readyResponse.StatusCode);
         }
 
-        using HttpClient runtimeClient = new() { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
+        using HttpClient runtimeClient = new(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        }) { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
         using HttpRequestMessage runtimeFallbackRequest = new(HttpMethod.Get, "/not-a-function-rpc-route")
         {
             Version = HttpVersion.Version20,

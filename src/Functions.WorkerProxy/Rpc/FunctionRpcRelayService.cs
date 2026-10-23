@@ -1,8 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy;
+using Azure.Functions.WorkerProxy.Authentication;
 using Grpc.AspNetCore.Server;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
@@ -18,7 +22,8 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// The local listener port determines stream ownership, so callers cannot select or change
 /// ownership through headers or FunctionRpc messages.
 /// </remarks>
-internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints) : FunctionRpc.FunctionRpcBase
+internal sealed class FunctionRpcRelayService(
+    FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints, RuntimeRequestAuthenticator authenticator) : FunctionRpc.FunctionRpcBase
 {
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
@@ -30,10 +35,18 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
             throw new GrpcRpcException(new Status(StatusCode.Unimplemented, "FunctionRpc is unavailable on this listener."));
         }
 
+        if (side is FunctionRpcRelaySide.Runtime && !authenticator.TryAuthenticate(httpContext))
+        {
+            throw new GrpcRpcException(new Status(StatusCode.Unauthenticated, "Runtime authentication is required."));
+        }
+
         FunctionRpcRelayTerminalState terminalState;
         try
         {
-            terminalState = await relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
+            IServerStreamWriter<StreamingMessage> writer = side is FunctionRpcRelaySide.Runtime
+                ? new RuntimeResponseWriter(responseStream, authenticator)
+                : responseStream;
+            terminalState = await relay.AttachAsync(side, requestStream, writer, context.CancellationToken);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
@@ -67,5 +80,42 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
         }
 
         return;
+    }
+
+    private sealed class RuntimeResponseWriter(
+        IServerStreamWriter<StreamingMessage> inner, RuntimeRequestAuthenticator authentication) : IServerStreamWriter<StreamingMessage>
+    {
+        public WriteOptions? WriteOptions
+        {
+            get => inner.WriteOptions;
+            set => inner.WriteOptions = value;
+        }
+
+        public Task WriteAsync(StreamingMessage message) => inner.WriteAsync(Prepare(message));
+
+        public Task WriteAsync(StreamingMessage message, CancellationToken cancellationToken)
+            => inner.WriteAsync(Prepare(message), cancellationToken);
+
+        private StreamingMessage Prepare(StreamingMessage message)
+        {
+            if (message.WorkerInitResponse is null)
+            {
+                return message;
+            }
+
+            if (message.WorkerInitResponse.Result is not
+                { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+            {
+                throw new InvalidDataException("The worker initialization response must have a known result status.");
+            }
+
+            // Keep the authentication proof outside the relay's ordinary capability snapshots.
+            StreamingMessage transport = message.Clone();
+            RuntimeWorkerAuthentication.RemoveAppProof(transport.WorkerInitResponse.Capabilities);
+            RuntimeWorkerAuthentication.SetAppProof(
+                transport.WorkerInitResponse.Capabilities, authentication.CreateAppProof());
+
+            return transport;
+        }
     }
 }

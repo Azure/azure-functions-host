@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -36,6 +37,7 @@ internal static class WorkerProxyApplication
         ArgumentNullException.ThrowIfNull(args);
 
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
+        builder.WebHost.UseKestrelHttpsConfiguration();
         // WorkerProxy owns all listener bindings and does not use the generic ASP.NET Core URL configuration.
         builder.WebHost.UseSetting(WebHostDefaults.ServerUrlsKey, string.Empty);
         builder.WebHost.UseSetting(WebHostDefaults.HttpPortsKey, string.Empty);
@@ -48,6 +50,9 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
+        builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
+        builder.Services.AddSingleton<RuntimeRequestAuthenticator>();
+        builder.Services.AddSingleton<WorkerProxyCertificate>();
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
@@ -109,12 +114,23 @@ internal static class WorkerProxyApplication
             => middleware.InvokeAsync(context);
 
         app.UseRouting();
+        app.Use(static (context, next) =>
+        {
+            if (!context.RequestServices.GetRequiredService<RuntimeRequestAuthenticator>().TryAuthenticate(context))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
+                return Task.CompletedTask;
+            }
+
+            return next(context);
+        });
         app.Use(UpdateMaxRequestBodySizeAsync);
         app.UseEndpoints(static endpoints =>
         {
             // Admin paths are reserved for the platform. We intentionally block them to make that clear.
-            endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
-            endpoints.Map("/{**path}", ForwardAsync).AllowAnonymous();
+            endpoints.Map("/admin/{**path}", static () => Results.NotFound());
+            endpoints.Map("/{**path}", ForwardAsync);
         });
     }
 
