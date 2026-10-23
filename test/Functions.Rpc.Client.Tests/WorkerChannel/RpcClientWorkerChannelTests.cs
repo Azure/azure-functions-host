@@ -120,6 +120,81 @@ public sealed class RpcClientWorkerChannelTests
         await channel.DisposeAsync();
     }
 
+    [Theory]
+    [InlineData("http", "10", true, 10)]
+    [InlineData("HTTP", "16", true, 16)]
+    [InlineData("http", "1", true, 1)]
+    [InlineData("http", "1000", true, 1000)]
+    [InlineData("background", "invalid", false, null)]
+    [InlineData("background", null, false, null)]
+    [InlineData(null, "10", false, null)]
+    [InlineData("", null, false, null)]
+    public async Task StartAsync_CapturesOnlyApplicableAssignmentCapabilities(string group, string supplied, bool isHttp, int? expected)
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
+            WorkerId, functionGroupName: group, maxHttpConcurrency: supplied);
+
+        Assert.Equal(group, harness.Channel.FunctionGroupName);
+        Assert.Equal(isHttp, harness.Channel.IsHttpFunctionGroup);
+        Assert.Equal(expected, harness.Channel.MaxHttpConcurrency);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("10 ")]
+    [InlineData("+10")]
+    [InlineData("invalid")]
+    [InlineData("1.5")]
+    [InlineData("-1")]
+    [InlineData("0")]
+    [InlineData("1001")]
+    [InlineData("2147483648")]
+    public async Task StartAsync_HttpWithoutValidExplicitConcurrencyFails(string supplied)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "hTtP");
+        if (supplied is not null)
+        {
+            response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, supplied);
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start.WaitAsync(TestTimeout));
+        Assert.Contains("MaxHttpConcurrency", exception.Message, StringComparison.Ordinal);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+    }
+
+    [Fact]
+    public async Task StartAsync_LaterCapabilitiesDoNotChangeCapturedAssignment()
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
+            WorkerId, functionGroupName: "http", maxHttpConcurrency: "10");
+        Task reload = harness.Channel.SendFunctionEnvironmentReloadRequest();
+        await harness.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
+        FunctionEnvironmentReloadResponse response = new()
+        {
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        };
+        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "background");
+        response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "50");
+        await harness.Transport.SendResponseAsync(new() { FunctionEnvironmentReloadResponse = response });
+        await reload.WaitAsync(TestTimeout);
+
+        Assert.Equal("http", harness.Channel.FunctionGroupName);
+        Assert.True(harness.Channel.IsHttpFunctionGroup);
+        Assert.Equal(10, harness.Channel.MaxHttpConcurrency);
+    }
+
     [Fact]
     public async Task StartAsync_StartStreamTimeout_PropagatesTimeout()
     {

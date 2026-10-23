@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -25,6 +26,10 @@ internal sealed class RpcClientStartupTestHost : IAsyncDisposable
         ScriptHost.Setup(host => host.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         ScriptHost.Setup(host => host.StopAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         Registry.Setup(registry => registry.DisposeAsync()).Returns(ValueTask.CompletedTask);
+        Registry.Setup(registry => registry.GetChangeTask()).Returns(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+        Registry.Setup(registry => registry.GetInitializedChannels()).Returns(Array.Empty<WorkerChannel>());
+        Registry.Setup(registry => registry.GetReadyChannelsAsync()).Returns(
+            new ValueTask<IReadOnlyList<WorkerChannel>>(new TaskCompletionSource<IReadOnlyList<WorkerChannel>>(TaskCreationOptions.RunContinuationsAsynchronously).Task));
         Registry.Setup(registry => registry.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken token) =>
             {

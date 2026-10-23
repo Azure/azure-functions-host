@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -1897,6 +1898,8 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly TaskCompletionSource _setupEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _setupRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Exception _setupFailure;
+        private readonly string _functionGroupName;
+        private readonly int? _maxHttpConcurrency;
         private int _remainingSetupFailures;
         private int _setupAttempts;
         private Exception _startFailure;
@@ -1908,12 +1911,16 @@ public sealed partial class WorkerChannelRegistryTests
             bool blockDisposal = false,
             bool blockSetup = false,
             int setupFailureCount = 0,
-            Exception setupFailure = null)
+            Exception setupFailure = null,
+            string functionGroupName = null,
+            int? maxHttpConcurrency = null)
         {
             Id = id;
             Transport = new(blockDisposal);
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
+            _functionGroupName = functionGroupName;
+            _maxHttpConcurrency = maxHttpConcurrency;
             if (!blockStart)
             {
                 _startRelease.TrySetResult();
@@ -2045,13 +2052,21 @@ public sealed partial class WorkerChannelRegistryTests
                     return;
                 }
 
-                await Transport.SendResponseAsync(new StreamingMessage
+                WorkerInitResponse response = new()
                 {
-                    WorkerInitResponse = new WorkerInitResponse
-                    {
-                        Result = new() { Status = StatusResult.Types.Status.Success },
-                    },
-                });
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                };
+                if (_functionGroupName is not null)
+                {
+                    response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroupName);
+                }
+
+                if (_maxHttpConcurrency is { } concurrency)
+                {
+                    response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, concurrency.ToString(CultureInfo.InvariantCulture));
+                }
+
+                await Transport.SendResponseAsync(new() { WorkerInitResponse = response });
             }
             catch (ChannelClosedException)
             {
