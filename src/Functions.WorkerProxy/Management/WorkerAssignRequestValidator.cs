@@ -36,6 +36,11 @@ internal static class WorkerAssignRequestValidator
             errors.Add(new(WorkerApiErrorCodes.Required, "functionGroupName"));
         }
 
+        if (request.MaxHttpConcurrency is < 1 or > 1000)
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "maxHttpConcurrency"));
+        }
+
         if (request.IsAlwaysReady is null)
         {
             errors.Add(new(WorkerApiErrorCodes.Required, "isAlwaysReady"));
@@ -65,7 +70,8 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory);
+            functionAppDirectory,
+            request.MaxHttpConcurrency);
 
         return true;
     }
