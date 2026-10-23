@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using FunctionTimeoutAbortException = Microsoft.Azure.WebJobs.Host.FunctionTimeoutAbortException;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
@@ -508,6 +509,57 @@ public sealed partial class WorkerChannelRegistryTests
             () => registry.LinkAsync(failed.Id, CreateEndpoint(failed.Id)));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminated.Reason);
         Assert.Equal(2, harness.Transports.Count);
+    }
+
+    [Fact]
+    public async Task TransportCompletion_FailsInvocationQueuedBeforeFunctionLoadResponse()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, channel.Id);
+        FunctionMetadata function = CreateFunction("TestFunction");
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await channel.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        using RpcClientFunctionInvocationDispatcher dispatcher =
+            new(registry, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext invocation = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(invocation).WaitAsync(TestTimeout);
+
+        Assert.Equal(1, channel.Channel.FunctionInputBuffers[function.GetFunctionId()].Count);
+        Assert.False(invocation.ResultSource.Task.IsCompleted);
+        channel.Complete();
+        await Assert.ThrowsAsync<FunctionTimeoutAbortException>(
+            () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+    }
+
+    [Fact]
+    public async Task FunctionLoadFailure_FailsInvocationQueuedBeforeFunctionLoadResponse()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, channel.Id);
+        FunctionMetadata function = CreateFunction("TestFunction");
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await channel.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        using RpcClientFunctionInvocationDispatcher dispatcher =
+            new(registry, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext invocation = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(invocation).WaitAsync(TestTimeout);
+
+        Assert.Equal(1, channel.Channel.FunctionInputBuffers[function.GetFunctionId()].Count);
+        Assert.False(invocation.ResultSource.Task.IsCompleted);
+        Exception failure = await channel.FailFunctionLoadAsync();
+        Exception invocationFailure = await Assert.ThrowsAnyAsync<Exception>(
+            () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        Assert.Same(failure, invocationFailure);
     }
 
     [Fact]
@@ -1777,6 +1829,22 @@ public sealed partial class WorkerChannelRegistryTests
         {
             Language = "external",
             Name = name,
+        };
+
+    private static ScriptInvocationContext CreateInvocation(FunctionMetadata function)
+        => new()
+        {
+            FunctionMetadata = function,
+            ExecutionContext = new()
+            {
+                FunctionName = function.Name,
+                InvocationId = Guid.NewGuid(),
+            },
+            BindingData = [],
+            Inputs = [],
+            ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            Logger = NullLogger.Instance,
         };
 
     private static async Task WaitUntilAsync(Func<bool> condition)

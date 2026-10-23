@@ -102,7 +102,12 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
             }
 
-            inputBuffer.Post(invocationContext);
+            if (!inputBuffer.Post(invocationContext))
+            {
+                invocationContext.ResultSource.TrySetException(
+                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));
+            }
+
             return Task.CompletedTask;
         }
 

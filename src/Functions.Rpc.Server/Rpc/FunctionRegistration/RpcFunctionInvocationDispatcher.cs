@@ -431,7 +431,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
                 }
 
-                bufferBlock.Post(invocationContext);
+                if (!bufferBlock.Post(invocationContext))
+                {
+                    invocationContext.ResultSource.TrySetException(
+                        new InvalidOperationException($"Worker '{rpcWorkerChannel.Id}' is no longer accepting invocations."));
+                }
             }
             else
             {

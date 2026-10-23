@@ -1739,13 +1739,32 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 shutdownException = new FunctionTimeoutAbortException("Worker channel is shutting down. Aborting function." + exceptionMessageSuffix, workerException);
             }
 
+            foreach (BufferBlock<ScriptInvocationContext> inputBuffer in _functionInputBuffers.Values)
+            {
+                inputBuffer.Complete();
+            }
+
+            foreach (BufferBlock<ScriptInvocationContext> inputBuffer in _functionInputBuffers.Values)
+            {
+                while (inputBuffer.TryReceive(out ScriptInvocationContext context))
+                {
+                    FailInvocation(context, shutdownException);
+                }
+            }
+
             foreach (var invocation in _executingInvocations?.Values)
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
-                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.SetException(shutdownException);
+                FailInvocation(invocation.Context, shutdownException);
                 RemoveExecutingInvocation(invocationId);
             }
+        }
+
+        private void FailInvocation(ScriptInvocationContext context, Exception exception)
+        {
+            string invocationId = context?.ExecutionContext?.InvocationId.ToString();
+            _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
+            context?.SetException(exception);
         }
 
         private void TryFailPendingReload(Exception exception)
