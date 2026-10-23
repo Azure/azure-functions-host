@@ -78,6 +78,13 @@ AppHost sets the project's Host `MESH_INIT_URI` to the fake platform. After spec
 }
 ```
 
+Every publication includes `fx-current-instance` from the Host's current `CONTAINER_NAME`, using the same
+instance-identity convention as existing Host-to-mesh internal operations. The local project and container profiles
+set `CONTAINER_NAME` to `aspire-runtime`. Missing or blank identity fails publication before sending an HTTP request.
+The compatible AppServer requires that header to match its own `CONTAINER_NAME`; it rejects missing or mismatched
+identity with HTTP 401. This is the existing mesh instance-identity check, not a Legion site token or a cryptographic
+credential. Roll out this Host change before enabling enforcement in the companion standalone AppServer.
+
 `httpCapacity` is the total of registry-ready HTTP workers' assigned concurrency limits, not free slots after active
 requests or Frontend reservations. This sample explicitly assigns `maxHttpConcurrency: 16` to each HTTP worker, so one
 ready worker contributes 16 and two contribute 32; the Host does not assume equal limits or multiply worker count by 16.
@@ -93,9 +100,10 @@ interrupts that wait. Each request is bounded to five seconds. After a successfu
 not periodically resent. Root Host shutdown withdraws capacity and makes one best-effort final attempt bounded to two
 seconds. This does not guarantee delivery or establish an AppServer admission policy.
 
-The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. Requests have no
-authentication or applied-version acknowledgement, and an AppServer restart is not repaired without a later Host state
-change. The client reads `MESH_INIT_URI` per request, including changes loaded during specialization, and defaults to
+The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. The fake receiver
+does not enforce the instance identity header. Requests have no applied-version acknowledgement, and an AppServer restart
+is not repaired without a later Host state change. The client reads `MESH_INIT_URI` and `CONTAINER_NAME` per request,
+including changes loaded during specialization, and defaults the endpoint to
 `http://localhost:6060/` when unset. Container mode has no fake AppServer receiver; its Host will log publication failures
 and retry the default endpoint without preventing the worker link or invocation.
 

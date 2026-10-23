@@ -18,7 +18,7 @@ namespace Azure.Functions.Host.HostState;
 /// Sends snapshots to the prototype AppServer <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
-/// Requests are not authenticated. Configuration is read per request because it reloads during specialization.
+/// Uses the existing mesh instance identity header. Configuration is read per request because it reloads during specialization.
 /// </remarks>
 internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
 {
@@ -33,12 +33,22 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        string? containerName = _configuration[EnvironmentSettingNames.ContainerName];
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            throw new InvalidOperationException("CONTAINER_NAME is required for AppServer Host-state publication.");
+        }
+
+        using HttpRequestMessage request = new(HttpMethod.Put, GetHostStateUri())
+        {
+            Content = JsonContent.Create(
+                new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
+                AppServerJsonSerializerContext.Default.HostStateRequest),
+        };
+        request.Headers.Add(ScriptConstants.ContainerInstanceHeader, containerName);
+
         using HttpClient client = _httpClientFactory.CreateClient(HttpClientName);
-        using HttpResponseMessage response = await client.PutAsJsonAsync(
-            GetHostStateUri(),
-            new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
-            AppServerJsonSerializerContext.Default.HostStateRequest,
-            cancellationToken);
+        using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         return response.StatusCode;
     }

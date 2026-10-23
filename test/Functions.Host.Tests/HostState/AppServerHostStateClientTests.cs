@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -36,6 +37,7 @@ public class AppServerHostStateClientTests
         Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), _handler.RequestUri);
         Assert.Equal("application/json", _handler.ContentType);
         Assert.Equal(expectedBody, _handler.Body);
+        Assert.Equal("runtime-container", _handler.InstanceIdentity);
     }
 
     [Fact]
@@ -89,16 +91,39 @@ public class AppServerHostStateClientTests
     [Fact]
     public async Task PublishAsync_ReadsMeshInitUriReloadedAtSpecialization()
     {
-        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-before-specialization",
+        }).Build();
         AppServerHostStateClient client = CreateClient(configuration);
         await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
         Uri? beforeSpecialization = _handler.RequestUri;
+        Assert.Equal("runtime-before-specialization", _handler.InstanceIdentity);
 
         configuration["MESH_INIT_URI"] = "http://appserver:7070";
+        configuration[EnvironmentSettingNames.ContainerName] = "runtime-after-specialization";
         await client.PublishAsync(new(CreatedTime, 0, 1, 1), CancellationToken.None);
 
         Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), beforeSpecialization);
         Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);
+        Assert.Equal("runtime-after-specialization", _handler.InstanceIdentity);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task PublishAsync_RejectsMissingInstanceIdentityBeforeSending(string? containerName)
+    {
+        AppServerHostStateClient client = CreateClient(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = containerName,
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None));
+
+        Assert.Null(_handler.RequestUri);
     }
 
     [Fact]
@@ -140,7 +165,21 @@ public class AppServerHostStateClientTests
     }
 
     private AppServerHostStateClient CreateClient(Dictionary<string, string?>? settings = null)
-        => CreateClient(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+    {
+        Dictionary<string, string?> values = new()
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        };
+        if (settings is not null)
+        {
+            foreach (KeyValuePair<string, string?> setting in settings)
+            {
+                values[setting.Key] = setting.Value;
+            }
+        }
+
+        return CreateClient(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+    }
 
     private AppServerHostStateClient CreateClient(IConfiguration configuration)
     {
@@ -163,6 +202,8 @@ public class AppServerHostStateClientTests
 
         public string? Body { get; private set; }
 
+        public string? InstanceIdentity { get; private set; }
+
         public Func<CancellationToken, Task>? OnRequest { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -170,6 +211,7 @@ public class AppServerHostStateClientTests
             Method = request.Method;
             RequestUri = request.RequestUri;
             ContentType = request.Content?.Headers.ContentType?.MediaType;
+            InstanceIdentity = string.Join(",", request.Headers.GetValues(ScriptConstants.ContainerInstanceHeader));
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             if (OnRequest is not null)
             {

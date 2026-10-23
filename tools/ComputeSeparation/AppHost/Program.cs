@@ -86,6 +86,7 @@ else
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
+        .WithEnvironment("CONTAINER_NAME", "aspire-runtime")
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
         .WithEnvironment("AzureWebJobsSecretStorageType", "Files")
         .WithEnvironment("AzureWebJobsScriptRoot", runDirectory!.ScriptPath)
