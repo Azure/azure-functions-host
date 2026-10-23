@@ -72,28 +72,61 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task StartAsync_ReverseProofIsRemovedBeforeLoggingOrCapabilityPublication(bool valid)
+    [InlineData(StatusResult.Types.Status.Success, "valid")]
+    [InlineData(StatusResult.Types.Status.Success, "missing")]
+    [InlineData(StatusResult.Types.Status.Success, "invalid")]
+    [InlineData(StatusResult.Types.Status.Failure, "valid")]
+    [InlineData(StatusResult.Types.Status.Failure, "missing")]
+    [InlineData(StatusResult.Types.Status.Failure, "invalid")]
+    [InlineData(StatusResult.Types.Status.Cancelled, "valid")]
+    [InlineData(StatusResult.Types.Status.Cancelled, "missing")]
+    [InlineData(StatusResult.Types.Status.Cancelled, "invalid")]
+    public async Task StartAsync_ReverseProofIsRemovedBeforeLoggingOrCapabilityPublication(StatusResult.Types.Status status, string proofKind)
     {
+        bool initializationFails = status is not StatusResult.Types.Status.Success;
         TestDuplexChannel<StreamingMessage> transport = new();
         await using RpcClientWorkerChannel channel = CreateChannel(transport);
         Task start = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(transport);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
+        bool valid = string.Equals(proofKind, "valid", StringComparison.Ordinal);
         string proof = RuntimeWorkerTestData.CreateAppProof(WorkerId) + (valid ? string.Empty : "A");
-        response.Capabilities["WorkerProxyAppToken"] = proof;
+        response.Capabilities.Remove("WorkerProxyAppToken");
+        if (!string.Equals(proofKind, "missing", StringComparison.Ordinal))
+        {
+            response.Capabilities["WorkerProxyAppToken"] = proof;
+        }
+
+        if (initializationFails)
+        {
+            response.Result = new()
+            {
+                Status = status,
+                Exception = new() { Message = "worker-initialization-error" }
+            };
+        }
         await transport.SendResponseAsync(new() { WorkerInitResponse = response });
-        if (valid)
+        if (valid && !initializationFails)
         {
             await start.WaitAsync(TestTimeout);
+        }
+        else if (valid && status is StatusResult.Types.Status.Cancelled)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => start.WaitAsync(TestTimeout));
+        }
+        else if (valid)
+        {
+            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(() => start.WaitAsync(TestTimeout));
         }
         else
         {
             await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
-            _appCapabilitiesStore.Verify(value => value.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never);
         }
 
+        if (!valid || initializationFails)
+        {
+            _appCapabilitiesStore.Verify(value => value.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never);
+        }
         Assert.False(response.Capabilities.ContainsKey("WorkerProxyAppToken"));
         string log = string.Join(Environment.NewLine, _logs);
         Assert.DoesNotContain(proof, log, StringComparison.Ordinal);

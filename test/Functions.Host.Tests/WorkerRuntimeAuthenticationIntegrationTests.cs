@@ -4,6 +4,7 @@
 extern alias workerproxy;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -37,6 +38,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -60,10 +62,22 @@ public class WorkerRuntimeAuthenticationIntegrationTests
     [InlineData("missing-proxy-key")]
     [InlineData("wrong-proxy-key")]
     [InlineData("missing-runtime-key")]
+    [InlineData("failed-init")]
+    [InlineData("failed-init-missing-proxy-key")]
+    [InlineData("failed-init-wrong-proxy-key")]
+    [InlineData("failed-init-missing-runtime-key")]
+    [InlineData("cancelled-init")]
+    [InlineData("unknown-init-status")]
+    [InlineData("null-init-result")]
     public async Task LinkAndHttpInvocation_UseCanonicalMvcRouteAndBidirectionalProofsOverTls(string scenario)
     {
         const string workerId = "test-worker-pod";
         const string appName = "test-app";
+        const string initializationError = "customer-worker-initialization-failure";
+        bool initializationFails = scenario.StartsWith("failed-init", StringComparison.Ordinal)
+            || string.Equals(scenario, "cancelled-init", StringComparison.Ordinal);
+        bool malformedResult = scenario is "unknown-init-status" or "null-init-result";
+        ConcurrentQueue<(string Message, Exception? Error)> diagnostics = new();
         string appKey = Convert.ToHexString(SHA256.HashData("integration-test-app-key"u8));
         bool native = string.Equals(scenario, "valid", StringComparison.Ordinal)
             && Environment.GetEnvironmentVariable("FUNCTIONS_WORKERPROXY_NATIVE_MANAGEMENT_URI") is not null;
@@ -90,8 +104,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             "--CONTAINER_ENCRYPTION_KEY", WorkerLinkTestData.RuntimeAccessKey,
             "--WEBSITE_AUTH_ENCRYPTION_KEY", scenario switch
             {
-                "missing-proxy-key" => string.Empty,
-                "wrong-proxy-key" => Convert.ToHexString(SHA256.HashData("different-app-key"u8)),
+                "missing-proxy-key" or "failed-init-missing-proxy-key" => string.Empty,
+                "wrong-proxy-key" or "failed-init-wrong-proxy-key" => Convert.ToHexString(SHA256.HashData("different-app-key"u8)),
                 _ => appKey
             },
             "--WorkerProxy:CertificatePath", certificates.CertificatePath,
@@ -149,7 +163,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         Assert.Equal(HttpStatusCode.Created, assignmentStatus);
 
         await using ServiceProvider runtime = CreateRuntime(appName, appKey,
-            includeAppKey: !string.Equals(scenario, "missing-runtime-key", StringComparison.Ordinal));
+            includeAppKey: scenario is not ("missing-runtime-key" or "failed-init-missing-runtime-key"),
+            diagnostics);
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(
             timeout.Token, registry, useKestrel: true);
@@ -161,13 +176,26 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             $"/admin/workers/{Uri.EscapeDataString(workerId)}", content, timeout.Token);
         StreamingMessage init = await ReadAsync(workerCall, timeout.Token);
         Assert.NotNull(init.WorkerInitRequest);
+        StatusResult? initializationResult = scenario switch
+        {
+            "unknown-init-status" => new() { Status = (StatusResult.Types.Status)42 },
+            "null-init-result" => null,
+            _ when initializationFails => new()
+            {
+                Status = string.Equals(scenario, "cancelled-init", StringComparison.Ordinal)
+                    ? StatusResult.Types.Status.Cancelled
+                    : StatusResult.Types.Status.Failure,
+                Exception = new() { Message = initializationError }
+            },
+            _ => Success()
+        };
         await workerCall.RequestStream.WriteAsync(new StreamingMessage
         {
             RequestId = init.RequestId,
             WorkerInitResponse = new()
             {
-                Result = Success(),
-                Capabilities = { ["HttpUri"] = customerAddress }
+                Result = initializationResult,
+                Capabilities = { ["HttpUri"] = malformedResult ? httpEndpoint.AbsoluteUri : customerAddress }
             }
         }, timeout.Token);
         using HttpResponseMessage linkResponse = await linking;
@@ -175,6 +203,18 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         {
             Assert.Equal(HttpStatusCode.ServiceUnavailable, linkResponse.StatusCode);
             Assert.Empty(registry.GetInitializedChannels());
+            Assert.False(registry.TryGetInitializedChannel(workerId, out _));
+            if (initializationFails || malformedResult)
+            {
+                bool workerErrorLogged = diagnostics.Any(entry =>
+                    string.Equals(entry.Message, "Initializing worker process failed", StringComparison.Ordinal)
+                    && (string.Equals(scenario, "cancelled-init", StringComparison.Ordinal)
+                        ? entry.Error is TaskCanceledException
+                        : entry.Error is Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException
+                            && entry.Error.Message.Contains(initializationError, StringComparison.Ordinal)));
+                Assert.Equal(scenario is "failed-init" or "cancelled-init", workerErrorLogged);
+                Assert.DoesNotContain(initializationError, await linkResponse.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+            }
 
             return;
         }
@@ -236,7 +276,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         Assert.DoesNotContain(WorkerLinkTestData.RuntimeAccessKey, state, StringComparison.Ordinal);
     }
 
-    private static ServiceProvider CreateRuntime(string appName, string appKey, bool includeAppKey)
+    private static ServiceProvider CreateRuntime(
+        string appName, string appKey, bool includeAppKey, ConcurrentQueue<(string Message, Exception? Error)> diagnostics)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>().Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
@@ -247,7 +288,16 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         Mock<IAppCapabilitiesStore> capabilities = new();
         capabilities.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>())).Returns(true);
         ServiceCollection services = new();
-        services.AddLogging();
+        Mock<ILogger> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        logger.Setup(value => value.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+            .Callback(new InvocationAction(call => diagnostics.Enqueue((
+                (string)((Delegate)call.Arguments[4]).DynamicInvoke(call.Arguments[2], call.Arguments[3])!,
+                (Exception?)call.Arguments[3]))));
+        Mock<ILoggerProvider> provider = new();
+        provider.Setup(value => value.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
+        services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug).AddProvider(provider.Object));
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["WEBSITE_SITE_NAME"] = appName,

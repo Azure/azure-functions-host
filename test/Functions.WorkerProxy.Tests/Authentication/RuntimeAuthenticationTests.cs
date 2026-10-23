@@ -161,9 +161,13 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
     }
 
-    [Fact]
-    public async Task ReverseProof_ProxyOverwritesCustomerProofAndKeepsItOutOfAssignmentStateAndCustomerMessages()
+    [Theory]
+    [InlineData(StatusResult.Types.Status.Success)]
+    [InlineData(StatusResult.Types.Status.Failure)]
+    [InlineData(StatusResult.Types.Status.Cancelled)]
+    public async Task ReverseProof_ProxyOverwritesCustomerProofAndKeepsItOutOfAssignmentStateAndCustomerMessages(StatusResult.Types.Status status)
     {
+        bool initializationFails = status is not StatusResult.Types.Status.Success;
         await using WorkerProxyWebApplicationFactory factory = new(useTestAuthentication: false);
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient worker = await StartAssignedWorkerAsync(factory, timeout.Token);
@@ -172,7 +176,15 @@ public partial class FunctionRpcRelayTests
         await runtime.WriteAsync(new() { WorkerInitRequest = new() }, timeout.Token);
         StreamingMessage request = await worker.ReadAsync(timeout.Token);
         Assert.DoesNotContain(RuntimeWorkerAuthentication.AppProofCapability, request.WorkerInitRequest.Capabilities.Keys);
-        StreamingMessage reply = CreateInitResponse("init", httpUri: null);
+        StreamingMessage reply = CreateInitResponse("init", httpUri: initializationFails ? "http://localhost:1234/customer/" : null);
+        if (initializationFails)
+        {
+            reply.WorkerInitResponse.Result = new()
+            {
+                Status = status,
+                Exception = new() { Message = "original-worker-initialization-error", StackTrace = "original-stack" }
+            };
+        }
         RuntimeWorkerAuthentication.SetAppProof(reply.WorkerInitResponse.Capabilities, "customer-supplied-proof");
         await worker.WriteAsync(reply, timeout.Token);
         StreamingMessage received = await runtime.ReadAsync(timeout.Token, retainProof: true);
@@ -181,6 +193,13 @@ public partial class FunctionRpcRelayTests
         Assert.NotEqual("customer-supplied-proof", proof);
         Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(proof, RuntimeAuthenticationTestData.AppKey,
             RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
+        Assert.Equal(reply.WorkerInitResponse.Result, received.WorkerInitResponse.Result);
+        if (initializationFails)
+        {
+            Assert.Equal("http://localhost:1234/customer/", received.WorkerInitResponse.Capabilities["HttpUri"]);
+            Assert.False(received.WorkerInitResponse.Capabilities.ContainsKey("FunctionGroupName"));
+            Assert.Null(factory.Services.GetRequiredService<FunctionRpcRelay>().WorkerHttpDestination);
+        }
         Assert.Equal("customer-supplied-proof", reply.WorkerInitResponse.Capabilities[RuntimeWorkerAuthentication.AppProofCapability]);
         using HttpClient management = factory.CreateWorkerProxyClient();
         string state = await management.GetStringAsync("/admin/worker/state", timeout.Token);

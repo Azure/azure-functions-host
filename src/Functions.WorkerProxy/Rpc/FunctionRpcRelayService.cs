@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
@@ -97,19 +98,22 @@ internal sealed class FunctionRpcRelayService(
 
         private StreamingMessage Prepare(StreamingMessage message)
         {
-            if (message.WorkerInitResponse is not { } response)
+            if (message.WorkerInitResponse is null)
             {
                 return message;
             }
 
-            // This transport clone is created after the relay has frozen its ordinary capabilities.
+            if (message.WorkerInitResponse.Result is not
+                { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+            {
+                throw new InvalidDataException("The worker initialization response must have a known result status.");
+            }
+
+            // Keep the authentication proof outside the relay's ordinary capability snapshots.
             StreamingMessage transport = message.Clone();
             RuntimeWorkerAuthentication.RemoveAppProof(transport.WorkerInitResponse.Capabilities);
-            if (response is { Result.Status: StatusResult.Types.Status.Success })
-            {
-                RuntimeWorkerAuthentication.SetAppProof(
-                    transport.WorkerInitResponse.Capabilities, authentication.CreateAppProof());
-            }
+            RuntimeWorkerAuthentication.SetAppProof(
+                transport.WorkerInitResponse.Capabilities, authentication.CreateAppProof());
 
             return transport;
         }
