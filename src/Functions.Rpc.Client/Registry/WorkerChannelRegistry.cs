@@ -24,7 +24,7 @@ namespace Azure.Functions.Rpc.Client;
 /// Admission and replay decisions are atomic. Different workers can link concurrently.
 /// The registry publishes a channel only after its WorkerInit handshake succeeds and retains terminal identities.
 /// </remarks>
-internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostJsonConfigurationSourceProvider
+internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
 
@@ -38,9 +38,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
-    private readonly WorkerHostJsonConfiguration _hostJsonConfiguration;
-    private HostJsonConfigurationSnapshot _hostJsonSnapshot;
-    private bool _hostJsonSourceSelected;
+    private readonly HostConfigurationDeliveryValidator _hostConfigurationDeliveryValidator;
+    private HostConfigurationSnapshot _hostConfigurationSnapshot;
+    private bool _hostConfigurationSourceSelected;
     private Task _disposeTask;
     private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -49,8 +49,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        WorkerHostJsonConfiguration hostJsonConfiguration)
-        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, hostJsonConfiguration)
+        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
+        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, hostConfigurationDeliveryValidator)
     {
     }
 
@@ -59,7 +59,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout,
-        WorkerHostJsonConfiguration hostJsonConfiguration)
+        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -67,7 +67,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
-        _hostJsonConfiguration = hostJsonConfiguration ?? throw new ArgumentNullException(nameof(hostJsonConfiguration));
+        _hostConfigurationDeliveryValidator = hostConfigurationDeliveryValidator ?? throw new ArgumentNullException(nameof(hostConfigurationDeliveryValidator));
     }
 
     public Task<WorkerLinkResult> LinkAsync(
@@ -163,7 +163,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                HostJsonConfigurationSnapshot configuration = _hostJsonConfiguration.Validate(candidate.HostJson);
+                HostConfigurationSnapshot configuration = _hostConfigurationDeliveryValidator.Validate(candidate.HostConfiguration);
                 RegisterInitializedChannel(workerId, slot, candidate, configuration, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
@@ -296,12 +296,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     {
         lock (_stateLock)
         {
-            if (!_hostJsonSourceSelected)
+            if (!_hostConfigurationSourceSelected)
             {
-                throw new InvalidOperationException("Worker host.json configuration source has not been selected.");
+                throw new InvalidOperationException("Host configuration source has not been selected.");
             }
 
-            return _hostJsonSnapshot;
+            return _hostConfigurationSnapshot;
         }
     }
 
@@ -498,7 +498,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         string workerId,
         WorkerSlot slot,
         RpcClientWorkerChannel channel,
-        HostJsonConfigurationSnapshot configuration,
+        HostConfigurationSnapshot configuration,
         CancellationToken cancellationToken)
     {
         Task monitorTask;
@@ -518,11 +518,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 throw new IOException("The worker channel closed before initialization could be published.");
             }
 
-            // Retain the first snapshot or legacy-source choice for the root lifetime.
-            if (!_hostJsonSourceSelected)
+            // Retain the first snapshot or file-based loading choice for the root lifetime.
+            if (!_hostConfigurationSourceSelected)
             {
-                _hostJsonSnapshot = configuration;
-                _hostJsonSourceSelected = true;
+                _hostConfigurationSnapshot = configuration;
+                _hostConfigurationSourceSelected = true;
             }
 
             slot.Channel = channel;

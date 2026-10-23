@@ -79,7 +79,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task Completion { get; }
 
-    internal HostJsonConfiguration HostJson { get; private set; }
+    internal HostConfiguration HostConfiguration { get; private set; }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -117,15 +117,18 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return _startCompletion.Task.WaitAsync(cancellationToken);
     }
 
+    protected override void OnWorkerInitRequest(WorkerInitRequest request)
+        => request.Capabilities["HostConfiguration"] = "1";
+
     protected override void OnWorkerInitResponse(WorkerInitResponse response)
     {
-        if (response.HostJson is not null && response.Result.Status is not StatusResult.Types.Status.Success)
+        if (response.HostConfiguration is not null && response.Result.Status is not StatusResult.Types.Status.Success)
         {
             throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
-                "The worker did not report successful initialization for host.json delivery.");
+                "The worker did not report successful initialization for Host configuration delivery.");
         }
 
-        HostJson = response.HostJson?.Clone();
+        HostConfiguration = response.HostConfiguration?.Clone();
     }
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);

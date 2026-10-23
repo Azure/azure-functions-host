@@ -202,7 +202,7 @@ public class ClientWorkerCompositionTests
             Type registryType = GetServiceType(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry");
 
             object registry = rootHost.Services.GetRequiredService(registryType);
-            IHostJsonConfigurationSourceProvider configurationSource = rootHost.Services.GetRequiredService<IHostJsonConfigurationSourceProvider>();
+            IHostConfigurationSourceProvider configurationSource = rootHost.Services.GetRequiredService<IHostConfigurationSourceProvider>();
             IWorkerFunctionMetadataProvider metadataProvider =
                 rootHost.Services.GetRequiredService<IWorkerFunctionMetadataProvider>();
             IFunctionMetadataManager metadataManager = rootHost.Services.GetRequiredService<IFunctionMetadataManager>();
@@ -251,7 +251,7 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostJsonConfigurationSourceProvider));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostConfigurationSourceProvider));
     }
 
     [Fact]

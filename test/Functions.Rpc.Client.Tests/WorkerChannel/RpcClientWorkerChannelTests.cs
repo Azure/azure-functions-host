@@ -31,6 +31,7 @@ public sealed class RpcClientWorkerChannelTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
+    private readonly Mock<IEnvironment> _environment = new();
     private readonly RpcClientWorkerChannelFactory _factory;
     private readonly IMetricsLogger _metricsLogger = Mock.Of<IMetricsLogger>();
 
@@ -56,7 +57,7 @@ public sealed class RpcClientWorkerChannelTests
         return new(
             new ScriptEventManager(),
             hostManager.Object,
-            Mock.Of<IEnvironment>(),
+            _environment.Object,
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),
@@ -125,10 +126,14 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task StartAsync_CapturesOptionalHostJsonWithoutCapability(bool delivered)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartAsync_AdvertisesHostConfigurationAndCapturesOptionalDelivery(bool delivered, bool v2CompatibilityMode)
     {
+        _environment.Setup(environment => environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey))
+            .Returns(v2CompatibilityMode ? "true" : "false");
         TestDuplexChannel<StreamingMessage> duplexChannel = new();
         await using RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
         Task start = channel.StartAsync(CancellationToken.None);
@@ -136,9 +141,9 @@ public sealed class RpcClientWorkerChannelTests
         WorkerInitResponse response = CreateSuccessfulInitResponse();
         if (delivered)
         {
-            response.HostJson = new()
+            response.HostConfiguration = new()
             {
-                Status = HostJsonConfiguration.Types.Status.Available,
+                Status = HostConfiguration.Types.Status.Available,
                 Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
             };
         }
@@ -146,17 +151,24 @@ public sealed class RpcClientWorkerChannelTests
         await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = response });
         await start.WaitAsync(TestTimeout);
 
-        Assert.False(request.WorkerInitRequest.Capabilities.ContainsKey("HostJson"));
+        Assert.Equal("1", request.WorkerInitRequest.Capabilities["HostConfiguration"]);
+        Assert.Equal("10", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.MultiStream]);
+        Assert.Equal(v2CompatibilityMode, request.WorkerInitRequest.Capabilities.ContainsKey(RpcWorkerConstants.V2Compatable));
+        if (v2CompatibilityMode)
+        {
+            Assert.Equal("true", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.V2Compatable]);
+        }
+
         if (delivered)
         {
-            Assert.Equal(response.HostJson, channel.HostJson);
-            Assert.NotSame(response.HostJson, channel.HostJson);
-            response.HostJson.Content = ByteString.CopyFromUtf8("changed");
-            Assert.Equal("""{"version":"2.0"}""", channel.HostJson.Content.ToStringUtf8());
+            Assert.Equal(response.HostConfiguration, channel.HostConfiguration);
+            Assert.NotSame(response.HostConfiguration, channel.HostConfiguration);
+            response.HostConfiguration.Content = ByteString.CopyFromUtf8("changed");
+            Assert.Equal("""{"version":"2.0"}""", channel.HostConfiguration.Content.ToStringUtf8());
         }
         else
         {
-            Assert.Null(channel.HostJson);
+            Assert.Null(channel.HostConfiguration);
         }
     }
 

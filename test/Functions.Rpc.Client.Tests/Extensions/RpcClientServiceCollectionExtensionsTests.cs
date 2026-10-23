@@ -29,7 +29,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
-        AssertSingleton<WorkerHostJsonConfiguration, WorkerHostJsonConfiguration>(services);
+        AssertSingleton<HostConfigurationDeliveryValidator, HostConfigurationDeliveryValidator>(services);
         AssertSingleton(services, typeof(IHttpProxyService), "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
@@ -148,7 +148,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
     private static void AssertRegistryServices(IServiceCollection services)
     {
         AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
-        foreach (Type serviceType in new[] { typeof(IWorkerChannelRegistry), typeof(IHostJsonConfigurationSourceProvider) })
+        foreach (Type serviceType in new[] { typeof(IWorkerChannelRegistry), typeof(IHostConfigurationSourceProvider) })
         {
             ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == serviceType));
             Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);

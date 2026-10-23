@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 // Apply profile settings first, so that they can be overridden by host.json settings.
                 HostConfigurationProfile profile = GetConfigProfile(hostJson);
                 _logger.LogDebug("Loading host configuration profile '{profileName}'.", profile.Name);
-                foreach ((string key, string value) in HostJsonConfigurationSnapshot.Flatten(hostJson, profile))
+                foreach ((string key, string value) in HostConfigurationSnapshot.Flatten(hostJson, profile))
                 {
                     Data[key] = value;
                 }
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         TryWriteHostJson(hostJsonPath, hostConfigObject);
                     }
 
-                    HostJsonConfigurationSnapshot.ValidateVersion(hostConfigObject);
+                    HostConfigurationSnapshot.ValidateVersion(hostConfigObject);
                 }
 
                 return hostConfigObject;
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         // There isn't a clean way to create a new function app resource with host.json as initial payload.
                         // So a newly created function app from the portal would have no host.json. In that case we need to
                         // create a new function app with host.json that includes a matching extension bundle based on the app kind.
-                        hostConfigObject = HostJsonConfigurationSnapshot.CreateDefault(Options, includeBundle: true);
+                        hostConfigObject = HostConfigurationSnapshot.CreateDefault(Options, includeBundle: true);
                         if (hostConfigObject["extensionBundle"] is JObject bundle)
                         {
                             string bundleConfiguration = "{ 'id': '" + bundle["id"] + "', 'version': '" + bundle["version"] + "'}";
@@ -178,14 +178,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject GetDefaultHostConfigObject()
             {
-                return HostJsonConfigurationSnapshot.CreateDefault(Options);
+                return HostConfigurationSnapshot.CreateDefault(Options);
             }
 
             private HostConfigurationProfile GetConfigProfile(JObject hostFile)
             {
                 ArgumentNullException.ThrowIfNull(hostFile);
 
-                return HostJsonConfigurationSnapshot.GetProfile(hostFile, Options);
+                return HostConfigurationSnapshot.GetProfile(hostFile, Options);
             }
 
             private void TryWriteHostJson(string filePath, JObject content)

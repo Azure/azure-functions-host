@@ -28,7 +28,7 @@ public partial class FunctionRpcRelayTests
     [InlineData(4)]
     [InlineData(5)]
     [InlineData(100)]
-    public async Task Relay_PreservesOpaqueHostJsonThroughInitialAndRepeatedCapabilityFinalization(int status)
+    public async Task Relay_PreservesOpaqueHostConfigurationThroughInitialAndRepeatedCapabilityFinalization(int status)
     {
         TestCapabilityFinalizer finalizer = new(capabilities =>
         {
@@ -46,9 +46,9 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(request, await worker.ReadAsync(timeout.Token));
 
         StreamingMessage response = CreateInitResponse("init", null);
-        response.WorkerInitResponse.HostJson = new()
+        response.WorkerInitResponse.HostConfiguration = new()
         {
-            Status = (HostJsonConfiguration.Types.Status)status,
+            Status = (HostConfiguration.Types.Status)status,
             Content = ByteString.CopyFrom(new byte[65_537]),
         };
         StreamingMessage expected = response.Clone();
@@ -57,9 +57,9 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
 
         StreamingMessage repeated = CreateInitResponse("repeated", null);
-        repeated.WorkerInitResponse.HostJson = new()
+        repeated.WorkerInitResponse.HostConfiguration = new()
         {
-            Status = (HostJsonConfiguration.Types.Status)status,
+            Status = (HostConfiguration.Types.Status)status,
             Content = ByteString.CopyFrom([0xFF, 0x00, 0xFE]),
         };
         StreamingMessage repeatedExpected = repeated.Clone();

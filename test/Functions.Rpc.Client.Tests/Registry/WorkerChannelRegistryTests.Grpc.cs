@@ -280,11 +280,11 @@ public sealed partial class WorkerChannelRegistryTests
         var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
         applicationOptions.SetupGet(options => options.CurrentValue)
             .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = true });
-        WorkerHostJsonConfiguration hostJson = new(
-            new ConfigurationBuilder().Build(), applicationOptions.Object, NullLogger<WorkerHostJsonConfiguration>.Instance);
+        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator = new(
+            new ConfigurationBuilder().Build(), applicationOptions.Object, NullLogger<HostConfigurationDeliveryValidator>.Instance);
 
         return linkTimeout.HasValue
-            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, hostJson)
-            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, hostJson);
+            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, hostConfigurationDeliveryValidator)
+            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, hostConfigurationDeliveryValidator);
     }
 }

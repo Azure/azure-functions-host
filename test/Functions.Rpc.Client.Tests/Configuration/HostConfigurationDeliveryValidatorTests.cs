@@ -21,30 +21,30 @@ using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public sealed class WorkerHostJsonConfigurationTests
+public sealed class HostConfigurationDeliveryValidatorTests
 {
     public static IEnumerable<object?[]> InvalidDeliveries()
     {
-        foreach ((HostJsonConfiguration.Types.Status status, string reason) in new[]
+        foreach ((HostConfiguration.Types.Status status, string reason) in new[]
         {
-            (HostJsonConfiguration.Types.Status.Unspecified, "The worker host.json delivery status is unspecified or unsupported."),
-            ((HostJsonConfiguration.Types.Status)5, "The worker host.json delivery status is unspecified or unsupported."),
-            (HostJsonConfiguration.Types.Status.ReadError, "The worker could not read host.json."),
-            (HostJsonConfiguration.Types.Status.TooLarge, "The worker host.json exceeds the 65,536-byte limit."),
-            ((HostJsonConfiguration.Types.Status)100, "The worker host.json delivery status is unspecified or unsupported."),
+            (HostConfiguration.Types.Status.Unspecified, "The Host configuration delivery status is unspecified or unsupported."),
+            ((HostConfiguration.Types.Status)5, "The Host configuration delivery status is unspecified or unsupported."),
+            (HostConfiguration.Types.Status.ReadError, "The worker could not read host.json."),
+            (HostConfiguration.Types.Status.TooLarge, "The Host configuration exceeds the 65,536-byte limit."),
+            ((HostConfiguration.Types.Status)100, "The Host configuration delivery status is unspecified or unsupported."),
         })
         {
-            yield return [new HostJsonConfiguration { Status = status }, reason];
+            yield return [new HostConfiguration { Status = status }, reason];
         }
 
-        foreach (HostJsonConfiguration.Types.Status status in Enum.GetValues<HostJsonConfiguration.Types.Status>()
-            .Append((HostJsonConfiguration.Types.Status)5)
-            .Where(status => status != HostJsonConfiguration.Types.Status.Available))
+        foreach (HostConfiguration.Types.Status status in Enum.GetValues<HostConfiguration.Types.Status>()
+            .Append((HostConfiguration.Types.Status)5)
+            .Where(status => status != HostConfiguration.Types.Status.Available))
         {
             yield return
             [
-                new HostJsonConfiguration { Status = status, Content = ByteString.CopyFromUtf8("customer-secret") },
-                "The worker host.json delivery has content inconsistent with its status.",
+                new HostConfiguration { Status = status, Content = ByteString.CopyFromUtf8("customer-secret") },
+                "The Host configuration delivery has content inconsistent with its status.",
             ];
         }
 
@@ -62,14 +62,14 @@ public sealed class WorkerHostJsonConfigurationTests
             yield return
             [
                 Available(ByteString.CopyFromUtf8(content)),
-                "The worker host.json is not valid JSON with a supported schema version and configuration profile.",
+                "The Host configuration is not valid JSON with a supported schema version and configuration profile.",
             ];
         }
 
         yield return
         [
             Available(ByteString.CopyFromUtf8("customer-secret".PadRight(65_537, 'x'))),
-            "The worker host.json exceeds the 65,536-byte limit.",
+            "The Host configuration exceeds the 65,536-byte limit.",
         ];
         foreach (byte[] invalidEncoding in new byte[][]
         {
@@ -83,14 +83,14 @@ public sealed class WorkerHostJsonConfigurationTests
             yield return
             [
                 Available(ByteString.CopyFrom(invalidEncoding)),
-                "The worker host.json contains invalid encoded text.",
+                "The Host configuration contains invalid encoded text.",
             ];
         }
     }
 
     [Theory]
     [MemberData(nameof(InvalidDeliveries))]
-    public void Validate_InvalidDeliveryRejectsWithBoundedContentFreeError(HostJsonConfiguration delivery, string expectedReason)
+    public void Validate_InvalidDeliveryRejectsWithBoundedContentFreeError(HostConfiguration delivery, string expectedReason)
     {
         WorkerLinkException exception = Assert.Throws<WorkerLinkException>(() => CreateValidator().Validate(delivery));
 
@@ -102,12 +102,12 @@ public sealed class WorkerHostJsonConfigurationTests
     }
 
     [Fact]
-    public void Validate_AbsentEnvelopeSelectsLegacyWithoutReadingConfiguration()
+    public void Validate_AbsentEnvelopeSelectsFileBasedLoadingWithoutReadingConfiguration()
     {
         var configuration = new Mock<IConfiguration>(MockBehavior.Strict);
         var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>(MockBehavior.Strict);
-        var logger = new Mock<ILogger<WorkerHostJsonConfiguration>>(MockBehavior.Strict);
-        WorkerHostJsonConfiguration validator = new(configuration.Object, applicationOptions.Object, logger.Object);
+        var logger = new Mock<ILogger<HostConfigurationDeliveryValidator>>(MockBehavior.Strict);
+        HostConfigurationDeliveryValidator validator = new(configuration.Object, applicationOptions.Object, logger.Object);
 
         Assert.Null(validator.Validate(null));
 
@@ -126,16 +126,16 @@ public sealed class WorkerHostJsonConfigurationTests
         try
         {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
-            HostJsonConfiguration[] deliveries =
+            HostConfiguration[] deliveries =
             [
-                new() { Status = HostJsonConfiguration.Types.Status.TooLarge },
-                Available(ByteString.CopyFrom(new byte[WorkerHostJsonConfiguration.MaximumContentLength + 1])),
+                new() { Status = HostConfiguration.Types.Status.TooLarge },
+                Available(ByteString.CopyFrom(new byte[HostConfigurationDeliveryValidator.MaximumContentLength + 1])),
             ];
 
-            foreach (HostJsonConfiguration delivery in deliveries)
+            foreach (HostConfiguration delivery in deliveries)
             {
                 WorkerLinkException exception = Assert.Throws<WorkerLinkException>(() => CreateValidator().Validate(delivery));
-                Assert.Equal("The worker host.json exceeds the 65,536-byte limit.", exception.Message);
+                Assert.Equal("The Host configuration exceeds the 65,536-byte limit.", exception.Message);
             }
         }
         finally
@@ -160,22 +160,22 @@ public sealed class WorkerHostJsonConfigurationTests
         byte[] content = [.. preamble, .. document, .. encoding.GetBytes(new string(' ', paddingCharacters))];
         Assert.Equal(65_536, content.Length);
 
-        HostJsonConfigurationSnapshot snapshot = CreateValidator().Validate(Available(ByteString.CopyFrom(content)));
+        HostConfigurationSnapshot snapshot = CreateValidator().Validate(Available(ByteString.CopyFrom(content)));
         IConfigurationRoot configuration = new ConfigurationBuilder().Add(snapshot).Build();
 
         Assert.Equal("caf\u00e9 \ud83d\ude80", configuration["AzureFunctionsJobHost:custom"]);
         byte[] oversized = [.. content, 0x20];
         WorkerLinkException exception = Assert.Throws<WorkerLinkException>(() =>
             CreateValidator().Validate(Available(ByteString.CopyFrom(oversized))));
-        Assert.Equal("The worker host.json exceeds the 65,536-byte limit.", exception.Message);
+        Assert.Equal("The Host configuration exceeds the 65,536-byte limit.", exception.Message);
     }
 
     [Fact]
     public void Validate_MissingAndEmptyObjectUseDifferentExistingDefaults()
     {
-        WorkerHostJsonConfiguration validator = CreateValidator(readOnly: false);
+        HostConfigurationDeliveryValidator validator = CreateValidator(readOnly: false);
         IConfigurationRoot missing = new ConfigurationBuilder().Add(validator.Validate(
-            new HostJsonConfiguration { Status = HostJsonConfiguration.Types.Status.Missing })).Build();
+            new HostConfiguration { Status = HostConfiguration.Types.Status.Missing })).Build();
         IConfigurationRoot emptyObject = new ConfigurationBuilder().Add(validator.Validate(
             Available(ByteString.CopyFromUtf8("{}")))).Build();
 
@@ -195,12 +195,12 @@ public sealed class WorkerHostJsonConfigurationTests
         configuration.SetupGet(value => value["APP_KIND"]).Returns("workflowApp");
         var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
         applicationOptions.SetupGet(options => options.CurrentValue).Returns(new ScriptApplicationHostOptions());
-        WorkerHostJsonConfiguration validator = new(
+        HostConfigurationDeliveryValidator validator = new(
             configuration.Object, applicationOptions.Object,
-            NullLogger<WorkerHostJsonConfiguration>.Instance);
+            NullLogger<HostConfigurationDeliveryValidator>.Instance);
 
         IConfigurationRoot result = new ConfigurationBuilder().Add(validator.Validate(
-            new HostJsonConfiguration { Status = HostJsonConfiguration.Types.Status.Missing })).Build();
+            new HostConfiguration { Status = HostConfiguration.Types.Status.Missing })).Build();
 
         Assert.Equal("mcp-custom-handler", result["AzureFunctionsJobHost:configurationProfile"]);
         Assert.Equal("true", result["AzureFunctionsJobHost:customHandler:enableProxyingHttpRequest"]);
@@ -209,10 +209,10 @@ public sealed class WorkerHostJsonConfigurationTests
         configuration.VerifySet(value => value[It.IsAny<string>()] = It.IsAny<string?>(), Times.Never);
     }
 
-    private static HostJsonConfiguration Available(ByteString content)
-        => new() { Status = HostJsonConfiguration.Types.Status.Available, Content = content };
+    private static HostConfiguration Available(ByteString content)
+        => new() { Status = HostConfiguration.Types.Status.Available, Content = content };
 
-    private static WorkerHostJsonConfiguration CreateValidator(bool readOnly = true)
+    private static HostConfigurationDeliveryValidator CreateValidator(bool readOnly = true)
     {
         var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
         applicationOptions.SetupGet(options => options.CurrentValue)
@@ -221,6 +221,6 @@ public sealed class WorkerHostJsonConfigurationTests
         return new(
             new ConfigurationBuilder().Build(),
             applicationOptions.Object,
-            NullLogger<WorkerHostJsonConfiguration>.Instance);
+            NullLogger<HostConfigurationDeliveryValidator>.Instance);
     }
 }

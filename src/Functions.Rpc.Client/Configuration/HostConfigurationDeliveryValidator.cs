@@ -16,16 +16,16 @@ using Microsoft.Extensions.Options;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Validates one worker's delivery without publishing configuration or performing file I/O.
+/// Validates Host configuration delivered by a worker without publishing configuration or performing file I/O.
 /// </summary>
-internal sealed partial class WorkerHostJsonConfiguration(
+internal sealed partial class HostConfigurationDeliveryValidator(
     IConfiguration configuration,
     IOptionsMonitor<ScriptApplicationHostOptions> applicationOptions,
-    ILogger<WorkerHostJsonConfiguration> logger)
+    ILogger<HostConfigurationDeliveryValidator> logger)
 {
     internal const int MaximumContentLength = 65_536;
 
-    private static readonly string ContentTooLargeReason = FormattableString.Invariant($"The worker host.json exceeds the {MaximumContentLength:N0}-byte limit.");
+    private static readonly string ContentTooLargeReason = FormattableString.Invariant($"The Host configuration exceeds the {MaximumContentLength:N0}-byte limit.");
     private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private static readonly Encoding Utf16LittleEndian = new UnicodeEncoding(bigEndian: false, byteOrderMark: false, throwOnInvalidBytes: true);
     private static readonly Encoding Utf16BigEndian = new UnicodeEncoding(bigEndian: true, byteOrderMark: false, throwOnInvalidBytes: true);
@@ -33,7 +33,7 @@ internal sealed partial class WorkerHostJsonConfiguration(
     private static readonly Encoding Utf32BigEndian = new UTF32Encoding(bigEndian: true, byteOrderMark: false, throwOnInvalidCharacters: true);
 
     [return: NotNullIfNotNull(nameof(delivery))]
-    public HostJsonConfigurationSnapshot? Validate(HostJsonConfiguration? delivery)
+    public HostConfigurationSnapshot? Validate(HostConfiguration? delivery)
     {
         if (delivery is null)
         {
@@ -45,33 +45,33 @@ internal sealed partial class WorkerHostJsonConfiguration(
             throw Reject(ContentTooLargeReason);
         }
 
-        if (delivery.Status != HostJsonConfiguration.Types.Status.Available && !delivery.Content.IsEmpty)
+        if (delivery.Status != HostConfiguration.Types.Status.Available && !delivery.Content.IsEmpty)
         {
-            throw Reject("The worker host.json delivery has content inconsistent with its status.");
+            throw Reject("The Host configuration delivery has content inconsistent with its status.");
         }
 
         try
         {
             string? content = delivery.Status switch
             {
-                HostJsonConfiguration.Types.Status.Available => Decode(delivery.Content.Span),
-                HostJsonConfiguration.Types.Status.Missing => null,
-                HostJsonConfiguration.Types.Status.ReadError => throw Reject("The worker could not read host.json."),
-                HostJsonConfiguration.Types.Status.TooLarge => throw Reject(ContentTooLargeReason),
-                _ => throw Reject("The worker host.json delivery status is unspecified or unsupported."),
+                HostConfiguration.Types.Status.Available => Decode(delivery.Content.Span),
+                HostConfiguration.Types.Status.Missing => null,
+                HostConfiguration.Types.Status.ReadError => throw Reject("The worker could not read host.json."),
+                HostConfiguration.Types.Status.TooLarge => throw Reject(ContentTooLargeReason),
+                _ => throw Reject("The Host configuration delivery status is unspecified or unsupported."),
             };
 
-            HostJsonFileConfigurationOptions hostJsonOptions = new(configuration, applicationOptions.CurrentValue);
+            HostJsonFileConfigurationOptions options = new(configuration, applicationOptions.CurrentValue);
 
-            return HostJsonConfigurationSnapshot.Parse(content, hostJsonOptions);
+            return HostConfigurationSnapshot.Parse(content, options);
         }
         catch (DecoderFallbackException)
         {
-            throw Reject("The worker host.json contains invalid encoded text.");
+            throw Reject("The Host configuration contains invalid encoded text.");
         }
         catch (HostConfigurationException)
         {
-            throw Reject("The worker host.json is not valid JSON with a supported schema version and configuration profile.");
+            throw Reject("The Host configuration is not valid JSON with a supported schema version and configuration profile.");
         }
     }
 
@@ -92,15 +92,15 @@ internal sealed partial class WorkerHostJsonConfiguration(
 
     private WorkerLinkException Reject(string reason)
     {
-        // Never attach worker values or parser exceptions.
-        Log.HostJsonConfigurationRejected(logger, reason);
+        // Never attach configuration values or parser exceptions.
+        Log.HostConfigurationRejected(logger, reason);
 
         return new(WorkerLinkFailureReason.Unavailable, reason);
     }
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Warning, "Worker host.json configuration was rejected. {Reason}")]
-        public static partial void HostJsonConfigurationRejected(ILogger logger, string reason);
+        [LoggerMessage(0, LogLevel.Warning, "Host configuration was rejected. {Reason}")]
+        public static partial void HostConfigurationRejected(ILogger logger, string reason);
     }
 }

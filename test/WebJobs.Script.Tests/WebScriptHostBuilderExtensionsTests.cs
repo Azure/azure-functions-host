@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void AddWebScriptHost_WorkerConfigurationIsLoadedBeforeLateConfigurationHooks()
         {
-            HostJsonConfigurationSnapshot snapshot = HostJsonConfigurationSnapshot.Parse(
+            HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
                 """{"version":"2.0","functionTimeout":"00:03:00","extensions":{"custom":{"setting":"worker"}}}""",
                 new(new ScriptApplicationHostOptions()));
             int builds = 0;
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     builds++;
                     return snapshot.Build(builder);
                 });
-            var sourceProvider = new Mock<IHostJsonConfigurationSourceProvider>();
+            var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource()).Returns(source.Object);
             var lateHook = new Mock<IConfigureBuilder<IConfigurationBuilder>>();
             lateHook.Setup(value => value.Configure(It.IsAny<IConfigurationBuilder>()))
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void AddWebScriptHost_PendingSourceDoesNotFallBackToFile()
         {
-            var sourceProvider = new Mock<IHostJsonConfigurationSourceProvider>();
+            var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource())
                 .Throws(new InvalidOperationException("Configuration has not been accepted."));
             IHostBuilder builder = new HostBuilder()
@@ -178,10 +178,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void AddWebScriptHost_WorkerBundleSettingsAreUsedByExtensionPrebuild()
         {
-            HostJsonConfigurationSnapshot snapshot = HostJsonConfigurationSnapshot.Parse(
+            HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
                 """{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"invalid"}}""",
                 new(new ScriptApplicationHostOptions()));
-            var sourceProvider = new Mock<IHostJsonConfigurationSourceProvider>();
+            var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource()).Returns(snapshot);
             var lateHook = new Mock<IConfigureBuilder<IConfigurationBuilder>>();
             IHostBuilder builder = new HostBuilder()
@@ -201,9 +201,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void AddWebScriptHost_EnvironmentOverridesWorkerConfiguration()
         {
             using TestScopedEnvironmentVariable environment = new("AzureFunctionsJobHost__functionTimeout", "00:04:00");
-            HostJsonConfigurationSnapshot snapshot = HostJsonConfigurationSnapshot.Parse(
+            HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
                 """{"version":"2.0","functionTimeout":"00:03:00"}""", new(new ScriptApplicationHostOptions()));
-            var sourceProvider = new Mock<IHostJsonConfigurationSourceProvider>();
+            var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource()).Returns(snapshot);
 
             using IHost host = new HostBuilder()

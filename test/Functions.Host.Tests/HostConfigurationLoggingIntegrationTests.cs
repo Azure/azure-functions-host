@@ -31,32 +31,32 @@ using Xunit;
 namespace Azure.Functions.Host.Tests;
 
 [Collection(nameof(EnvironmentVariableCollection))]
-public sealed class WorkerHostJsonLoggingIntegrationTests
+public sealed class HostConfigurationLoggingIntegrationTests
 {
-    private const string RejectionCategory = "Azure.Functions.Rpc.Client.WorkerHostJsonConfiguration";
-    private const string RejectionEvent = "HostJsonConfigurationRejected";
-    private const string ConsoleControl = "Root host.json diagnostic console control.";
+    private const string RejectionCategory = "Azure.Functions.Rpc.Client.HostConfigurationDeliveryValidator";
+    private const string RejectionEvent = "HostConfigurationRejected";
+    private const string ConsoleControl = "Root Host configuration diagnostic console control.";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData((HostJsonConfiguration.Types.Status)5, "The worker host.json delivery status is unspecified or unsupported.")]
-    [InlineData(HostJsonConfiguration.Types.Status.ReadError, "The worker could not read host.json.")]
-    [InlineData(HostJsonConfiguration.Types.Status.TooLarge, "The worker host.json exceeds the 65,536-byte limit.")]
-    [InlineData(HostJsonConfiguration.Types.Status.Available, "The worker host.json exceeds the 65,536-byte limit.")]
+    [InlineData((HostConfiguration.Types.Status)5, "The Host configuration delivery status is unspecified or unsupported.")]
+    [InlineData(HostConfiguration.Types.Status.ReadError, "The worker could not read host.json.")]
+    [InlineData(HostConfiguration.Types.Status.TooLarge, "The Host configuration exceeds the 65,536-byte limit.")]
+    [InlineData(HostConfiguration.Types.Status.Available, "The Host configuration exceeds the 65,536-byte limit.")]
     public async Task RejectedConfiguration_UsesRootSystemEventSinkBeforeScriptHostStarts(
-        HostJsonConfiguration.Types.Status status, string expectedReason)
+        HostConfiguration.Types.Status status, string expectedReason)
     {
         using EnvironmentVariableScope environment = new(EnvironmentSettingNames.EnvironmentNameKey, Environments.Development);
         using SystemLogListener listener = new();
         using StringWriter console = new();
         TextWriter originalConsole = Console.Out;
-        string directory = Path.Combine(Path.GetTempPath(), $"WorkerHostJsonLogging-{Guid.NewGuid():N}");
+        string directory = Path.Combine(Path.GetTempPath(), $"HostConfigurationLogging-{Guid.NewGuid():N}");
         string scriptPath = Path.Combine(directory, "app");
         Directory.CreateDirectory(scriptPath);
-        HostJsonConfiguration delivery = new()
+        HostConfiguration delivery = new()
         {
             Status = status,
-            Content = status is HostJsonConfiguration.Types.Status.Available
+            Content = status is HostConfiguration.Types.Status.Available
                 ? ByteString.CopyFromUtf8("customer-secret".PadRight(65_537, 'x'))
                 : ByteString.Empty,
         };
@@ -91,7 +91,7 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
 
                 Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
                 Assert.Equal(expectedReason, failure.Message);
-                Assert.False(service.InitRequest!.Capabilities.ContainsKey("HostJson"));
+                Assert.Equal("1", service.InitRequest!.Capabilities["HostConfiguration"]);
                 Assert.Empty(registry.GetInitializedChannels());
                 Assert.Null(services.GetRequiredService<IScriptHostManager>().Services);
                 Assert.Empty(Directory.EnumerateFiles(scriptPath));
@@ -101,7 +101,7 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
                 Dictionary<string, object?> log = systemEvent.Payload;
                 Assert.Equal(RejectionEvent, log["EventName"]);
                 Assert.Equal(RejectionCategory, log["Source"]);
-                Assert.Equal($"Worker host.json configuration was rejected. {expectedReason}", log["Summary"]);
+                Assert.Equal($"Host configuration was rejected. {expectedReason}", log["Summary"]);
                 Assert.Equal(string.Empty, log["Details"]);
                 Assert.Equal(string.Empty, log["HostInstanceId"]);
                 Assert.DoesNotContain(log.Values, value =>
@@ -173,7 +173,7 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
         }
     }
 
-    public sealed class WorkerService(HostJsonConfiguration? delivery) : FunctionRpc.FunctionRpcBase
+    public sealed class WorkerService(HostConfiguration? delivery) : FunctionRpc.FunctionRpcBase
     {
         public WorkerInitRequest? InitRequest { get; private set; }
 
@@ -198,7 +198,7 @@ public sealed class WorkerHostJsonLoggingIntegrationTests
                         WorkerInitResponse = new()
                         {
                             Result = new() { Status = StatusResult.Types.Status.Success },
-                            HostJson = delivery,
+                            HostConfiguration = delivery,
                         },
                     });
                 }

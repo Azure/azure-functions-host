@@ -18,14 +18,14 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed partial class WorkerChannelRegistryTests
 {
     [Theory]
-    [MemberData(nameof(WorkerHostJsonConfigurationTests.InvalidDeliveries), MemberType = typeof(WorkerHostJsonConfigurationTests))]
-    public async Task LinkAsync_InvalidHostJsonDoesNotPublishOrPoisonFirstConfiguration(
-        HostJsonConfiguration delivery, string expectedReason)
+    [MemberData(nameof(HostConfigurationDeliveryValidatorTests.InvalidDeliveries), MemberType = typeof(HostConfigurationDeliveryValidatorTests))]
+    public async Task LinkAsync_InvalidHostConfigurationDoesNotPublishOrPoisonFirstConfiguration(
+        HostConfiguration delivery, string expectedReason)
     {
         RegistryHarness harness = new();
         KeyValuePair<string, object>[] loggedState = null;
         string message = null;
-        harness.HostJsonLogger.Setup(logger => logger.Log(
+        harness.HostConfigurationLogger.Setup(logger => logger.Log(
             It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
             It.IsAny<Func<It.IsAnyType, Exception, string>>()))
             .Callback(new InvocationAction(call =>
@@ -35,8 +35,8 @@ public sealed partial class WorkerChannelRegistryTests
                 Delegate formatter = Assert.IsAssignableFrom<Delegate>(call.Arguments[4]);
                 message = Assert.IsType<string>(formatter.DynamicInvoke(call.Arguments[2], call.Arguments[3]));
             }));
-        ChannelControl rejected = new("worker") { HostJson = delivery };
-        ChannelControl replacement = new("worker") { HostJson = CreateHostJson("replacement") };
+        ChannelControl rejected = new("worker") { HostConfiguration = delivery };
+        ChannelControl replacement = new("worker") { HostConfiguration = CreateHostConfiguration("replacement") };
         harness.Enqueue(rejected);
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -54,15 +54,15 @@ public sealed partial class WorkerChannelRegistryTests
         await registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
         Assert.Same(replacement.Channel, await waiter.WaitAsync(TestTimeout));
         Assert.False(replacement.Channel.IsChannelReadyForInvocations());
-        Assert.Equal("replacement", ReadHostJson(registry)["AzureFunctionsJobHost:marker"]);
-        Assert.False(replacement.InitRequest.Capabilities.ContainsKey("HostJson"));
+        Assert.Equal("replacement", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
+        Assert.Equal("1", replacement.InitRequest.Capabilities["HostConfiguration"]);
 
-        var diagnostic = Assert.Single(harness.HostJsonLogger.Invocations, invocation =>
+        var diagnostic = Assert.Single(harness.HostConfigurationLogger.Invocations, invocation =>
             string.Equals(invocation.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
         Assert.Equal(LogLevel.Warning, diagnostic.Arguments[0]);
-        Assert.Equal(new EventId(0, "HostJsonConfigurationRejected"), diagnostic.Arguments[1]);
+        Assert.Equal(new EventId(0, "HostConfigurationRejected"), diagnostic.Arguments[1]);
         Assert.Null(diagnostic.Arguments[3]);
-        Assert.Equal($"Worker host.json configuration was rejected. {expectedReason}", message);
+        Assert.Equal($"Host configuration was rejected. {expectedReason}", message);
         Assert.InRange(message.Length, 1, 240);
         Assert.Collection(loggedState,
             reason =>
@@ -73,12 +73,12 @@ public sealed partial class WorkerChannelRegistryTests
             format =>
             {
                 Assert.Equal("{OriginalFormat}", format.Key);
-                Assert.Equal("Worker host.json configuration was rejected. {Reason}", format.Value);
+                Assert.Equal("Host configuration was rejected. {Reason}", format.Value);
             });
     }
 
     [Fact]
-    public async Task LinkAsync_AbsentHostJsonSelectsLegacyOnlyAfterAdmission()
+    public async Task LinkAsync_AbsentHostConfigurationSelectsFileBasedLoadingOnlyAfterAdmission()
     {
         RegistryHarness harness = new();
         ChannelControl worker = new("worker", blockStart: true);
@@ -86,7 +86,8 @@ public sealed partial class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
         Task<Microsoft.Azure.WebJobs.Script.Grpc.WorkerChannel> waiter = registry.WaitForFirstInitializedAsync();
 
-        Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
+        Assert.Equal("Host configuration source has not been selected.", exception.Message);
         Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
         await worker.StartEntered.WaitAsync(TestTimeout);
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
@@ -94,12 +95,12 @@ public sealed partial class WorkerChannelRegistryTests
         worker.AllowStart();
         await link.WaitAsync(TestTimeout);
 
-        Assert.False(worker.InitRequest.Capabilities.ContainsKey("HostJson"));
-        Assert.Null(worker.Channel.HostJson);
+        Assert.Equal("1", worker.InitRequest.Capabilities["HostConfiguration"]);
+        Assert.Null(worker.Channel.HostConfiguration);
         Assert.Null(registry.GetConfigurationSource());
         Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Same(worker.Channel, await waiter.WaitAsync(TestTimeout));
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -108,8 +109,8 @@ public sealed partial class WorkerChannelRegistryTests
     public async Task LinkAsync_MixedDeliveriesAndWorkerLossRetainFirstSource(bool firstSuppliesConfiguration)
     {
         RegistryHarness harness = new();
-        ChannelControl first = new("first") { HostJson = firstSuppliesConfiguration ? CreateHostJson("first") : null };
-        ChannelControl later = new("later") { HostJson = firstSuppliesConfiguration ? null : CreateHostJson("later") };
+        ChannelControl first = new("first") { HostConfiguration = firstSuppliesConfiguration ? CreateHostConfiguration("first") : null };
+        ChannelControl later = new("later") { HostConfiguration = firstSuppliesConfiguration ? null : CreateHostConfiguration("later") };
         harness.Enqueue(first);
         harness.Enqueue(later);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -118,7 +119,7 @@ public sealed partial class WorkerChannelRegistryTests
         IConfigurationSource source = registry.GetConfigurationSource();
         if (firstSuppliesConfiguration)
         {
-            Assert.Equal("first", ReadHostJson(registry)["AzureFunctionsJobHost:marker"]);
+            Assert.Equal("first", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
         }
         else
         {
@@ -133,14 +134,14 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.True(await registry.UnlinkAsync("later"));
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Same(source, registry.GetConfigurationSource());
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task LinkAsync_RejectedCandidateDoesNotPreventLegacySelection()
+    public async Task LinkAsync_RejectedCandidateDoesNotPreventFileBasedLoadingSelection()
     {
         RegistryHarness harness = new();
-        ChannelControl rejected = new("worker") { HostJson = new() { Status = HostJsonConfiguration.Types.Status.ReadError } };
+        ChannelControl rejected = new("worker") { HostConfiguration = new() { Status = HostConfiguration.Types.Status.ReadError } };
         ChannelControl replacement = new("worker");
         harness.Enqueue(rejected);
         harness.Enqueue(replacement);
@@ -157,18 +158,18 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(false, HostJsonConfiguration.Types.Status.ReadError)]
-    [InlineData(true, HostJsonConfiguration.Types.Status.ReadError)]
-    [InlineData(false, HostJsonConfiguration.Types.Status.TooLarge)]
-    [InlineData(true, HostJsonConfiguration.Types.Status.TooLarge)]
-    [InlineData(false, (HostJsonConfiguration.Types.Status)5)]
-    [InlineData(true, (HostJsonConfiguration.Types.Status)5)]
+    [InlineData(false, HostConfiguration.Types.Status.ReadError)]
+    [InlineData(true, HostConfiguration.Types.Status.ReadError)]
+    [InlineData(false, HostConfiguration.Types.Status.TooLarge)]
+    [InlineData(true, HostConfiguration.Types.Status.TooLarge)]
+    [InlineData(false, (HostConfiguration.Types.Status)5)]
+    [InlineData(true, (HostConfiguration.Types.Status)5)]
     public async Task LinkAsync_LaterInvalidDeliveryRejectsWithoutReplacingSource(
-        bool firstSuppliesConfiguration, HostJsonConfiguration.Types.Status invalidStatus)
+        bool firstSuppliesConfiguration, HostConfiguration.Types.Status invalidStatus)
     {
         RegistryHarness harness = new();
-        ChannelControl first = new("first") { HostJson = firstSuppliesConfiguration ? CreateHostJson("first") : null };
-        ChannelControl rejected = new("later") { HostJson = new() { Status = invalidStatus } };
+        ChannelControl first = new("first") { HostConfiguration = firstSuppliesConfiguration ? CreateHostConfiguration("first") : null };
+        ChannelControl rejected = new("later") { HostConfiguration = new() { Status = invalidStatus } };
         ChannelControl replacement = new("later");
         harness.Enqueue(first);
         harness.Enqueue(rejected);
@@ -186,17 +187,17 @@ public sealed partial class WorkerChannelRegistryTests
         await registry.LinkAsync("later", CreateEndpoint("later")).WaitAsync(TestTimeout);
         Assert.Same(source, registry.GetConfigurationSource());
         Assert.Equal(2, registry.GetInitializedChannels().Count);
-        Assert.Single(harness.HostJsonLogger.Invocations, invocation =>
+        Assert.Single(harness.HostConfigurationLogger.Invocations, invocation =>
             string.Equals(invocation.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task LinkAsync_HostJsonRequiresSuccessfulInitializationStatus()
+    public async Task LinkAsync_HostConfigurationRequiresSuccessfulInitializationStatus()
     {
         RegistryHarness harness = new();
         ChannelControl worker = new("worker")
         {
-            HostJson = CreateHostJson("not-successful"),
+            HostConfiguration = CreateHostConfiguration("not-successful"),
             InitResult = new() { Status = (StatusResult.Types.Status)100 },
         };
         harness.Enqueue(worker);
@@ -213,40 +214,40 @@ public sealed partial class WorkerChannelRegistryTests
     public async Task LinkAsync_LaterDifferentConfigurationAndWorkerLossRetainFirstSnapshot()
     {
         RegistryHarness harness = new();
-        ChannelControl first = new("first") { HostJson = CreateHostJson("first") };
-        ChannelControl later = new("later") { HostJson = CreateHostJson("different") };
+        ChannelControl first = new("first") { HostConfiguration = CreateHostConfiguration("first") };
+        ChannelControl later = new("later") { HostConfiguration = CreateHostConfiguration("different") };
         harness.Enqueue(first);
         harness.Enqueue(later);
         await using WorkerChannelRegistry registry = harness.Registry;
 
         await registry.LinkAsync("first", CreateEndpoint("first")).WaitAsync(TestTimeout);
         IConfigurationSource snapshot = registry.GetConfigurationSource();
-        first.HostJson.Content = ByteString.CopyFromUtf8("mutated response");
+        first.HostConfiguration.Content = ByteString.CopyFromUtf8("mutated response");
         Assert.True(await registry.UnlinkAsync("first"));
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Same(snapshot, registry.GetConfigurationSource());
         await registry.LinkAsync("later", CreateEndpoint("later")).WaitAsync(TestTimeout);
 
         Assert.Same(snapshot, registry.GetConfigurationSource());
-        Assert.Equal("first", ReadHostJson(registry)["AzureFunctionsJobHost:marker"]);
+        Assert.Equal("first", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
         Assert.Same(later.Channel, Assert.Single(registry.GetInitializedChannels()));
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LinkAsync_CanceledHandshakeDoesNotSelectSnapshotOrLegacy(bool suppliesConfiguration)
+    public async Task LinkAsync_CanceledHandshakeDoesNotSelectSnapshotOrFileBasedLoading(bool suppliesConfiguration)
     {
         using CancellationTokenSource cancellation = new();
         RegistryHarness harness = new();
         ChannelControl canceled = new("worker", blockStart: true)
         {
-            HostJson = suppliesConfiguration ? CreateHostJson("canceled") : null,
+            HostConfiguration = suppliesConfiguration ? CreateHostConfiguration("canceled") : null,
         };
         ChannelControl replacement = new("worker")
         {
-            HostJson = suppliesConfiguration ? null : CreateHostJson("replacement"),
+            HostConfiguration = suppliesConfiguration ? null : CreateHostConfiguration("replacement"),
         };
         harness.Enqueue(canceled);
         harness.Enqueue(replacement);
@@ -270,10 +271,10 @@ public sealed partial class WorkerChannelRegistryTests
         }
         else
         {
-            Assert.Equal("replacement", ReadHostJson(registry)["AzureFunctionsJobHost:marker"]);
+            Assert.Equal("replacement", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
         }
 
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -284,8 +285,8 @@ public sealed partial class WorkerChannelRegistryTests
         configuration.SetupGet(value => value["AzureFunctionsJobHost:configurationProfile"])
             .Callback(() => cancellation.Cancel()).Returns((string)null);
         RegistryHarness harness = new(null, configuration.Object);
-        ChannelControl canceled = new("worker") { HostJson = CreateHostJson("canceled") };
-        ChannelControl replacement = new("replacement") { HostJson = CreateHostJson("replacement") };
+        ChannelControl canceled = new("worker") { HostConfiguration = CreateHostConfiguration("canceled") };
+        ChannelControl replacement = new("replacement") { HostConfiguration = CreateHostConfiguration("replacement") };
         harness.Enqueue(canceled);
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -297,8 +298,8 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, canceled.DisposeCount);
         await registry.LinkAsync("replacement", CreateEndpoint("replacement")).WaitAsync(TestTimeout);
-        Assert.Equal("replacement", ReadHostJson(registry)["AzureFunctionsJobHost:marker"]);
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        Assert.Equal("replacement", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -310,7 +311,7 @@ public sealed partial class WorkerChannelRegistryTests
         WorkerChannelRegistry registry = harness.Registry;
         configuration.SetupGet(value => value["AzureFunctionsJobHost:configurationProfile"])
             .Callback(() => disposal = registry.DisposeAsync().AsTask()).Returns((string)null);
-        ChannelControl worker = new("worker") { HostJson = CreateHostJson("disposed") };
+        ChannelControl worker = new("worker") { HostConfiguration = CreateHostConfiguration("disposed") };
         harness.Enqueue(worker);
 
         await Assert.ThrowsAsync<ObjectDisposedException>(() =>
@@ -320,13 +321,13 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, worker.DisposeCount);
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Fact]
     public async Task LinkAsync_ClosedDuringValidationDoesNotCommitConfiguration()
     {
-        ChannelControl worker = new("worker") { HostJson = CreateHostJson("closed") };
+        ChannelControl worker = new("worker") { HostConfiguration = CreateHostConfiguration("closed") };
         var configuration = new Mock<IConfiguration>();
         configuration.SetupGet(value => value["AzureFunctionsJobHost:configurationProfile"])
             .Callback(() => worker.Complete()).Returns((string)null);
@@ -340,7 +341,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, worker.DisposeCount);
-        harness.HostJsonLogger.VerifyNoOtherCalls();
+        harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -363,8 +364,8 @@ public sealed partial class WorkerChannelRegistryTests
             })
             .Returns((string)null);
         RegistryHarness harness = new(null, configuration.Object);
-        ChannelControl slow = new("slow") { HostJson = CreateHostJson("slow") };
-        ChannelControl winner = new("winner") { HostJson = winnerSuppliesConfiguration ? CreateHostJson("winner") : null };
+        ChannelControl slow = new("slow") { HostConfiguration = CreateHostConfiguration("slow") };
+        ChannelControl winner = new("winner") { HostConfiguration = winnerSuppliesConfiguration ? CreateHostConfiguration("winner") : null };
         harness.Enqueue(slow);
         harness.Enqueue(winner);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -381,7 +382,7 @@ public sealed partial class WorkerChannelRegistryTests
             source = registry.GetConfigurationSource();
             if (winnerSuppliesConfiguration)
             {
-                Assert.Equal("winner", ReadHostJson(registry)["AzureFunctionsJobHost:marker"]);
+                Assert.Equal("winner", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
             }
             else
             {
@@ -398,12 +399,12 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(source, registry.GetConfigurationSource());
     }
 
-    private static HostJsonConfiguration CreateHostJson(string marker) => new()
+    private static HostConfiguration CreateHostConfiguration(string marker) => new()
     {
-        Status = HostJsonConfiguration.Types.Status.Available,
+        Status = HostConfiguration.Types.Status.Available,
         Content = ByteString.CopyFromUtf8($$"""{"version":"2.0","marker":"{{marker}}"}"""),
     };
 
-    private static IConfigurationRoot ReadHostJson(WorkerChannelRegistry registry)
+    private static IConfigurationRoot ReadHostConfiguration(WorkerChannelRegistry registry)
         => new ConfigurationBuilder().Add(registry.GetConfigurationSource()).Build();
 }

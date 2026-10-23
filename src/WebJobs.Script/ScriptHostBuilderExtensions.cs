@@ -106,15 +106,15 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (!context.Properties.ContainsKey(ScriptConstants.SkipHostJsonConfigurationKey))
                 {
-                    IConfigurationSource hostJsonSource = applicationOptions.RootServiceProvider
-                        ?.GetService<IHostJsonConfigurationSourceProvider>()?.GetConfigurationSource();
-                    if (hostJsonSource is null)
+                    IConfigurationSource hostConfigurationSource = applicationOptions.RootServiceProvider
+                        ?.GetService<IHostConfigurationSourceProvider>()?.GetConfigurationSource();
+                    if (hostConfigurationSource is null)
                     {
                         HostJsonFileConfigurationOptions hostJsonConfigOptions = new(SystemEnvironment.Instance, applicationOptions);
-                        hostJsonSource = new HostJsonFileConfigurationSource(hostJsonConfigOptions, loggerFactory, metricsLogger);
+                        hostConfigurationSource = new HostJsonFileConfigurationSource(hostJsonConfigOptions, loggerFactory, metricsLogger);
                     }
 
-                    configBuilder.Add(hostJsonSource);
+                    configBuilder.Add(hostConfigurationSource);
                 }
                 // Adding hosting config into job host configuration
                 configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));

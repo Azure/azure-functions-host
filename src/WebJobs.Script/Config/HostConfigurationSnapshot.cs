@@ -17,13 +17,13 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script.Configuration;
 
 /// <summary>
-/// An immutable, validated host.json configuration that can be reused by successive ScriptHost instances.
+/// An immutable, validated Host configuration that can be reused by successive ScriptHost instances.
 /// </summary>
-public sealed class HostJsonConfigurationSnapshot : IConfigurationSource
+public sealed class HostConfigurationSnapshot : IConfigurationSource
 {
     private readonly FrozenDictionary<string, string?> _data;
 
-    private HostJsonConfigurationSnapshot(Dictionary<string, string> data)
+    private HostConfigurationSnapshot(Dictionary<string, string> data)
     {
         _data = data.ToFrozenDictionary(pair => pair.Key, pair => (string?)pair.Value, StringComparer.OrdinalIgnoreCase);
     }
@@ -35,7 +35,7 @@ public sealed class HostJsonConfigurationSnapshot : IConfigurationSource
     /// <param name="options">The bootstrap settings used for defaults and configuration profile selection.</param>
     /// <returns>A snapshot with the same normalization and key mapping as local host.json configuration.</returns>
     /// <exception cref="HostConfigurationException">The document, schema version, or configuration profile is invalid.</exception>
-    public static HostJsonConfigurationSnapshot Parse(string? content, HostJsonFileConfigurationOptions options)
+    public static HostConfigurationSnapshot Parse(string? content, HostJsonFileConfigurationOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -56,7 +56,7 @@ public sealed class HostJsonConfigurationSnapshot : IConfigurationSource
         {
             // Parser and profile exceptions can contain customer values, paths, or document fragments.
             throw new HostConfigurationException(
-                "The worker host.json is not valid JSON with a supported schema version and configuration profile.");
+                "The Host configuration is not valid JSON with a supported schema version and configuration profile.");
         }
     }
 

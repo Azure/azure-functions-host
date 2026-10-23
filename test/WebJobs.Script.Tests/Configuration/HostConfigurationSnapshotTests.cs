@@ -16,11 +16,11 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration;
 
-public sealed class HostJsonConfigurationSnapshotTests : IDisposable
+public sealed class HostConfigurationSnapshotTests : IDisposable
 {
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), $"HostJsonSnapshot-{Guid.NewGuid():N}");
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), $"HostConfigurationSnapshot-{Guid.NewGuid():N}");
 
-    public HostJsonConfigurationSnapshotTests()
+    public HostConfigurationSnapshotTests()
     {
         Directory.CreateDirectory(_directory);
     }
@@ -52,7 +52,7 @@ public sealed class HostJsonConfigurationSnapshotTests : IDisposable
             WorkerRuntime = runtime,
             ConfigProfile = profile,
         };
-        HostJsonConfigurationSnapshot snapshot = HostJsonConfigurationSnapshot.Parse(content, options);
+        HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(content, options);
         IConfigurationRoot remote = new ConfigurationBuilder().Add(snapshot).Build();
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
 
@@ -85,11 +85,11 @@ public sealed class HostJsonConfigurationSnapshotTests : IDisposable
     public void Parse_InvalidConfigurationThrowsWithoutContentOrParserException(string content)
     {
         HostConfigurationException exception = Assert.Throws<HostConfigurationException>(() =>
-            HostJsonConfigurationSnapshot.Parse(content, new(new ScriptApplicationHostOptions { ScriptPath = _directory })));
+            HostConfigurationSnapshot.Parse(content, new(new ScriptApplicationHostOptions { ScriptPath = _directory })));
 
         Assert.Null(exception.InnerException);
         Assert.Equal(
-            "The worker host.json is not valid JSON with a supported schema version and configuration profile.",
+            "The Host configuration is not valid JSON with a supported schema version and configuration profile.",
             exception.Message);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
@@ -101,7 +101,7 @@ public sealed class HostJsonConfigurationSnapshotTests : IDisposable
         HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions()) { ConfigProfile = "customer-secret" };
 
         HostConfigurationException exception = Assert.Throws<HostConfigurationException>(() =>
-            HostJsonConfigurationSnapshot.Parse("""{"version":"2.0"}""", options));
+            HostConfigurationSnapshot.Parse("""{"version":"2.0"}""", options));
 
         Assert.Null(exception.InnerException);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
@@ -110,7 +110,7 @@ public sealed class HostJsonConfigurationSnapshotTests : IDisposable
     [Fact]
     public void Build_DoesNotExposeMutableSnapshotOrReadFiles()
     {
-        HostJsonConfigurationSnapshot snapshot = HostJsonConfigurationSnapshot.Parse(
+        HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
             """{"version":"2.0","extensions":{"custom":{"setting":"worker"}}}""",
             new(new ScriptApplicationHostOptions { ScriptPath = _directory }));
         IConfigurationRoot first = new ConfigurationBuilder().Add(snapshot).Build();
@@ -127,7 +127,7 @@ public sealed class HostJsonConfigurationSnapshotTests : IDisposable
     [Fact]
     public void Build_PreservesOverridesAndUnknownSections()
     {
-        HostJsonConfigurationSnapshot snapshot = HostJsonConfigurationSnapshot.Parse(
+        HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
             """{"version":"2.0","configurationProfile":"mcp-custom-handler","http":{"routePrefix":"worker"},"extensions":{"unknown":{"values":[true,2,null]}}}""",
             new(new ScriptApplicationHostOptions()));
         IConfigurationRoot configuration = new ConfigurationBuilder()
