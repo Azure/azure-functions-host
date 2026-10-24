@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -95,14 +94,14 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     {
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
         string functionId = invocationContext.FunctionMetadata.GetFunctionId();
-        if (channel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
+        if (channel.FunctionInputBuffers.ContainsKey(functionId))
         {
             if (_logger.IsEnabled(LogLevel.Trace))
             {
                 Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
             }
 
-            if (!inputBuffer.Post(invocationContext))
+            if (!channel.TryPostInvocation(invocationContext))
             {
                 invocationContext.ResultSource.TrySetException(
                     new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));

@@ -58,6 +58,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public List<Task> ExecutionContexts => _executionContexts;
 
+        public bool TryPostInvocation(ScriptInvocationContext invocationContext)
+        {
+            string functionId = invocationContext.FunctionMetadata.GetFunctionId();
+            return FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer)
+                && inputBuffer.Post(invocationContext);
+        }
+
         public void Dispose()
         {
             _isDisposed = true;
