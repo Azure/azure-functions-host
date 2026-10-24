@@ -8,7 +8,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -424,14 +423,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync(invocationContext.FunctionMetadata.Language ?? _workerRuntime);
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
             string functionId = invocationContext.FunctionMetadata.GetFunctionId();
-            if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
+            if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(functionId, out _))
             {
                 if (_logger.IsEnabled(LogLevel.Trace))
                 {
                     _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
                 }
 
-                bufferBlock.Post(invocationContext);
+                if (!rpcWorkerChannel.TryPostInvocation(invocationContext))
+                {
+                    invocationContext.ResultSource.TrySetException(
+                        new InvalidOperationException($"Worker '{rpcWorkerChannel.Id}' is no longer accepting invocations."));
+                }
             }
             else
             {

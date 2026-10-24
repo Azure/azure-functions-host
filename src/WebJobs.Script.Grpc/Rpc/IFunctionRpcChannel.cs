@@ -26,6 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
         /// <summary>
+        /// Attempts to accept an invocation for buffered dispatch.
+        /// </summary>
+        /// <param name="invocationContext">The invocation to accept.</param>
+        /// <returns><see langword="true"/> when the invocation was accepted; otherwise, <see langword="false"/>.</returns>
+        bool TryPostInvocation(ScriptInvocationContext invocationContext);
+
+        /// <summary>
         /// Gets a value indicating whether the channel can accept invocations.
         /// </summary>
         /// <returns><see langword="true"/> when the channel is ready; otherwise, <see langword="false"/>.</returns>

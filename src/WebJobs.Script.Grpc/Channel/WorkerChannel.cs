@@ -63,8 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly WaitCallback _processInbound;
         private readonly IInvocationMessageDispatcherFactory _messageDispatcherFactory;
         private readonly Lock _disposeLock = new();
+        private readonly object _invocationLock = new object();
         private readonly object _syncLock = new object();
         private readonly object _metadataLock = new object();
+        private readonly Dictionary<string, ScriptInvocationContext> _acceptedInvocations = new(StringComparer.Ordinal);
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new();
         private readonly ChannelWriter<StreamingMessage> _outbound;
         private readonly ChannelReader<StreamingMessage> _inbound;
@@ -92,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
+        private Exception _shutdownException;
         private IDisposable _startLatencyMetric;
         private IEnumerable<FunctionMetadata> _functions;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -223,6 +226,35 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             get => _state;
             set => _state = value;
+        }
+
+        /// <inheritdoc />
+        public bool TryPostInvocation(ScriptInvocationContext invocationContext)
+        {
+            ArgumentNullException.ThrowIfNull(invocationContext);
+
+            string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
+            string functionId = invocationContext.FunctionMetadata.GetFunctionId();
+            lock (_invocationLock)
+            {
+                if (!_functionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer) ||
+                    !TryTrackInvocationLocked(invocationContext, out bool added, out _))
+                {
+                    return false;
+                }
+
+                if (inputBuffer.Post(invocationContext))
+                {
+                    return true;
+                }
+
+                if (added)
+                {
+                    _acceptedInvocations.Remove(invocationId);
+                }
+
+                return false;
+            }
         }
 
         internal virtual void DisposeWorkerResources() { }
@@ -942,9 +974,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            if (!TryTrackInvocation(context, out Exception rejectionException))
+            {
+                context.SetException(rejectionException);
+                return;
+            }
+
             try
             {
-                string invocationId = context.ExecutionContext.InvocationId.ToString();
                 string functionId = context.FunctionMetadata.GetFunctionId();
 
                 // do not send an invocation request for functions that failed to load or could not be indexed by the worker
@@ -952,14 +990,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
                     context.SetException(exception);
-                    RemoveExecutingInvocation(invocationId);
+                    RemoveAcceptedInvocation(invocationId);
                     return;
                 }
                 else if (_metadataRequestErrors.TryGetValue(functionId, out exception))
                 {
                     _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
                     context.SetException(exception);
-                    RemoveExecutingInvocation(invocationId);
+                    RemoveAcceptedInvocation(invocationId);
                     return;
                 }
 
@@ -976,37 +1014,105 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                         // This will result in an invocation failure with a "FunctionInvocationCanceled" exception.
                         context.ResultSource.TrySetCanceled();
+                        RemoveAcceptedInvocation(invocationId);
                         return;
                     }
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                 AddAdditionalTraceContext(invocationRequest, context);
-                _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
-
-                // If the worker supports HTTP proxying, ensure this request is forwarded prior
-                // to sending the invocation request to the worker, as this will ensure the context
-                // is properly set up.
-                if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
+                if (!TryStartInvocation(context, invocationRequest, out Exception startException))
                 {
-                    _httpProxyService.StartForwarding(context, _httpProxyEndpoint);
+                    if (startException is not null)
+                    {
+                        context.SetException(startException);
+                        RemoveAcceptedInvocation(invocationId);
+                    }
+
+                    TryCloseSharedMemoryResources(invocationId);
+                    return;
                 }
 
-                await SendStreamingMessageAsync(new StreamingMessage
-                {
-                    InvocationRequest = invocationRequest
-                });
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
                 if (_isHandlesInvocationCancelMessageCapabilityEnabled)
                 {
-                    var cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
-                    context.Properties.Add(ScriptConstants.CancellationTokenRegistration, cancellationCtr);
+                    RegisterInvocationCancellation(context, invocationRequest.InvocationId);
                 }
             }
             catch (Exception invokeEx)
             {
                 context.SetException(invokeEx);
+                RemoveExecutingInvocation(invocationId);
+                RemoveAcceptedInvocation(invocationId);
+                TryCloseSharedMemoryResources(invocationId);
+            }
+        }
+
+        private bool TryStartInvocation(
+            ScriptInvocationContext context,
+            InvocationRequest invocationRequest,
+            out Exception exception)
+        {
+            exception = null;
+            ExecutingInvocation invocation =
+                new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId));
+
+            lock (_invocationLock)
+            {
+                if (_shutdownException is not null ||
+                    !_acceptedInvocations.ContainsKey(invocationRequest.InvocationId))
+                {
+                    invocation.Dispose();
+                    return false;
+                }
+
+                if (!_executingInvocations.TryAdd(invocationRequest.InvocationId, invocation))
+                {
+                    invocation.Dispose();
+                    exception = new InvalidOperationException(
+                        $"Invocation '{invocationRequest.InvocationId}' is already executing.");
+                    return false;
+                }
+
+                try
+                {
+                    // If the worker supports HTTP proxying, ensure this request is forwarded prior
+                    // to sending the invocation request to the worker, as this will ensure the context
+                    // is properly set up.
+                    if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
+                    {
+                        _httpProxyService.StartForwarding(context, _httpProxyEndpoint);
+                    }
+
+                    if (!_outbound.TryWrite(new StreamingMessage { InvocationRequest = invocationRequest }))
+                    {
+                        throw new InvalidOperationException(
+                            $"Worker '{_workerId}' is no longer accepting invocation requests.");
+                    }
+
+                    return true;
+                }
+                catch (Exception startException)
+                {
+                    exception = startException;
+                    RemoveExecutingInvocation(invocationRequest.InvocationId);
+                    return false;
+                }
+            }
+        }
+
+        private void RegisterInvocationCancellation(ScriptInvocationContext context, string invocationId)
+        {
+            lock (_invocationLock)
+            {
+                if (_shutdownException is not null || !_executingInvocations.ContainsKey(invocationId))
+                {
+                    return;
+                }
+
+                var cancellationRegistration = context.CancellationToken.Register(() => SendInvocationCancel(invocationId));
+                context.Properties.Add(ScriptConstants.CancellationTokenRegistration, cancellationRegistration);
             }
         }
 
@@ -1241,6 +1347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     TryCloseSharedMemoryResources(invokeResponse);
 
                     invocation.Dispose();
+                    RemoveAcceptedInvocation(invokeResponse.InvocationId);
                 }
             }
         }
@@ -1269,10 +1376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
-                if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
-                {
-                    _workerChannelLogger.LogWarning("Cannot free all shared memory resources for invocation: {invocationId}", invokeResponse.InvocationId);
-                }
+                TryCloseSharedMemoryResources(invokeResponse.InvocationId);
 
                 // List of shared memory maps that were produced by the worker (for output bindings)
                 IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
@@ -1285,6 +1389,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             catch (Exception exc)
             {
                 _workerChannelLogger.LogWarning(exc, "Failed to cleanup shared memory resources");
+            }
+        }
+
+        private void TryCloseSharedMemoryResources(string invocationId)
+        {
+            try
+            {
+                if (_isSharedMemoryDataTransferEnabled &&
+                    !_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invocationId))
+                {
+                    _workerChannelLogger.LogWarning("Cannot free all shared memory resources for invocation: {invocationId}", invocationId);
+                }
+            }
+            catch (Exception exception)
+            {
+                _workerChannelLogger.LogWarning(exception, "Failed to cleanup shared memory resources");
             }
         }
 
@@ -1591,6 +1711,58 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        private void RemoveAcceptedInvocation(string invocationId)
+        {
+            lock (_invocationLock)
+            {
+                _acceptedInvocations.Remove(invocationId);
+            }
+        }
+
+        private bool TryTrackInvocation(ScriptInvocationContext context, out Exception rejectionException)
+        {
+            lock (_invocationLock)
+            {
+                return TryTrackInvocationLocked(context, out _, out rejectionException);
+            }
+        }
+
+        private bool TryTrackInvocationLocked(
+            ScriptInvocationContext context,
+            out bool added,
+            out Exception rejectionException)
+        {
+            added = false;
+            rejectionException = _shutdownException;
+            if (rejectionException is not null)
+            {
+                return false;
+            }
+
+            if (_disposing || _disposed)
+            {
+                rejectionException = new ObjectDisposedException(GetType().FullName);
+                return false;
+            }
+
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            if (_acceptedInvocations.TryGetValue(invocationId, out ScriptInvocationContext acceptedContext))
+            {
+                if (ReferenceEquals(acceptedContext, context))
+                {
+                    return true;
+                }
+
+                rejectionException = new InvalidOperationException(
+                    $"Invocation '{invocationId}' is already accepted.");
+                return false;
+            }
+
+            _acceptedInvocations.Add(invocationId, context);
+            added = true;
+            return true;
+        }
+
         /// <summary>
         /// Releases synchronous worker channel resources.
         /// </summary>
@@ -1709,10 +1881,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <inheritdoc />
         public async Task DrainInvocationsAsync()
         {
-            _workerChannelLogger.LogDebug("Count of in-buffer invocations waiting to be drained out: {invocationCount}", _executingInvocations.Count);
-            foreach (var invocation in _executingInvocations.Values)
+            ScriptInvocationContext[] invocations;
+            lock (_invocationLock)
             {
-                await invocation.Context.ResultSource.Task;
+                invocations = [.. _acceptedInvocations.Values];
+            }
+
+            _workerChannelLogger.LogDebug("Count of accepted invocations waiting to be drained out: {invocationCount}", invocations.Length);
+            foreach (ScriptInvocationContext invocation in invocations)
+            {
+                await invocation.ResultSource.Task;
             }
         }
 
@@ -1739,13 +1917,53 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 shutdownException = new FunctionTimeoutAbortException("Worker channel is shutting down. Aborting function." + exceptionMessageSuffix, workerException);
             }
 
-            foreach (var invocation in _executingInvocations?.Values)
+            Dictionary<string, ScriptInvocationContext> invocationsToFail;
+            List<ExecutingInvocation> executingInvocations = [];
+            lock (_invocationLock)
             {
-                string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
-                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.SetException(shutdownException);
-                RemoveExecutingInvocation(invocationId);
+                _shutdownException ??= shutdownException;
+
+                foreach (BufferBlock<ScriptInvocationContext> inputBuffer in _functionInputBuffers.Values)
+                {
+                    inputBuffer.Complete();
+                }
+
+                invocationsToFail = new(_acceptedInvocations, StringComparer.Ordinal);
+                _acceptedInvocations.Clear();
+
+                foreach (string invocationId in _executingInvocations.Keys)
+                {
+                    if (_executingInvocations.TryRemove(invocationId, out ExecutingInvocation invocation))
+                    {
+                        executingInvocations.Add(invocation);
+                    }
+                }
             }
+
+            foreach (BufferBlock<ScriptInvocationContext> inputBuffer in _functionInputBuffers.Values)
+            {
+                while (inputBuffer.TryReceive(out ScriptInvocationContext context))
+                {
+                    invocationsToFail.TryAdd(context.ExecutionContext.InvocationId.ToString(), context);
+                }
+            }
+
+            foreach (ScriptInvocationContext context in invocationsToFail.Values)
+            {
+                FailInvocation(context, shutdownException);
+            }
+
+            foreach (ExecutingInvocation invocation in executingInvocations)
+            {
+                invocation.Dispose();
+            }
+        }
+
+        private void FailInvocation(ScriptInvocationContext context, Exception exception)
+        {
+            string invocationId = context?.ExecutionContext?.InvocationId.ToString();
+            _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
+            context?.SetException(exception);
         }
 
         private void TryFailPendingReload(Exception exception)
@@ -1964,6 +2182,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             public void Dispose()
             {
+                if (Context.Properties.TryGetValue(
+                    ScriptConstants.CancellationTokenRegistration,
+                    out CancellationTokenRegistration cancellationRegistration))
+                {
+                    cancellationRegistration.Dispose();
+                    Context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
+                }
+
                 (Dispatcher as IDisposable)?.Dispose();
             }
         }
