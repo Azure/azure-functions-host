@@ -30,7 +30,7 @@ internal sealed class WorkerAssignment
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
         string functionAppDirectory,
-        string? httpProxyEndpoint = null)
+        string? httpProxyEndpoint)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -47,9 +47,9 @@ internal sealed class WorkerAssignment
         }
 
         if (httpProxyEndpoint is not null
-            && WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(httpProxyEndpoint) is null)
+            && WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(httpProxyEndpoint, Uri.UriSchemeHttp) is null)
         {
-            throw new ArgumentException("The HTTP proxy endpoint must be an absolute HTTP or HTTPS origin.", nameof(httpProxyEndpoint));
+            throw new ArgumentException("The HTTP proxy endpoint must be a scheme-less host:port with an explicit nonzero port.", nameof(httpProxyEndpoint));
         }
 
         foreach ((string key, string value) in environment)
@@ -84,7 +84,7 @@ internal sealed class WorkerAssignment
     public string FunctionAppDirectory { get; }
 
     /// <summary>
-    /// Gets the optional mapped HTTP origin frozen by the accepted assignment.
+    /// Gets the optional scheme-less mapped host:port frozen by the accepted assignment.
     /// The original string participates in ordinal retry equality, like other assignment strings.
     /// </summary>
     public string? HttpProxyEndpoint { get; }

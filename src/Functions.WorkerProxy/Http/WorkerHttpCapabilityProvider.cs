@@ -15,13 +15,15 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// </summary>
 internal sealed partial class WorkerHttpCapabilityProvider(
     IOptions<WorkerProxyOptions> options,
-    ILogger<WorkerHttpCapabilityProvider> logger)
+    ILogger<WorkerHttpCapabilityProvider> logger,
+    WorkerProxyEndpointConfiguration endpoints)
     : IWorkerCapabilityFinalizer
 {
     private const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly WorkerProxyEndpointConfiguration _endpoints = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
 
     /// <summary>
     /// Finalizes the HTTP capability on a relay-owned copy of the successful initialization response.
@@ -29,7 +31,7 @@ internal sealed partial class WorkerHttpCapabilityProvider(
     /// <param name="capabilities">The capabilities to advertise to the runtime.</param>
     /// <param name="assignment">The accepted assignment, or null for the explicit legacy configuration path.</param>
     /// <returns>The real worker destination, or <see langword="null"/> when HTTP proxying is unavailable.</returns>
-    public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment = null)
+    public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment)
     {
         if (!capabilities.TryGetValue(HttpUriCapability, out string? advertisedEndpoint) || string.IsNullOrWhiteSpace(advertisedEndpoint))
         {
@@ -45,12 +47,21 @@ internal sealed partial class WorkerHttpCapabilityProvider(
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
         // Assignment is authoritative, including an omitted endpoint. Only unassigned legacy sessions
         // may use explicit configuration; never infer a mapping or silently fall back for an assignment.
-        Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(
-            assignment is null ? _options.HttpProxyEndpoint : assignment.HttpProxyEndpoint);
+        Uri? proxyEndpoint;
+        if (assignment is null)
+        {
+            proxyEndpoint = WorkerProxyOptionsValidator.ResolveConfiguredHttpProxyOrigin(_options.HttpProxyEndpoint);
+        }
+        else
+        {
+            proxyEndpoint = assignment.HttpProxyEndpoint is { } assignedEndpoint
+                ? WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(assignedEndpoint, _endpoints.GetHttpAddress().Scheme)
+                : null;
+        }
         if (proxyEndpoint is null)
         {
             throw new InvalidOperationException($"{nameof(WorkerAssignment.HttpProxyEndpoint)} must supply the actual mapped "
-                + "HTTP origin in an accepted assignment before HTTP worker initialization. "
+                + "host:port in an accepted assignment before HTTP worker initialization. "
                 + "Only unassigned legacy sessions may use an explicit WorkerProxy:HttpProxyEndpoint.");
         }
 

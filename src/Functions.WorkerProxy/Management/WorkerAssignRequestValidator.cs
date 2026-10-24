@@ -50,7 +50,7 @@ internal static class WorkerAssignRequestValidator
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
 
         if (request.HttpProxyEndpoint is not null
-            && WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(request.HttpProxyEndpoint) is null)
+            && WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(request.HttpProxyEndpoint, Uri.UriSchemeHttp) is null)
         {
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
         }

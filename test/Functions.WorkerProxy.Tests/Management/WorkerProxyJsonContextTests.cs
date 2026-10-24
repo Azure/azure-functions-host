@@ -23,7 +23,7 @@ public class WorkerProxyJsonContextTests
             FunctionAppName = "app",
             FunctionGroupName = "group",
             FunctionAppDirectory = "private-directory",
-            HttpProxyEndpoint = "http://mapped.example:49187/",
+            HttpProxyEndpoint = "100.86.0.4:49123",
             IsAlwaysReady = false,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
         };

@@ -12,16 +12,16 @@ public class WorkerAssignmentTests
 {
     [Theory]
     [InlineData(null)]
-    [InlineData("http://mapped.example:49188/")]
-    [InlineData("http://other.example:49187/")]
-    [InlineData("https://mapped.example:49187/")]
-    [InlineData("http://MAPPED.example:49187/")]
+    [InlineData("mapped.example:49188")]
+    [InlineData("other.example:49187")]
+    [InlineData("mapped.example:049187")]
+    [InlineData("MAPPED.example:49187")]
     public void Equality_IncludesOriginalHttpProxyEndpoint(string? changedEndpoint)
     {
         WorkerAssignment original = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty,
-            "http://mapped.example:49187/");
+            "mapped.example:49187");
         WorkerAssignment identical = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty,
-            "http://mapped.example:49187/");
+            "mapped.example:49187");
         WorkerAssignment changed = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty, changedEndpoint);
 
         Assert.True(original.IsEquivalentTo(identical));
@@ -74,7 +74,8 @@ public class WorkerAssignmentTests
             string.Equals(changedField, "group", StringComparison.Ordinal) ? "HTTP" : "http",
             string.Equals(changedField, "alwaysReady", StringComparison.Ordinal),
             environment,
-            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot");
+            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot",
+            httpProxyEndpoint: null);
 
         Assert.False(original.IsEquivalentTo(changed));
         Assert.False(changed.IsEquivalentTo(original));
@@ -97,9 +98,9 @@ public class WorkerAssignmentTests
     public void Construction_RejectsMissingIdentity(string? value)
     {
         Dictionary<string, string> environment = [];
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, value!, "http", false, environment, "/app"));
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", value!, false, environment, "/app"));
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.SpecializationRequired, "app", "http", false, environment, value!));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, value!, "http", false, environment, "/app", httpProxyEndpoint: null));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", value!, false, environment, "/app", httpProxyEndpoint: null));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.SpecializationRequired, "app", "http", false, environment, value!, httpProxyEndpoint: null));
     }
 
     [Theory]
@@ -108,7 +109,7 @@ public class WorkerAssignmentTests
     [InlineData("/app")]
     public void Construction_PreconfiguredPreservesDirectoryWithoutApplyingValidationForSpecialization(string directory)
     {
-        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), directory);
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), directory, httpProxyEndpoint: null);
 
         Assert.Equal(WorkerStartupMode.Preconfigured, assignment.StartupMode);
         Assert.Equal(directory, assignment.FunctionAppDirectory);
@@ -121,7 +122,7 @@ public class WorkerAssignmentTests
     {
         WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
         Assert.Throws<ArgumentNullException>(() =>
-            new WorkerAssignment(startupMode, "app", "http", false, new Dictionary<string, string>(), null!));
+            new WorkerAssignment(startupMode, "app", "http", false, new Dictionary<string, string>(), null!, httpProxyEndpoint: null));
     }
 
     [Theory]
@@ -130,14 +131,14 @@ public class WorkerAssignmentTests
     public void Construction_RejectsUndefinedStartupMode(int startupMode)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new WorkerAssignment((WorkerStartupMode)startupMode, "app", "http", false, new Dictionary<string, string>(), "/app"));
+            new WorkerAssignment((WorkerStartupMode)startupMode, "app", "http", false, new Dictionary<string, string>(), "/app", httpProxyEndpoint: null));
     }
 
     [Fact]
     public void Equality_PreconfiguredEmptyDirectoryStillParticipatesInIdentity()
     {
-        WorkerAssignment empty = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty);
-        WorkerAssignment whitespace = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), " ");
+        WorkerAssignment empty = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty, httpProxyEndpoint: null);
+        WorkerAssignment whitespace = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), " ", httpProxyEndpoint: null);
 
         Assert.False(empty.IsEquivalentTo(whitespace));
         Assert.False(whitespace.IsEquivalentTo(empty));
@@ -158,5 +159,5 @@ public class WorkerAssignmentTests
     }
 
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment)
-        => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot");
+        => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot", httpProxyEndpoint: null);
 }

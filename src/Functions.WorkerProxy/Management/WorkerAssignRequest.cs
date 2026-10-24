@@ -36,8 +36,9 @@ internal sealed class WorkerAssignRequest
     public string? FunctionAppDirectory { get; init; }
 
     /// <summary>
-    /// Gets the actual externally mapped HTTP origin, supplied by the platform immediately before assignment.
-    /// Required for HTTP initialization, but optional for non-HTTP workers.
+    /// Gets the externally mapped host:port, supplied by the platform immediately before assignment.
+    /// The value has no URI scheme; WorkerProxy uses its own HTTP listener's scheme when advertising HttpUri.
+    /// Required for HTTP initialization, but optional for non-HTTP workers. IPv6 hosts must be bracketed.
     /// </summary>
     public string? HttpProxyEndpoint { get; init; }
 }

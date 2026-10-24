@@ -32,20 +32,7 @@ public class ManagementApiEndpointTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData("relative")]
-    [InlineData("ftp://mapped.example:1234/")]
-    [InlineData("http://mapped.example:0/")]
-    [InlineData("http://0.0.0.0:1234/")]
-    [InlineData("http://[::]:1234/")]
-    [InlineData("http://*:1234/")]
-    [InlineData("http://+:1234/")]
-    [InlineData("http://{{status.podIP}}:1234/")]
-    [InlineData("http://user:password@mapped.example:1234/")]
-    [InlineData("http://mapped.example:1234/prefix/")]
-    [InlineData("http://mapped.example:1234/?query=value")]
-    [InlineData("http://mapped.example:1234/#fragment")]
+    [MemberData(nameof(MappedHttpEndpointTests.InvalidAssignedEndpoints), MemberType = typeof(MappedHttpEndpointTests))]
     public async Task MalformedHttpProxyEndpointIsRejectedWithoutClaimingAssignment(string endpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -67,9 +54,11 @@ public class ManagementApiEndpointTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("http://mapped.example:49187/")]
-    [InlineData("https://mapped.example:49187/")]
-    [InlineData("http://[::1]:49187/")]
+    [InlineData("100.86.0.4:49123")]
+    [InlineData("mapped.example:49187")]
+    [InlineData("[::1]:49187")]
+    [InlineData("mapped.example:80")]
+    [InlineData("mapped.example:65535")]
     public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string? endpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -92,7 +81,7 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage retry = await client.PutAsync(AssignPath, retryContent, timeout.Token);
         await AssertAssignmentSuccessAsync(retry, HttpStatusCode.NoContent, timeout.Token);
 
-        body["httpProxyEndpoint"] = endpoint is null ? "http://different.example:49188/" : null;
+        body["httpProxyEndpoint"] = endpoint is null ? "different.example:49188" : null;
         using StringContent conflictContent = JsonBody(body.ToJsonString());
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictContent, timeout.Token);
         await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);

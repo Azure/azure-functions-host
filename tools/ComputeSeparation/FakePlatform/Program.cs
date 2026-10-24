@@ -29,7 +29,8 @@ RouteGroupBuilder simulate = app.MapGroup("/simulate");
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, options.HttpProxyEndpoint.AbsoluteUri);
+    string httpProxyEndpoint = $"{options.HttpProxyEndpoint.Host}:{options.HttpProxyEndpoint.Port}";
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, httpProxyEndpoint);
     using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 

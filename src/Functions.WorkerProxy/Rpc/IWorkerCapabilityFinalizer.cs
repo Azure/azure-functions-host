@@ -23,5 +23,5 @@ internal interface IWorkerCapabilityFinalizer
     /// Failures propagate to session termination rather than forwarding a partially finalized response.
     /// Implementations must not retain or mutate the capability map after returning.
     /// </remarks>
-    Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment = null);
+    Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment);
 }

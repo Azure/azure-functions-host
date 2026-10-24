@@ -66,9 +66,9 @@ The happy path, in order:
 
 `GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
 
-Step 1 supplies the actual externally mapped HTTP origin in the optional `httpProxyEndpoint`
+Step 1 supplies the actual mapped host:port, without a URI scheme, in the optional `httpProxyEndpoint`
 assignment field (required when the worker advertises `HttpUri`). The fake platform uses
-Aspire's allocated HTTP endpoint, not a WorkerProxy startup setting. Assignment must succeed
+Aspire's allocated host and port; WorkerProxy supplies its listener scheme when advertising `HttpUri`. Assignment must succeed
 before linking triggers worker initialization. See [Mapped HTTP origin](MappedHttpOrigin.md)
 for validation, retry identity, and legacy compatibility.
 

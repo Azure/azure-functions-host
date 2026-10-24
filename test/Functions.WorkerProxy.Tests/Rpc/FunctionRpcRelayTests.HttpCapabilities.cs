@@ -258,7 +258,8 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_BlockedCapabilityLogging_DoesNotBlockShutdown()
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
-        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions());
+        WorkerHttpCapabilityProvider provider = new(options, logger, new(options));
         await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
@@ -372,8 +373,9 @@ public partial class FunctionRpcRelayTests
         Uri destination = new(WorkerHttpForwardingTests.GetAddress(workerApp), "/worker/");
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         using HttpClient proxyClient = factory.CreateHttpForwardingClient();
-        // Discover the actual origin after binding, then supply it in assignment without mutating options or environment.
+        // Legion supplies only the mapped host:port after allocation; the proxy owns the advertised scheme.
         string proxyEndpoint = proxyClient.BaseAddress!.AbsoluteUri;
+        string assignedEndpoint = $"{proxyClient.BaseAddress.Host}:{proxyClient.BaseAddress.Port}";
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await worker.WriteAsync(CreateStartStream(), timeout.Token);
@@ -392,9 +394,10 @@ public partial class FunctionRpcRelayTests
             IsAlwaysReady = false,
             Environment = [],
             FunctionAppDirectory = string.Empty,
-            HttpProxyEndpoint = proxyEndpoint
+            HttpProxyEndpoint = assignedEndpoint
         }, WorkerProxyJsonContext.Default.WorkerAssignRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.Created, assigned.StatusCode);
+        Assert.Equal(assignedEndpoint, manager.GetAssignment(manager.State.SessionId!.Value)!.HttpProxyEndpoint);
         // Linking starts only after assignment succeeds, matching WorkerChannelRegistry.StartAsync:
         // the queued StartStream triggers WorkerInitRequest, then the worker replies.
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
