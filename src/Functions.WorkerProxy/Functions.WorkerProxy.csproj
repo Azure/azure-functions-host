@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Azure.Functions.WorkerProxy.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
   <ItemGroup>
