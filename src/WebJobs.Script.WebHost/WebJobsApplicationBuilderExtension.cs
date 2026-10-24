@@ -170,6 +170,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     Predicate = r => r.Tags.Contains(HealthCheckTags.Readiness),
                     ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
                 });
+
+                app.UseHealthChecks($"{healthPrefix}/connectivity", new HealthCheckOptions
+                {
+                    Predicate = r => r.Tags.Contains(HealthCheckTags.Connectivity),
+                    ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
+                });
             });
         }
     }
