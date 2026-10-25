@@ -31,7 +31,7 @@ HTTP requests and newly opened gRPC calls need only the caller token, not an out
 
 ## Link and HTTP negotiation
 
-The management route is `PUT /admin/workers/{workerId}`. Worker identity comes only from the path; body `workerPodName` is ignored. The existing platform payload is `{workerPodName, workerGrpcEndpoint, runtimeAccessKey}`. The gRPC endpoint must be an HTTPS authority without credentials, path prefix, query or fragment. There is no collection-root Link alias or Link HTTP endpoint.
+The management route is `PUT /admin/workers/{workerId}`. Worker identity comes only from the path; body `workerPodName` is ignored. The existing platform payload is `{workerPodName, workerGrpcEndpoint, runtimeAccessKey}`. `workerGrpcEndpoint` is a scheme-less host:port, such as `100.86.1.2:48800`; Host supplies its gRPC scheme, HTTPS in this image. The mapped port must be explicit and between 1 and 65535. IPv4, DNS hosts, and bracketed IPv6 are supported; full URLs, whitespace, credentials, paths, query, fragment, and percent escapes are invalid. There is no collection-root Link alias or Link HTTP endpoint.
 
 HTTP support and routing remain negotiated through `HttpUri`. WorkerProxy validates the customer's local HTTP destination separately and advertises its configured `WorkerProxy:HttpProxyEndpoint`, which must be the actual reachable HTTPS forwarding origin. If an HTTP-capable worker has no usable external origin, initialization fails instead of forwarding a local/customer address or guessing an allocated port.
 

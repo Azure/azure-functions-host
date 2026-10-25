@@ -169,7 +169,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(
             timeout.Token, registry, useKestrel: true);
         string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.AbsoluteUri}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
             """;
         using StringContent content = new(json, Encoding.UTF8, "application/json");
         Task<HttpResponseMessage> linking = managementReceiver.Client.PutAsync(

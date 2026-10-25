@@ -64,7 +64,7 @@ simulate.MapPost("/worker/link", async (IHttpClientFactory clients, Cancellation
     var link = new
     {
         workerPodName = options.WorkerId,
-        workerGrpcEndpoint = options.WorkerGrpcEndpoint.ToString(),
+        workerGrpcEndpoint = options.WorkerGrpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
         runtimeAccessKey = options.RuntimeAccessKey
     };
     using HttpResponseMessage response = await clients.CreateClient(HostClient)

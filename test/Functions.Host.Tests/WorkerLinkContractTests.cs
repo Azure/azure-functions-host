@@ -80,11 +80,11 @@ public class WorkerLinkContractTests
     public void WorkerLinkRequest_Serialization_DoesNotIncludeBodyIdentity(string propertyName)
     {
         WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
-            $$"""{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","{{propertyName}}":null}"""));
+            $$"""{"workerGrpcEndpoint":"worker-pod-abc123:5001","{{propertyName}}":null}"""));
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
-        Assert.Equal("http://worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
+        Assert.Equal("worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
         Assert.Null(body.Property(propertyName));
     }
 
@@ -92,7 +92,7 @@ public class WorkerLinkContractTests
     public void WorkerLinkRequest_Serialization_IncludesRuntimeCredentialsAndHttpOrigin()
     {
         WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
-            """{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
+            """{"workerGrpcEndpoint":"worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 

@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
@@ -192,16 +194,29 @@ public sealed partial class WorkerLinkController : Controller
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
     }
 
-    // Accept only HTTPS authorities without credentials, non-root paths, queries, or fragments.
+    // Legion supplies the mapped host:port; the runtime owns the gRPC transport scheme.
     private static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
-        => Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
-            string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
-            !string.IsNullOrWhiteSpace(endpoint.Host) &&
-            endpoint.Port > 0 &&
-            string.IsNullOrEmpty(endpoint.UserInfo) &&
-            string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal) &&
-            string.IsNullOrEmpty(endpoint.Query) &&
-            string.IsNullOrEmpty(endpoint.Fragment);
+    {
+        endpoint = null;
+        if (string.IsNullOrEmpty(value)
+            || value.Any(character => char.IsWhiteSpace(character) || char.IsControl(character))
+            || value.AsSpan().IndexOfAny("/\\@?#%".AsSpan()) >= 0)
+        {
+            return false;
+        }
+
+        int separator = value.LastIndexOf(':');
+        if (separator <= 0
+            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
+            || port is < 1 or > ushort.MaxValue)
+        {
+            return false;
+        }
+
+        return Uri.TryCreate($"{Uri.UriSchemeHttps}://{value}", UriKind.Absolute, out endpoint)
+            && !string.IsNullOrWhiteSpace(endpoint.Host)
+            && endpoint.Port == port;
+    }
 
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.
     private static class ErrorCodes

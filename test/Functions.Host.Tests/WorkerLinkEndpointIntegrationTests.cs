@@ -106,7 +106,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = JsonSerializer.Serialize(new
         {
-            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
             runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey,
             ignoredHttpEndpoint = httpEndpoint
         });
@@ -131,9 +131,29 @@ public sealed class WorkerLinkEndpointIntegrationTests
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
         using HttpResponseMessage response = await host.PutAsync(
-            json?.Replace("{endpoint}", Endpoint.AbsoluteUri, StringComparison.Ordinal), timeout.Token);
+            json?.Replace("{endpoint}", Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped), StringComparison.Ordinal), timeout.Token);
 
         await ReadValidationErrorsAsync(response, timeout.Token);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("worker-proxy")]
+    [InlineData("http://worker-proxy:50053")]
+    [InlineData("https://worker-proxy:50053")]
+    public async Task Put_MissingPortOrCallerScheme_ReturnsEndpointErrorWithoutCallingRegistry(string endpoint)
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+        string json = $$"""
+            {"workerPodName":"worker-pod-abc123","workerGrpcEndpoint":"{{endpoint}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            """;
+
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
+
+        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
+        Assert.Equal("InvalidEndpoint", error.GetProperty("code").GetString());
+        Assert.Equal("workerGrpcEndpoint", error.GetProperty("target").GetString());
         _registry.VerifyNoOtherCalls();
     }
 
@@ -210,7 +230,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         SetupLink();
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = $$"""
-            {"workerGrpcEndpoint":"{{Endpoint.AbsoluteUri}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}","{{propertyName}}":{{identityJson}}}
+            {"workerGrpcEndpoint":"{{Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}","{{propertyName}}":{{identityJson}}}
             """;
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
@@ -229,7 +249,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         string json = JsonSerializer.Serialize(new
         {
             workerId = "another-worker",
-            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
             runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey,
         });
 
@@ -311,7 +331,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using HttpResponseMessage response = await HttpClientJsonExtensions.PutAsJsonAsync(host.Client, path, new
         {
             workerId = WorkerId,
-            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
         }, timeout.Token);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -384,7 +404,11 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     private static string LinkJson()
-        => JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.AbsoluteUri, runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey });
+        => JsonSerializer.Serialize(new
+        {
+            workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
+            runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey
+        });
 
     [Fact]
     public async Task Put_RemovedHttpOrigin_IsIgnored()
@@ -397,7 +421,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = JsonSerializer.Serialize(new
         {
-            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
             workerHttpEndpoint = httpEndpoint.AbsoluteUri,
             runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey
         });

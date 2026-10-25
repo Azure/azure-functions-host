@@ -82,7 +82,7 @@ internal sealed partial class HostLinkService(
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerPodName = workerId,
-            workerGrpcEndpoint = grpcEndpoint,
+            workerGrpcEndpoint = new Uri(grpcEndpoint).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
             runtimeAccessKey,
         }, cancellationToken);
 

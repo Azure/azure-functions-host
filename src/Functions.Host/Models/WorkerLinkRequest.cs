@@ -11,8 +11,8 @@ namespace Azure.Functions.Host.WorkerLink;
 public sealed class WorkerLinkRequest
 {
     /// <summary>
-    /// Gets or sets the required HTTPS authority of WorkerProxy's runtime-facing
-    /// gRPC listener. The endpoint must be reachable from this runtime.
+    /// Gets or sets the required scheme-less host:port of WorkerProxy's mapped runtime-facing
+    /// gRPC listener. The runtime selects the transport scheme. The endpoint must be reachable from this runtime.
     /// </summary>
     [JsonProperty("workerGrpcEndpoint")]
     public string? WorkerGrpcEndpoint { get; set; }
