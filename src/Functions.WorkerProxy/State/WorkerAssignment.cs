@@ -30,7 +30,7 @@ internal sealed class WorkerAssignment
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
         string functionAppDirectory,
-        string? httpProxyEndpoint)
+        string? httpProxyEndpoint = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {

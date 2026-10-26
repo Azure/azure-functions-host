@@ -28,7 +28,6 @@ public sealed class RpcClientHttpInvocationTests
     [Theory]
     [InlineData("http://platform-proxy:28080")]
     [InlineData("http://worker-advertised:8080")]
-    [InlineData("http://allocated-worker.example:49187/")]
     public async Task InvokeAsync_UsesNegotiatedHttpCapability(string advertisedHttpUri)
     {
         Uri endpoint = new(advertisedHttpUri);

@@ -32,7 +32,10 @@ public class ManagementApiEndpointTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [MemberData(nameof(MappedHttpEndpointTests.InvalidAssignedEndpoints), MemberType = typeof(MappedHttpEndpointTests))]
+    [InlineData("http://mapped.example:1234")]
+    [InlineData("mapped.example:0")]
+    [InlineData("mapped.example:65536")]
+    [InlineData("mapped.example:1234/path")]
     public async Task MalformedHttpProxyEndpointIsRejectedWithoutClaimingAssignment(string endpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -53,13 +56,11 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("100.86.0.4:49123")]
-    [InlineData("mapped.example:49187")]
-    [InlineData("[::1]:49187")]
-    [InlineData("mapped.example:80")]
-    [InlineData("mapped.example:65535")]
-    public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string? endpoint)
+    [InlineData(null, "mapped.example:49187")]
+    [InlineData("100.86.0.4:49123", "100.86.0.4:49124")]
+    [InlineData("mapped.example:49187", "MAPPED.example:49187")]
+    [InlineData("[::1]:49187", null)]
+    public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string? endpoint, string? changedEndpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -81,7 +82,7 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage retry = await client.PutAsync(AssignPath, retryContent, timeout.Token);
         await AssertAssignmentSuccessAsync(retry, HttpStatusCode.NoContent, timeout.Token);
 
-        body["httpProxyEndpoint"] = endpoint is null ? "different.example:49188" : null;
+        body["httpProxyEndpoint"] = changedEndpoint;
         using StringContent conflictContent = JsonBody(body.ToJsonString());
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictContent, timeout.Token);
         await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);

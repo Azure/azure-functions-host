@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -127,9 +128,32 @@ public class WorkerHttpCapabilityProviderTests
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
     }
 
+    [Theory]
+    [InlineData("http", "mapped.example:443", "http://mapped.example:443/")]
+    [InlineData("https", "mapped.example:80", "https://mapped.example:80/")]
+    public void AssignedEndpoint_UsesListenerSchemeAndMappedPort(string scheme, string endpoint, string origin)
+    {
+        Uri actual = Assert.IsType<Uri>(WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(endpoint, scheme));
+        Assert.Equal(origin, actual.AbsoluteUri);
+    }
+
+    [Fact]
+    public void FinalizeCapabilities_AssignedOriginCannotLoopBackToWorkerDestination()
+    {
+        WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpPort = 28080 });
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false,
+            new Dictionary<string, string>(), string.Empty, "localhost:1234");
+        Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:1234/worker/" };
+
+        Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, assignment));
+        Assert.Equal("http://localhost:1234/worker/", capabilities["HttpUri"]);
+    }
+
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
         IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
-        return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance, new(configuredOptions));
+        WorkerProxyEndpointConfiguration endpoints = new(configuredOptions);
+        endpoints.Configure(new());
+        return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance, endpoints);
     }
 }
