@@ -23,6 +23,7 @@
     <File Path="tools/ComputeSeparation/compute-separation.http" />
     <Project Path="tools/ComputeSeparation/AppHost/ComputeSeparation.AppHost.csproj" />
     <Project Path="tools/ComputeSeparation/FakePlatform/FakePlatform.csproj" />
+    <Project Path="tools/ComputeSeparation/MockTokenService/MockTokenService.csproj" />
     <Project Path="tools/ComputeSeparation/SampleIsolatedApp/SampleIsolatedApp.csproj" />
   </Folder>
 </Solution>

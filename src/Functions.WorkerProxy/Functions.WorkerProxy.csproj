@@ -26,6 +26,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Azure.Functions.WorkerProxy.Tests" />
+    <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
+    <Compile Include="..\WebJobs.Script.Grpc\HttpProxy\*.cs" Link="HttpProxy\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

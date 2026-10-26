@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\..\src\Functions.Host\Functions.Host.csproj" />
     <ProjectReference Include="..\..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" />
     <ProjectReference Include="..\FakePlatform\FakePlatform.csproj" />
+    <ProjectReference Include="..\MockTokenService\MockTokenService.csproj" />
     <ProjectReference Include="..\SampleIsolatedApp\SampleIsolatedApp.csproj" />
   </ItemGroup>
 

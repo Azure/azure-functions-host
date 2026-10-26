@@ -458,6 +458,79 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task LinkAsync_IdentityProxy_OriginalCancellationEndsOnlyCallerWait()
+    {
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using CancellationTokenSource caller = new();
+        Task<WorkerLinkResult> original = registry.LinkAsync("worker", CreateEndpoint("worker"), caller.Token);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        caller.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => original);
+        Assert.Equal(0, channel.DisposeCount);
+
+        Task<WorkerLinkResult> retry = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        Assert.False(retry.IsCompleted);
+        channel.AllowStart();
+        WorkerLinkResult result = await retry.WaitAsync(TestTimeout);
+        Assert.False(result.IsNewLink);
+        Assert.Same(channel.Channel, result.Channel);
+        Assert.Single(harness.Transports);
+    }
+
+    [Fact]
+    public async Task UnlinkAsync_IdentityProxy_CancelsPendingAttemptWithoutWaitingForStartupDeadline()
+    {
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        Task<bool> unlink = registry.UnlinkAsync("worker");
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => link.WaitAsync(TestTimeout));
+        Assert.True(await unlink.WaitAsync(TestTimeout));
+        Assert.Equal(1, channel.DisposeCount);
+        Assert.Empty(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task LinkAsync_IdentityProxy_DeadlineUsesInjectedClock_AndDoesNotPublishPendingChannel()
+    {
+        TimerCallback expire = null;
+        object timerState = null;
+        TimeSpan observedDue = default;
+        Mock<TimeProvider> clock = new();
+        clock.Setup(provider => provider.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object>(),
+                It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object state, TimeSpan due, TimeSpan _) =>
+            {
+                expire = callback;
+                timerState = state;
+                observedDue = due;
+                return Mock.Of<ITimer>();
+            });
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true, clock.Object);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(2), observedDue);
+        Assert.Empty(registry.GetInitializedChannels());
+
+        expire(timerState);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => link.WaitAsync(TestTimeout));
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Equal(1, channel.DisposeCount);
+    }
+
+    [Fact]
     public async Task LinkAsync_TerminalWorkerCannotBeResurrected()
     {
         RegistryHarness harness = new();
@@ -1826,7 +1899,7 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
-        public RegistryHarness(TimeSpan? linkTimeout)
+        public RegistryHarness(TimeSpan? linkTimeout, bool registryOwnedAttempt = false, TimeProvider timeProvider = null)
         {
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
@@ -1865,7 +1938,8 @@ public sealed partial class WorkerChannelRegistryTests
                     return channel;
                 });
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
+                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance,
+                    linkTimeout.Value, registryOwnedAttempt, timeProvider)
                 : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
         }
 

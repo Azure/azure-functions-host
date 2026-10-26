@@ -20,16 +20,18 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | Profile | Runs locally |
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
+| `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. The worker acquires a token before opening its worker connection; Host linking proceeds independently of assignment. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project`, `project-identity`, and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. The identity profile starts linking while assignment waits for the worker, avoiding a circular wait on startup token acquisition. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-identity
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multiple-workers
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile container
@@ -147,3 +149,66 @@ Stopping `worker-pod-1` removes only that pod's containers, leaving the same Hos
 Stop AppHost to stop the local run; normal shutdown removes worker pods before the runtime and its network. If AppHost is forcibly terminated, remove its `functions-aspire-...` groups in Docker Desktop. Relinking restarted workers is not automated; start a new AppHost session for another end-to-end run.
 
 This tool uses local-development transport and authentication settings. Do not expose its endpoints outside your development machine.
+
+## Opt-in identity proxy
+
+The Host and WorkerProxy can forward managed-identity HTTP requests over the existing Host-initiated FunctionRpc stream. The Token Service stays in the Host environment; no Token Service sidecar or new cross-pod identity port is needed.
+
+The bridge is disabled by default. Set these protected values before starting the processes:
+
+| Process | Setting | Value |
+| --- | --- | --- |
+| Host | `Functions__IdentityProxy__Enabled` | `true` |
+| Host | `MSI_ENDPOINT` | The existing application-scoped Token Service URL, including its independently configured token path and optional fixed query; no fragment or embedded credentials |
+| Host | `MSI_SECRET` | The Host-only Token Service credential |
+| WorkerProxy | `WorkerProxy__IdentityProxy__Enabled` | `true` |
+| WorkerProxy | `WorkerProxy__IdentityProxy__Port` | A distinct loopback HTTP port, default `8081`; do not publish it outside the worker pod |
+| WorkerProxy | `WorkerProxy__IdentityProxy__TokenPath` | The customer-facing token path, default `/msi/token`, matched case-insensitively; it need not match the upstream path |
+| WorkerProxy | `IDENTITY_HEADER` | The random per-pod secret injected by the platform, identical to the customer's local secret; not the Host's `MSI_SECRET` |
+| Customer container | `IDENTITY_ENDPOINT` | `http://127.0.0.1:<identity-port><token-path>` in the shared pod network |
+| Customer container | `IDENTITY_HEADER` | The same random per-pod secret supplied to WorkerProxy |
+
+The platform sets `IDENTITY_ENDPOINT` only in the customer container. WorkerProxy does not require or consume it: the listener always binds to loopback and uses its configured port and token path. The per-pod secret is available in both containers before customer startup, so secret delivery does not depend on an assignment request. Host linking can proceed independently of WorkerProxy assignment; the existing manual harness's assign-before-link sequence is not a platform requirement. Customer-container restarts do not imply a new per-pod secret or a WorkerProxy restart.
+
+WorkerProxy validates and removes the local header. The Host adds its own `MSI_SECRET` as `X-IDENTITY-HEADER`, preserves the resource/identity query and opaque HTTP response, and never delivers the upstream credential to the worker. The upstream is already scoped to the function app; this does not authorize a worker-selected destination or Token Service management path. Routine credential rotation affects newly sent requests, not requests already in flight.
+
+The local and upstream routes are independent. Host always uses its configured `MSI_ENDPOINT` authority and path; a customer path or Host header cannot change that destination. The Host retains any configured upstream query and appends the incoming raw query without decoding, rebuilding, or interpreting parameters. Both order and escaping are preserved, including duplicate keys across the two query strings; Token Service decides their meaning. WorkerProxy accepts case variants of its configured local token route but rejects other routes and additional path segments. Upstream path and query casing are not changed.
+
+An authenticated request may arrive before either language-worker initialization or the Host stream. It waits within a single 30-second request deadline, including buffering and forwarding. Host preparation is awaited within that same budget. Once preparation finishes, invalid upstream configuration returns `503` immediately without terminating the Host or its stream. The opt-in registry-owned early-link attempt lasts at most two minutes; canceling an HTTP link caller ends only its wait. A successful link response still requires the real worker initialization handshake.
+
+Request/response bodies have configurable **provisional** 1 MiB limits. Both products accept the shared options under their respective `IdentityProxy` sections: `MaxRequestBodyBytes`, `MaxResponseBodyBytes`, `MaxHeaderBytes` (32768), `MaxHeaderCount` (100), `MaxTargetBytes` (8192), `MaxPendingRequests` (32), `MaxBufferedBytes` (67108864), and `RequestTimeout` (`00:00:30`). Host-global `MaxHostRequests` (256) and `MaxHostBufferedBytes` (268435456) also bound admission. Reservations include anticipated buffering/serialization copies, so byte limits can reduce concurrency below the request-count limit. These numbers are engineering defaults, not SDK or Token Service maxima; production qualification must establish suitable values.
+
+Over-capacity requests return `429` with `Retry-After`, without another wait queue. Oversized local bodies/headers return `413`/`431`; oversized upstream responses or upstream transport failures return `502`; request deadline expiry returns `504`. Upstream HTTP errors and retry headers are preserved. Cancellation receives a terminal RPC outcome so repeated canceled requests reclaim capacity without restarting the transport. Credentials, token bodies, and customer queries are not logged.
+
+The upstream client disables automatic HTTP-client logging. When the identity proxy is enabled, WorkerProxy also raises `Microsoft.AspNetCore.Hosting.Diagnostics` to Warning for all its listeners, because that category's request-start/finish messages include raw queries. The proxy's own sanitized failure diagnostics remain available; feature-off logging is unchanged.
+
+### Debug the complete first-start flow
+
+Run the `project-identity` profile or select it in Visual Studio. It is project-mode only; no Azure subscription, production credentials, or Docker is required.
+
+The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential; only WorkerProxy and its customer receive the per-pod credential. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated identity port to loopback.
+
+The full token path is:
+
+```text
+Mock Token Service <-- HTTP --> Host <-- existing gRPC --> WorkerProxy <-- HTTP --> worker SDK
+```
+
+Host's mock upstream is `/token`, while the worker uses `/msi/token`, exercising independent endpoint mapping. Before `builder.Build().RunAsync()`, the sample calls `ManagedIdentityCredential` and prints `Managed identity token acquired through WorkerProxy before worker startup.` without printing the token or either secret. Normal worker initialization follows; invoke `/api/hello` on the Host to confirm the application subsequently executes.
+
+Set breakpoints in the sample's startup credential call, `IdentityProxyMiddleware`, `HttpProxyDuplexChannel`, `HostTokenServiceForwarder`, and the mock's `/token` handler to inspect each hop. The normal 30-second token and two-minute early-link deadlines still apply while stopped in a debugger.
+
+Open the mock's `http` endpoint from the dashboard to use these development-only controls:
+
+| Request | Purpose |
+| --- | --- |
+| `GET /simulate/state` | Inspect received/authorized request counts and current response controls, without secrets, tokens, or request queries. |
+| `POST /simulate/response` | Set `delayMilliseconds` (0-120000), `statusCode` (200-599), `bodyBytes` (0-2097152), and `retryAfterSeconds` (0-3600). Omitted properties restore their defaults. |
+
+For example, posting `{"statusCode":429,"retryAfterSeconds":7}` makes the next upstream request return 429 and `Retry-After: 7`; posting `{}` restores success. These controls do not bypass SDK token caching: to exercise another upstream request, restart the customer sample or make a raw authenticated local HTTP request. WorkerProxy itself never caches tokens. Mock tokens are deliberately invalid for Azure services.
+
+The `Functions.Host.Tests` identity suite remains a faster automated socket/gRPC check. The interactive profile adds actual outbound HTTP and separate processes; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
+
+Worker restart, registration, assignment, and persistent pod-transport behavior remain owned by the existing WorkerProxy lifecycle. The registry-owned setup from [#12100](https://github.com/Azure/azure-functions-host/pull/12100) is integrated, but it does not change relay transport lifetime. This checkout still couples worker-stream termination to transport termination; the identity scenario is a first-start flow, not proof of preserved transport across customer-only restarts.
+
+Enable production deployments only with the approved Host/WorkerProxy transport, authorization/revocation integration, and platform-provided settings. Do not expose the development transport or silently restore a worker-side Token Service as a fallback.

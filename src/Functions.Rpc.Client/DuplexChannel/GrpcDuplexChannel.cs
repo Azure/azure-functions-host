@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -30,6 +31,7 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
     private readonly Task _readPump;
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Task _writePump;
+    private readonly TrackedMessageWriter<T> _trackedWrites = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GrpcDuplexChannel{T}"/> class.
@@ -57,6 +59,9 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         _readPump = PumpResponsesAsync();
         _writePump = PumpRequestsAsync();
     }
+
+    internal Task<bool> WriteTrackedAsync(T message, CancellationToken cancellationToken, Func<bool> prepare = null)
+        => _trackedWrites.WriteAsync(_outgoing.Writer, message, cancellationToken, prepare);
 
     protected override async ValueTask DisposeAsyncCore()
     {
@@ -129,7 +134,13 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         {
             await foreach (T message in _outgoing.Reader.ReadAllAsync(_shutdownSource.Token))
             {
+                if (!_trackedWrites.Prepare(message))
+                {
+                    continue;
+                }
+
                 await _call.RequestStream.WriteAsync(message);
+                _trackedWrites.Written(message);
             }
 
             await _call.RequestStream.CompleteAsync();
@@ -143,6 +154,7 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         }
         finally
         {
+            _trackedWrites.Complete(error ?? new ObjectDisposedException(nameof(GrpcDuplexChannel<T>)));
             if (error is not null)
             {
                 _outgoing.Writer.TryComplete(error);
