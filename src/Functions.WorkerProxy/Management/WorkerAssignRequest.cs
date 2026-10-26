@@ -18,7 +18,7 @@ internal sealed class WorkerAssignRequest
     /// Gets the required, case-sensitive startup mode selected by the caller.
     /// </summary>
     /// <remarks>
-    /// <c>Preconfigured</c> means the worker starts with its final application configuration (BYOC).
+    /// <c>Preconfigured</c> means the worker starts with its final application configuration.
     /// <c>SpecializationRequired</c> means the worker requires configuration through specialization.
     /// Assignment currently records either mode without performing specialization.
     /// The raw string is retained so invalid values can be reported as field-level validation errors.

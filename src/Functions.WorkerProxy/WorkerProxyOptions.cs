@@ -16,6 +16,10 @@ internal sealed class WorkerProxyOptions
     /// <summary>
     /// Gets or sets the required platform-provided pod name.
     /// </summary>
+    /// <remarks>
+    /// Populated from WEBSITE_POD_NAME, falling back to CONTAINER_NAME.
+    /// An explicitly configured WorkerProxy:PodName does not override the platform identity.
+    /// </remarks>
     public string PodName { get; set; } = string.Empty;
 
     /// <summary>

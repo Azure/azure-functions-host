@@ -676,7 +676,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             if (string.IsNullOrEmpty(workerRuntime))
             {
-                return filteredFunctions.Select(f => f.Language).Distinct().Count() <= 1;
+                return filteredFunctions.Select(f => f.Language).Distinct(StringComparer.OrdinalIgnoreCase).Count() <= 1;
             }
             return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }

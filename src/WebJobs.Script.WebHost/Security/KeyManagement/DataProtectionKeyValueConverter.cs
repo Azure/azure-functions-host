@@ -16,9 +16,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IDataProtector _dataProtector;
 
         public DataProtectionKeyValueConverter(FileAccess access)
+            : this(access, forceAzureWebsitesDataProtection: false)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a converter with optional forced Azure Websites Data Protection configuration.
+        /// </summary>
+        /// <param name="access">The permitted key access.</param>
+        /// <param name="forceAzureWebsitesDataProtection">Whether to force Azure Websites Data Protection configuration instead of hosting-environment detection.</param>
+        internal DataProtectionKeyValueConverter(FileAccess access, bool forceAzureWebsitesDataProtection)
             : base(access)
         {
-            var provider = Web.DataProtection.DataProtectionProvider.CreateAzureDataProtector();
+            var provider = Web.DataProtection.DataProtectionProvider.CreateAzureDataProtector(
+                configurationHandler: null,
+                skipEnvironmentValidation: forceAzureWebsitesDataProtection);
             _dataProtector = provider.CreateProtector("function-secrets");
         }
 

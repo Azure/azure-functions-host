@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (lastError != null)
             {
                 status.Errors = new Collection<string>();
-                status.Errors.Add(Utility.FlattenException(lastError));
+                status.Errors.Add(Sanitizer.Sanitize(Utility.FlattenException(lastError)));
             }
 
             string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";

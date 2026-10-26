@@ -3,8 +3,6 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Host;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -32,9 +30,7 @@ public static class RpcScriptHostCoreServiceCollectionExtensions
         services.ConfigureOptions<RpcScriptHostRecycleOptionsSetup>();
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
-
         services.AddSingleton<IWorkerFunctionDescriptorProviderFactory, RpcWorkerFunctionDescriptorProviderFactory>();
-        services.AddSingleton<IScriptHostLifecycleService, RpcScriptHostLifecycleService>();
 
         return services;
     }

@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return Task.FromResult(true);
         }
 
-        public virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false)
+        public virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName)
         {
             // for testing, any time we're asked for function keys, we return a static set
             return Task.FromResult<IDictionary<string, string>>(new Dictionary<string, string>

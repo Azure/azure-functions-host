@@ -18,7 +18,9 @@
     <Project Path="test/Functions.Rpc.Client.Tests/Functions.Rpc.Client.Tests.csproj" />
     <Project Path="test/Functions.WorkerProxy.Tests/Functions.WorkerProxy.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/" />
   <Folder Name="/tools/ComputeSeparation/">
+    <File Path="tools/ComputeSeparation/compute-separation.http" />
     <Project Path="tools/ComputeSeparation/AppHost/ComputeSeparation.AppHost.csproj" />
     <Project Path="tools/ComputeSeparation/FakePlatform/FakePlatform.csproj" />
     <Project Path="tools/ComputeSeparation/SampleIsolatedApp/SampleIsolatedApp.csproj" />

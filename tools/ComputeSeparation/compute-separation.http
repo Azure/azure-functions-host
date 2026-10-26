@@ -7,16 +7,22 @@
 ### here and turns off automatic assign and link so you can send each step yourself, in order.
 ###
 ###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+###
+### To add a second worker after the Host is serving, use `project-placeholder-manual-multiple-workers`.
+### Complete steps 1 to 4 first, then steps 5 to 7. Both worker/proxy pairs start immediately, but links remain manual.
+###
+###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multiple-workers
 
 @platform = http://localhost:7060
 @host = http://127.0.0.1:7071
 @workerProxy = http://localhost:7081
+@secondWorkerProxy = http://localhost:7091
 
 ### Expected flow, in order.
 
 ### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
 ### 503 WorkerNotReady means the sample worker has not connected yet; retry.
-POST {{platform}}/simulate/worker/assign
+POST {{platform}}/simulate/worker/worker-proxy-1/assign
 
 ### Optional: the WorkerProxy pod state is now ReadyForRequest.
 GET {{workerProxy}}/admin/worker/state
@@ -26,7 +32,25 @@ GET {{workerProxy}}/admin/worker/state
 POST {{platform}}/simulate/host/assign
 
 ### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
-POST {{platform}}/simulate/worker/link
+POST {{platform}}/simulate/worker/worker-proxy-1/link
 
 ### 4. A client invokes the function through Host -> WorkerProxy -> worker.
+GET {{host}}/api/hello
+
+### The remaining requests require `project-placeholder-manual-multiple-workers`.
+### Wait for step 4 to succeed before linking the second worker, so this exercises a genuinely late link.
+
+### 5. Assign the second pod. Expect 201, or 204 if repeated; retry 503 until its worker has connected.
+POST {{platform}}/simulate/worker/worker-proxy-2/assign
+
+### Optional: inspect the second pod independently.
+GET {{secondWorkerProxy}}/admin/worker/state
+
+### 6. Link the second worker to the existing Host. Expect 201, or 200 for a matching retry.
+### Do not send /simulate/host/assign again: the same Host and indexed functions are reused.
+POST {{platform}}/simulate/worker/worker-proxy-2/link
+
+### 7. Repeat this request to route invocations across both worker/proxy pairs.
+### Compare "Worker ID:" in the response body; each worker has an independently generated ID.
+### Watch HTTP forwarding in the `worker-proxy-1` and `worker-proxy-2` console logs in the dashboard.
 GET {{host}}/api/hello

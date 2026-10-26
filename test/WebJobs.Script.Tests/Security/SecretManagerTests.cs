@@ -118,13 +118,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 using (var secretManager = CreateSecretManager(directory.Path))
                 {
-                    var functionSecrets = await secretManager.GetFunctionSecretsAsync("function1", true);
+                    var functionSecrets = await secretManager.GetFunctionSecretsAsync("function1");
 
-                    Assert.Equal(4, functionSecrets.Count);
+                    Assert.Equal(2, functionSecrets.Count);
                     Assert.Equal("function1value1", functionSecrets["test-function1-1"]);
                     Assert.Equal("function1value2", functionSecrets["test-function1-2"]);
-                    Assert.Equal("hostfunction1value", functionSecrets["test-host-function-1"]);
-                    Assert.Equal("hostfunction2value", functionSecrets["test-host-function-2"]);
 
                     var hostSecrets = await secretManager.GetHostSecretsAsync();
 
@@ -332,13 +330,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var metricsLogger = new TestMetricsLogger();
                 using (var secretManager = CreateSecretManager(directory.Path, metricsLogger: metricsLogger, simulateWriteConversion: false))
                 {
-                    var functionSecrets = await secretManager.GetFunctionSecretsAsync("function1", true);
+                    var functionSecrets = await secretManager.GetFunctionSecretsAsync("function1");
 
-                    Assert.Equal(4, functionSecrets.Count);
+                    Assert.Equal(2, functionSecrets.Count);
                     Assert.Equal("function1value1", functionSecrets["test-function1-1"]);
                     Assert.Equal("function1value2", functionSecrets["test-function1-2"]);
-                    Assert.Equal("hostfunction1value", functionSecrets["test-host-function-1"]);
-                    Assert.Equal("hostfunction2value", functionSecrets["test-host-function-2"]);
 
                     var hostSecrets = await secretManager.GetHostSecretsAsync();
 
@@ -502,7 +498,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> returnedSecrets = null;
                 using (var secretManager = CreateSecretManager(directory.Path, metricsLogger: metricsLogger, simulateWriteConversion: false))
                 {
-                    returnedSecrets = await secretManager.GetFunctionSecretsAsync(functionName, false);
+                    returnedSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
 
                     Assert.Equal("TestValue1", returnedSecrets["Key1"]);
                     Assert.Equal("TestValue2", returnedSecrets["Key2"]);
@@ -763,64 +759,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             File.WriteAllText(path, encryptedJson);
 
             return secrets;
-        }
-
-        [Fact]
-        public async Task MergedSecrets_PrioritizesFunctionSecrets()
-        {
-            using (var directory = new TempDirectory())
-            {
-                string hostSecrets =
-                    @"{
-    'masterKey': {
-        'name': 'master',
-        'value': '1234',
-        'encrypted': false
-    },
-    'functionKeys': [
-        {
-            'name': 'Key1',
-            'value': 'HostValue1',
-            'encrypted': false
-        },
-        {
-            'name': 'Key3',
-            'value': 'HostValue3',
-            'encrypted': false
-        }
-    ]
-}";
-                string functionSecrets =
-                    @"{
-    'keys': [
-        {
-            'name': 'Key1',
-            'value': 'FunctionValue1',
-            'encrypted': false
-        },
-        {
-            'name': 'Key2',
-            'value': 'FunctionValue2',
-            'encrypted': false
-        }
-    ]
-}";
-                File.WriteAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName), hostSecrets);
-                File.WriteAllText(Path.Combine(directory.Path, "testfunction.json"), functionSecrets);
-
-                IDictionary<string, string> result;
-                using (var secretManager = CreateSecretManager(directory.Path))
-                {
-                    result = await secretManager.GetFunctionSecretsAsync("testfunction", true);
-                }
-
-                Assert.Contains("Key1", result.Keys);
-                Assert.Contains("Key2", result.Keys);
-                Assert.Contains("Key3", result.Keys);
-                Assert.Equal("FunctionValue1", result["Key1"]);
-                Assert.Equal("FunctionValue2", result["Key2"]);
-                Assert.Equal("HostValue3", result["Key3"]);
-            }
         }
 
         [Fact]

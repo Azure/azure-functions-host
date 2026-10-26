@@ -2,16 +2,27 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
+using WebJobs.Script.Tests;
 using Xunit;
+
+using static Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
@@ -84,6 +95,147 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             // will short circuit here
             Assert.True(_provider.SecretsEnabled);
+        }
+
+        [Theory]
+        [InlineData(32)]
+        [InlineData(31)]
+        public async Task Create_ManagedLogicAppFiles_UsesAzureKeyRepository(int keyByteCount)
+        {
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(Convert.ToHexString(RandomNumberGenerator.GetBytes(keyByteCount))));
+            using var directory = new TempDirectory();
+            using var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
+
+            await manager.GetHostSecretsAsync();
+
+            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory.Path, "host.json")));
+            var master = document.RootElement.GetProperty("masterKey");
+            Assert.True(master.GetProperty("encrypted").GetBoolean());
+            var payload = WebEncoders.Base64UrlDecode(master.GetProperty("value").GetString());
+            Assert.Equal(Guid.Empty, new Guid(payload.AsSpan(4, 16)));
+        }
+
+        [Fact]
+        public async Task Create_ManagedLogicAppFiles_ReplacementManagerPreservesKey()
+        {
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(Convert.ToHexString(RandomNumberGenerator.GetBytes(32))));
+            using var directory = new TempDirectory();
+            string originalMaster;
+            using (var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current)
+            {
+                originalMaster = (await manager.GetHostSecretsAsync()).MasterKey;
+            }
+
+            using var replacement = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
+            Assert.Equal(originalMaster, (await replacement.GetHostSecretsAsync()).MasterKey);
+            Assert.Empty(Directory.GetFiles(directory.Path, "*.snapshot.*.json"));
+        }
+
+        [Fact]
+        public async Task Create_ManagedLogicAppFiles_KeySetAfterConstructionUsesAzureKeyRepository()
+        {
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null));
+            using var directory = new TempDirectory();
+            var provider = CreateSecretManagerProvider(directory.Path);
+
+            ScriptSettingsManager.Instance.SetSetting(AzureWebsiteLocalEncryptionKey, Convert.ToHexString(RandomNumberGenerator.GetBytes(32)));
+
+            using var manager = (SecretManager)provider.Current;
+            await manager.GetHostSecretsAsync();
+
+            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory.Path, "host.json")));
+            var master = document.RootElement.GetProperty("masterKey");
+            Assert.True(master.GetProperty("encrypted").GetBoolean());
+            var payload = WebEncoders.Base64UrlDecode(master.GetProperty("value").GetString());
+            Assert.Equal(Guid.Empty, new Guid(payload.AsSpan(4, 16)));
+        }
+
+        [Fact]
+        public async Task Create_ManagedLogicAppFiles_MalformedKeyFailsWithoutPersistingPlaintext()
+        {
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(new string('G', 64)));
+            using var directory = new TempDirectory();
+            using var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
+
+            await Assert.ThrowsAsync<CryptographicException>(() => manager.GetHostSecretsAsync());
+
+            Assert.False(File.Exists(Path.Combine(directory.Path, "host.json")));
+        }
+
+        [Theory]
+        [InlineData("workflowApp")]
+        [InlineData("functionapp")]
+        public async Task Create_ManagedFiles_WithoutKeyPreservesPlaintext(string appKind)
+        {
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null, appKind: appKind));
+            using var directory = new TempDirectory();
+            using var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
+
+            var secrets = await manager.GetHostSecretsAsync();
+
+            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory.Path, "host.json")));
+            var master = document.RootElement.GetProperty("masterKey");
+            Assert.False(master.GetProperty("encrypted").GetBoolean());
+            Assert.Equal(secrets.MasterKey, master.GetProperty("value").GetString());
+        }
+
+        [Fact]
+        public void CreateSecretsRepository_ManagedLogicAppBlob_WithoutKeySucceeds()
+        {
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null, storageType: "Blob"));
+            using var directory = new TempDirectory();
+            var provider = CreateSecretManagerProvider(directory.Path);
+
+            using var repository = Assert.IsType<BlobStorageSecretsRepository>(provider.CreateSecretsRepository());
+            Assert.False(File.Exists(Path.Combine(directory.Path, "host.json")));
+        }
+
+        /// <summary>
+        /// Creates a managed app environment without alternate hosting or encryption-key markers.
+        /// </summary>
+        /// <param name="encryptionKey">The configured encryption key.</param>
+        /// <param name="appKind">The application kind.</param>
+        /// <param name="storageType">The secret storage type.</param>
+        private static Dictionary<string, string> CreateManagedEnvironment(string encryptionKey, string appKind = "workflowApp", string storageType = "Files")
+        {
+            return new Dictionary<string, string>
+            {
+                [EnvironmentSettingNames.ManagedEnvironment] = "true",
+                [EnvironmentSettingNames.AppKind] = appKind,
+                [EnvironmentSettingNames.AzureWebJobsSecretStorageType] = storageType,
+                [EnvironmentSettingNames.AzureWebJobsSecretStorageSas] = null,
+                [EnvironmentSettingNames.AzureWebsiteHostName] = "managed-files.example",
+                [EnvironmentSettingNames.AzureWebsiteName] = "managed-files",
+                [EnvironmentSettingNames.ContainerName] = null,
+                [EnvironmentSettingNames.AzureWebsiteInstanceId] = null,
+                [EnvironmentSettingNames.LegionServiceHost] = null,
+                [AzureWebsiteLocalEncryptionKey] = encryptionKey,
+                [AzureWebsiteEnvironmentMachineKey] = null
+            };
+        }
+
+        /// <summary>
+        /// Creates the real provider with isolated storage and metrics dependencies.
+        /// </summary>
+        /// <param name="directory">The temporary secrets directory.</param>
+        private static DefaultSecretManagerProvider CreateSecretManagerProvider(string directory)
+        {
+            var environment = SystemEnvironment.Instance;
+            var options = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            options.SetupGet(monitor => monitor.CurrentValue).Returns(new ScriptApplicationHostOptions { SecretsPath = directory });
+            var storage = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
+            var container = new BlobContainerClient(new Uri("https://managed-files.example/azure-webjobs-secrets"));
+            storage.Setup(provider => provider.TryCreateHostingBlobContainerClient(out container)).Returns(true);
+
+            return new DefaultSecretManagerProvider(
+                options.Object,
+                new Mock<IHostIdProvider>().Object,
+                environment,
+                NullLoggerFactory.Instance,
+                new TestMetricsLogger(),
+                new HostNameProvider(environment),
+                new StartupContextProvider(environment, NullLogger<StartupContextProvider>.Instance),
+                storage.Object);
         }
     }
 }
