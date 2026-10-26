@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
@@ -30,6 +29,7 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
@@ -81,6 +81,13 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal HostConfiguration HostConfiguration { get; private set; }
 
+    internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
+
+    internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+
+    // Terminal signals can precede registry cleanup and the base channel's disposal state.
+    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
+
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
     /// </summary>
@@ -130,6 +137,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         HostConfiguration = response.HostConfiguration?.Clone();
     }
+
+    protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 

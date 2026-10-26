@@ -369,12 +369,13 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(slow);
         harness.Enqueue(winner);
         await using WorkerChannelRegistry registry = harness.Registry;
-        Task<WorkerLinkResult> slowLink = registry.LinkAsync("slow", CreateEndpoint("slow"));
-        await entered.Task.WaitAsync(TestTimeout);
+        // Blocking validation must not occupy the test's synchronization context.
+        Task<WorkerLinkResult> slowLink = Task.Run(() => registry.LinkAsync("slow", CreateEndpoint("slow")));
         IConfigurationSource source = null;
 
         try
         {
+            await entered.Task.WaitAsync(TestTimeout);
             Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
             WorkerLinkResult accepted = await registry.LinkAsync("winner", CreateEndpoint("winner")).WaitAsync(TestTimeout);
             Assert.Same(winner.Channel, accepted.Channel);

@@ -1039,6 +1039,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task HandleWorkerFunctionLoadError_PublishesOriginalWorkerError()
+        {
+            await CreateDefaultWorkerChannel();
+            TaskCompletionSource<WorkerErrorEvent> workerError = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            using IDisposable subscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(error => workerError.TrySetResult(error));
+            TimeoutException expectedException = new("Function load request timed out.");
+
+            _workerChannel.HandleWorkerFunctionLoadError(expectedException);
+
+            WorkerErrorEvent errorEvent = await workerError.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Same(expectedException, errorEvent.Exception);
+            Assert.Equal(_workerId, errorEvent.WorkerId);
+        }
+
+        [Fact]
         public async Task GetFunctionMetadata_ShutdownWithWorkerException_LeavesMetadataPending()
         {
             await CreateDefaultWorkerChannel();

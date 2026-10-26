@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,9 @@ public class ServerWorkerCompositionTests
         ServerWorkerComposition.Instance.ConfigureScriptHostServices(actual, rootServiceProvider);
 
         Assert.Equal(expected.Select(GetDescriptorSignature), actual.Select(GetDescriptorSignature));
+        ServiceDescriptor lifecycleDescriptor = Assert.Single(
+            actual.Where(descriptor => descriptor.ServiceType == typeof(IScriptHostLifecycleService)));
+        Assert.Equal("Azure.Functions.Rpc.Server", lifecycleDescriptor.ImplementationType?.Assembly.GetName().Name);
     }
 
     private static string GetDescriptorSignature(ServiceDescriptor descriptor)

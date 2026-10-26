@@ -43,6 +43,7 @@ public static class RpcServiceCollectionExtensions
 
         // Worker Function Invocation dispatcher
         services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
+        services.AddSingleton<IScriptHostLifecycleService, RpcScriptHostLifecycleService>();
 
         // Rpc Worker
         services.AddSingleton<IJobHostRpcWorkerChannelManager, JobHostRpcWorkerChannelManager>();
