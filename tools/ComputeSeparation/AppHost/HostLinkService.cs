@@ -13,7 +13,8 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 /// </summary>
 /// <remarks>
 /// With a fake platform, the calls go through it in order: assign the pod on the WorkerProxy, then link the worker to
-/// the Host. Without one, only the link request is sent, directly to the Host.
+/// the Host. The identity scenario starts the link independently of assignment to permit pre-StartStream token requests.
+/// Without a fake platform, only the link request is sent, directly to the Host.
 /// </remarks>
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
@@ -22,7 +23,8 @@ internal sealed partial class HostLinkService(
     string workerId,
     string[] dependencies,
     ResourceNotificationService notifications,
-    ILogger<HostLinkService> logger) : BackgroundService
+    ILogger<HostLinkService> logger,
+    bool linkBeforeAssignment = false) : BackgroundService
 {
     private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
 
@@ -79,6 +81,35 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
+        if (linkBeforeAssignment)
+        {
+            using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            async Task RunAsync(Func<CancellationToken, Task> action)
+            {
+                try
+                {
+                    await action(operation.Token);
+                }
+                catch
+                {
+                    await operation.CancelAsync();
+                    throw;
+                }
+            }
+
+            await Task.WhenAll(
+                RunAsync(token => LinkThroughPlatformAsync(client, token)),
+                RunAsync(token => AssignThroughPlatformAsync(client, token)));
+        }
+        else
+        {
+            await AssignThroughPlatformAsync(client, cancellationToken);
+            await LinkThroughPlatformAsync(client, cancellationToken);
+        }
+    }
+
+    private async Task AssignThroughPlatformAsync(HttpClient client, CancellationToken cancellationToken)
+    {
         // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
         HttpResponseMessage assign = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
         while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
@@ -94,7 +125,10 @@ internal sealed partial class HostLinkService(
         }
 
         Log.WorkerAssigned(logger, workerId);
+    }
 
+    private async Task LinkThroughPlatformAsync(HttpClient client, CancellationToken cancellationToken)
+    {
         using HttpResponseMessage link = await client.PostAsync("/simulate/worker/worker-proxy-1/link", null, cancellationToken);
         await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }

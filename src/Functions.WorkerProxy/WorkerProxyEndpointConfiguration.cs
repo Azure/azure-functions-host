@@ -3,6 +3,7 @@
 
 using System;
 using System.Net;
+using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
@@ -12,12 +13,14 @@ namespace Azure.Functions.WorkerProxy;
 /// <summary>
 /// Configures the WorkerProxy Kestrel listeners and resolves requests to their listener roles.
 /// </summary>
-internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> workerProxyOptions) : IConfigureOptions<KestrelServerOptions>
+internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> workerProxyOptions,
+    IOptions<IdentityProxyOptions> identityProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
     private ListenOptions? _http;
+    private ListenOptions? _identity;
 
     /// <inheritdoc />
     public void Configure(KestrelServerOptions options)
@@ -49,6 +52,22 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
             listener.Protocols = HttpProtocols.Http1;
             _http = listener;
         });
+        IdentityProxyOptions identity = identityProxyOptions.Value;
+        if (identity.Enabled)
+        {
+            if (identity.Port != 0 && (identity.Port == configuredOptions.ManagementPort || identity.Port == configuredOptions.RuntimeGrpcPort
+                || identity.Port == configuredOptions.WorkerGrpcPort || identity.Port == configuredOptions.HttpPort))
+            {
+                throw new OptionsValidationException(IdentityProxyOptions.SectionName, typeof(IdentityProxyOptions),
+                    ["The identity listener must use a distinct local port."]);
+            }
+
+            options.Listen(IPAddress.Loopback, identity.Port, listener =>
+            {
+                listener.Protocols = HttpProtocols.Http1;
+                _identity = listener;
+            });
+        }
     }
 
     /// <summary>
@@ -70,6 +89,10 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     {
         return GetPort(_http) == localPort;
     }
+
+    internal bool IsIdentityPort(int localPort) => GetPort(_identity) == localPort;
+
+    internal Uri GetIdentityAddress() => GetAddress(_identity, "identity");
 
     /// <summary>
     /// Resolves a local listener port to its FunctionRpc relay side.

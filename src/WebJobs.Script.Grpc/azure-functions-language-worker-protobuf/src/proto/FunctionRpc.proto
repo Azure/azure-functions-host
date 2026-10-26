@@ -12,6 +12,7 @@ package AzureFunctionsRpcMessages;
 import "google/protobuf/duration.proto";
 import "identity/ClaimsIdentityRpc.proto";
 import "shared/NullableTypes.proto";
+import "HttpProxy.proto";
 
 // Interface exported by the server.
 service FunctionRpc {
@@ -92,6 +93,9 @@ message StreamingMessage {
     
     // Worker responds after warming up with the warmup result
     WorkerWarmupResponse worker_warmup_response = 34;
+
+    // Host/WorkerProxy control traffic. Never forwarded to the language worker.
+    HttpProxyMessage http_proxy = 35;
     
   }
 }

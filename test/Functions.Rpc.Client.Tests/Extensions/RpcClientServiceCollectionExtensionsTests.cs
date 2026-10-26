@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
@@ -41,6 +42,48 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => services.AddRpcClientServices());
         Assert.Contains(nameof(RpcClientServiceCollectionExtensions.AddRpcClientServices), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddRpcClientServices_ReportsSpecificProxyValidationFailures()
+    {
+        ServiceCollection services = new();
+        services.AddRpcClientServices();
+        services.Configure<HttpProxyOptions>(options =>
+        {
+            options.Enabled = true;
+            options.MaxRequestBodyBytes = 0;
+            options.MaxHostRequests = 0;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        OptionsValidationException error = Assert.Throws<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<HttpProxyOptions>>().Value);
+
+        Assert.Equal(
+        [
+            $"{nameof(HttpProxyOptions.MaxRequestBodyBytes)} must be greater than zero.",
+            $"{nameof(HttpProxyOptions.MaxHostRequests)} must be greater than zero."
+        ], error.Failures);
+    }
+
+    [Fact]
+    public void AddRpcClientServices_DisabledProxyDoesNotValidateUnusedSettings()
+    {
+        ServiceCollection services = new();
+        services.AddRpcClientServices();
+        services.Configure<HttpProxyOptions>(options =>
+        {
+            options.MaxRequestBodyBytes = 0;
+            options.RequestTimeout = TimeSpan.Zero;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        HttpProxyOptions options = provider.GetRequiredService<IOptions<HttpProxyOptions>>().Value;
+
+        Assert.False(options.Enabled);
+        Assert.Equal(0, options.MaxRequestBodyBytes);
+        Assert.Equal(TimeSpan.Zero, options.RequestTimeout);
     }
 
     [Fact]
