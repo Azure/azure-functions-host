@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -101,6 +102,40 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Same(worker.Channel, await waiter.WaitAsync(TestTimeout));
         harness.HostConfigurationLogger.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task LinkAsync_RetainsExactSourceReturnedByValidator()
+    {
+        var validator = new Mock<IHostConfigurationDeliveryValidator>(MockBehavior.Strict);
+        var firstSource = new Mock<IConfigurationSource>(MockBehavior.Strict);
+        var laterSource = new Mock<IConfigurationSource>(MockBehavior.Strict);
+        ChannelControl first = new("first") { HostConfiguration = CreateHostConfiguration("first") };
+        ChannelControl later = new("later") { HostConfiguration = CreateHostConfiguration("later") };
+        validator.Setup(value => value.Validate(first.HostConfiguration)).Returns(firstSource.Object);
+        validator.Setup(value => value.Validate(later.HostConfiguration)).Returns(laterSource.Object);
+        RegistryHarness harness = new(null, hostConfigurationDeliveryValidator: validator.Object);
+        harness.Enqueue(first);
+        harness.Enqueue(later);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IHostConfigurationSourceProvider sourceProvider = registry;
+
+        await registry.LinkAsync("first", CreateEndpoint("first")).WaitAsync(TestTimeout);
+
+        Assert.Same(firstSource.Object, sourceProvider.GetConfigurationSource());
+
+        await registry.LinkAsync("later", CreateEndpoint("later")).WaitAsync(TestTimeout);
+
+        Assert.Same(firstSource.Object, sourceProvider.GetConfigurationSource());
+        Assert.True(await registry.UnlinkAsync("first"));
+        Assert.True(await registry.UnlinkAsync("later"));
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Same(firstSource.Object, sourceProvider.GetConfigurationSource());
+        validator.Verify(value => value.Validate(first.HostConfiguration), Times.Once);
+        validator.Verify(value => value.Validate(later.HostConfiguration), Times.Once);
+        validator.VerifyNoOtherCalls();
+        firstSource.VerifyNoOtherCalls();
+        laterSource.VerifyNoOtherCalls();
     }
 
     [Theory]

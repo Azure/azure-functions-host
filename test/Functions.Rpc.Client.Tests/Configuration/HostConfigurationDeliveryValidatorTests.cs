@@ -160,8 +160,8 @@ public sealed class HostConfigurationDeliveryValidatorTests
         byte[] content = [.. preamble, .. document, .. encoding.GetBytes(new string(' ', paddingCharacters))];
         Assert.Equal(65_536, content.Length);
 
-        HostConfigurationSnapshot snapshot = CreateValidator().Validate(Available(ByteString.CopyFrom(content)));
-        IConfigurationRoot configuration = new ConfigurationBuilder().Add(snapshot).Build();
+        IConfigurationSource source = CreateValidator().Validate(Available(ByteString.CopyFrom(content)));
+        IConfigurationRoot configuration = new ConfigurationBuilder().Add(source).Build();
 
         Assert.Equal("caf\u00e9 \ud83d\ude80", configuration["AzureFunctionsJobHost:custom"]);
         byte[] oversized = [.. content, 0x20];

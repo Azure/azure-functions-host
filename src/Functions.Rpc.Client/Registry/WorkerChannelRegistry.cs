@@ -42,8 +42,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
-    private readonly HostConfigurationDeliveryValidator _hostConfigurationDeliveryValidator;
-    private HostConfigurationSnapshot _hostConfigurationSnapshot;
+    private readonly IHostConfigurationDeliveryValidator _hostConfigurationDeliveryValidator;
+    private IConfigurationSource _hostConfigurationSource;
     private bool _hostConfigurationSourceSelected;
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
@@ -57,7 +57,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
+        IHostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
         : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, hostConfigurationDeliveryValidator)
     {
     }
@@ -67,7 +67,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout,
-        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
+        IHostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -185,8 +185,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                HostConfigurationSnapshot configuration = _hostConfigurationDeliveryValidator.Validate(candidate.HostConfiguration);
-                RegisterInitializedChannel(workerId, slot, candidate, configuration, operationSource.Token);
+                IConfigurationSource configurationSource = _hostConfigurationDeliveryValidator.Validate(candidate.HostConfiguration);
+                RegisterInitializedChannel(workerId, slot, candidate, configurationSource, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
                 candidate = null;
@@ -324,7 +324,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 throw new InvalidOperationException("Host configuration source has not been selected.");
             }
 
-            return _hostConfigurationSnapshot;
+            return _hostConfigurationSource;
         }
     }
 
@@ -633,7 +633,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         string workerId,
         WorkerSlot slot,
         RpcClientWorkerChannel channel,
-        HostConfigurationSnapshot configuration,
+        IConfigurationSource configurationSource,
         CancellationToken cancellationToken)
     {
         Task monitorTask;
@@ -657,10 +657,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 throw new IOException("The worker channel terminated before initialization was registered.", failure);
             }
 
-            // Retain the first snapshot or file-based loading choice for the root lifetime.
+            // Retain the first configuration source or file-based loading choice for the root lifetime.
             if (!_hostConfigurationSourceSelected)
             {
-                _hostConfigurationSnapshot = configuration;
+                _hostConfigurationSource = configurationSource;
                 _hostConfigurationSourceSelected = true;
             }
 

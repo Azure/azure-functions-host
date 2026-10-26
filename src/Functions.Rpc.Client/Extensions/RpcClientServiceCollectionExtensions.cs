@@ -31,7 +31,7 @@ public static class RpcClientServiceCollectionExtensions
         ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
         services.AddDefaultHttpProxyService();
-        services.AddSingleton<HostConfigurationDeliveryValidator>();
+        services.AddSingleton<IHostConfigurationDeliveryValidator, HostConfigurationDeliveryValidator>();
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();

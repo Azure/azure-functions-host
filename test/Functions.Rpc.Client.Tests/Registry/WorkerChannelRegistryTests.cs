@@ -1828,13 +1828,16 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
-        public RegistryHarness(TimeSpan? linkTimeout, IConfiguration configuration = null)
+        public RegistryHarness(
+            TimeSpan? linkTimeout,
+            IConfiguration configuration = null,
+            IHostConfigurationDeliveryValidator hostConfigurationDeliveryValidator = null)
         {
             HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationOptions = new();
             applicationOptions.SetupGet(options => options.CurrentValue)
                 .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = true, ScriptPath = "c:\\test" });
-            HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator = new(
+            hostConfigurationDeliveryValidator ??= new HostConfigurationDeliveryValidator(
                 configuration ?? new ConfigurationBuilder().Build(),
                 applicationOptions.Object,
                 HostConfigurationLogger.Object);

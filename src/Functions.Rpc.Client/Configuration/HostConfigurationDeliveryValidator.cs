@@ -21,7 +21,7 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed partial class HostConfigurationDeliveryValidator(
     IConfiguration configuration,
     IOptionsMonitor<ScriptApplicationHostOptions> applicationOptions,
-    ILogger<HostConfigurationDeliveryValidator> logger)
+    ILogger<HostConfigurationDeliveryValidator> logger) : IHostConfigurationDeliveryValidator
 {
     internal const int MaximumContentLength = 65_536;
 
@@ -32,8 +32,9 @@ internal sealed partial class HostConfigurationDeliveryValidator(
     private static readonly Encoding Utf32LittleEndian = new UTF32Encoding(bigEndian: false, byteOrderMark: false, throwOnInvalidCharacters: true);
     private static readonly Encoding Utf32BigEndian = new UTF32Encoding(bigEndian: true, byteOrderMark: false, throwOnInvalidCharacters: true);
 
+    /// <inheritdoc />
     [return: NotNullIfNotNull(nameof(delivery))]
-    public HostConfigurationSnapshot? Validate(HostConfiguration? delivery)
+    public IConfigurationSource? Validate(HostConfiguration? delivery)
     {
         if (delivery is null)
         {
