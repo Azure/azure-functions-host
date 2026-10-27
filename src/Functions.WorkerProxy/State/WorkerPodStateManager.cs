@@ -42,7 +42,7 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName);
+        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
 
     /// <summary>
