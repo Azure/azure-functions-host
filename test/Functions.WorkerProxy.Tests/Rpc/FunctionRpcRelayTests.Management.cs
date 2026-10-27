@@ -314,7 +314,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitRuntimeRelayPublishesLinkingThenAcknowledgedRuntimeUntilTermination()
+    public async Task SplitRuntimeRelayRetainsAcknowledgedRuntimeAfterTermination()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -384,6 +384,73 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(SplitWorkerLinkState.Linked, terminated.Link.State);
         AssertRuntimeIdentity(terminated.Link.Runtime);
         Assert.True(terminated.IsUnhealthy);
+
+        await controlClient.AcknowledgeLinkAsync(acknowledgement, cancellationToken: timeout.Token);
+        Assert.Equal(terminated, await ReadSplitManagementStateAsync(management, timeout.Token));
+
+        GrpcRpcException terminatedConflictException = await Assert.ThrowsAsync<GrpcRpcException>(
+            async () =>
+            {
+                await controlClient.AcknowledgeLinkAsync(conflict, cancellationToken: timeout.Token);
+            });
+        Assert.Equal(StatusCode.AlreadyExists, terminatedConflictException.StatusCode);
+        Assert.Equal(terminated, await ReadSplitManagementStateAsync(management, timeout.Token));
+    }
+
+    [Fact]
+    public async Task SplitRuntimeRelayTerminationBeforeAcknowledgementPublishesUnlinked()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await worker.WriteAsync(CreateStartStream(), timeout.Token);
+        await WaitForWorkerReadyAsync(management, timeout.Token);
+        await AssignWorkerAsync(management, timeout.Token);
+
+        SplitWorkerOriginState unlinked = await ReadSplitManagementStateAsync(management, timeout.Token);
+        Task<HttpResponseMessage> linkingPoll = PollSplitManagementStateAsync(
+            management,
+            unlinked,
+            timeout.Token);
+        await WaitForManagementPollAsync(manager, timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        Assert.Equal("test-worker", (await runtime.ReadAsync(timeout.Token)).StartStream.WorkerId);
+
+        using HttpResponseMessage linkingResponse = await linkingPoll;
+        SplitWorkerOriginState linking = await ReadSplitManagementStateAsync(linkingResponse, timeout.Token);
+        Assert.Equal(4, linking.RevisionId);
+        Assert.Equal(SplitWorkerStatus.Starting, linking.Status);
+        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Linking), linking.Link);
+
+        using GrpcChannel controlChannel = GrpcChannel.ForAddress(factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime));
+        WorkerLinkControl.WorkerLinkControlClient controlClient = new(controlChannel);
+        AcknowledgeLinkRequest acknowledgement = CreateRuntimeAcknowledgement();
+        Task<HttpResponseMessage> terminatedPoll = PollSplitManagementStateAsync(
+            management,
+            linking,
+            timeout.Token);
+        await WaitForManagementPollAsync(manager, timeout.Token);
+
+        await runtime.CompleteRequestAsync(timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+
+        using HttpResponseMessage terminatedResponse = await terminatedPoll;
+        SplitWorkerOriginState terminated = await ReadSplitManagementStateAsync(terminatedResponse, timeout.Token);
+        Assert.Equal(5, terminated.RevisionId);
+        Assert.Equal(SplitWorkerStatus.Starting, terminated.Status);
+        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), terminated.Link);
+        Assert.True(terminated.IsUnhealthy);
+
+        GrpcRpcException exception = await Assert.ThrowsAsync<GrpcRpcException>(
+            async () =>
+            {
+                await controlClient.AcknowledgeLinkAsync(acknowledgement, cancellationToken: timeout.Token);
+            });
+        Assert.Equal(StatusCode.FailedPrecondition, exception.StatusCode);
+        Assert.Equal(terminated, await ReadSplitManagementStateAsync(management, timeout.Token));
     }
 
     [Theory]

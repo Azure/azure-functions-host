@@ -191,7 +191,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
+    /// Withdraws readiness on relay termination while retaining accepted Runtime link history.
     /// </summary>
     public bool OnSessionTerminated(long sessionId)
     {
@@ -266,7 +266,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records or replays the Runtime Host's successful link acknowledgement.
+    /// Records an active Runtime link acknowledgement or replays an accepted identity after termination.
     /// </summary>
     public RuntimeLinkAcknowledgementResult AcknowledgeRuntimeLink(SplitPodIdentity runtime)
     {
