@@ -68,22 +68,6 @@ public class WorkerLinkControllerTests
         VerifyOnlyLinkCall();
     }
 
-    [Fact]
-    public async Task LinkWorker_BareIpv4Endpoint_NormalizesToHttp()
-    {
-        const string grpcEndpoint = "100.64.1.12:50053";
-        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
-        WorkerLinkRequest request = ValidRequest();
-        request.WorkerGrpcEndpoint = grpcEndpoint;
-
-        StatusCodeResult result = Assert.IsType<StatusCodeResult>(
-            await CreateController().LinkWorker(WorkerId, request));
-
-        Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
-        VerifyOnlyLinkCall();
-    }
-
     [Theory]
     [InlineData(WorkerLinkFailureReason.Conflict, StatusCodes.Status409Conflict, "LinkConflict")]
     [InlineData(WorkerLinkFailureReason.WorkerTerminated, StatusCodes.Status409Conflict, "WorkerTerminated")]
@@ -421,10 +405,6 @@ public class WorkerLinkControllerTests
     [InlineData("   ")]
     [InlineData("not-a-url")]
     [InlineData("worker-proxy:50053")]
-    [InlineData("100.64.1.12:0")]
-    [InlineData("100.64.1.12:65536")]
-    [InlineData("100.64.1.256:50053")]
-    [InlineData(" 100.64.1.12:50053")]
     [InlineData("ftp://100.64.1.12:50053")]
     [InlineData("http://user:password@100.64.1.12:50053")]
     [InlineData("http://100.64.1.12:50053/path")]

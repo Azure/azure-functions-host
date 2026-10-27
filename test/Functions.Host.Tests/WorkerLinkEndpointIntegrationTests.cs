@@ -22,14 +22,14 @@ namespace Azure.Functions.Host.Tests;
 public sealed class WorkerLinkEndpointIntegrationTests
 {
     private const string WorkerId = "worker-pod-abc123";
-    private static readonly Uri Endpoint = new("http://100.64.1.12:50053");
+    private static readonly Uri Endpoint = new("http://worker-proxy:50053");
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
 
     [Theory]
     [InlineData(true, HttpStatusCode.Created)]
     [InlineData(false, HttpStatusCode.OK)]
-    public async Task Put_BareIpv4Endpoint_UsesRegistryCreationResult(bool isNewLink, HttpStatusCode status)
+    public async Task Put_ValidRequest_UsesRegistryCreationResult(bool isNewLink, HttpStatusCode status)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         SetupLink(isNewLink: isNewLink);
@@ -377,7 +377,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     private static string LinkJson()
-        => JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.Authority });
+        => JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.AbsoluteUri });
 
     private void SetupLink(string workerId = WorkerId, bool isNewLink = true)
         => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, It.IsAny<CancellationToken>()))

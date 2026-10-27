@@ -69,13 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
         private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
-        private readonly Lock _stateLock = new();
 
         private IScriptEventManager _eventManager;
         private IHost _host;
         private ScriptHostState _state;
-        private long _stateVersion;
-        private TaskCompletionSource _stateChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -169,28 +166,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                lock (_stateLock)
-                {
-                    return _host;
-                }
+                return _host;
             }
 
             set
             {
-                _logger.ActiveHostChanging(GetHostInstanceId(ActiveHost), GetHostInstanceId(value));
+                _logger.ActiveHostChanging(GetHostInstanceId(_host), GetHostInstanceId(value));
 
-                IHost previousHost;
-                lock (_stateLock)
-                {
-                    previousHost = _host;
-                    if (!ReferenceEquals(previousHost, value))
-                    {
-                        _host = value;
-                        SignalStateChangeLocked();
-                    }
-                }
+                var previousHost = _host;
+                _host = value;
 
-                OnActiveHostChanged(previousHost, value);
+                OnActiveHostChanged(previousHost, _host);
             }
         }
 
@@ -200,40 +186,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                lock (_stateLock)
-                {
-                    return _state;
-                }
+                return _state;
             }
 
             private set
             {
-                ScriptHostState previousState;
-                lock (_stateLock)
+                if (_state != value)
                 {
-                    if (_state == value)
-                    {
-                        return;
-                    }
-
-                    previousState = _state;
-                    _state = value;
-                    SignalStateChangeLocked();
+                    _logger.HostStateChanged(_state, value);
                 }
 
-                _logger.HostStateChanged(previousState, value);
-            }
-        }
-
-        /// <inheritdoc />
-        public long StateVersion
-        {
-            get
-            {
-                lock (_stateLock)
-                {
-                    return _stateVersion;
-                }
+                _state = value;
             }
         }
 
@@ -248,37 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return _healthMonitorOptions.Value.Enabled && _environment.IsAppService() && !_scriptWebHostEnvironment.InStandbyMode;
             }
-        }
-
-        /// <inheritdoc />
-        public async Task<long> WaitForStateChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            while (true)
-            {
-                Task stateChanged;
-                lock (_stateLock)
-                {
-                    if (_stateVersion > lastKnownVersion)
-                    {
-                        return _stateVersion;
-                    }
-
-                    stateChanged = _stateChanged.Task;
-                }
-
-                await stateChanged.WaitAsync(cancellationToken);
-            }
-        }
-
-        // Requires _stateLock. Continuations run asynchronously, outside the lock.
-        private void SignalStateChangeLocked()
-        {
-            _stateVersion++;
-            TaskCompletionSource changed = _stateChanged;
-            _stateChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            changed.TrySetResult();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -775,7 +707,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void OnActiveHostChanged(IHost previousHost, IHost newHost)
         {
-            ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(previousHost, newHost));
+            ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(previousHost, _host));
         }
 
         /// <summary>

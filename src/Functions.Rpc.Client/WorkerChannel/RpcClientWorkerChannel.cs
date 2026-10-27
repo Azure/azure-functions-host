@@ -7,13 +7,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
@@ -31,11 +29,7 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
-    /// <summary>
-    /// The worker capability through which WorkerProxy advertises the worker's assigned function group.
-    /// </summary>
-    internal const string FunctionGroupNameCapability = "FunctionGroupName";
-
+    private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
@@ -85,18 +79,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task Completion { get; }
 
-    /// <summary>
-    /// Gets the worker's assigned function group, or <see langword="null"/> if WorkerProxy did not advertise one.
-    /// </summary>
-    /// <remarks>
-    /// The value is set when <see cref="StartAsync"/> succeeds and does not change for the lifetime of the channel.
-    /// </remarks>
-    internal string FunctionGroupName { get; private set; }
+    internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
-    /// <summary>
-    /// Gets a value indicating whether the worker is assigned to the HTTP function group.
-    /// </summary>
-    internal bool IsHttpFunctionGroup => string.Equals(FunctionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
+    internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+
+    // Terminal signals can precede registry cleanup and the base channel's disposal state.
+    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -134,6 +122,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return _startCompletion.Task.WaitAsync(cancellationToken);
     }
 
+    protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
+
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
@@ -162,9 +152,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             {
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
-
-            // Capture once: capabilities are not safe to read concurrently with later capability updates.
-            FunctionGroupName = WorkerCapabilities.GetCapabilityState(FunctionGroupNameCapability);
 
             _startCompletion.TrySetResult();
         }

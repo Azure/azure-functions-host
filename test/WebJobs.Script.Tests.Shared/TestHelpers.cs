@@ -704,8 +704,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHostState IScriptHostManager.State => throw new NotImplementedException();
 
-            long IScriptHostManager.StateVersion => throw new NotImplementedException();
-
             Exception IScriptHostManager.LastError => throw new NotImplementedException();
 
             IServiceProvider IScriptHostManager.Services => this;
@@ -731,11 +729,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             Task IScriptHostManager.RestartHostAsync(string reason, CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
-
-            Task<long> IScriptHostManager.WaitForStateChangeAsync(long lastKnownVersion, CancellationToken cancellationToken)
             {
                 throw new NotImplementedException();
             }

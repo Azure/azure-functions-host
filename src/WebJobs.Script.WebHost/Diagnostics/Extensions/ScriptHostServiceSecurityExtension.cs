@@ -33,6 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(603, nameof(KeyVaultSecretRepoSkipNonCanonical)),
                 "Skipping Key Vault secret '{secretName}' because it contains a non-canonical escape sequence.");
 
+        private static readonly Action<ILogger, string, Exception> _keyVaultSecretRepoUnexpectedMasterKey =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(604, nameof(KeyVaultSecretRepoUnexpectedMasterKey)),
+                "Ignoring unexpected Key Vault secret '{secretName}' with master key prefix.");
+
         public static void BlobStorageSecretRepoError(this ILogger logger, string operation, Exception exception)
         {
             _blobStorageSecretRepoError(logger, operation, exception);
@@ -51,6 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void KeyVaultSecretRepoSkipNonCanonical(this ILogger logger, string secretName)
         {
             _keyVaultSecretRepoSkipNonCanonical(logger, secretName, null);
+        }
+
+        public static void KeyVaultSecretRepoUnexpectedMasterKey(this ILogger logger, string secretName)
+        {
+            _keyVaultSecretRepoUnexpectedMasterKey(logger, secretName, null);
         }
     }
 }

@@ -59,7 +59,18 @@ internal static class ManagementApiHandlers
         HttpRequest request,
         WorkerPodStateManager manager)
     {
-        return await GetSplitInstanceStateAsync(previousState, manager, request.HttpContext.RequestAborted);
+        CancellationToken cancellationToken = request.HttpContext.RequestAborted;
+        cancellationToken.ThrowIfCancellationRequested();
+        SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
+        if (previousState is null || previousState != current)
+        {
+            return SplitStateResponse(current);
+        }
+
+        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.RevisionId, cancellationToken);
+        return result.State is { } state
+            ? SplitStateResponse(SplitWorkerOriginState.FromState(state))
+            : TypedResults.NoContent();
     }
 
     public static async Task<IResult> GetInstanceStateAsync(
@@ -81,24 +92,6 @@ internal static class ManagementApiHandlers
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(lastKnownRevision, cancellationToken);
         return result.State is { } state ? StateResponse(state) : TypedResults.NoContent();
-    }
-
-    internal static async Task<IResult> GetSplitInstanceStateAsync(
-        SplitWorkerOriginState? previousState,
-        WorkerPodStateManager manager,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
-        if (previousState is null || previousState != current)
-        {
-            return SplitStateResponse(current);
-        }
-
-        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.RevisionId, cancellationToken);
-        return result.State is { } state
-            ? SplitStateResponse(SplitWorkerOriginState.FromState(state))
-            : TypedResults.NoContent();
     }
 
     internal static IResult InvalidRevision() =>

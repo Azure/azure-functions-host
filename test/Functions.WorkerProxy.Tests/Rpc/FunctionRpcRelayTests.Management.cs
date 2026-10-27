@@ -8,7 +8,6 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Management;
@@ -206,10 +205,9 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitInstanceStatePublishesFlattenedAssignmentCheckpoint()
+    public async Task SplitInstanceState_Startup_PublishesFlattenedCheckpoint()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
 
@@ -276,15 +274,16 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(SplitWorkerStatus.Starting, placeholder.Status);
         Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), placeholder.Link);
         Assert.False(placeholder.IsUnhealthy);
+    }
 
-        JsonObject missingLinkState = JsonNode.Parse(placeholderJson)!.AsObject();
-        Assert.True(missingLinkState["link"]!.AsObject().Remove("state"));
-        await AssertSplitStateBadRequestAsync(management, missingLinkState, timeout.Token);
-
-        JsonObject missingFunctionGroup = JsonNode.Parse(placeholderJson)!.AsObject();
-        Assert.True(missingFunctionGroup.Remove("functionGroup"));
-        await AssertSplitStateBadRequestAsync(management, missingFunctionGroup, timeout.Token);
-
+    [Fact]
+    public async Task SplitInstanceState_Assignment_UpdatesLongPoll()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        SplitWorkerOriginState placeholder = await ReadSplitManagementStateAsync(management, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await worker.WriteAsync(CreateStartStream(), timeout.Token);
         await WaitForWorkerReadyAsync(manager, timeout.Token);
@@ -328,7 +327,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitInstanceStateKeepsLinkDefaultsAcrossRuntimeAttachAndWorkerTermination()
+    public async Task SplitInstanceState_RuntimeAttachAndWorkerTermination_KeepsDeferredLinkDefaults()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -400,16 +399,6 @@ public partial class FunctionRpcRelayTests
             ManagementAssignment,
             cancellationToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    private static async Task AssertSplitStateBadRequestAsync(
-        HttpClient client,
-        JsonObject state,
-        CancellationToken cancellationToken)
-    {
-        using StringContent content = new(state.ToJsonString(), Encoding.UTF8, "application/json");
-        using HttpResponseMessage response = await client.PostAsync(InfraStatePath, content, cancellationToken);
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static async Task<SplitWorkerOriginState> ReadSplitManagementStateAsync(

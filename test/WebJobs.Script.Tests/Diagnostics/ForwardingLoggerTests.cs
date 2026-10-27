@@ -187,18 +187,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             public ScriptHostState State => Services is null ? ScriptHostState.Default : ScriptHostState.Running;
 
-            public long StateVersion => throw new NotImplementedException();
-
             public Exception LastError { get; }
 
             public void Dispose() { }
 
             public Task RestartHostAsync(string reason, CancellationToken cancellationToken = default)
-            {
-                throw new NotImplementedException();
-            }
-
-            public Task<long> WaitForStateChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default)
             {
                 throw new NotImplementedException();
             }

@@ -5,9 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
@@ -184,67 +182,16 @@ public sealed partial class WorkerLinkController : Controller
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
     }
 
-    // Legion publishes PodIpv4Endpoint as IPv4:port. Keep accepting the existing absolute URI form for compatibility.
+    // Accept only HTTP(S) authorities without credentials, non-root paths, queries, or fragments.
     private static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
-    {
-        endpoint = null;
-        if (TryParseIpv4Endpoint(value, out IPAddress? address, out int port))
-        {
-            endpoint = new UriBuilder(Uri.UriSchemeHttp, address.ToString(), port).Uri;
-            return true;
-        }
-
-        return Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
+        => Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
             (string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) &&
             !string.IsNullOrWhiteSpace(endpoint.Host) &&
-            endpoint.Port > 0 &&
             string.IsNullOrEmpty(endpoint.UserInfo) &&
             string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal) &&
             string.IsNullOrEmpty(endpoint.Query) &&
             string.IsNullOrEmpty(endpoint.Fragment);
-    }
-
-    private static bool TryParseIpv4Endpoint(
-        string? value,
-        [NotNullWhen(true)] out IPAddress? address,
-        out int port)
-    {
-        address = null;
-        port = 0;
-        if (value is null
-            || !string.Equals(value, value.Trim(), StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        int separator = value.LastIndexOf(':');
-        if (separator <= 0
-            || separator == value.Length - 1
-            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out port)
-            || port is < 1 or > IPEndPoint.MaxPort)
-        {
-            return false;
-        }
-
-        string[] octets = value[..separator].Split('.');
-        if (octets.Length != 4)
-        {
-            return false;
-        }
-
-        Span<byte> bytes = stackalloc byte[4];
-        for (int index = 0; index < octets.Length; index++)
-        {
-            if (!byte.TryParse(octets[index], NumberStyles.None, CultureInfo.InvariantCulture, out bytes[index]))
-            {
-                return false;
-            }
-        }
-
-        address = new IPAddress(bytes);
-        return true;
-    }
 
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.
     private static class ErrorCodes

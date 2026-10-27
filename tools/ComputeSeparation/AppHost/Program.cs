@@ -21,10 +21,11 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
     throw new InvalidOperationException("ComputeSeparation:Mode must be 'project' or 'container'.");
 }
 
-bool enableSecondWorker = builder.Configuration.GetValue("ComputeSeparation:EnableSecondWorker", false);
-if (useContainers && enableSecondWorker)
+bool multipleWorkers = builder.Configuration.GetValue("ComputeSeparation:MultipleWorkers", false);
+bool autoLink = builder.Configuration.GetValue("ComputeSeparation:AutoLink", true);
+if (multipleWorkers && (useContainers || autoLink))
 {
-    throw new InvalidOperationException("ComputeSeparation:EnableSecondWorker is supported only in project mode.");
+    throw new InvalidOperationException("Multiple workers require project mode with ComputeSeparation:AutoLink=false.");
 }
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
@@ -33,7 +34,6 @@ using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
-EndpointReference proxyManagementEndpoint;
 EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
 string[] dependencies;
@@ -56,14 +56,13 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
-    IResourceBuilder<ExecutableResource> workerPod = builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
+    builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
             "compose", "--file", topology.WorkerPod.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:ManagementPort"),
             name: ManagementEndpointName, env: "WORKER_PROXY_MANAGEMENT_PORT")
         .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
         .WithEnvironment("WORKER_PROXY_ALIAS", topology.ProxyAlias)
-        .WithEnvironment("WORKER_POD_NAME", podName)
         .WithEnvironment("WORKER_ID", workerId)
         .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
@@ -75,53 +74,11 @@ if (topology is not null)
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
-    proxyManagementEndpoint = workerPod.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
 {
-    IResourceBuilder<ProjectResource> AddWorker(string suffix, string id, string pod, string portPrefix)
-    {
-        IResourceBuilder<ProjectResource> proxy = builder.AddProject<Projects.Functions_WorkerProxy>($"worker-proxy{suffix}", launchProfileName: null)
-            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"ComputeSeparation:{portPrefix}ManagementPort"), name: ManagementEndpointName)
-            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"ComputeSeparation:{portPrefix}RuntimeGrpcPort"), name: RuntimeGrpcEndpointName)
-            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"ComputeSeparation:{portPrefix}WorkerGrpcPort"), name: WorkerGrpcEndpointName)
-            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"ComputeSeparation:{portPrefix}HttpPort"), name: HttpEndpointName)
-            .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName);
-
-        proxy.WithEnvironment(context =>
-        {
-            context.EnvironmentVariables["WORKERPROXY__PODNAME"] = pod;
-            context.EnvironmentVariables["WORKERPROXY__MANAGEMENTPORT"] =
-                proxy.GetEndpoint(ManagementEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__RUNTIMEGRPCPORT"] =
-                proxy.GetEndpoint(RuntimeGrpcEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__WORKERGRPCPORT"] =
-                proxy.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
-                proxy.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxy.GetEndpoint(HttpEndpointName);
-            context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
-        });
-
-        builder.AddProject<Projects.SampleIsolatedApp>($"isolated-worker{suffix}", launchProfileName: null)
-            .WithEnvironment("ComputeSeparation__WorkerId", id)
-            .WithArgs(
-                "--functions-uri", proxy.GetEndpoint(WorkerGrpcEndpointName),
-                "--functions-worker-id", id,
-                "--functions-request-id", Guid.NewGuid().ToString(),
-                "--functions-grpc-max-message-length", "134217728")
-            .WaitFor(proxy);
-
-        return proxy;
-    }
-
-    IResourceBuilder<ProjectResource> proxyProject = AddWorker(string.Empty, workerId, podName, string.Empty);
-    IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
-        .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
-        .WithHttpHealthCheck("/health", endpointName: HttpEndpointName);
-
     IResourceBuilder<ProjectResource> functionsHost = builder.AddProject<Projects.Functions_Host>("functions-host", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
@@ -135,32 +92,19 @@ else
         .WithEnvironment("AzureFunctionsWebHost__IsFileSystemReadOnly", "true")
         .WithEnvironment("AzureFunctionsJobHost__logging__logLevel__default", "Information")
         .WithEnvironment("AzureFunctionsJobHost__logging__console__isEnabled", "true")
-        .WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName))
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName);
 
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
         ReferenceExpression.Create($"http://127.0.0.1:{functionsHost.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
 
-    fakePlatform
-        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
-        .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
-        .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
-        .WithEnvironment("FakePlatform__WorkerId", workerId);
-
-    if (enableSecondWorker)
-    {
-        string secondWorkerId = $"{workerId}-2";
-        IResourceBuilder<ProjectResource> secondProxy = AddWorker("-2", secondWorkerId, $"{podName}-2", "SecondWorker");
-        fakePlatform
-            .WithEnvironment("FakePlatform__SecondWorker__WorkerProxyUri", secondProxy.GetEndpoint(ManagementEndpointName))
-            .WithEnvironment("FakePlatform__SecondWorker__WorkerGrpcEndpoint", secondProxy.GetEndpoint(RuntimeGrpcEndpointName))
-            .WithEnvironment("FakePlatform__SecondWorker__WorkerId", secondWorkerId);
-    }
+    IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
+        .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
+        .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
+        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName));
 
     if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))
     {
-        // The Host starts in placeholder mode and waits for the fake platform to assign it to the sample app. Both share
-        // a random key: the fake uses it to authenticate and encrypt the assignment, and the Host to verify and decrypt it.
+        // The platform assigns the app once; each worker is then assigned and linked independently.
         string encryptionKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         functionsHost
             .WithEnvironment("WEBSITE_PLACEHOLDER_MODE", "1")
@@ -169,19 +113,74 @@ else
         fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", encryptionKey);
     }
 
+    IResourceBuilder<ProjectResource> proxyProject = AddProjectWorker(secondWorker: false);
+    if (multipleWorkers)
+    {
+        AddProjectWorker(secondWorker: true);
+    }
+
     platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
-    proxyManagementEndpoint = proxyProject.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
-    dependencies = ["functions-host", "worker-proxy", "isolated-worker", "fake-platform"];
+    dependencies = ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
+
+    IResourceBuilder<ProjectResource> AddProjectWorker(bool secondWorker)
+    {
+        int index = secondWorker ? 1 : 0;
+        string proxyName = $"worker-proxy-{index + 1}";
+        string suffix = secondWorker ? "-2" : string.Empty;
+        string configurationPrefix = secondWorker ? "ComputeSeparation:SecondWorker" : "ComputeSeparation";
+        string linkedWorkerId = secondWorker
+            ? builder.Configuration["ComputeSeparation:SecondWorker:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}"
+            : workerId;
+        string workerPodName = secondWorker ? "worker-pod-2" : podName;
+        IResourceBuilder<ProjectResource> proxy = builder.AddProject<Projects.Functions_WorkerProxy>(proxyName, launchProfileName: null)
+            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:ManagementPort"), name: ManagementEndpointName)
+            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:RuntimeGrpcPort"), name: RuntimeGrpcEndpointName)
+            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:WorkerGrpcPort"), name: WorkerGrpcEndpointName)
+            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:HttpPort"), name: HttpEndpointName)
+            .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName);
+
+        proxy.WithEnvironment(context =>
+        {
+            // Each proxy represents a separate pod, with its own worker connection and runtime-facing endpoints.
+            context.EnvironmentVariables["WEBSITE_POD_NAME"] = workerPodName;
+            context.EnvironmentVariables["WORKERPROXY__MANAGEMENTPORT"] =
+                proxy.GetEndpoint(ManagementEndpointName).Property(EndpointProperty.TargetPort);
+            context.EnvironmentVariables["WORKERPROXY__RUNTIMEGRPCPORT"] =
+                proxy.GetEndpoint(RuntimeGrpcEndpointName).Property(EndpointProperty.TargetPort);
+            context.EnvironmentVariables["WORKERPROXY__WORKERGRPCPORT"] =
+                proxy.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
+            context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
+                proxy.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
+            context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxy.GetEndpoint(HttpEndpointName);
+            context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
+        });
+
+        builder.AddProject<Projects.SampleIsolatedApp>($"isolated-worker{suffix}", launchProfileName: null)
+            .WithArgs(
+                "--functions-uri", proxy.GetEndpoint(WorkerGrpcEndpointName),
+                "--functions-worker-id", linkedWorkerId,
+                "--functions-request-id", Guid.NewGuid().ToString(),
+                "--functions-grpc-max-message-length", "134217728")
+            .WaitFor(proxy);
+
+        // One platform owns the known proxy mappings; simulation requests select a mapping by resource name.
+        fakePlatform
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__Name", proxyName)
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__ManagementUri", proxy.GetEndpoint(ManagementEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
+
+        return proxy;
+    }
 }
 
-if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
+if (autoLink)
 {
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
-        proxyManagementEndpoint,
         workerGrpcEndpoint,
         platformEndpoint,
         workerId,

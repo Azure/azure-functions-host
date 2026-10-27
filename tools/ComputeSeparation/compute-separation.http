@@ -1,46 +1,56 @@
-@platform=http://localhost:7060
-@host=http://127.0.0.1:7071
-@workerProxy=http://localhost:7081
+### Manual requests for the ComputeSeparation Aspire harness.
+### The fake platform sends the platform requests: it assigns the pod on the WorkerProxy, assigns the placeholder Host
+### to the app, and links the worker to the Host.
+### Its /simulate routes are harness-only; the WorkerProxy and Host routes they call are the real contracts.
+###
+### Run AppHost with the `project-placeholder-manual` launch profile (F5, or the command below). It pins the ports used
+### here and turns off automatic assign and link so you can send each step yourself, in order.
+###
+###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+###
+### To add a second worker after the Host is serving, use `project-placeholder-manual-multiple-workers`.
+### Complete steps 1 to 4 first, then steps 5 to 7. Both worker/proxy pairs start immediately, but links remain manual.
+###
+###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multiple-workers
 
-# Single-worker scenario: assign -> link -> invoke.
-# In Visual Studio, select the AppHost profile `project-placeholder-manual` and press F5.
-# Or run from the repository root:
-# dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
-#
-# For the later-linked second-worker scenario, use compute-separation-multi-worker.http instead.
-# Stop any previous AppHost before starting: these manual profiles share fixed ports.
-# /simulate routes belong to FakePlatform; it calls the real Host and WorkerProxy contracts.
+@platform = http://localhost:7060
+@host = http://127.0.0.1:7071
+@workerProxy = http://localhost:7081
+@secondWorkerProxy = http://localhost:7091
 
-# 1. Assign the worker pod
-# Expect 201 (204 if repeated). Retry 503 WorkerNotReady after the worker connects.
-# @name assignWorker
-POST {{platform}}/simulate/worker/assign
+### Expected flow, in order.
 
-### Optional: inspect worker state
-# Expect ReadyForRequest after assignment.
+### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
+### 503 WorkerNotReady means the sample worker has not connected yet; retry.
+POST {{platform}}/simulate/worker/worker-proxy-1/assign
+
+### Optional: the WorkerProxy pod state is now ReadyForRequest.
 GET {{workerProxy}}/admin/worker/state
 
-### 2. Assign the placeholder Host to the app
-# Expect 202 (409 if repeated). Specialization applies configuration without waiting for a worker link.
-# @name assignHost
+### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
+### repeated. The Host finishes specializing only after step 3 links the worker.
 POST {{platform}}/simulate/host/assign
 
-### 3. Link the worker to the Host
-# Expect 201 (200 for a matching retry).
-# @name linkWorker
-POST {{platform}}/simulate/worker/link
+### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
+POST {{platform}}/simulate/worker/worker-proxy-1/link
 
-### Optional: inspect the last published HTTP capacity
-# Expect { "createdTime": "<ISO8601 UTC timestamp>", "httpCapacity": 16, "linkedWorkerCount": 1 } once ScriptHost and the HTTP worker are ready.
-# Retries reuse the captured createdTime. Distinct snapshots can have equal or earlier timestamps.
-# FakePlatform ignores strictly older timestamps with 200 and accepts ties in arrival order, not causal order.
-# Clock rollback can leave a legitimate update ignored; this is not restart-safe ordering.
-# Capacity is 0 before readiness; 204 means the Host has not published yet.
-# Each ready HTTP worker contributes a fixed 16; non-HTTP, unknown-group, and not-ready workers contribute 0.
-# WorkerProxy-supplied concurrency is deferred. No override, worker-side throttle, or slot leasing is introduced.
-GET {{platform}}/simulate/host/state
+### 4. A client invokes the function through Host -> WorkerProxy -> worker.
+GET {{host}}/api/hello
 
-### 4. Invoke through Host -> WorkerProxy -> worker
-# Expect 200 and X-Compute-Worker-Id identifying the worker.
-# @name invokeWorker
+### The remaining requests require `project-placeholder-manual-multiple-workers`.
+### Wait for step 4 to succeed before linking the second worker, so this exercises a genuinely late link.
+
+### 5. Assign the second pod. Expect 201, or 204 if repeated; retry 503 until its worker has connected.
+POST {{platform}}/simulate/worker/worker-proxy-2/assign
+
+### Optional: inspect the second pod independently.
+GET {{secondWorkerProxy}}/admin/worker/state
+
+### 6. Link the second worker to the existing Host. Expect 201, or 200 for a matching retry.
+### Do not send /simulate/host/assign again: the same Host and indexed functions are reused.
+POST {{platform}}/simulate/worker/worker-proxy-2/link
+
+### 7. Repeat this request to route invocations across both worker/proxy pairs.
+### Compare "Worker ID:" in the response body; each worker has an independently generated ID.
+### Watch HTTP forwarding in the `worker-proxy-1` and `worker-proxy-2` console logs in the dashboard.
 GET {{host}}/api/hello

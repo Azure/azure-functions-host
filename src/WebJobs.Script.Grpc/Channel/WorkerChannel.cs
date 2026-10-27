@@ -105,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
+        private int _customMetricUsageLogged;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WorkerChannel"/> class over an owned duplex channel.
@@ -1341,6 +1342,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void Log(StreamingMessage msg)
         {
             var rpcLog = msg.RpcLog;
+
+            // Record that this app uses worker custom metrics. Emitted once per channel, before the
+            // invocation lookup below, so metrics arriving outside an invocation are still counted.
+            // The plain read short-circuits the interlocked write once the flag is already set.
+            if (rpcLog.LogCategory == RpcLogCategory.CustomMetric &&
+                _customMetricUsageLogged == 0 &&
+                Interlocked.Exchange(ref _customMetricUsageLogged, 1) == 0)
+            {
+                _metricsLogger.LogEvent(MetricEventNames.WorkerCustomMetric);
+            }
+
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out var invocation))
             {
                 var context = invocation.Context;
@@ -1452,7 +1464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 return;
             }
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+            OnFunctionLoadError(exc);
         }
 
         private void PublishWorkerErrorEvent(Exception exc)
@@ -1469,6 +1481,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
             OnMetadataRequestError(exc);
+        }
+
+        /// <summary>
+        /// Reports a fatal function-load request failure through the worker-error event by default.
+        /// </summary>
+        /// <param name="exception">The function-load request failure.</param>
+        protected virtual void OnFunctionLoadError(Exception exception)
+        {
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exception));
         }
 
         /// <summary>

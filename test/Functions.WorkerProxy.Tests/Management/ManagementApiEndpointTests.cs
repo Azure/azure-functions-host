@@ -409,10 +409,6 @@ public class ManagementApiEndpointTests
     [InlineData(AssignPath, "POST")]
     [InlineData(AssignPath, "PATCH")]
     [InlineData(AssignPath, "DELETE")]
-    [InlineData(InfraStatePath, "GET")]
-    [InlineData(InfraStatePath, "PUT")]
-    [InlineData(InfraStatePath, "PATCH")]
-    [InlineData(InfraStatePath, "DELETE")]
     [InlineData(StatePath, "POST")]
     [InlineData(StatePath, "PUT")]
     [InlineData(StatePath, "DELETE")]
@@ -458,6 +454,47 @@ public class ManagementApiEndpointTests
         Assert.False(poll.IsCompleted);
 
         fireTimer();
+        using HttpResponseMessage response = await poll;
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        AssertNoStore(response);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
+        await disposed.Task.WaitAsync(timeout.Token);
+        timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task InfraState_UnchangedCheckpoint_ReturnsNoContentAtDeadline()
+    {
+        Mock<TimeProvider> clock = new();
+        Mock<ITimer> timer = new();
+        TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
+        TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        clock.Setup(provider => provider.CreateTimer(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object?>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object? state, TimeSpan _, TimeSpan _) =>
+            {
+                expire.TrySetResult(() => callback(state));
+                return timer.Object;
+            });
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+            services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock.Object)));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using HttpResponseMessage current = await client.PostAsync(InfraStatePath, content: null, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, current.StatusCode);
+        string body = await current.Content.ReadAsStringAsync(timeout.Token);
+        using StringContent content = JsonBody(body);
+
+        Task<HttpResponseMessage> poll = client.PostAsync(InfraStatePath, content, timeout.Token);
+        Action fireTimer = await expire.Task.WaitAsync(timeout.Token);
+        Assert.False(poll.IsCompleted);
+        fireTimer();
+
         using HttpResponseMessage response = await poll;
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         AssertNoStore(response);

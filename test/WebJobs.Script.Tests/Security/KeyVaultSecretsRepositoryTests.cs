@@ -317,6 +317,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("goodVal", functionSecrets.Keys[0].Value);
         }
 
+        [Fact]
+        public async Task ReadHostKeys_IgnoresNonCanonicalMasterKeyName()
+        {
+            var keyVaultSecrets = new List<KeyVaultSecret>
+            {
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--master"), "realMasterVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--evil"), "rogueMasterVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "funcVal"),
+            };
+
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
+            var hostSecrets = secrets as HostSecrets;
+
+            Assert.NotNull(hostSecrets?.MasterKey);
+            Assert.Equal("master", hostSecrets.MasterKey.Name);
+            Assert.Equal("realMasterVal", hostSecrets.MasterKey.Value);
+        }
+
+        [Fact]
+        public async Task ReadHostKeys_ReturnsNull_WhenOnlyNonCanonicalMasterKeyExists()
+        {
+            var keyVaultSecrets = new List<KeyVaultSecret>
+            {
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--evil"), "rogueMasterVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "funcVal"),
+            };
+
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
+
+            Assert.Null(secrets);
+        }
+
         public class FindSecretsDataProvider
         {
             public static IEnumerable<object[]> TestCases

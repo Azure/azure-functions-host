@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -94,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             return _last;
         }
 
-        private async Task<HealthCheckResult> CheckHealthCoreAsync(CancellationToken cancellation)
+        internal async Task<HealthCheckResult> CheckHealthCoreAsync(CancellationToken cancellation)
         {
             if (!TryGetClient(out BlobServiceClient client, out HealthCheckResult result))
             {
@@ -103,15 +104,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             try
             {
-                // Right now we only check if we can access blobs. The functions host doesn't use queues or tables directly (although extensions may).
-                // We don't check permissions/role assignments in depth for a couple reasons:
-                // 1. It is expensive
-                // 2. Permissions/role assignments needed by the host can change over time.
-                // So we settle for just connectivity here. Insufficient permissions will show up as errors elsewhere.
-                // See https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-app?tabs=dotnet#configure-permissions-for-access-to-blob-and-queue-data
-                await client.GetPropertiesAsync(cancellationToken: cancellation).ConfigureAwait(false);
+                // Container properties use permissions covered by Blob Data roles without enumerating containers.
+                // Keep the AzureWebJobsStorage credentials, not the optional hosting-container SAS.
+                Response<bool> exists = await client
+                    .GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName)
+                    .ExistsAsync(cancellationToken: cancellation)
+                    .ConfigureAwait(false);
 
-                return HealthCheckResult.Healthy();
+                // ExistsAsync handles ContainerNotFound; absence is not a failure of this connectivity-only check.
+                return exists.Value
+                    ? HealthCheckResult.Healthy()
+                    : HealthCheckResult.Healthy("Storage is reachable. Host container does not exist.");
             }
             catch (Exception ex) when (!ex.IsFatal())
             {

@@ -11,9 +11,8 @@ namespace Azure.Functions.Host.WorkerLink;
 public sealed class WorkerLinkRequest
 {
     /// <summary>
-    /// Gets or sets the required WorkerProxy runtime-facing gRPC endpoint. Legion supplies
-    /// an IPv4:port authority; absolute HTTP or HTTPS authorities remain accepted for compatibility.
-    /// The endpoint must be reachable from this runtime.
+    /// Gets or sets the required HTTP or HTTPS authority of WorkerProxy's runtime-facing
+    /// gRPC listener. The endpoint must be reachable from this runtime.
     /// </summary>
     [JsonProperty("workerGrpcEndpoint")]
     public string? WorkerGrpcEndpoint { get; set; }

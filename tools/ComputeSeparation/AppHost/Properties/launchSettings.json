@@ -32,7 +32,7 @@
         "ComputeSeparation__ManagementPort": "7081"
       }
     },
-    "project-placeholder-manual-multi-worker": {
+    "project-placeholder-manual-multiple-workers": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
@@ -45,11 +45,11 @@
         "ComputeSeparation__Mode": "project",
         "ComputeSeparation__AutoLink": "false",
         "ComputeSeparation__PlaceholderMode": "true",
-        "ComputeSeparation__EnableSecondWorker": "true",
+        "ComputeSeparation__MultipleWorkers": "true",
         "ComputeSeparation__PlatformPort": "7060",
         "ComputeSeparation__HostPort": "7071",
         "ComputeSeparation__ManagementPort": "7081",
-        "ComputeSeparation__SecondWorkerManagementPort": "7082"
+        "ComputeSeparation__SecondWorker__ManagementPort": "7091"
       }
     },
     "container": {
