@@ -54,6 +54,25 @@ internal static class ManagementApiHandlers
         return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 
+    public static async Task<IResult> PostInfraInstanceStateAsync(
+        SplitWorkerOriginState? previousState,
+        HttpRequest request,
+        WorkerPodStateManager manager)
+    {
+        CancellationToken cancellationToken = request.HttpContext.RequestAborted;
+        cancellationToken.ThrowIfCancellationRequested();
+        SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
+        if (previousState is null || previousState != current)
+        {
+            return SplitStateResponse(current);
+        }
+
+        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.RevisionId, cancellationToken);
+        return result.State is { } state
+            ? SplitStateResponse(SplitWorkerOriginState.FromState(state))
+            : TypedResults.NoContent();
+    }
+
     public static async Task<IResult> GetInstanceStateAsync(
         long? revision,
         WorkerPodStateManager manager,
@@ -110,4 +129,7 @@ internal static class ManagementApiHandlers
 
     private static IResult StateResponse(WorkerPodState state) =>
         TypedResults.Json(WorkerInstanceState.FromState(state), WorkerProxyJsonContext.Default.WorkerInstanceState);
+
+    private static IResult SplitStateResponse(SplitWorkerOriginState state) =>
+        TypedResults.Json(state, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
 }
