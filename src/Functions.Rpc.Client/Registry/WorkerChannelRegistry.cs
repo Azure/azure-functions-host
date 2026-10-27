@@ -29,9 +29,10 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 /// <remarks>
 /// Admission and replay decisions are atomic. Different workers can link concurrently.
-/// The registry publishes a channel after its WorkerInit handshake succeeds, configures it for the active ScriptHost
-/// context, and retains terminal identities. Initialized channels remain available for metadata bootstrap before a
-/// ScriptHost function set is known; only ready channels are available for invocation dispatch.
+/// A link returns after its WorkerInit handshake and registration. Initialization additionally prepares the extension
+/// source, including receiving and extracting assemblies to disk, before publishing the channel for metadata and ScriptHost
+/// startup. The registry then configures it for the active ScriptHost context and retains terminal identities.
+/// Only ready channels are available for invocation dispatch.
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
@@ -43,6 +44,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
+    private readonly WorkerExtensionPayloadManager _extensionPayloads;
+    private readonly SemaphoreSlim _extensionPreparationGate = new(1, 1);
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
     private readonly bool _registryOwnedAttempt;
@@ -56,6 +59,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly Lock _observationLock = new();
     private IConfigurationSource _hostConfigurationSource;
     private bool _hostConfigurationSourceSelected;
+    private bool _extensionSourceRejected;
     private IReadOnlyList<WorkerChannel> _initializedChannels = [];
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
@@ -74,10 +78,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IWorkerHostConfigurationParser workerHostConfigurationParser,
         IOptionsMonitor<WorkerProcessCountOptions> processOptions = null,
         IOptions<TokenServiceProxyOptions> proxyOptions = null,
-        IWorkerInvocationTracker invocationTracker = null)
+        IWorkerInvocationTracker invocationTracker = null,
+        WorkerExtensionPayloadManager extensionPayloads = null)
         : this(duplexChannelFactory, channelFactory, logger, timeProvider,
             ResolveLinkTimeout(processOptions, proxyOptions), workerHostConfigurationParser,
-            registryOwnedAttempt: proxyOptions?.Value.Enabled == true, invocationTracker: invocationTracker)
+            registryOwnedAttempt: proxyOptions?.Value.Enabled == true, invocationTracker: invocationTracker, extensionPayloads: extensionPayloads)
     {
     }
 
@@ -89,13 +94,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         TimeSpan linkTimeout,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
         bool registryOwnedAttempt = false,
-        IWorkerInvocationTracker invocationTracker = null)
+        IWorkerInvocationTracker invocationTracker = null,
+        WorkerExtensionPayloadManager extensionPayloads = null)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _invocationTracker = invocationTracker;
+        _extensionPayloads = extensionPayloads;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
@@ -572,7 +579,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         lock (_stateLock)
         {
-            if (!_disposed && _slots.TryGetValue(workerId, out WorkerSlot slot) && slot.Channel is not null)
+            if (!_disposed && _slots.TryGetValue(workerId, out WorkerSlot slot) && slot.Initialized && slot.Channel is not null)
             {
                 channel = slot.Channel;
                 return true;
@@ -700,7 +707,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             foreach (WorkerSlot slot in _slots.Values)
             {
-                if (slot.Channel is not { IsDraining: false })
+                if (!slot.Initialized || slot.Channel is not { IsDraining: false })
                 {
                     continue;
                 }
@@ -769,24 +776,32 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
     public async Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         while (true)
         {
-            Task initializedChannelAvailable;
+            cancellationToken.ThrowIfCancellationRequested();
+            Task available;
             lock (_stateLock)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
-                RpcClientWorkerChannel channel = _slots.Values.FirstOrDefault(slot => slot.Channel is not null)?.Channel;
+                RpcClientWorkerChannel channel = _slots.Values
+                    .Where(slot => slot.Initialized && slot.Channel is { IsTerminated: false })
+                    .Select(slot => slot.Channel)
+                    .OrderBy(channel => channel.Id, StringComparer.Ordinal)
+                    .FirstOrDefault();
                 if (channel is not null)
                 {
                     return channel;
                 }
 
-                initializedChannelAvailable = _initializedChannelAvailable.Task;
+                if (_initializedChannelAvailable.Task.IsCompleted)
+                {
+                    _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
+
+                available = _initializedChannelAvailable.Task;
             }
 
-            await initializedChannelAvailable.WaitAsync(cancellationToken);
+            await available.WaitAsync(cancellationToken);
         }
     }
 
@@ -865,6 +880,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         channel.StopAcceptingInvocations();
         slot.Channel = null;
+        slot.Initialized = false;
         slot.AttemptedSetupContext = null;
         slot.SetupException = null;
         _invocationTracker?.WorkerUnlinked(channel.Id);
@@ -879,7 +895,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             // Remove the detached channel from the published snapshot before channel disposal begins.
             SignalReadyChannelsLocked();
             PublishInitializedChannelsLocked();
-            if (!_slots.Values.Any(slot => slot.Channel is not null))
+            if (_initializedChannelAvailable.Task.IsCompleted &&
+                !_slots.Values.Any(slot => slot.Initialized && slot.Channel is { IsTerminated: false }))
             {
                 _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
             }
@@ -997,6 +1014,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         CancellationToken cancellationToken)
     {
         Task monitorTask;
+        Task preparationTask = null;
 
         lock (_stateLock)
         {
@@ -1017,26 +1035,133 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 throw new IOException("The worker channel terminated before initialization was registered.", failure);
             }
 
-            // Retain the first configuration source or file-based loading choice for the root lifetime.
-            if (!_hostConfigurationSourceSelected)
-            {
-                _hostConfigurationSource = configurationSource;
-                _hostConfigurationSourceSelected = true;
-            }
-
             _invocationTracker?.WorkerLinked(workerId);
             slot.Channel = channel;
+            slot.Initialized = _extensionPayloads is null;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);
-
-            // Signal initialized-channel availability without starting ScriptHost here.
-            _initializedChannelAvailable.TrySetResult();
-            PublishInitializedChannelsLocked();
+            if (slot.Initialized)
+            {
+                SelectHostConfigurationSourceLocked(configurationSource);
+                _initializedChannelAvailable.TrySetResult();
+                PublishInitializedChannelsLocked();
+            }
+            else
+            {
+                preparationTask = PrepareExtensionPayloadAsync(slot, channel, configurationSource);
+                _monitorTasks.Add(preparationTask);
+            }
         }
 
         _ = ConfigureSlotInBackgroundAsync(slot);
         _ = monitorTask.ContinueWith(static (task, state) => ((WorkerChannelRegistry)state).OnMonitorCompleted(task), this,
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        if (preparationTask is not null)
+        {
+            _ = preparationTask.ContinueWith(static (task, state) => ((WorkerChannelRegistry)state).OnMonitorCompleted(task), this,
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+    }
+
+    private async Task PrepareExtensionPayloadAsync(WorkerSlot slot, RpcClientWorkerChannel channel, IConfigurationSource configurationSource)
+    {
+        // Link admission ends at WorkerInit. This work belongs to the root/link lifetime, not the HTTP request.
+        await Task.Yield();
+        using CancellationTokenSource lifetime = CancellationTokenSource.CreateLinkedTokenSource(_shutdownSource.Token);
+        try
+        {
+            Task preparation = PrepareAndPublishAsync(slot, channel, configurationSource, lifetime.Token);
+            if (!ReferenceEquals(await Task.WhenAny(preparation, channel.Completion), preparation))
+            {
+                await lifetime.CancelAsync();
+            }
+
+            await preparation;
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+            // Root shutdown owns channel disposal and waits for this preparation to release its staging files.
+        }
+        catch (Exception exception)
+        {
+            Log.ExtensionPayloadRejected(_logger, exception, channel.Id);
+            try
+            {
+                await UnlinkAsync(channel.Id, channel, CancellationToken.None);
+            }
+            catch (Exception cleanupException)
+            {
+                Log.ChannelDisposalFailed(_logger, new AggregateException(exception, cleanupException), channel.Id);
+            }
+        }
+    }
+
+    private async Task PrepareAndPublishAsync(
+        WorkerSlot slot, RpcClientWorkerChannel channel, IConfigurationSource configurationSource, CancellationToken cancellationToken)
+    {
+        // Keep payload selection and configuration selection in the same candidate order.
+        using SemaphoreLock gate = await _extensionPreparationGate.LockAsync(cancellationToken);
+        if (_extensionSourceRejected)
+        {
+            throw new InvalidOperationException("The selected extension source could not be prepared successfully.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!ReferenceEquals(slot.Channel, channel) || channel.IsTerminated)
+            {
+                throw new IOException("The worker channel terminated before extension preparation began.");
+            }
+        }
+
+        try
+        {
+            await _extensionPayloads.PrepareAsync(channel, cancellationToken);
+        }
+        catch
+        {
+            // The payload manager can select a directory before staging cleanup fails. It cannot roll that selection back.
+            lock (_stateLock)
+            {
+                if (!_hostConfigurationSourceSelected && _extensionPayloads.DirectoryPath is not null)
+                {
+                    _extensionSourceRejected = true;
+                }
+            }
+
+            throw;
+        }
+
+        lock (_stateLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            // A successful source remains selected even if its channel disconnected before publication.
+            SelectHostConfigurationSourceLocked(configurationSource);
+            if (!ReferenceEquals(slot.Channel, channel) || channel.IsTerminated)
+            {
+                return;
+            }
+
+            slot.Initialized = true;
+            _initializedChannelAvailable.TrySetResult();
+            PublishInitializedChannelsLocked();
+            ConfigureSlotLocked(slot);
+        }
+    }
+
+    private void SelectHostConfigurationSourceLocked(IConfigurationSource configurationSource)
+    {
+        if (!_hostConfigurationSourceSelected)
+        {
+            _hostConfigurationSource = configurationSource;
+            _hostConfigurationSourceSelected = true;
+        }
     }
 
     private async Task ConfigureSlotInBackgroundAsync(WorkerSlot slot)
@@ -1063,6 +1188,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         if (setupContext is null ||
             channel is null ||
             channel.IsDraining ||
+            !slot.Initialized ||
             ReferenceEquals(slot.AttemptedSetupContext, setupContext))
         {
             return;
@@ -1101,6 +1227,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         return [.. _slots.Values
             .Where(slot =>
                 ReferenceEquals(slot.AttemptedSetupContext, setupContext) &&
+                slot.Initialized &&
                 slot.SetupException is null &&
                 slot.Channel is { IsReadyForInvocations: true })
             .Select(slot => (WorkerChannel)slot.Channel)];
@@ -1157,7 +1284,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private void PublishInitializedChannelsLocked()
     {
         IReadOnlyList<WorkerChannel> channels = Array.AsReadOnly<WorkerChannel>(
-            [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)]);
+            [.. _slots.Values.Where(slot => slot.Initialized && slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)]);
         lock (_observationLock)
         {
             _initializedChannels = channels;
@@ -1214,6 +1341,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         public ChannelSetupContext AttemptedSetupContext { get; set; }
 
         public RpcClientWorkerChannel Channel { get; set; }
+
+        public bool Initialized { get; set; }
 
         // The initial link owns this gate before its slot is published.
         public SemaphoreSlim Gate { get; } = new(0, 1);
@@ -1309,5 +1438,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             LinkStage stage,
             string reason,
             string exceptionType);
+
+        [LoggerMessage(12, LogLevel.Warning, "The extension payload for worker {WorkerId} was rejected; its link will be removed.")]
+        public static partial void ExtensionPayloadRejected(ILogger logger, Exception exception, string workerId);
     }
 }

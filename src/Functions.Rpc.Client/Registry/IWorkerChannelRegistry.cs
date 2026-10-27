@@ -15,21 +15,24 @@ namespace Azure.Functions.Rpc.Client;
 /// Defines root-owned client-backed worker channel ownership keyed by worker ID.
 /// </summary>
 /// <remarks>
-/// An initialized channel has completed its transport connection and WorkerInit handshake. A ready channel has also
-/// been configured for the active ScriptHost function set and can accept invocations. The registry owns channel setup
-/// and disposal; ScriptHost-scoped dispatchers borrow ready channels.
+/// An initialized channel has completed its transport connection, WorkerInit handshake, and extension-source preparation.
+/// Advertised extension assemblies have been received and extracted to disk, or the existing extension source has been selected.
+/// The first successful preparation also selects that worker's host configuration for the root lifetime.
+/// A ready channel has also been configured for the active ScriptHost function set and can accept invocations.
+/// The registry owns channel setup and disposal; ScriptHost-scoped dispatchers borrow ready channels.
 /// </remarks>
 public interface IWorkerChannelRegistry : IAsyncDisposable
 {
     /// <summary>
-    /// Atomically admits one worker or reuses its matching pending or initialized link.
+    /// Atomically admits one worker or reuses its matching pending or registered link.
     /// </summary>
     /// <remarks>
     /// This method returns after the outbound transport connects, the worker sends <c>StartStream</c>, the channel
-    /// processes a successful <c>WorkerInitResponse</c>, and the channel is registered. Function setup is independent
-    /// and is not awaited; it may already have started or completed when the caller observes the result.
+    /// processes a successful <c>WorkerInitResponse</c>, and the channel is registered. Extension-source preparation
+    /// and function setup are independent and are not awaited. Use <see cref="WaitForFirstInitializedAsync"/> before
+    /// metadata acquisition or ScriptHost startup so extension assemblies are available on disk.
     /// Use <see cref="GetReadyChannelsAsync"/> when an invocation-ready channel is required.
-    /// Matching worker IDs, credentials, gRPC endpoint URIs, and Runtime identity values share initialization.
+    /// Matching worker IDs, credentials, gRPC endpoint URIs, and Runtime identity values share the link handshake.
     /// Endpoints are compared using ordinal <see cref="Uri.AbsoluteUri"/> equality; Runtime identity fields use
     /// ordinal value equality. HTTP proxying is negotiated through worker capabilities.
     /// Different workers can link concurrently.
@@ -42,8 +45,8 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <param name="runtimeIdentity">Optional Runtime identity, included in exact retry matching.</param>
     /// <returns>
-    /// The initialized and registered channel, and whether this caller started the successful attempt.
-    /// Matching retries report an existing link, including retries that waited for initialization.
+    /// The handshake-complete, registered channel, and whether this caller started the successful attempt.
+    /// Matching retries report an existing link, including retries that waited for its handshake.
     /// </returns>
     /// <exception cref="WorkerLinkException">The runtime access key is invalid or the request conflicts with the registry's admission state.</exception>
     /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
@@ -89,7 +92,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// </summary>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="channel">The initialized channel when found.</param>
-    /// <returns><see langword="true"/> when the worker is linked; otherwise, <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> when the worker has completed initialization; otherwise, <see langword="false"/>.</returns>
     bool TryGetInitializedChannel(string workerId, out WorkerChannel channel);
 
     /// <summary>
@@ -141,9 +144,14 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     ValueTask<IReadOnlyList<WorkerChannel>> GetReadyChannelsAsync();
 
     /// <summary>
-    /// Waits without polling for the first initialized channel.
+    /// Waits without polling for a live channel whose handshake and extension-source preparation are complete.
     /// </summary>
-    /// <param name="cancellationToken">A token that cancels only this wait.</param>
-    /// <returns>An initialized channel.</returns>
+    /// <param name="cancellationToken">Cancels only this wait, not a linked worker's preparation.</param>
+    /// <returns>An initialized channel that can supply metadata for the selected extension source.</returns>
+    /// <remarks>
+    /// Advertised extension assemblies are received and extracted to disk before this wait completes. Workers without
+    /// payload support retain the existing extension-source behavior. This gate precedes ScriptHost construction
+    /// but does not mean extension startups have run or invocation listeners are ready. Link completion is independent.
+    /// </remarks>
     Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default);
 }

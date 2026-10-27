@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -45,6 +46,8 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private static readonly TimeSpan InitialIdleThreshold = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
+    private readonly ILogger _payloadLogger;
+    private readonly CancellationTokenSource _payloadShutdown = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly RuntimeWorkerCredentials _credentials;
     private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions;
@@ -52,6 +55,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private readonly ILogger _activityLogger;
     private IDisposable _ownedHttpProxyService;
     private Uri _httpEndpoint;
+    private ExtensionPayloadReceiver _extensionPayloadReceiver;
     private LifecycleState _lifecycleState;
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private long? _idleSince;
@@ -100,6 +104,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         _ownedHttpProxyService = httpProxyService as IDisposable;
         Completion = ownedChannel.Reader.Completion;
         _activityLogger = logger;
+        _payloadLogger = logger;
     }
 
     private enum LifecycleState
@@ -359,6 +364,8 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    internal string ExtensionPayloadCapability => GetCapabilityState(WorkerExtensionPayloadManager.CapabilityName);
+
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
     /// </summary>
@@ -444,6 +451,75 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    internal async Task ReceiveExtensionPayloadAsync(Stream destination, CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _payloadShutdown.Token);
+        ExtensionPayloadReceiver receiver = new(destination, operation.Token);
+        lock (_lifecycleLock)
+        {
+            ObjectDisposedException.ThrowIf(_lifecycleState is LifecycleState.Disposed, this);
+            if (_extensionPayloadReceiver is not null)
+            {
+                throw new InvalidOperationException("An extension payload is already being received from this worker.");
+            }
+
+            _extensionPayloadReceiver = receiver;
+        }
+
+        try
+        {
+            PayloadLog.TransferRequested(_payloadLogger, Id, receiver.RequestId);
+            await SendStreamingMessageAsync(new()
+            {
+                RequestId = receiver.RequestId,
+                GetExtensionPayloadRequest = new(),
+            });
+            Task completed = await Task.WhenAny(receiver.Completion, Completion).WaitAsync(operation.Token);
+            if (!ReferenceEquals(completed, receiver.Completion))
+            {
+                throw new IOException("The worker stream closed before its extension payload completed.");
+            }
+
+            await receiver.Completion;
+            PayloadLog.TransferReceived(_payloadLogger, Id, receiver.RequestId, receiver.ReceivedBytes);
+        }
+        finally
+        {
+            await operation.CancelAsync();
+            await receiver.StopAsync();
+            lock (_lifecycleLock)
+            {
+                if (ReferenceEquals(_extensionPayloadReceiver, receiver))
+                {
+                    _extensionPayloadReceiver = null;
+                }
+            }
+        }
+    }
+
+    protected override async ValueTask ProcessInboundMessageAsync(StreamingMessage message)
+    {
+        if (message.ContentCase is not StreamingMessage.ContentOneofCase.ExtensionPayloadResponse)
+        {
+            await base.ProcessInboundMessageAsync(message);
+            return;
+        }
+
+        ExtensionPayloadReceiver receiver;
+        lock (_lifecycleLock)
+        {
+            receiver = _extensionPayloadReceiver;
+        }
+
+        if (receiver is null || !string.Equals(message.RequestId, receiver.RequestId, StringComparison.Ordinal))
+        {
+            PayloadLog.LateResponse(_payloadLogger, Id);
+            return;
+        }
+
+        await receiver.ReceiveAsync(message.ExtensionPayloadResponse);
+    }
+
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
@@ -524,6 +600,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             _lifecycleState = LifecycleState.Disposed;
         }
 
+        Exception failure = null;
         if (disposing)
         {
             ObjectDisposedException exception = new(GetType().FullName);
@@ -531,16 +608,23 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             FailPendingMetadataRequest(exception);
             StopAcceptingInvocations();
             Shutdown(exception);
+            try
+            {
+                _payloadShutdown.Cancel();
+            }
+            catch (Exception cancellationException)
+            {
+                failure = cancellationException;
+            }
         }
 
-        Exception disposalException = null;
         try
         {
             base.Dispose(disposing);
         }
         catch (Exception exception)
         {
-            disposalException = exception;
+            failure = AggregateException.Combine(failure, exception);
         }
 
         try
@@ -552,12 +636,19 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
         catch (Exception exception)
         {
-            disposalException = disposalException is null ? exception : new AggregateException(disposalException, exception);
+            failure = AggregateException.Combine(failure, exception);
+        }
+        finally
+        {
+            if (disposing)
+            {
+                _payloadShutdown.Dispose();
+            }
         }
 
-        if (disposalException is not null)
+        if (failure is not null)
         {
-            ExceptionDispatchInfo.Capture(disposalException).Throw();
+            ExceptionDispatchInfo.Capture(failure).Throw();
         }
     }
 
@@ -680,5 +771,17 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
         [LoggerMessage(1003, LogLevel.Debug, "Worker {WorkerId} disconnected while handling WorkerTerminate.")]
         public static partial void WorkerTerminateConnectionClosed(ILogger logger, Exception exception, string workerId);
+    }
+
+    private static partial class PayloadLog
+    {
+        [LoggerMessage(1, LogLevel.Debug, "Ignoring an extension payload response without a matching active request for worker {WorkerId}.")]
+        public static partial void LateResponse(ILogger logger, string workerId);
+
+        [LoggerMessage(2, LogLevel.Information, "Requesting extension payload from worker {WorkerId}, request {RequestId}.")]
+        public static partial void TransferRequested(ILogger logger, string workerId, string requestId);
+
+        [LoggerMessage(3, LogLevel.Information, "Received complete extension payload from worker {WorkerId}, request {RequestId}, {SizeBytes} bytes.")]
+        public static partial void TransferReceived(ILogger logger, string workerId, string requestId, ulong sizeBytes);
     }
 }
