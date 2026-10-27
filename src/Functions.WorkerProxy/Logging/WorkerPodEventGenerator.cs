@@ -124,7 +124,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             TruncateUtf8(eventName, MaximumEventNameBytes),
             ProxySource,
             string.Empty,
-            TruncateUtf8(message, MaximumMessageBytes),
+            SanitizeAndTruncate(message, MaximumMessageBytes),
             timestamp,
             string.Empty,
             string.Empty);

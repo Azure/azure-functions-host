@@ -156,7 +156,7 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
             string message = $"{categoryName} [{eventIdentifier}] {formatter(state, exception)}";
             if (exception is not null)
             {
-                message = $"{message}{Environment.NewLine}{exception}";
+                message = $"{message} ExceptionType: {exception.GetType().FullName}";
             }
 
             eventGenerator.LogProxyEvent(logLevel, eventName, message);

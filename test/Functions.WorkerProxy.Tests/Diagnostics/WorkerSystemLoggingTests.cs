@@ -185,6 +185,35 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
+    public async Task FrameworkLogs_SanitizeMessagesAndExcludeRawExceptionDetails()
+    {
+        const string secret = "framework-secret-value";
+        const string email = "customer@contoso.com";
+        StringWriter output = new();
+        using WorkerPodEventGenerator eventGenerator = new(output, TimeProvider.System);
+        using WorkerSystemLoggerProvider provider = new(eventGenerator);
+        ILogger logger = provider.CreateLogger("Grpc.AspNetCore.Server.ServerCallHandler");
+        InvalidOperationException exception =
+            new($"AccountKey={secret}<end> exception for {email}");
+
+        logger.LogWarning(
+            new EventId(11, "GrpcWarning"),
+            exception,
+            "Framework request failed for {Email} with AccountKey={AccountKey}<end>.",
+            email,
+            secret);
+        await eventGenerator.CompleteAsync();
+
+        string formatted = output.ToString();
+        Assert.DoesNotContain(secret, formatted, StringComparison.Ordinal);
+        Assert.DoesNotContain(email, formatted, StringComparison.Ordinal);
+        Assert.Contains(Sanitizer.SecretReplacement, formatted, StringComparison.Ordinal);
+        Assert.Contains(Sanitizer.EmailReplacement, formatted, StringComparison.Ordinal);
+        Assert.Contains(typeof(InvalidOperationException).FullName!, formatted, StringComparison.Ordinal);
+        Assert.DoesNotContain(exception.Message, formatted, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Writer_FullQueue_DropsWithoutBlockingCaller()
     {
         BlockingTextWriter output = new();
