@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -35,6 +36,7 @@ public class AppServerHostStateClientTests
         Assert.Equal(HttpMethod.Put, _handler.Method);
         Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), _handler.RequestUri);
         Assert.Equal("application/json", _handler.ContentType);
+        Assert.Equal("runtime-container", _handler.ContainerName);
         Assert.Equal(expectedBody, _handler.Body);
     }
 
@@ -52,6 +54,7 @@ public class AppServerHostStateClientTests
 
         Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"linkedWorkerCount":2}""", firstBody);
         Assert.Equal(firstBody, _handler.Body);
+        Assert.Equal("runtime-container", _handler.ContainerName);
     }
 
     [Theory]
@@ -89,16 +92,31 @@ public class AppServerHostStateClientTests
     [Fact]
     public async Task PublishAsync_ReadsMeshInitUriReloadedAtSpecialization()
     {
-        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        }).Build();
         AppServerHostStateClient client = CreateClient(configuration);
         await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
         Uri? beforeSpecialization = _handler.RequestUri;
 
         configuration["MESH_INIT_URI"] = "http://appserver:7070";
+        configuration[EnvironmentSettingNames.ContainerName] = "specialized-runtime";
         await client.PublishAsync(new(CreatedTime, 0, 1, 1), CancellationToken.None);
 
         Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), beforeSpecialization);
         Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);
+        Assert.Equal("runtime-container", _handler.ContainerName);
+    }
+
+    [Fact]
+    public void Constructor_MissingContainerName_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => CreateClient(new ConfigurationBuilder().AddInMemoryCollection().Build()));
+
+        Assert.Contains(EnvironmentSettingNames.ContainerName, exception.Message);
+        Assert.Null(_handler.Method);
     }
 
     [Fact]
@@ -112,7 +130,11 @@ public class AppServerHostStateClientTests
     }
 
     private AppServerHostStateClient CreateClient(Dictionary<string, string?>? settings = null)
-        => CreateClient(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+    {
+        Dictionary<string, string?> configuredSettings = settings is null ? [] : new(settings);
+        configuredSettings.TryAdd(EnvironmentSettingNames.ContainerName, "runtime-container");
+        return CreateClient(new ConfigurationBuilder().AddInMemoryCollection(configuredSettings).Build());
+    }
 
     private AppServerHostStateClient CreateClient(IConfiguration configuration)
     {
@@ -133,6 +155,8 @@ public class AppServerHostStateClientTests
 
         public string? ContentType { get; private set; }
 
+        public string? ContainerName { get; private set; }
+
         public string? Body { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -140,6 +164,9 @@ public class AppServerHostStateClientTests
             Method = request.Method;
             RequestUri = request.RequestUri;
             ContentType = request.Content?.Headers.ContentType?.MediaType;
+            ContainerName = request.Headers.TryGetValues(ScriptConstants.ContainerInstanceHeader, out IEnumerable<string>? values)
+                ? Assert.Single(values)
+                : null;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
 
             return new HttpResponseMessage(StatusCode);

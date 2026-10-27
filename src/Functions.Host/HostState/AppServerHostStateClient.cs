@@ -18,7 +18,7 @@ namespace Azure.Functions.Host.HostState;
 /// Sends Host HTTP capacity and linked worker count snapshots to AppServer's <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
-/// Requests are not authenticated yet. Configuration is read per request because it is reloaded during specialization.
+/// The endpoint is read per request because it is reloaded during specialization. The platform container identity is captured at startup.
 /// </remarks>
 internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
 {
@@ -28,18 +28,36 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
 
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    private readonly string _containerName = GetContainerName(configuration ?? throw new ArgumentNullException(nameof(configuration)));
 
     public async Task<HttpStatusCode> PublishAsync(ComputeRuntimeState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        using HttpResponseMessage response = await _httpClientFactory.CreateClient(HttpClientName).PutAsJsonAsync(
-            GetHostStateUri(),
-            new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
-            AppServerJsonSerializerContext.Default.HostStateRequest,
+        using HttpRequestMessage request = new(HttpMethod.Put, GetHostStateUri())
+        {
+            Content = JsonContent.Create(
+                new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
+                AppServerJsonSerializerContext.Default.HostStateRequest),
+        };
+        request.Headers.Add(ScriptConstants.ContainerInstanceHeader, _containerName);
+
+        using HttpResponseMessage response = await _httpClientFactory.CreateClient(HttpClientName).SendAsync(
+            request,
             cancellationToken);
 
         return response.StatusCode;
+    }
+
+    private static string GetContainerName(IConfiguration configuration)
+    {
+        string? containerName = configuration[EnvironmentSettingNames.ContainerName];
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            throw new InvalidOperationException($"{EnvironmentSettingNames.ContainerName} must be configured before publishing Host state.");
+        }
+
+        return containerName;
     }
 
     private Uri GetHostStateUri()
