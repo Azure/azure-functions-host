@@ -28,11 +28,22 @@ POST {{platform}}/simulate/worker/worker-proxy-1/assign
 GET {{workerProxy}}/admin/worker/state
 
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
-### repeated. The Host finishes specializing only after step 3 links the worker.
+### repeated. Specialization applies configuration without waiting for the worker link.
 POST {{platform}}/simulate/host/assign
+
+### Optional: inspect the first published Host state before linking.
+### Expect capacity 0 and linkedWorkerCount 0 after specialization; 204 means no publication has arrived yet.
+GET {{platform}}/simulate/host/state
 
 ### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
 POST {{platform}}/simulate/worker/worker-proxy-1/link
+
+### Optional: inspect the latest published capacity.
+### Expect { "createdTime": "<UTC timestamp>", "httpCapacity": 16, "linkedWorkerCount": 1 } after the worker is ready.
+### This sample explicitly assigns maxHttpConcurrency:16; product capacity is the sum of ready HTTP workers' assigned limits.
+### Linked counts can arrive before readiness. Retry while capacity is 0.
+### Distinct snapshots can have equal or earlier timestamps. The fake records arrival order, not timestamp order.
+GET {{platform}}/simulate/host/state
 
 ### 4. A client invokes the function through Host -> WorkerProxy -> worker.
 GET {{host}}/api/hello
@@ -49,6 +60,17 @@ GET {{secondWorkerProxy}}/admin/worker/state
 ### 6. Link the second worker to the existing Host. Expect 201, or 200 for a matching retry.
 ### Do not send /simulate/host/assign again: the same Host and indexed functions are reused.
 POST {{platform}}/simulate/worker/worker-proxy-2/link
+
+### Optional: inspect the capacity contributed by both assigned workers.
+### Expect httpCapacity 32 and linkedWorkerCount 2 once both workers are ready.
+GET {{platform}}/simulate/host/state
+
+### Optional: duplicate the second link and inspect again.
+### Expect 200; the matching link does not add capacity or create a new snapshot.
+POST {{platform}}/simulate/worker/worker-proxy-2/link
+
+###
+GET {{platform}}/simulate/host/state
 
 ### 7. Repeat this request to route invocations across both worker/proxy pairs.
 ### Compare "Worker ID:" in the response body; each worker has an independently generated ID.
