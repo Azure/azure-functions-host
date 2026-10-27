@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _maxLinesPerWrite = bufferSize / SingleWriteBufferDenominator;
             _fullMode = fullMode;
             _droppedWriteSummaryFactory = droppedWriteSummaryFactory;
-            _exceptionhandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
+            _exceptionhandler = exceptionHandler;
 
             if (autoStart)
             {
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public TextWriter Writer { get; init; } = Console.Out;
+        public TextWriter Writer { get; set; } = Console.Out;
 
         internal long TotalDroppedWrites => Interlocked.Read(ref _totalDroppedWrites);
 

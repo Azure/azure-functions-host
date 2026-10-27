@@ -16,16 +16,11 @@ namespace Azure.Functions.WorkerProxy.Logging;
 internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eventGenerator) : ILoggerProvider
 {
     private const int DestinationResolutionFailedEventId = 0;
-    private const int DestinationReadyEventId = 1;
     private const int DestinationNotReadyEventId = 2;
     private const int RelaySessionFaultedEventId = 0;
-    private const int RelaySessionTerminatedEventId = 1;
     private const int FunctionGroupNotAdvertisedEventId = 3;
-    private const int RelayAttachmentAcceptedEventId = 4;
     private const int RelayAttachmentRejectedEventId = 5;
-    private const int WorkerStartStreamAcceptedEventId = 6;
     private const int WorkerStartStreamRejectedEventId = 7;
-    private const int WorkerInitializationCompletedEventId = 8;
     private const int RequestFinishedEventId = 2;
     internal const string AspNetCoreHostingCategory = "Microsoft.AspNetCore.Hosting.Diagnostics";
     internal const string AspNetCoreCategoryPrefix = "Microsoft.AspNetCore";
@@ -204,7 +199,6 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
             WorkerEndpointReadinessResult? result = eventId.Id switch
             {
                 DestinationResolutionFailedEventId => WorkerEndpointReadinessResult.NameResolutionFailed,
-                DestinationReadyEventId => WorkerEndpointReadinessResult.Ready,
                 DestinationNotReadyEventId => ClassifyReadinessFailure(exception),
                 _ => null
             };
@@ -214,10 +208,9 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
             }
 
             int attempts = GetAttempts(state);
-            bool isReady = readinessResult == WorkerEndpointReadinessResult.Ready;
             eventGenerator.LogProxyEvent(
-                isReady ? LogLevel.Information : LogLevel.Warning,
-                isReady ? "WorkerHttpReadinessCompleted" : "WorkerHttpReadinessFailed",
+                LogLevel.Warning,
+                "WorkerHttpReadinessFailed",
                 $"Worker HTTP readiness completed with {readinessResult} after {attempts} attempts.");
         }
 
@@ -237,86 +230,45 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
                 return;
             }
 
-            if (eventId.Id is RelayAttachmentAcceptedEventId or RelayAttachmentRejectedEventId)
+            if (eventId.Id == RelayAttachmentRejectedEventId)
             {
                 FunctionRpcRelaySide attachmentSide = GetStateValue(
                     state,
                     "Side",
                     FunctionRpcRelaySide.Worker);
-                if (eventId.Id == RelayAttachmentAcceptedEventId)
-                {
-                    eventGenerator.LogProxyEvent(
-                        LogLevel.Information,
-                        "RelayAttachmentAccepted",
-                        $"FunctionRpc session {sessionId} accepted the {attachmentSide} attachment.");
-                }
-                else
-                {
-                    FunctionRpcRelayAttachmentFailure attachmentReason = GetStateValue(
-                        state,
-                        "Reason",
-                        FunctionRpcRelayAttachmentFailure.Shutdown);
-                    eventGenerator.LogProxyEvent(
-                        LogLevel.Warning,
-                        "RelayAttachmentRejected",
-                        $"FunctionRpc session {sessionId} rejected the {attachmentSide} attachment because {attachmentReason}.");
-                }
+                FunctionRpcRelayAttachmentFailure attachmentReason = GetStateValue(
+                    state,
+                    "Reason",
+                    FunctionRpcRelayAttachmentFailure.Shutdown);
+                eventGenerator.LogProxyEvent(
+                    LogLevel.Warning,
+                    "RelayAttachmentRejected",
+                    $"FunctionRpc session {sessionId} rejected the {attachmentSide} attachment because {attachmentReason}.");
 
                 return;
             }
 
-            if (eventId.Id is WorkerStartStreamAcceptedEventId or WorkerStartStreamRejectedEventId)
-            {
-                if (eventId.Id == WorkerStartStreamAcceptedEventId)
-                {
-                    eventGenerator.LogProxyEvent(
-                        LogLevel.Information,
-                        "WorkerStartStreamAccepted",
-                        $"FunctionRpc session {sessionId} accepted worker StartStream.");
-                }
-                else
-                {
-                    WorkerStartStreamFailure startStreamReason = GetStateValue(
-                        state,
-                        "Reason",
-                        WorkerStartStreamFailure.InvalidMessage);
-                    eventGenerator.LogProxyEvent(
-                        LogLevel.Warning,
-                        "WorkerStartStreamRejected",
-                        $"FunctionRpc session {sessionId} rejected worker StartStream because {startStreamReason}.");
-                }
-
-                return;
-            }
-
-            if (eventId.Id == WorkerInitializationCompletedEventId)
+            if (eventId.Id == WorkerStartStreamRejectedEventId)
             {
                 eventGenerator.LogProxyEvent(
-                    LogLevel.Information,
-                    "WorkerInitializationCompleted",
-                    $"FunctionRpc session {sessionId} completed worker initialization.");
+                    LogLevel.Warning,
+                    "WorkerStartStreamRejected",
+                    $"FunctionRpc session {sessionId} rejected worker StartStream because InvalidMessage.");
                 return;
             }
 
-            if (eventId.Id is not (RelaySessionFaultedEventId or RelaySessionTerminatedEventId))
+            if (eventId.Id != RelaySessionFaultedEventId)
             {
                 return;
             }
 
             FunctionRpcRelaySide? side =
                 GetNullableStateValue<TState, FunctionRpcRelaySide>(state, "Side");
-            FunctionRpcRelayTerminationReason reason = eventId.Id == RelaySessionFaultedEventId
-                ? FunctionRpcRelayTerminationReason.Faulted
-                : GetStateValue(
-                    state,
-                    "Reason",
-                    FunctionRpcRelayTerminationReason.PeerClosed);
             string terminatingSide = side?.ToString() ?? "Proxy";
-            bool failed = reason == FunctionRpcRelayTerminationReason.Faulted;
             eventGenerator.LogProxyEvent(
-                failed ? LogLevel.Warning : LogLevel.Information,
-                failed ? "RelaySessionFailed" : "RelaySessionTerminated",
-                $"FunctionRpc session {sessionId} was terminated by {terminatingSide} because {reason}.");
+                LogLevel.Warning,
+                "RelaySessionFailed",
+                $"FunctionRpc session {sessionId} was terminated by {terminatingSide} because Faulted.");
         }
 
         private static int GetAttempts<TState>(TState state)

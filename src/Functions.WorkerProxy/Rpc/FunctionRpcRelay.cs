@@ -35,7 +35,7 @@ internal sealed partial class FunctionRpcRelay(
     private readonly IWorkerSystemEventGenerator? _systemEventGenerator = systemEventGenerator;
 
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
-    private readonly TaskCompletionSource _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
     private FunctionRpcRelayTerminalState? _lastTerminalState;
     private long _nextSessionId;
@@ -211,7 +211,6 @@ internal sealed partial class FunctionRpcRelay(
     {
         try
         {
-            Log.AttachmentAccepted(logger, session.Id, side);
             return await session.RunAsync(side, requestStream, responseStream, cancellationToken);
         }
         finally
@@ -232,7 +231,7 @@ internal sealed partial class FunctionRpcRelay(
                 TryClearReleasedSession(session);
             }
 
-            _stopCompletionSource.TrySetResult();
+            _stopCompletionSource.TrySetResult(true);
         }
         catch (Exception exception)
         {
@@ -260,13 +259,6 @@ internal sealed partial class FunctionRpcRelay(
 
     private static partial class Log
     {
-        [LoggerMessage(4, LogLevel.Information,
-            "FunctionRpc relay session {SessionId} accepted the {Side} attachment.")]
-        public static partial void AttachmentAccepted(
-            ILogger logger,
-            long sessionId,
-            FunctionRpcRelaySide side);
-
         [LoggerMessage(5, LogLevel.Warning,
             "FunctionRpc relay session {SessionId} rejected the {Side} attachment because {Reason}.")]
         public static partial void AttachmentRejected(

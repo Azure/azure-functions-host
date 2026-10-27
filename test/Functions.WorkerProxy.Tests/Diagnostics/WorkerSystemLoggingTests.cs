@@ -292,27 +292,6 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void LoggerProvider_ConsumesRelayAttachmentLog()
-    {
-        CapturingEventGenerator eventGenerator = new();
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
-        ILogger logger = provider.CreateLogger(typeof(FunctionRpcRelay).FullName!);
-
-        logger.LogInformation(
-            new EventId(4, "AttachmentAccepted"),
-            "FunctionRpc relay session {SessionId} accepted the {Side} attachment.",
-            42L,
-            FunctionRpcRelaySide.Worker);
-
-        CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords);
-        Assert.Equal(LogLevel.Information, record.Level);
-        Assert.Equal("RelayAttachmentAccepted", record.EventName);
-        Assert.Equal(
-            "FunctionRpc session 42 accepted the Worker attachment.",
-            record.Message);
-    }
-
-    [Fact]
     public void LoggerProvider_ConsumesReadinessLogWithoutDestinationOrExceptionDetails()
     {
         const string sentinel = "customer-secret-sentinel";
@@ -341,27 +320,6 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void LoggerProvider_ConsumesExistingRelayLogs()
-    {
-        CapturingEventGenerator eventGenerator = new();
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
-        ILogger relayLogger = provider.CreateLogger(typeof(FunctionRpcRelay).FullName!);
-
-        relayLogger.LogDebug(
-            new EventId(1, "SessionTerminated"),
-            "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.",
-            42L,
-            FunctionRpcRelayTerminationReason.PeerClosed,
-            FunctionRpcRelaySide.Worker);
-
-        CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords);
-        Assert.Equal("RelaySessionTerminated", record.EventName);
-        Assert.Equal(
-            "FunctionRpc session 42 was terminated by Worker because PeerClosed.",
-            record.Message);
-    }
-
-    [Fact]
     public void LoggerProvider_ConsumesMissingFunctionGroupWarning()
     {
         CapturingEventGenerator eventGenerator = new();
@@ -382,7 +340,7 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void LoggerProvider_ConsumesAspNetCoreAssignmentAndRelayLogs()
+    public void LoggerProvider_ConsumesAssignmentAndStartStreamRejectionLogs()
     {
         CapturingEventGenerator eventGenerator = new();
         using WorkerSystemLoggerProvider provider = new(eventGenerator);
@@ -410,12 +368,7 @@ public class WorkerSystemLoggingTests
             StatusCodes.Status404NotFound);
         relayLogger.LogWarning(
             new EventId(7, "WorkerStartStreamRejected"),
-            "FunctionRpc relay session {SessionId} rejected worker StartStream because {Reason}.",
-            42L,
-            WorkerStartStreamFailure.StaleOrRepeated);
-        relayLogger.LogInformation(
-            new EventId(8, "WorkerInitializationCompleted"),
-            "FunctionRpc relay session {SessionId} completed worker initialization.",
+            "FunctionRpc relay session {SessionId} rejected worker StartStream because InvalidMessage.",
             42L);
 
         CapturedProxyLog[] records = eventGenerator.ProxyRecords.ToArray();
@@ -432,14 +385,7 @@ public class WorkerSystemLoggingTests
             {
                 Assert.Equal("WorkerStartStreamRejected", record.EventName);
                 Assert.Equal(
-                    "FunctionRpc session 42 rejected worker StartStream because StaleOrRepeated.",
-                    record.Message);
-            },
-            record =>
-            {
-                Assert.Equal("WorkerInitializationCompleted", record.EventName);
-                Assert.Equal(
-                    "FunctionRpc session 42 completed worker initialization.",
+                    "FunctionRpc session 42 rejected worker StartStream because InvalidMessage.",
                     record.Message);
             });
     }
@@ -516,8 +462,7 @@ public class WorkerSystemLoggingTests
 
         Assert.DoesNotContain(
             eventGenerator.ProxyRecords,
-            record => record.EventName is "WorkerHttpReadinessCompleted" or "RelayAttachmentAccepted"
-                || record.Message.Contains("Ignored", StringComparison.Ordinal));
+            record => record.Message.Contains("Ignored", StringComparison.Ordinal));
         Assert.Contains(
             eventGenerator.ProxyRecords,
             record => record.EventName == "WorkerHttpReadinessFailed");

@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=", "/code=", "key=" };
 
         // Pattern of format : "<protocol>://<username>:<password>@<address>:<port>"
-        private const string Pattern = @"
+        private static readonly string Pattern = @"
                                                 \b([a-zA-Z]+)            # Capture protocol
                                                 :\/\/                    # '://'
                                                 ([^:/\s]+)               # Capture username
@@ -48,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.Logging
         private static readonly Func<string, string, string> DefaultEmailReplacer =
             static (input, replacement) => EmailRegex().Replace(input, replacement);
 
-        [GeneratedRegex(Pattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace)]
-        private static partial Regex CredentialRegex();
+        private static readonly Regex CredentialRegex =
+            new(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
         [GeneratedRegex(EmailPattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace, EmailRegexTimeoutMilliseconds)]
         internal static partial Regex EmailRegex();
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             // This check avoids unnecessary regex evaluation if the input does not contain any url
             if (input.Contains(':', StringComparison.Ordinal))
             {
-                t = CredentialRegex().Replace(t, SecretReplacement);
+                t = CredentialRegex.Replace(t, SecretReplacement);
             }
 
             // Credentials are redacted above, so "<protocol>://<user>:<password>@<host>:<port>" is already gone.

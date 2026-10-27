@@ -36,7 +36,7 @@ internal sealed partial class FunctionRpcRelay
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
@@ -242,7 +242,7 @@ internal sealed partial class FunctionRpcRelay
 
             if (isFirstMessage)
             {
-                WorkerStartStreamFailure? failure = null;
+                bool invalidMessage;
                 lock (_stateLock)
                 {
                     // A delayed read from a terminated session must not restore readiness.
@@ -251,27 +251,22 @@ internal sealed partial class FunctionRpcRelay
                         return null;
                     }
 
-                    if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
+                    if (message.StartStream is not { } startStream
+                        || string.IsNullOrWhiteSpace(startStream.WorkerId))
                     {
-                        failure = WorkerStartStreamFailure.InvalidMessage;
+                        invalidMessage = true;
                     }
-                    else if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId))
+                    else
                     {
-                        failure = WorkerStartStreamFailure.StaleOrRepeated;
+                        invalidMessage = false;
+                        stateManager.OnWorkerStartStream(id, startStream.WorkerId);
                     }
                 }
 
-                if (failure is { } startStreamFailure)
+                if (invalidMessage)
                 {
-                    Log.WorkerStartStreamRejected(logger, id, startStreamFailure);
-                    if (startStreamFailure == WorkerStartStreamFailure.InvalidMessage)
-                    {
-                        throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
-                    }
-                }
-                else
-                {
-                    Log.WorkerStartStreamAccepted(logger, id);
+                    Log.WorkerStartStreamRejected(logger, id);
+                    throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                 }
             }
 
@@ -316,8 +311,6 @@ internal sealed partial class FunctionRpcRelay
                     _capabilities = capabilities;
                     _workerHttpDestination = destination;
                 }
-
-                Log.WorkerInitializationCompleted(logger, id);
             }
             else
             {
@@ -496,7 +489,7 @@ internal sealed partial class FunctionRpcRelay
         {
             if (_terminalState is not null && !HasAttachmentsLocked())
             {
-                _released.TrySetResult();
+                _released.TrySetResult(true);
             }
         }
     }
@@ -521,19 +514,8 @@ internal sealed partial class FunctionRpcRelay
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
 
-        [LoggerMessage(6, LogLevel.Information,
-            "FunctionRpc relay session {SessionId} accepted worker StartStream.")]
-        public static partial void WorkerStartStreamAccepted(ILogger logger, long sessionId);
-
         [LoggerMessage(7, LogLevel.Warning,
-            "FunctionRpc relay session {SessionId} rejected worker StartStream because {Reason}.")]
-        public static partial void WorkerStartStreamRejected(
-            ILogger logger,
-            long sessionId,
-            WorkerStartStreamFailure reason);
-
-        [LoggerMessage(8, LogLevel.Information,
-            "FunctionRpc relay session {SessionId} completed worker initialization.")]
-        public static partial void WorkerInitializationCompleted(ILogger logger, long sessionId);
+            "FunctionRpc relay session {SessionId} rejected worker StartStream because InvalidMessage.")]
+        public static partial void WorkerStartStreamRejected(ILogger logger, long sessionId);
     }
 }
