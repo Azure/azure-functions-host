@@ -154,33 +154,9 @@ This tool uses local-development transport and authentication settings. Do not e
 
 The Host and WorkerProxy can forward managed-identity HTTP requests over the existing Host-initiated FunctionRpc stream. The Token Service stays in the Host environment; no Token Service sidecar or new cross-pod identity port is needed.
 
-The bridge is disabled by default. Set these protected values before starting the processes:
+See [Token Service proxy configuration](../../src/Functions.WorkerProxy/README.md) for the required Host, WorkerProxy, and customer environment variables, configuration examples, limits, and failure behavior. The bridge is disabled by default; the `project-identity` profile below supplies its development-only settings automatically.
 
-| Process | Setting | Value |
-| --- | --- | --- |
-| Host | `Functions__IdentityProxy__Enabled` | `true` |
-| Host | `MSI_ENDPOINT` | The existing application-scoped Token Service URL, including its independently configured token path and optional fixed query; no fragment or embedded credentials |
-| Host | `MSI_SECRET` | The Host-only Token Service credential |
-| WorkerProxy | `WorkerProxy__IdentityProxy__Enabled` | `true` |
-| WorkerProxy | `WorkerProxy__IdentityProxy__Port` | A distinct loopback HTTP port, default `8081`; do not publish it outside the worker pod |
-| WorkerProxy | `WorkerProxy__IdentityProxy__TokenPath` | The customer-facing token path, default `/msi/token`, matched case-insensitively; it need not match the upstream path |
-| WorkerProxy | `IDENTITY_HEADER` | The random per-pod secret injected by the platform, identical to the customer's local secret; not the Host's `MSI_SECRET` |
-| Customer container | `IDENTITY_ENDPOINT` | `http://127.0.0.1:<identity-port><token-path>` in the shared pod network |
-| Customer container | `IDENTITY_HEADER` | The same random per-pod secret supplied to WorkerProxy |
-
-The platform sets `IDENTITY_ENDPOINT` only in the customer container. WorkerProxy does not require or consume it: the listener always binds to loopback and uses its configured port and token path. The per-pod secret is available in both containers before customer startup, so secret delivery does not depend on an assignment request. Host linking can proceed independently of WorkerProxy assignment; the existing manual harness's assign-before-link sequence is not a platform requirement. Customer-container restarts do not imply a new per-pod secret or a WorkerProxy restart.
-
-WorkerProxy validates and removes the local header. The Host adds its own `MSI_SECRET` as `X-IDENTITY-HEADER`, preserves the resource/identity query and opaque HTTP response, and never delivers the upstream credential to the worker. The upstream is already scoped to the function app; this does not authorize a worker-selected destination or Token Service management path. Routine credential rotation affects newly sent requests, not requests already in flight.
-
-The local and upstream routes are independent. Host always uses its configured `MSI_ENDPOINT` authority and path; a customer path or Host header cannot change that destination. The Host retains any configured upstream query and appends the incoming raw query without decoding, rebuilding, or interpreting parameters. Both order and escaping are preserved, including duplicate keys across the two query strings; Token Service decides their meaning. WorkerProxy accepts case variants of its configured local token route but rejects other routes and additional path segments. Upstream path and query casing are not changed.
-
-An authenticated request may arrive before either language-worker initialization or the Host stream. It waits within a single 30-second request deadline, including buffering and forwarding. Host preparation is awaited within that same budget. Once preparation finishes, invalid upstream configuration returns `503` immediately without terminating the Host or its stream. The opt-in registry-owned early-link attempt lasts at most two minutes; canceling an HTTP link caller ends only its wait. A successful link response still requires the real worker initialization handshake.
-
-Request/response bodies have configurable **provisional** 1 MiB limits. Both products accept the shared options under their respective `IdentityProxy` sections: `MaxRequestBodyBytes`, `MaxResponseBodyBytes`, `MaxHeaderBytes` (32768), `MaxHeaderCount` (100), `MaxTargetBytes` (8192), `MaxPendingRequests` (32), `MaxBufferedBytes` (67108864), and `RequestTimeout` (`00:00:30`). Host-global `MaxHostRequests` (256) and `MaxHostBufferedBytes` (268435456) also bound admission. Reservations include anticipated buffering/serialization copies, so byte limits can reduce concurrency below the request-count limit. These numbers are engineering defaults, not SDK or Token Service maxima; production qualification must establish suitable values.
-
-Over-capacity requests return `429` with `Retry-After`, without another wait queue. Oversized local bodies/headers return `413`/`431`; oversized upstream responses or upstream transport failures return `502`; request deadline expiry returns `504`. Upstream HTTP errors and retry headers are preserved. Cancellation receives a terminal RPC outcome so repeated canceled requests reclaim capacity without restarting the transport. Credentials, token bodies, and customer queries are not logged.
-
-The upstream client disables automatic HTTP-client logging. When the identity proxy is enabled, WorkerProxy also raises `Microsoft.AspNetCore.Hosting.Diagnostics` to Warning for all its listeners, because that category's request-start/finish messages include raw queries. The proxy's own sanitized failure diagnostics remain available; feature-off logging is unchanged.
+Host linking can proceed independently of WorkerProxy assignment; the manual harness's assign-before-link sequence is not a platform requirement. Customer-only restarts do not imply a new per-pod credential or a WorkerProxy restart.
 
 ### Debug the complete first-start flow
 

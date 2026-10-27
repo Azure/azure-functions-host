@@ -19,12 +19,18 @@ using Microsoft.Extensions.Primitives;
 
 namespace Azure.Functions.WorkerProxy.Identity;
 
+/// <summary>
+/// Authenticates the pod-local identity endpoint and bridges bounded HTTP data without interpreting token requests.
+/// </summary>
 internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> options, IdentityProxyService proxy,
     TimeProvider timeProvider, ILogger<IdentityProxyMiddleware> logger, IConfiguration configuration)
 {
     private readonly IdentityProxyOptions _options = options.Value;
     private readonly byte[] _secretHash = HashInjectedSecret(configuration);
 
+    /// <summary>
+    /// Checks the local credential before buffering and applies one deadline across preparation, forwarding, and delivery.
+    /// </summary>
     internal async Task InvokeAsync(HttpContext context)
     {
         long started = timeProvider.GetTimestamp();
@@ -137,6 +143,9 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
         return SHA256.HashData(Encoding.UTF8.GetBytes(secret));
     }
 
+    /// <summary>
+    /// Emits a sanitized, non-cacheable local failure without disclosing credentials, token data, or request queries.
+    /// </summary>
     private async Task ErrorAsync(HttpContext context, int status, string code)
     {
         logger.LogWarning("Identity proxy request failed: {Reason}.", code);

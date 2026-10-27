@@ -13,7 +13,10 @@ using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Identity;
 
-// Waiters can precede both RPC peers. Sent requests belong only to their actual runtime transport.
+/// <summary>
+/// Lets pod-local HTTP requests wait for the existing Host transport, independently of customer worker initialization.
+/// </summary>
+/// <remarks>Unsent waiters are pod-owned; forwarded requests belong only to the transport session that received them.</remarks>
 internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> options, TimeProvider timeProvider,
     ILogger<IdentityProxyService> logger)
 {
@@ -29,6 +32,9 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
 
     internal bool Enabled => _options.Enabled;
 
+    /// <summary>
+    /// Attaches one Host transport whose send callback completes only after a physical write or discard.
+    /// </summary>
     internal Connection Attach(Func<StreamingMessage, CancellationToken, Func<bool>?, Task<bool>> send, CancellationToken cancellationToken)
     {
         lock (_lock)
@@ -46,6 +52,9 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
         }
     }
 
+    /// <summary>
+    /// Waits for proxy negotiation within the caller's budget, then retains admission for transport-owned cleanup.
+    /// </summary>
     internal async Task<HttpProxyMessage> SendAsync(HttpProxyRequest request, HttpProxyAdmission.Lease ownership,
         long started, CancellationToken cancellationToken)
     {
@@ -76,6 +85,9 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
         return await forwarded.WaitAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Correlates requests and terminal outcomes for one transport; requests are never replayed onto another session.
+    /// </summary>
     internal sealed class Connection : IDisposable
     {
         private readonly IdentityProxyService _owner;
@@ -96,8 +108,14 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
             _transport = transport;
         }
 
+        /// <summary>
+        /// Gets proxy-protocol readiness, not customer WorkerInit completion or upstream service health.
+        /// </summary>
         internal Task<HttpProxyLimits> Ready => _ready.Task;
 
+        /// <summary>
+        /// Negotiates the Host's Hello or delivers a bounded terminal outcome to its original request.
+        /// </summary>
         internal async Task ReceiveAsync(HttpProxyMessage message)
         {
             lock (_lock)
@@ -164,6 +182,10 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
             completion.TrySetResult(message);
         }
 
+        /// <summary>
+        /// Recomputes the remaining deadline at send time and owns admission through terminal acknowledgment or teardown.
+        /// </summary>
+        /// <remarks>Caller cancellation sends a Cancel control; it does not immediately release transport-owned buffers.</remarks>
         internal async Task<HttpProxyMessage> SendAsync(HttpProxyRequest request, IDisposable ownership, long started,
             CancellationToken cancellationToken)
         {
@@ -239,6 +261,9 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
             }
         }
 
+        /// <summary>
+        /// Ends this session and releases waiters without allowing their requests to migrate to a later attachment.
+        /// </summary>
         public void Dispose()
         {
             lock (_lock)

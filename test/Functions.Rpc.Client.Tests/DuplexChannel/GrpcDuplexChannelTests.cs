@@ -57,6 +57,41 @@ public partial class GrpcDuplexChannelTests
         Assert.Equal(1, streams.DisposeCount);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PumpTermination_DiscardsQueuedPayloadsBeforeCompletingTrackedWrites(bool failWrite)
+    {
+        MockDuplexStream<byte[]> streams = new(blockWrites: true);
+        await using GrpcDuplexChannel<byte[]> channel = streams.Call.AsChannel();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await channel.Writer.WriteAsync(new byte[128], timeout.Token);
+        await streams.WriteAttempts.ReadAsync(timeout.Token);
+        Task<bool> queued = channel.WriteTrackedAsync(new byte[256], timeout.Token);
+        Assert.True(channel.HasQueuedWrites);
+
+        Task<bool> remainingAtCompletion = queued.ContinueWith(completed =>
+        {
+            _ = completed.Exception;
+            return channel.HasQueuedWrites;
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
+        if (failWrite)
+        {
+            streams.FailWrites(new InvalidOperationException("write failed"));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => queued.WaitAsync(timeout.Token));
+        }
+        else
+        {
+            await channel.DisposeAsync();
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => queued.WaitAsync(timeout.Token));
+        }
+
+        Assert.False(await remainingAtCompletion.WaitAsync(timeout.Token));
+        Assert.False(channel.HasQueuedWrites);
+        Assert.False(channel.Writer.TryWrite(new byte[1]));
+    }
+
     [Fact]
     public async Task DisposeReportsCleanupFailure()
     {

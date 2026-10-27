@@ -11,13 +11,20 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 
-// Ownership ends at the physical write/discard, not when a message is queued or its HTTP caller leaves.
+/// <summary>
+/// Tracks queued messages until physical write/discard, rather than queue admission or HTTP caller departure.
+/// </summary>
+/// <remarks>The queue owner must serialize writes and discard abandoned payloads before completing this tracker.</remarks>
 internal sealed class TrackedMessageWriter<T> where T : class
 {
     private readonly Lock _lock = new();
     private readonly Dictionary<T, PendingWrite> _pending = new(ReferenceEqualityComparer.Instance);
     private Exception? _terminalError;
 
+    /// <summary>
+    /// Enqueues a message and waits for the writer's outcome; cancellation can discard only a not-yet-started write.
+    /// </summary>
+    /// <returns>True after local write completion, or false if the message is discarded before writing.</returns>
     internal async Task<bool> WriteAsync(ChannelWriter<T> writer, T message, CancellationToken cancellationToken,
         Func<bool>? prepare = null)
     {
@@ -46,6 +53,9 @@ internal sealed class TrackedMessageWriter<T> where T : class
         }
     }
 
+    /// <summary>
+    /// Lets the sole queue reader discard expired messages or update send-time state before starting a physical write.
+    /// </summary>
     internal bool Prepare(T message)
     {
         PendingWrite? pending;
@@ -74,6 +84,9 @@ internal sealed class TrackedMessageWriter<T> where T : class
         return true;
     }
 
+    /// <summary>
+    /// Signals successful local write completion, not peer processing or an HTTP terminal acknowledgment.
+    /// </summary>
     internal void Written(T message)
     {
         lock (_lock)
@@ -85,6 +98,9 @@ internal sealed class TrackedMessageWriter<T> where T : class
         }
     }
 
+    /// <summary>
+    /// Faults outstanding sends after the queue owner stops admission and discards all abandoned queued payloads.
+    /// </summary>
     internal void Complete(Exception error)
     {
         lock (_lock)
