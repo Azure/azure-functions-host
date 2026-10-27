@@ -11,7 +11,8 @@ namespace Azure.Functions.Rpc.Client;
 internal interface IRuntimeDrainWorkerManager
 {
     /// <summary>
-    /// Permanently closes new-link admission and snapshots initialized, non-terminal workers.
+    /// Permanently closes new-link admission and snapshots registered, non-terminal workers, including those still
+    /// preparing their extension payload.
     /// </summary>
     /// <returns>The original frozen snapshot, including on subsequent calls after workers unlink.</returns>
     RuntimeDrainStart CloseAdmission();

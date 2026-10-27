@@ -6,14 +6,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
-    internal sealed class MissingAzureFunctionsFolderValidator : IFunctionAppValidator
+    internal sealed class MissingAzureFunctionsFolderValidator(IExtensionPathProvider extensionPathProvider = null) : IFunctionAppValidator
     {
+        private readonly IExtensionPathProvider _extensionPathProvider = extensionPathProvider ?? new DefaultExtensionPathProvider();
+
         public void Validate(ScriptJobHostOptions options, IEnvironment environment, ILogger logger)
         {
+            if (_extensionPathProvider.TryResolveExtensionsMetadataPath(options.RootScriptPath, out _, out string probingPath)
+                && probingPath is not null && Directory.Exists(probingPath))
+            {
+                return;
+            }
+
             string azureFunctionsDirPath = Path.Combine(options.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
 
             if (options.RootScriptPath is not null &&

@@ -30,7 +30,7 @@ If worker selection or phased scheduling fails unexpectedly, the operation retai
 
 ## Process-local behavior
 
-The first accepted request permanently closes Worker-Link admission for the current Host process. Links already initialized at that point form the frozen Runtime drain set. Repeated admission-close calls return the same read-only snapshot, even after Workers unlink; a disposed registry still rejects the call. A link that is still initializing must recheck the admission fence and fail instead of joining after the snapshot.
+The first accepted request permanently closes Worker-Link admission for the current Host process. Registered links form the frozen Runtime drain set, including links still preparing an extension payload. These pending links remain in the snapshot for drain but cannot become available after admission closes. Repeated admission-close calls return the same read-only snapshot, even after Workers unlink; a disposed registry still rejects the call. A link still completing its handshake must recheck the admission fence and fail instead of joining after the snapshot.
 
 Immediate drain selects every Worker in the frozen set at once.
 

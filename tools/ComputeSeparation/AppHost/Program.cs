@@ -32,6 +32,17 @@ if (tokenServiceProxyScenario && useContainers)
     throw new InvalidOperationException("The identity debugging scenario currently requires project mode.");
 }
 
+bool verifyQueue = builder.Configuration.GetValue("ComputeSeparation:VerifyQueueTrigger", false);
+if (verifyQueue && (!useContainers || !autoLink))
+{
+    throw new InvalidOperationException("QueueTrigger acceptance requires container mode with automatic linking.");
+}
+
+var storage = builder.AddAzureStorage("queue-storage").RunAsEmulator();
+var queues = storage.AddQueues("queues");
+var blobs = storage.AddBlobs("blobs");
+string inputQueue = verifyQueue ? $"payload-input-{Guid.NewGuid():N}" : "sample-input";
+string outputQueue = verifyQueue ? $"payload-output-{Guid.NewGuid():N}" : "sample-output";
 if (multipleWorkers && (useContainers || autoLink))
 {
     throw new InvalidOperationException("Multiple workers require project mode with ComputeSeparation:AutoLink=false.");
@@ -99,6 +110,23 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
+    foreach (IResourceBuilder<ExecutableResource> resource in new[] { runtime, workerPod })
+    {
+        resource.WaitFor(queues);
+        resource.WaitFor(blobs);
+        resource.WithEnvironment(async context =>
+        {
+            string connection = await QueueTriggerVerificationService.GetStorageConnectionAsync(
+                queues.Resource, blobs.Resource, context.CancellationToken);
+            // Compose resources run in containers although Aspire starts Compose as a host executable.
+            context.EnvironmentVariables["QUEUE_STORAGE_CONNECTION"] = connection
+                .Replace("127.0.0.1", "host.docker.internal", StringComparison.Ordinal)
+                .Replace("localhost", "host.docker.internal", StringComparison.Ordinal);
+            context.EnvironmentVariables["EXTENSION_INPUT_QUEUE"] = inputQueue;
+            context.EnvironmentVariables["EXTENSION_OUTPUT_QUEUE"] = outputQueue;
+        });
+    }
+
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"https://{topology.ProxyAlias}:50053");
     workerManagementEndpoint = ReferenceExpression.Create($"{workerPod.GetEndpoint(ManagementEndpointName)}");
@@ -124,6 +152,12 @@ else
         .WithEnvironment("AzureFunctionsWebHost__IsFileSystemReadOnly", "true")
         .WithEnvironment("AzureFunctionsJobHost__logging__logLevel__default", "Information")
         .WithEnvironment("AzureFunctionsJobHost__logging__console__isEnabled", "true")
+        .WithEnvironment("ExtensionPayloadInputQueue", inputQueue)
+        .WithEnvironment("ExtensionPayloadOutputQueue", outputQueue)
+        .WithEnvironment(async context => context.EnvironmentVariables["AzureWebJobsStorage"] =
+            await QueueTriggerVerificationService.GetStorageConnectionAsync(queues.Resource, blobs.Resource, context.CancellationToken))
+        .WaitFor(queues)
+        .WaitFor(blobs)
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName);
 
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
@@ -224,12 +258,18 @@ else
         });
 
         IResourceBuilder<ProjectResource> worker = builder.AddProject<Projects.SampleIsolatedApp>($"isolated-worker{suffix}", launchProfileName: null)
+            .WithEnvironment("ExtensionPayloadInputQueue", inputQueue)
+            .WithEnvironment("ExtensionPayloadOutputQueue", outputQueue)
+            .WithEnvironment(async context => context.EnvironmentVariables["AzureWebJobsStorage"] =
+                await QueueTriggerVerificationService.GetStorageConnectionAsync(queues.Resource, blobs.Resource, context.CancellationToken))
             .WithArgs(
                 "--functions-uri", proxy.GetEndpoint(WorkerGrpcEndpointName),
                 "--functions-worker-id", linkedWorkerId,
                 "--functions-request-id", Guid.NewGuid().ToString(),
                 "--functions-grpc-max-message-length", "134217728")
-            .WaitFor(proxy);
+            .WaitFor(proxy)
+            .WaitFor(queues)
+            .WaitFor(blobs);
 
         if (tokenServiceProxyScenario)
         {
@@ -263,7 +303,7 @@ else
 
 if (autoLink)
 {
-    builder.Services.AddHostedService(services => new HostLinkService(
+    builder.Services.AddSingleton(services => new HostLinkService(
         hostEndpoint,
         workerGrpcEndpoint,
         workerManagementEndpoint,
@@ -276,6 +316,16 @@ if (autoLink)
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
         services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>()));
+    builder.Services.AddHostedService(services => services.GetRequiredService<HostLinkService>());
+    if (verifyQueue)
+    {
+        builder.Services.AddHostedService(services => new QueueTriggerVerificationService(
+            queues.Resource, blobs.Resource, inputQueue, outputQueue, topology!, hostEndpoint,
+            Path.Combine(repositoryRoot, "out", "extension-payload", "evidence", inputQueue),
+            services.GetRequiredService<HostLinkService>(),
+            services.GetRequiredService<IHostApplicationLifetime>(),
+            services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<QueueTriggerVerificationService>>()));
+    }
 }
 
 await builder.Build().RunAsync();
