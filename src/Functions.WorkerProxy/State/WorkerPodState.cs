@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Azure.Functions.WorkerProxy.State;
 
 /// <summary>
@@ -17,6 +19,7 @@ internal sealed record WorkerPodState(
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
+    DateTimeOffset StartupTime,
     int? MaxHttpConcurrency = null)
 {
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
@@ -30,7 +33,7 @@ internal sealed record WorkerPodState(
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.
     /// </summary>
-    public static WorkerPodState CreateUnassigned(string podName) =>
+    public static WorkerPodState CreateUnassigned(string podName, DateTimeOffset startupTime) =>
         new(
             PodName: podName,
             Revision: 0,
@@ -41,5 +44,6 @@ internal sealed record WorkerPodState(
             StartupMode: null,
             FunctionAppName: null,
             FunctionGroupName: null,
-            IsAlwaysReady: null);
+            IsAlwaysReady: null,
+            StartupTime: startupTime);
 }

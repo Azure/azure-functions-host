@@ -25,6 +25,7 @@ namespace Azure.Functions.WorkerProxy.Tests.Management;
 public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
+    private const string InfraStatePath = "/admin/infra/instanceState";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
@@ -489,6 +490,7 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("/admin/worker/ready", "GET")]
     [InlineData(AssignPath, "PUT")]
+    [InlineData(InfraStatePath, "POST")]
     [InlineData(StatePath, "GET")]
     public async Task WorkerManagementRoutesAreUnavailableOnOtherListeners(string path, string method)
     {
@@ -578,6 +580,47 @@ public class ManagementApiEndpointTests
     }
 
     [Fact]
+    public async Task InfraState_UnchangedCheckpoint_ReturnsNoContentAtDeadline()
+    {
+        Mock<TimeProvider> clock = new();
+        Mock<ITimer> timer = new();
+        TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
+        TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        clock.Setup(provider => provider.CreateTimer(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object?>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object? state, TimeSpan _, TimeSpan _) =>
+            {
+                expire.TrySetResult(() => callback(state));
+                return timer.Object;
+            });
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+            services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock.Object)));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using HttpResponseMessage current = await client.PostAsync(InfraStatePath, content: null, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, current.StatusCode);
+        string body = await current.Content.ReadAsStringAsync(timeout.Token);
+        using StringContent content = JsonBody(body);
+
+        Task<HttpResponseMessage> poll = client.PostAsync(InfraStatePath, content, timeout.Token);
+        Action fireTimer = await expire.Task.WaitAsync(timeout.Token);
+        Assert.False(poll.IsCompleted);
+        fireTimer();
+
+        using HttpResponseMessage response = await poll;
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        AssertNoStore(response);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
+        await disposed.Task.WaitAsync(timeout.Token);
+        timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce);
+    }
+
+    [Fact]
     public async Task ClientCancellationRemovesPendingPoll()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -604,8 +647,6 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("/admin/worker/assign", "POST")]
     [InlineData("/admin/worker/assign", "PUT")]
-    [InlineData("/admin/infra/instanceState", "POST")]
-    [InlineData("/admin/infra/instanceState", "GET")]
     public async Task ObsoleteManagementRoutesAreNotFound(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
