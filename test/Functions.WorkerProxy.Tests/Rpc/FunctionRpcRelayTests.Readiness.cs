@@ -42,13 +42,12 @@ public partial class FunctionRpcRelayTests
         long initialRevision = runtimeFirst ? 1 : 0;
         Assert.Equal(initialRevision, manager.State.Revision);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
-        Assert.Equal(initialRevision + 1, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateWorkerAssignment()));
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), CreateMessageWriter(workerOutbound.Writer), timeout.Token);
         WorkerPodState attached = manager.State;
-        Assert.Equal(initialRevision + 2, attached.Revision);
+        Assert.Equal(initialRevision + 1, attached.Revision);
         Assert.True(attached.IsWorkerAttached);
         Assert.False(attached.IsWorkerReady);
         Assert.Null(attached.WorkerId);
@@ -57,10 +56,14 @@ public partial class FunctionRpcRelayTests
         StreamingMessage start = CreateStartStream();
         await workerInbound.Writer.WriteAsync(start, timeout.Token);
         WorkerPodState ready = Assert.IsType<WorkerPodState>((await poll).State);
-        Assert.Equal(initialRevision + 3, ready.Revision);
+        Assert.Equal(initialRevision + 2, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, ready.PodStatus);
+        Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
+
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal(initialRevision + 3, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,
@@ -347,7 +350,7 @@ public partial class FunctionRpcRelayTests
 
     private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group")
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
-            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", httpProxyEndpoint: null);
+            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

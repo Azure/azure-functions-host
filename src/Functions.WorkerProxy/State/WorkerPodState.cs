@@ -20,7 +20,6 @@ internal sealed record WorkerPodState(
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
-    Uri? HttpProxyEndpoint,
     SplitWorkerStaticState SplitStaticState,
     SplitWorkerLink SplitLink)
 {
@@ -48,7 +47,6 @@ internal sealed record WorkerPodState(
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null,
-            HttpProxyEndpoint: null,
             SplitStaticState: SplitWorkerStaticState.CreatePlaceholder(podName, startupTime),
             SplitLink: new(SplitWorkerLinkState.Unlinked));
 }

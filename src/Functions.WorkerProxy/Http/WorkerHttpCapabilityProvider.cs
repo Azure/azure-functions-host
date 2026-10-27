@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Rpc;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,16 +12,12 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// <summary>
 /// Captures the worker's HTTP destination before advertising WorkerProxy to the runtime.
 /// </summary>
-internal sealed partial class WorkerHttpCapabilityProvider(
-    IOptions<WorkerProxyOptions> options,
-    WorkerPodStateManager stateManager,
-    ILogger<WorkerHttpCapabilityProvider> logger)
+internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
     private const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
-    private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
@@ -44,9 +39,8 @@ internal sealed partial class WorkerHttpCapabilityProvider(
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        Uri proxyEndpoint = _stateManager.State.HttpProxyEndpoint
-            ?? ResolveRequiredEndpoint(
-                _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        Uri proxyEndpoint = ResolveRequiredEndpoint(
+            _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
 
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
         Log.HttpCapabilityFinalized(_logger,

@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -49,20 +48,6 @@ public class WorkerHttpCapabilityProviderTests
 
         Assert.Equal(new Uri("https://override:1234/prefix/"), destination);
         Assert.Equal("http://worker-pod:28080/", capabilities["HttpUri"]);
-    }
-
-    [Fact]
-    public void FinalizeCapabilities_AssignedProxyEndpointTakesPrecedenceOverConfiguredEndpoint()
-    {
-        WorkerHttpCapabilityProvider provider = CreateProvider(
-            new() { HttpProxyEndpoint = "http://configured-proxy:28080" },
-            new Uri("http://100.86.0.4:49123/"));
-        Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
-
-        Uri? destination = provider.FinalizeCapabilities(capabilities);
-
-        Assert.Equal(new Uri("http://localhost:5678/"), destination);
-        Assert.Equal("http://100.86.0.4:49123/", capabilities["HttpUri"]);
     }
 
     [Theory]
@@ -142,23 +127,8 @@ public class WorkerHttpCapabilityProviderTests
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
     }
 
-    private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options, Uri? assignedProxyEndpoint = null)
+    private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        WorkerPodStateManager stateManager = new(
-            Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }),
-            TimeProvider.System);
-        if (assignedProxyEndpoint is not null)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, stateManager.Assign(new(
-                WorkerStartupMode.Preconfigured,
-                "app",
-                "http",
-                false,
-                new Dictionary<string, string>(),
-                string.Empty,
-                assignedProxyEndpoint)));
-        }
-
-        return new(Options.Create(options), stateManager, NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 }

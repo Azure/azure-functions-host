@@ -22,9 +22,7 @@ internal static class ManagementApiHandlers
     public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
-            request,
-            out WorkerAssignment? assignment,
-            out IReadOnlyList<RequestValidationError> errors))
+            request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
         {
             return ValidationError(errors);
         }
@@ -33,6 +31,8 @@ internal static class ManagementApiHandlers
         {
             WorkerAssignmentResult.Created => TypedResults.Created("/admin/worker/assignment"),
             WorkerAssignmentResult.AlreadyAssigned => TypedResults.NoContent(),
+            WorkerAssignmentResult.WorkerNotReady => Error(
+                StatusCodes.Status503ServiceUnavailable, WorkerApiErrorCodes.WorkerNotReady, "The worker has not established a valid StartStream."),
             WorkerAssignmentResult.AssignmentConflict => Error(
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.AssignmentConflict, "The pod is already assigned to a different assignment."),
             WorkerAssignmentResult.WorkerTerminated => Error(

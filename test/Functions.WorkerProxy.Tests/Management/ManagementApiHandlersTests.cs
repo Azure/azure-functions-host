@@ -111,15 +111,6 @@ public class ManagementApiHandlersTests
     [InlineData("environment", null)]
     [InlineData("environmentKey", "")]
     [InlineData("environmentValue", null)]
-    [InlineData("httpProxyEndpoint", "")]
-    [InlineData("httpProxyEndpoint", " 100.86.0.4:49123")]
-    [InlineData("httpProxyEndpoint", "worker-pod:28080")]
-    [InlineData("httpProxyEndpoint", "100.86.0.4")]
-    [InlineData("httpProxyEndpoint", "100.86.0.4:0")]
-    [InlineData("httpProxyEndpoint", "100.86.0.4:65536")]
-    [InlineData("httpProxyEndpoint", "100.86.0.999:49123")]
-    [InlineData("httpProxyEndpoint", "100.86.0.4:49123/path")]
-    [InlineData("httpProxyEndpoint", "http://100.86.0.4:49123")]
     public void AssignWorker_InvalidFieldsDoNotClaimAssignment(string field, string? value)
     {
         WorkerPodStateManager manager = CreateReadyManager();
@@ -136,11 +127,10 @@ public class ManagementApiHandlersTests
                 FunctionAppName = "app",
                 FunctionGroupName = "group",
                 FunctionAppDirectory = "app-directory",
-                IsAlwaysReady = false,
+                IsAlwaysReady = false
             },
             "environmentKey" => CreateRequest(environment: new() { [string.Empty] = "private-value" }),
             "environmentValue" => CreateRequest(environment: new() { ["SETTING"] = value }),
-            "httpProxyEndpoint" => CreateRequest(httpProxyEndpoint: value),
             _ => throw new ArgumentException("Unknown field.", nameof(field))
         };
 
@@ -151,13 +141,10 @@ public class ManagementApiHandlersTests
             "group" => "functionGroupName",
             "directory" => "functionAppDirectory",
             "alwaysReady" => "isAlwaysReady",
-            "httpProxyEndpoint" => "httpProxyEndpoint",
             _ => "environment"
         };
         Assert.Equal(expectedTarget, detail.Target);
-        Assert.Equal(
-            field is "environmentKey" or "environmentValue" or "httpProxyEndpoint" ? "InvalidValue" : "Required",
-            detail.Code);
+        Assert.Equal(field is "environmentKey" or "environmentValue" ? "InvalidValue" : "Required", detail.Code);
 
         Assert.Same(before, manager.State);
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager));
@@ -184,23 +171,10 @@ public class ManagementApiHandlersTests
         Assert.Equal("app", manager.State.FunctionAppName);
         Assert.Equal("group", manager.State.FunctionGroupName);
         Assert.Equal(isAlwaysReady, manager.State.IsAlwaysReady);
-        Assert.Equal(new Uri("http://100.86.0.4:49123/"), manager.State.HttpProxyEndpoint);
         Assert.Equal(before.SessionId, manager.State.SessionId);
         Assert.Equal(before.WorkerId, manager.State.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, before.AssignmentState);
         Assert.Null(before.FunctionAppName);
-    }
-
-    [Fact]
-    public void AssignWorker_OmittedHttpProxyEndpointIsAccepted()
-    {
-        WorkerPodStateManager manager = CreateManager();
-
-        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(
-            CreateRequest(httpProxyEndpoint: null),
-            manager));
-
-        Assert.Null(manager.State.HttpProxyEndpoint);
     }
 
     [Fact]
@@ -350,7 +324,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_BeforeStartStreamReservesIdentityAndBecomesReadyLater(bool attached)
+    public void AssignWorker_NotReadyDoesNotReserveIdentity(bool attached)
     {
         WorkerPodStateManager manager = CreateManager();
         if (attached)
@@ -359,11 +333,8 @@ public class ManagementApiHandlersTests
         }
 
         WorkerPodState before = manager.State;
-        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
-        WorkerPodState assigned = manager.State;
-        Assert.Equal(before.Revision + 1, assigned.Revision);
-        Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
-        Assert.Equal(WorkerPodStatus.None, assigned.PodStatus);
+        AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(), manager), 503, "WorkerNotReady");
+        Assert.Same(before, manager.State);
 
         if (!attached)
         {
@@ -371,12 +342,8 @@ public class ManagementApiHandlersTests
         }
 
         manager.OnWorkerStartStream(1, "worker");
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
-        Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
-        AssertError(
-            ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager),
-            409,
-            "AssignmentConflict");
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager));
+        Assert.Equal("other-app", manager.State.FunctionAppName);
     }
 
     [Fact]
@@ -409,7 +376,6 @@ public class ManagementApiHandlersTests
     [InlineData("environmentKey")]
     [InlineData("environmentValue")]
     [InlineData("startupMode")]
-    [InlineData("httpProxyEndpoint")]
     public void AssignWorker_DifferentIdentityConflictsBeforeAndAfterTermination(string field)
     {
         WorkerPodStateManager manager = CreateReadyManager();
@@ -423,7 +389,6 @@ public class ManagementApiHandlersTests
             "alwaysReady" => CreateRequest(isAlwaysReady: true),
             "environmentKey" => CreateRequest(environment: new() { ["setting"] = "private-value" }),
             "environmentValue" => CreateRequest(environment: new() { ["SETTING"] = "PRIVATE-VALUE" }),
-            "httpProxyEndpoint" => CreateRequest(httpProxyEndpoint: "100.86.0.5:49123"),
             _ => throw new ArgumentException("Unknown field.", nameof(field))
         };
         WorkerPodState assigned = manager.State;
@@ -563,28 +528,6 @@ public class ManagementApiHandlersTests
     }
 
     [Fact]
-    public async Task GetSplitInstanceStateAsync_EquivalentCheckpointReturnsNoContentAfterSixtySeconds()
-    {
-        PollClock clock = new();
-        WorkerPodStateManager manager = CreateManager(clock.Provider);
-        SplitWorkerOriginState checkpoint = SplitWorkerOriginState.FromState(manager.State);
-
-        Task<IResult> poll = ManagementApiHandlers.GetSplitInstanceStateAsync(checkpoint, manager);
-
-        Assert.False(poll.IsCompleted);
-        Assert.Equal(1, manager.PendingWaiterCount);
-        PollClock.ScheduledTimer timer = Assert.Single(clock.Timers);
-        Assert.Equal(TimeSpan.FromSeconds(60), timer.DueTime);
-        Assert.Equal(Timeout.InfiniteTimeSpan, timer.Period);
-
-        timer.Fire();
-
-        Assert.Equal(204, Assert.IsType<NoContent>(await poll.WaitAsync(TestTimeout)).StatusCode);
-        Assert.Equal(0, manager.PendingWaiterCount);
-        await clock.VerifyTimersDisposedAsync();
-    }
-
-    [Fact]
     public async Task GetInstanceStateAsync_ReplaysAndConflictsDoNotWakePollBeforeSixtySecondTimeout()
     {
         PollClock clock = new();
@@ -693,20 +636,16 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured),
-        string? httpProxyEndpoint = "100.86.0.4:49123")
-    {
-        return new()
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
+        new()
         {
             StartupMode = startupMode,
             FunctionAppName = functionAppName,
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" },
-            HttpProxyEndpoint = httpProxyEndpoint
+            Environment = environment ?? new() { ["SETTING"] = "private-value" }
         };
-    }
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)
     {

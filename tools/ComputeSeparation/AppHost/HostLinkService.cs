@@ -37,6 +37,8 @@ internal sealed partial class HostLinkService(
     private const int FunctionAppSiteId = 1;
     private static readonly Guid RuntimePodGuid = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using CancellationTokenSource startup = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -95,7 +97,16 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
-        using (HttpResponseMessage assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken))
+        // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
+        HttpResponseMessage assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
+        while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            assign.Dispose();
+            await Task.Delay(AssignRetryDelay, cancellationToken);
+            assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
+        }
+
+        using (assign)
         {
             await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
         }
@@ -121,10 +132,16 @@ internal sealed partial class HostLinkService(
             functionAppDirectory = string.Empty,
         };
 
-        using (HttpResponseMessage assign = await client.PutAsJsonAsync(
-            "/admin/worker/assignment",
-            assignment,
-            cancellationToken))
+        // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
+        HttpResponseMessage assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+        while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            assign.Dispose();
+            await Task.Delay(AssignRetryDelay, cancellationToken);
+            assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+        }
+
+        using (assign)
         {
             await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
         }

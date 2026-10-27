@@ -13,6 +13,7 @@ internal static class WorkerApiErrorCodes
     public const string Required = "Required";
     public const string InvalidValue = "InvalidValue";
     public const string InvalidRevision = "InvalidRevision";
+    public const string WorkerNotReady = "WorkerNotReady";
     public const string WorkerTerminated = "WorkerTerminated";
     public const string AssignmentConflict = "AssignmentConflict";
 }

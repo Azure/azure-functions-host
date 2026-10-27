@@ -11,9 +11,8 @@ namespace Azure.Functions.WorkerProxy.State;
 /// Captures immutable assignment identity, including the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// Environment, app directory, and the proxy endpoint participate in retry equality. This model does
-/// not apply environment or directory values to the worker. Keep environment values out of published
-/// pod snapshots and diagnostic output.
+/// Environment and app directory participate in retry equality only; this model does not apply them
+/// to the worker. Keep environment values out of published pod snapshots and diagnostic output.
 /// </remarks>
 internal sealed class WorkerAssignment
 {
@@ -30,8 +29,7 @@ internal sealed class WorkerAssignment
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
-        string functionAppDirectory,
-        Uri? httpProxyEndpoint)
+        string functionAppDirectory)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -60,7 +58,6 @@ internal sealed class WorkerAssignment
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
-        HttpProxyEndpoint = httpProxyEndpoint;
     }
 
     /// <summary>
@@ -78,8 +75,6 @@ internal sealed class WorkerAssignment
 
     public string FunctionAppDirectory { get; }
 
-    public Uri? HttpProxyEndpoint { get; }
-
     /// <summary>
     /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
     /// </summary>
@@ -92,7 +87,6 @@ internal sealed class WorkerAssignment
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
-            || HttpProxyEndpoint != other.HttpProxyEndpoint
             || Environment.Count != other.Environment.Count)
         {
             return false;

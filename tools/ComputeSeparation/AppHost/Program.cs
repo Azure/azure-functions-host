@@ -29,7 +29,6 @@ if (useContainers && enableSecondWorker)
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
 string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
-Guid workerPodGuid = Guid.NewGuid();
 using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
@@ -146,22 +145,16 @@ else
         .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
         .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
         .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
-        .WithEnvironment("FakePlatform__WorkerId", workerId)
-        .WithEnvironment("FakePlatform__PodName", podName)
-        .WithEnvironment("FakePlatform__PodGuid", workerPodGuid.ToString("D"));
+        .WithEnvironment("FakePlatform__WorkerId", workerId);
 
     if (enableSecondWorker)
     {
         string secondWorkerId = $"{workerId}-2";
-        string secondWorkerPodName = $"{podName}-2";
-        Guid secondWorkerPodGuid = Guid.NewGuid();
-        IResourceBuilder<ProjectResource> secondProxy = AddWorker("-2", secondWorkerId, secondWorkerPodName, "SecondWorker");
+        IResourceBuilder<ProjectResource> secondProxy = AddWorker("-2", secondWorkerId, $"{podName}-2", "SecondWorker");
         fakePlatform
             .WithEnvironment("FakePlatform__SecondWorker__WorkerProxyUri", secondProxy.GetEndpoint(ManagementEndpointName))
             .WithEnvironment("FakePlatform__SecondWorker__WorkerGrpcEndpoint", secondProxy.GetEndpoint(RuntimeGrpcEndpointName))
-            .WithEnvironment("FakePlatform__SecondWorker__WorkerId", secondWorkerId)
-            .WithEnvironment("FakePlatform__SecondWorker__PodName", secondWorkerPodName)
-            .WithEnvironment("FakePlatform__SecondWorker__PodGuid", secondWorkerPodGuid.ToString("D"));
+            .WithEnvironment("FakePlatform__SecondWorker__WorkerId", secondWorkerId);
     }
 
     if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))

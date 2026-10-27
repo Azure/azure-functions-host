@@ -460,7 +460,7 @@ public partial class FunctionRpcRelayTests
         stateManager ??= CreatePodStateManager();
         return new FunctionRpcRelay(
             NullLogger<FunctionRpcRelay>.Instance,
-            CreateCapabilityProvider(stateManager: stateManager),
+            CreateCapabilityProvider(),
             stateManager);
     }
 
@@ -470,13 +470,10 @@ public partial class FunctionRpcRelayTests
     private static StreamingMessage CreateStartStream(string requestId = "worker-start")
         => new() { RequestId = requestId, StartStream = new() { WorkerId = "test-worker" } };
 
-    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(
-        WorkerProxyOptions? options = null,
-        WorkerPodStateManager? stateManager = null)
+    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
     {
         return new(
             Options.Create(options ?? new()),
-            stateManager ?? CreatePodStateManager(),
             NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 

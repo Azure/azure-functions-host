@@ -65,13 +65,7 @@ simulate.MapPost("/worker/assign", async (string? worker, IHttpClientFactory cli
         return Results.BadRequest(InvalidWorkerMessage);
     }
 
-    WorkerAssignment assignment = new(
-        "Preconfigured",
-        AppName,
-        FunctionGroupName,
-        false,
-        [],
-        string.Empty);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
     using HttpResponseMessage response = await clients.CreateClient(proxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -207,7 +201,6 @@ internal partial class Program
     private const string WorkerProxyClient = "worker-proxy";
     private const string SecondWorkerProxyClient = "worker-proxy-2";
     private const string InvalidWorkerMessage = "Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.";
-    private const string FunctionGroupName = "http";
     private const string ResourceNamespace = "aspire-local";
     private const string LegionStampName = "aspire-local";
     private const string AntaresStampName = "aspire-local";
@@ -234,23 +227,14 @@ internal partial class Program
         public required Uri WorkerGrpcEndpoint { get; init; }
 
         public required string WorkerId { get; init; }
-
-        public required string PodName { get; init; }
-
-        public required Guid PodGuid { get; init; }
     }
 
     private sealed record HostAssignmentContext(int SiteId, string SiteName, Dictionary<string, string> Environment);
 
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
-    private sealed record WorkerAssignment(
-        string StartupMode,
-        string FunctionAppName,
-        string FunctionGroupName,
-        bool IsAlwaysReady,
-        Dictionary<string, string> Environment,
-        string FunctionAppDirectory);
+    private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory);
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint, string RuntimeAccessKey, object Runtime);
 

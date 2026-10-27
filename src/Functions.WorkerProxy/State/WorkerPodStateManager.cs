@@ -325,7 +325,12 @@ internal sealed class WorkerPodStateManager
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            // Assignment is process-local bookkeeping and can complete before either relay side attaches.
+            if (!_state.IsWorkerReady)
+            {
+                return WorkerAssignmentResult.WorkerNotReady;
+            }
+
+            // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
@@ -334,7 +339,6 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady,
-                HttpProxyEndpoint = assignment.HttpProxyEndpoint,
                 SplitStaticState = _state.SplitStaticState with
                 {
                     IsAlwaysReady = assignment.IsAlwaysReady,
@@ -342,6 +346,7 @@ internal sealed class WorkerPodStateManager
                 }
             };
 
+            // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");

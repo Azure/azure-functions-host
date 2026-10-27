@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Net;
 using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -50,7 +48,7 @@ internal static class WorkerAssignRequestValidator
         }
 
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
-        Uri? httpProxyEndpoint = ValidateHttpProxyEndpoint(request.HttpProxyEndpoint, errors);
+
         if (errors.Count > 0
             || startupMode is not { } selectedStartupMode
             || request.FunctionAppName is not { } functionAppName
@@ -67,8 +65,7 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory,
-            httpProxyEndpoint);
+            functionAppDirectory);
 
         return true;
     }
@@ -118,49 +115,5 @@ internal static class WorkerAssignRequestValidator
         }
 
         return environment;
-    }
-
-    private static Uri? ValidateHttpProxyEndpoint(string? value, List<RequestValidationError> errors)
-    {
-        if (value is null)
-        {
-            return null;
-        }
-
-        int separator = value.LastIndexOf(':');
-        if (separator <= 0
-            || separator == value.Length - 1
-            || !string.Equals(value, value.Trim(), StringComparison.Ordinal)
-            || !TryParseIpv4Address(value[..separator], out IPAddress? address)
-            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
-            || port is < 1 or > IPEndPoint.MaxPort)
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
-            return null;
-        }
-
-        return new UriBuilder(Uri.UriSchemeHttp, address.ToString(), port).Uri;
-    }
-
-    private static bool TryParseIpv4Address(string value, [NotNullWhen(true)] out IPAddress? address)
-    {
-        address = null;
-        string[] octets = value.Split('.');
-        if (octets.Length != 4)
-        {
-            return false;
-        }
-
-        Span<byte> bytes = stackalloc byte[4];
-        for (int index = 0; index < octets.Length; index++)
-        {
-            if (!byte.TryParse(octets[index], NumberStyles.None, CultureInfo.InvariantCulture, out bytes[index]))
-            {
-                return false;
-            }
-        }
-
-        address = new IPAddress(bytes);
-        return true;
     }
 }

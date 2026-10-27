@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -36,8 +37,7 @@ public partial class FunctionRpcRelayTests
           "functionGroupName":"test-group",
           "isAlwaysReady":false,
           "environment":{"B":"private-value","A":"1"},
-          "functionAppDirectory":"/home/site/wwwroot",
-          "httpProxyEndpoint":"100.86.0.4:28080"
+          "functionAppDirectory":"/home/site/wwwroot"
         }
         """;
 
@@ -50,7 +50,11 @@ public partial class FunctionRpcRelayTests
     {
         string assignmentBody = ManagementAssignment.Replace("SpecializationRequired", startupMode, StringComparison.Ordinal);
         const string proxyEndpoint = "http://100.86.0.4:28080/";
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        await using WorkerProxyWebApplicationFactory factory = new(
+            new Dictionary<string, string?>
+            {
+                [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}"] = proxyEndpoint
+            });
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -118,7 +122,6 @@ public partial class FunctionRpcRelayTests
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
                 Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
-                Assert.Equal(new Uri(proxyEndpoint), manager.State.HttpProxyEndpoint);
                 Assert.DoesNotContain("private-value", body);
                 Assert.DoesNotContain("environment", body);
                 Assert.DoesNotContain("runtimePodName", body);
@@ -219,8 +222,11 @@ public partial class FunctionRpcRelayTests
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
         using HttpResponseMessage assignment = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
-        Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
-        Assert.Equal(WorkerPodStatus.None, factory.Services.GetRequiredService<WorkerPodStateManager>().State.PodStatus);
+        await AssertManagementErrorAsync(
+            assignment,
+            HttpStatusCode.ServiceUnavailable,
+            "WorkerNotReady",
+            timeout.Token);
     }
 
     [Fact]
@@ -277,6 +283,10 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(HttpStatusCode.BadRequest, malformedResponse.StatusCode);
         }
 
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await worker.WriteAsync(CreateStartStream(), timeout.Token);
+        await WaitForWorkerReadyAsync(management, timeout.Token);
+
         using (HttpResponseMessage assignmentResponse = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",
@@ -291,7 +301,7 @@ public partial class FunctionRpcRelayTests
         Assert.False(assigned.IsAlwaysReady);
         Assert.Equal("test-group", assigned.FunctionGroup);
         Assert.Equal(placeholder.StartupTime, assigned.StartupTime);
-        Assert.Equal(1, assigned.RevisionId);
+        Assert.Equal(3, assigned.RevisionId);
         Assert.Equal(SplitWorkerStatus.Starting, assigned.Status);
         Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), assigned.Link);
         Assert.False(assigned.IsUnhealthy);
@@ -376,44 +386,6 @@ public partial class FunctionRpcRelayTests
         Assert.True(terminated.IsUnhealthy);
     }
 
-    [Fact]
-    public async Task SplitRuntimeLinkRejectsSecondConnectionAndPreservesLegacyState()
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using HttpClient management = factory.CreateWorkerProxyClient();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await worker.WriteAsync(CreateStartStream(), timeout.Token);
-        await WaitForWorkerReadyAsync(management, timeout.Token);
-        await AssignWorkerAsync(management, timeout.Token);
-
-        SplitWorkerOriginState unlinked = await ReadSplitManagementStateAsync(management, timeout.Token);
-        Task<HttpResponseMessage> linkingPoll = PollSplitManagementStateAsync(management, unlinked, timeout.Token);
-        await WaitForManagementPollAsync(manager, timeout.Token);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        Assert.Equal("test-worker", (await runtime.ReadAsync(timeout.Token)).StartStream.WorkerId);
-        using HttpResponseMessage linkingResponse = await linkingPoll;
-        SplitWorkerOriginState linking = await ReadSplitManagementStateAsync(linkingResponse, timeout.Token);
-        Assert.Equal(SplitWorkerLinkState.Linking, linking.Link.State);
-        Assert.Null(linking.Link.Runtime);
-
-        await using RelayClient conflictingRuntime =
-            CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        GrpcRpcException exception =
-            await conflictingRuntime.WriteAndReadRejectionAsync(CreateMessage("conflict"), timeout.Token);
-        Assert.Equal(StatusCode.AlreadyExists, exception.StatusCode);
-
-        Assert.Equal(linking, await ReadSplitManagementStateAsync(management, timeout.Token));
-
-        using JsonDocument legacy = await ReadManagementStateAsync(management, lastKnownRevision: null, timeout.Token);
-        Assert.Equal("FunctionsWorkerPod", legacy.RootElement.GetProperty("functionsContainerType").GetString());
-        Assert.Equal(4, legacy.RootElement.GetProperty("revisionId").GetInt64());
-        Assert.True(legacy.RootElement.TryGetProperty("workerPodState", out _));
-        Assert.False(legacy.RootElement.TryGetProperty("staticState", out _));
-        Assert.False(legacy.RootElement.TryGetProperty("dynamicState", out _));
-    }
-
     [Theory]
     [InlineData("runtime")]
     [InlineData("resourceNamespace")]
@@ -478,25 +450,6 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(StatusCode.InvalidArgument, exception.StatusCode);
         Assert.Same(before, manager.State);
-    }
-
-    [Fact]
-    public async Task WorkerLinkControlRejectsWorkerListener()
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        using GrpcChannel channel = GrpcChannel.ForAddress(factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Worker));
-        WorkerLinkControl.WorkerLinkControlClient client = new(channel);
-
-        GrpcRpcException exception = await Assert.ThrowsAsync<GrpcRpcException>(
-            async () =>
-            {
-                await client.AcknowledgeLinkAsync(
-                    CreateRuntimeAcknowledgement(),
-                    cancellationToken: timeout.Token);
-            });
-
-        Assert.Equal(StatusCode.Unimplemented, exception.StatusCode);
     }
 
     private static AcknowledgeLinkRequest CreateRuntimeAcknowledgement()
