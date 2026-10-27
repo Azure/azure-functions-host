@@ -27,15 +27,6 @@ internal sealed partial class HostLinkService(
 {
     // The harness hosts one HTTP-triggered sample app, so the worker joins the HTTP function group.
     private const string FunctionGroupName = "http";
-    private const string FunctionAppName = "aspire-sample-app";
-    private const string ResourceNamespace = "aspire-local";
-    private const string LegionStampName = "aspire-local";
-    private const string AntaresStampName = "aspire-local";
-    private const string RuntimeAccessKey = "aspire-local-runtime-key";
-    private const string RuntimePodName = "runtime-pod";
-    private const string RuntimePodType = "FunctionsSplitRuntimePod";
-    private const int FunctionAppSiteId = 1;
-    private static readonly Guid RuntimePodGuid = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
 
@@ -84,8 +75,6 @@ internal sealed partial class HostLinkService(
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerGrpcEndpoint = grpcEndpoint,
-            runtimeAccessKey = RuntimeAccessKey,
-            runtime = CreateRuntimeIdentity(),
         }, cancellationToken);
 
         await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
@@ -125,7 +114,7 @@ internal sealed partial class HostLinkService(
         var assignment = new
         {
             startupMode = "Preconfigured",
-            functionAppName = FunctionAppName,
+            functionAppName = "aspire-sample-app",
             functionGroupName = FunctionGroupName,
             isAlwaysReady = false,
             environment = new Dictionary<string, string>(),
@@ -148,22 +137,6 @@ internal sealed partial class HostLinkService(
 
         Log.WorkerAssigned(logger, workerId, FunctionGroupName);
     }
-
-    private static object CreateRuntimeIdentity() =>
-        new
-        {
-            resourceNamespace = ResourceNamespace,
-            podName = RuntimePodName,
-            podGuid = RuntimePodGuid,
-            legionStampName = LegionStampName,
-            podType = RuntimePodType,
-            app = new
-            {
-                functionAppName = FunctionAppName,
-                functionAppSiteId = FunctionAppSiteId,
-                antaresStampName = AntaresStampName,
-            },
-        };
 
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)
     {

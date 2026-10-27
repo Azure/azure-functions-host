@@ -101,10 +101,7 @@ simulate.MapPost("/worker/link", async (string? worker, IHttpClientFactory clien
         return Results.BadRequest(InvalidWorkerMessage);
     }
 
-    WorkerLink link = new(
-        selected.WorkerGrpcEndpoint.ToString(),
-        RuntimeAccessKey,
-        CreateRuntimeIdentity());
+    WorkerLink link = new(selected.WorkerGrpcEndpoint.ToString());
     using HttpResponseMessage response = await clients.CreateClient(HostClient)
         .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(selected.WorkerId)}", link, cancellationToken);
 
@@ -176,22 +173,6 @@ static string CreateAdminToken(byte[] key)
     return $"{header}.{payload}.{signature}";
 }
 
-static object CreateRuntimeIdentity() =>
-    new
-    {
-        resourceNamespace = ResourceNamespace,
-        podName = RuntimePodName,
-        podGuid = RuntimePodGuid,
-        legionStampName = LegionStampName,
-        podType = RuntimePodType,
-        app = new
-        {
-            functionAppName = AppName,
-            functionAppSiteId = FunctionAppSiteId,
-            antaresStampName = AntaresStampName,
-        },
-    };
-
 internal partial class Program
 {
     // The app name used for assignments, and the Host's site name (WEBSITE_SITE_NAME) in the
@@ -201,14 +182,6 @@ internal partial class Program
     private const string WorkerProxyClient = "worker-proxy";
     private const string SecondWorkerProxyClient = "worker-proxy-2";
     private const string InvalidWorkerMessage = "Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.";
-    private const string ResourceNamespace = "aspire-local";
-    private const string LegionStampName = "aspire-local";
-    private const string AntaresStampName = "aspire-local";
-    private const string RuntimeAccessKey = "aspire-local-runtime-key";
-    private const string RuntimePodName = "runtime-pod";
-    private const string RuntimePodType = "FunctionsSplitRuntimePod";
-    private const int FunctionAppSiteId = 1;
-    private static readonly Guid RuntimePodGuid = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     private sealed class FakePlatformOptions : WorkerOptions
     {
@@ -236,7 +209,7 @@ internal partial class Program
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
         bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory);
 
-    private sealed record WorkerLink(string WorkerGrpcEndpoint, string RuntimeAccessKey, object Runtime);
+    private sealed record WorkerLink(string WorkerGrpcEndpoint);
 
     private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 }

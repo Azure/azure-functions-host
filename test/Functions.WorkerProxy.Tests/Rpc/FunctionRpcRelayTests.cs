@@ -457,11 +457,7 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay(WorkerPodStateManager? stateManager = null)
     {
-        stateManager ??= CreatePodStateManager();
-        return new FunctionRpcRelay(
-            NullLogger<FunctionRpcRelay>.Instance,
-            CreateCapabilityProvider(),
-            stateManager);
+        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), stateManager ?? CreatePodStateManager());
     }
 
     private static WorkerPodStateManager CreatePodStateManager()
@@ -472,9 +468,7 @@ public partial class FunctionRpcRelayTests
 
     private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
     {
-        return new(
-            Options.Create(options ?? new()),
-            NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options ?? new()), NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)

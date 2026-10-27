@@ -34,27 +34,12 @@ public class WorkerLinkControllerTests
     private const string PrivateDiagnostic = "private-worker-initialization-diagnostic";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
-    private readonly Mock<IWorkerLinkAcknowledgementClient> _acknowledgementClient = new();
-
-    public WorkerLinkControllerTests()
-    {
-        _acknowledgementClient
-            .Setup(client => client.AcknowledgeAsync(
-                It.IsAny<Uri>(),
-                It.IsAny<FunctionsSplitPodIdentity>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-    }
 
     [Fact]
     public void Constructor_NullLoggerOrRegistry_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() =>
-            new WorkerLinkController(null!, _registry.Object, _acknowledgementClient.Object));
-        Assert.Throws<ArgumentNullException>(() =>
-            new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!, _acknowledgementClient.Object));
-        Assert.Throws<ArgumentNullException>(() =>
-            new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, _registry.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!));
     }
 
     [Theory]
@@ -70,7 +55,7 @@ public class WorkerLinkControllerTests
             .Returns(completion.Task);
         WorkerLinkRequest request = ValidRequest();
         request.WorkerGrpcEndpoint = grpcEndpoint;
-        request.RuntimeAccessKey = "reserved-test-value";
+        request.WorkerContainerEncryptionKey = "reserved-test-value";
 
         Task<IActionResult> link = CreateController().LinkWorker(WorkerId, request, cancellation.Token);
         Assert.True(registryToken.CanBeCanceled);
@@ -79,6 +64,22 @@ public class WorkerLinkControllerTests
         Assert.False(link.IsCompleted);
         completion.SetResult(new(null!, IsNewLink: true));
         StatusCodeResult result = Assert.IsType<StatusCodeResult>(await link);
+        Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
+        VerifyOnlyLinkCall();
+    }
+
+    [Fact]
+    public async Task LinkWorker_BareIpv4Endpoint_NormalizesToHttp()
+    {
+        const string grpcEndpoint = "100.64.1.12:50053";
+        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        WorkerLinkRequest request = ValidRequest();
+        request.WorkerGrpcEndpoint = grpcEndpoint;
+
+        StatusCodeResult result = Assert.IsType<StatusCodeResult>(
+            await CreateController().LinkWorker(WorkerId, request));
+
         Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
         VerifyOnlyLinkCall();
     }
@@ -185,7 +186,7 @@ public class WorkerLinkControllerTests
         _registry.Setup(registry => registry.LinkAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(initialization.Task);
         WorkerLinkController controller = CreateController();
-        WorkerLinkRequest otherRequest = ValidRequest();
+        WorkerLinkRequest otherRequest = new() { WorkerGrpcEndpoint = ValidGrpcEndpoint };
 
         Task<IActionResult> first = controller.LinkWorker(WorkerId, ValidRequest());
         Task<IActionResult> replay = controller.LinkWorker(WorkerId, ValidRequest());
@@ -311,8 +312,8 @@ public class WorkerLinkControllerTests
                 ? Task.FromException<WorkerLinkResult>(new WorkerLinkException(WorkerLinkFailureReason.Conflict, "Conflict."))
                 : Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true)));
         WorkerLinkRequest request = ValidRequest();
-        request.RuntimeAccessKey = "reserved-value-do-not-log";
-        WorkerLinkController controller = new(logger.Object, _registry.Object, _acknowledgementClient.Object);
+        request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
+        WorkerLinkController controller = new(logger.Object, _registry.Object);
 
         await controller.LinkWorker(WorkerId, request);
 
@@ -321,7 +322,7 @@ public class WorkerLinkControllerTests
         Dictionary<string, object> loggedState = Assert.IsType<Dictionary<string, object>>(state);
         Assert.Equal(WorkerId, loggedState["workerId"]);
         Assert.True(Assert.IsType<double>(loggedState["elapsedMilliseconds"]) >= 0);
-        Assert.DoesNotContain(request.RuntimeAccessKey, rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain(request.WorkerContainerEncryptionKey, rendered, StringComparison.Ordinal);
         if (fail)
         {
             Assert.Equal("LinkConflict", loggedState["reason"]);
@@ -353,10 +354,7 @@ public class WorkerLinkControllerTests
     [Fact]
     public async Task LinkWorker_MissingGrpcEndpoint_ReturnsRequiredWithoutLinking()
     {
-        WorkerLinkRequest request = ValidRequest();
-        request.WorkerGrpcEndpoint = null;
-        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(
-            await CreateController().LinkWorker(WorkerId, request));
+        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(WorkerId, new WorkerLinkRequest()));
         RequestValidationError error = Assert.Single(errors);
         Assert.Equal("Required", error.Code);
         Assert.Equal("workerGrpcEndpoint", error.Target);
@@ -423,6 +421,10 @@ public class WorkerLinkControllerTests
     [InlineData("   ")]
     [InlineData("not-a-url")]
     [InlineData("worker-proxy:50053")]
+    [InlineData("100.64.1.12:0")]
+    [InlineData("100.64.1.12:65536")]
+    [InlineData("100.64.1.256:50053")]
+    [InlineData(" 100.64.1.12:50053")]
     [InlineData("ftp://100.64.1.12:50053")]
     [InlineData("http://user:password@100.64.1.12:50053")]
     [InlineData("http://100.64.1.12:50053/path")]
@@ -440,7 +442,7 @@ public class WorkerLinkControllerTests
     }
 
     private WorkerLinkController CreateController()
-        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object, _acknowledgementClient.Object);
+        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object);
 
     private void VerifyOnlyLinkCall()
     {
@@ -461,25 +463,7 @@ public class WorkerLinkControllerTests
     }
 
     private static WorkerLinkRequest ValidRequest()
-        => new()
-        {
-            WorkerGrpcEndpoint = ValidGrpcEndpoint,
-            RuntimeAccessKey = "runtime-access-key",
-            Runtime = new()
-            {
-                ResourceNamespace = "runtime-namespace",
-                PodName = "runtime-pod",
-                PodGuid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                LegionStampName = "legion-stamp",
-                PodType = "FunctionsSplitRuntimePod",
-                App = new()
-                {
-                    FunctionAppName = "test-app",
-                    FunctionAppSiteId = 42,
-                    AntaresStampName = "antares-stamp"
-                }
-            }
-        };
+        => new() { WorkerGrpcEndpoint = ValidGrpcEndpoint };
 
     private static IReadOnlyList<RequestValidationError> AssertBadRequest(IActionResult result)
     {

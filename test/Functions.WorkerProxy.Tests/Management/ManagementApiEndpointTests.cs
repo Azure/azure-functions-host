@@ -488,6 +488,8 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("/admin/worker/assign", "POST")]
     [InlineData("/admin/worker/assign", "PUT")]
+    [InlineData("/admin/infra/instanceState", "POST")]
+    [InlineData("/admin/infra/instanceState", "GET")]
     public async Task ObsoleteManagementRoutesAreNotFound(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();

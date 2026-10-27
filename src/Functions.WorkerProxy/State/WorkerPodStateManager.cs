@@ -27,7 +27,6 @@ internal sealed class WorkerPodStateManager
     private readonly TimeProvider _timeProvider;
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
-    private long? _runtimeLinkSessionId;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
     private int _assignmentClaimed;
@@ -43,7 +42,7 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
+        _state = WorkerPodState.CreateUnassigned(podName);
     }
 
     /// <summary>
@@ -191,7 +190,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Withdraws readiness on relay termination while retaining accepted Runtime link history.
+    /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
     public bool OnSessionTerminated(long sessionId)
     {
@@ -209,97 +208,21 @@ internal sealed class WorkerPodStateManager
                 throw new InvalidOperationException("A different worker session is still attached.");
             }
 
-            bool ownsRuntimeLink = _runtimeLinkSessionId == sessionId;
-            if (ownsRuntimeLink)
-            {
-                _runtimeLinkSessionId = null;
-            }
-
+            // A runtime-only session can terminate before any worker attaches. Fence off its late notifications.
             _lastSessionId = sessionId;
-            if (!_state.IsWorkerAttached && !ownsRuntimeLink)
+            if (!_state.IsWorkerAttached)
             {
                 return false;
             }
-
-            SplitWorkerLink link = ownsRuntimeLink
-                ? _state.SplitLink.Runtime is { } acceptedRuntime
-                    ? new(SplitWorkerLinkState.Linked, acceptedRuntime)
-                    : new(SplitWorkerLinkState.Unlinked)
-                : _state.SplitLink;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
-                IsRuntimeLinkAcknowledged = false,
-                SplitLink = link,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
             return true;
-        }
-    }
-
-    /// <summary>
-    /// Records attachment of the runtime-facing FunctionRpc stream as the active Runtime link.
-    /// </summary>
-    public void OnRuntimeAttached(long sessionId)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
-
-        lock (_stateLock)
-        {
-            if (_state.AssignmentState == WorkerAssignmentState.Failed
-                || _runtimeLinkSessionId is not null)
-            {
-                return;
-            }
-
-            _runtimeLinkSessionId = sessionId;
-            UpdateStateAndNotifyWaitersLocked(_state with
-            {
-                Revision = checked(_state.Revision + 1),
-                IsRuntimeLinkAcknowledged = false,
-                SplitLink = new(SplitWorkerLinkState.Linking, _state.SplitLink.Runtime)
-            });
-        }
-    }
-
-    /// <summary>
-    /// Records an active Runtime link acknowledgement or replays an accepted identity after termination.
-    /// </summary>
-    public RuntimeLinkAcknowledgementResult AcknowledgeRuntimeLink(SplitPodIdentity runtime)
-    {
-        ArgumentNullException.ThrowIfNull(runtime);
-
-        lock (_stateLock)
-        {
-            if (_state.SplitLink is { State: SplitWorkerLinkState.Linked, Runtime: { } acknowledged })
-            {
-                return acknowledged == runtime
-                    ? RuntimeLinkAcknowledgementResult.AlreadyAcknowledged
-                    : RuntimeLinkAcknowledgementResult.Conflict;
-            }
-
-            if (_runtimeLinkSessionId is null
-                || _state.SplitLink.State != SplitWorkerLinkState.Linking)
-            {
-                return RuntimeLinkAcknowledgementResult.NotPending;
-            }
-
-            if (_state.SplitLink.Runtime is { } retainedRuntime
-                && retainedRuntime != runtime)
-            {
-                return RuntimeLinkAcknowledgementResult.Conflict;
-            }
-
-            UpdateStateAndNotifyWaitersLocked(_state with
-            {
-                Revision = checked(_state.Revision + 1),
-                IsRuntimeLinkAcknowledged = true,
-                SplitLink = new(SplitWorkerLinkState.Linked, runtime)
-            });
-            return RuntimeLinkAcknowledgementResult.Acknowledged;
         }
     }
 
@@ -338,12 +261,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady,
-                SplitStaticState = _state.SplitStaticState with
-                {
-                    IsAlwaysReady = assignment.IsAlwaysReady,
-                    FunctionGroup = assignment.FunctionGroupName
-                }
+                IsAlwaysReady = assignment.IsAlwaysReady
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

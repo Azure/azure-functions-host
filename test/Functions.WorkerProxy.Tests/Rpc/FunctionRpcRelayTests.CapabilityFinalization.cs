@@ -152,7 +152,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
-        Assert.Equal(5, manager.State.Revision);
+        Assert.Equal(4, manager.State.Revision);
     }
 
     [Theory]

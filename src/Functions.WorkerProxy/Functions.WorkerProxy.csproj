@@ -38,7 +38,6 @@
       AdditionalImportDirs="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto"
       GrpcServices="server"
       ProtoRoot="..\WebJobs.Script.Grpc\Protos" />
-    <Protobuf Include="Protos\WorkerLinkControl.proto" GrpcServices="Both" />
   </ItemGroup>
 
 </Project>
