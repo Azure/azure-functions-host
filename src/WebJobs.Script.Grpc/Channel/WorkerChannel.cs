@@ -390,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             Logger.ChannelReceivedMessage(_workerChannelLogger, _workerId, msg.ContentCase);
                         }
 
-                        DispatchMessage(msg);
+                        await ProcessInboundMessageAsync(msg);
                     }
                 }
             }
@@ -417,6 +417,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _workerChannelLogger.LogError(ex, "Error disposing RPC message channel");
                 }
             }
+        }
+
+        /// <summary>
+        /// Processes an inbound message before the next transport message is consumed.
+        /// </summary>
+        /// <param name="message">The inbound message.</param>
+        /// <returns>A task completed after any ordered asynchronous processing has finished.</returns>
+        protected virtual ValueTask ProcessInboundMessageAsync(StreamingMessage message)
+        {
+            DispatchMessage(message);
+
+            return ValueTask.CompletedTask;
         }
 
         private void DispatchMessage(StreamingMessage msg)
@@ -1512,6 +1524,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         protected virtual void OnChannelFailure(Exception exception)
         {
         }
+
+        /// <summary>
+        /// Gets an initialized worker capability without exposing the mutable capability collection.
+        /// </summary>
+        /// <param name="name">The protocol capability name.</param>
+        /// <returns>The advertised value, or <see langword="null"/> when absent.</returns>
+        protected string GetCapabilityState(string name) => _workerCapabilities.GetCapabilityState(name);
 
         /// <summary>
         /// Fails the pending metadata request without replacing an existing result or failure.

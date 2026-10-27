@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageVersion Include="Aspire.Hosting" Version="13.5.3" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.5.3" />
+    <PackageVersion Include="Azure.Storage.Queues" Version="12.26.0" />
   </ItemGroup>
 
 </Project>

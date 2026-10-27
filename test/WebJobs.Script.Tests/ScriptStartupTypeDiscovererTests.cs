@@ -790,6 +790,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return extensionRequirementOptions;
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task GetExtensionsStartupTypes_UsesManifestHintWithoutAdditionalStartupProbing(bool includeHint)
+        {
+            string metadata = Path.Combine(_directory.Path, "configured");
+            string probing = Path.Combine(metadata, "assemblies");
+            Directory.CreateDirectory(probing);
+            ExtensionInstall extension = new("AzureStorageBlobs", typeof(AzureStorageBlobsWebJobsStartup))
+            {
+                HintPath = includeHint ? "./assemblies/" + Path.GetFileName(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location) : null,
+            };
+            extension.CopyTo(probing);
+            JObject manifest = new() { ["extensions"] = new JArray(JObject.FromObject(extension.GetReference())) };
+            File.WriteAllText(Path.Combine(metadata, "extensions.json"), manifest.ToString());
+            _bundleManager.Setup(value => value.IsExtensionBundleConfigured()).Returns(true);
+            Mock<IExtensionPathProvider> provider = new(MockBehavior.Strict);
+            provider.SetupGet(value => value.UseExtensionBundles).Returns(false);
+            provider.Setup(value => value.TryResolveExtensionsMetadataPath(_directory.Path, out metadata, out probing)).Returns(true);
+            ScriptStartupTypeLocator locator = CreateSystemUnderTest(extensionPathProvider: provider.Object);
+
+            IEnumerable<Type> startups = await locator.GetExtensionsStartupTypesAsync();
+
+            if (includeHint)
+            {
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, Assert.Single(startups).FullName);
+            }
+            else
+            {
+                Assert.Empty(startups);
+            }
+            _bundleManager.Verify(value => value.GetExtensionBundleDetails(), Times.Never);
+            _bundleManager.Verify(value => value.GetExtensionBundleBinPathAsync(), Times.Never);
+            provider.Verify(value => value.TryResolveExtensionsMetadataPath(_directory.Path, out metadata, out probing), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_MissingStartupUsesNormalLogAndSkipBehavior()
+        {
+            string metadata = InstallExtensions(ExtensionInstall.BlobStorage());
+            string probing = metadata;
+            string manifestPath = Path.Combine(metadata, "extensions.json");
+            JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
+            JObject reference = (JObject)manifest["extensions"][0];
+            JProperty typeName = reference.Properties().Single(property => string.Equals(property.Name, nameof(ExtensionReference.TypeName), StringComparison.OrdinalIgnoreCase));
+            typeName.Value = ((string)typeName.Value).Replace("AzureStorageBlobsWebJobsStartup", "MissingStartup", StringComparison.Ordinal);
+            File.WriteAllText(manifestPath, manifest.ToString());
+            Mock<IExtensionPathProvider> provider = new(MockBehavior.Strict);
+            provider.SetupGet(value => value.UseExtensionBundles).Returns(false);
+            provider.Setup(value => value.TryResolveExtensionsMetadataPath(_directory.Path, out metadata, out probing)).Returns(true);
+            ScriptStartupTypeLocator locator = CreateSystemUnderTest(extensionPathProvider: provider.Object);
+
+            Assert.Empty(await locator.GetExtensionsStartupTypesAsync());
+        }
+
         private string InstallExtensions(params ExtensionInstall[] extensions)
         {
             string binPath = Path.Combine(_directory.Path, "bin");
@@ -824,7 +879,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private ScriptStartupTypeLocator CreateSystemUnderTest(
             string rootPath = null,
             ExtensionRequirementOptions extensionRequirements = null,
-            WorkerConfigCacheInvalidator workerConfigCacheInvalidator = null)
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator = null,
+            IExtensionPathProvider extensionPathProvider = null)
         {
             LoggerFactory factory = new();
             factory.AddProvider(_loggerProvider);
@@ -838,7 +894,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _metricsLogger,
                 _environment,
                 optionsWrapper,
-                workerConfigCacheInvalidator);
+                workerConfigCacheInvalidator,
+                extensionPathProvider ?? new DefaultExtensionPathProvider());
         }
 
         private bool AreExpectedMetricsGenerated()

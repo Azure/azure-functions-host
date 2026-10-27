@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
+        private readonly IExtensionPathProvider _extensionPathProvider;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IEnvironment _environment;
@@ -51,9 +52,38 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             IEnvironment environment,
             IOptions<ExtensionRequirementOptions> extensionRequirementOptions,
             WorkerConfigCacheInvalidator workerConfigCacheInvalidator)
+            : this(rootScriptPath, logger, extensionBundleManager, functionMetadataManager, metricsLogger, environment,
+                  extensionRequirementOptions, workerConfigCacheInvalidator, new DefaultExtensionPathProvider())
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ScriptStartupTypeLocator"/> class.
+        /// Creates an extension locator using the configured extension paths.
+        /// </summary>
+        /// <param name="rootScriptPath">The application script path.</param>
+        /// <param name="logger">The startup logger.</param>
+        /// <param name="extensionBundleManager">The existing bundle manager.</param>
+        /// <param name="functionMetadataManager">The function metadata manager.</param>
+        /// <param name="metricsLogger">The startup metrics logger.</param>
+        /// <param name="environment">The hosting environment.</param>
+        /// <param name="extensionRequirementOptions">The extension requirements.</param>
+        /// <param name="workerConfigCacheInvalidator">The worker configuration cache invalidator.</param>
+        /// <param name="extensionPathProvider">The extension metadata and assembly path provider.</param>
+        public ScriptStartupTypeLocator(
+            string rootScriptPath,
+            ILogger<ScriptStartupTypeLocator> logger,
+            IExtensionBundleManager extensionBundleManager,
+            IFunctionMetadataManager functionMetadataManager,
+            IMetricsLogger metricsLogger,
+            IEnvironment environment,
+            IOptions<ExtensionRequirementOptions> extensionRequirementOptions,
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator,
+            IExtensionPathProvider extensionPathProvider)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
+            _extensionPathProvider = extensionPathProvider ?? throw new ArgumentNullException(nameof(extensionPathProvider));
             _logger = logger;
             _functionMetadataManager = functionMetadataManager;
             _metricsLogger = metricsLogger;
@@ -87,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             FunctionAssemblyLoadContext.ResetSharedContext();
 
             HashSet<string> bindingsSet = null;
-            var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
+            var bundleConfigured = _extensionPathProvider.UseExtensionBundles && _extensionBundleManager.IsExtensionBundleConfigured();
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
             bool isPrecompiledFunctionApp = false;
 
@@ -158,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 _workerConfigCacheInvalidator.EnableInvalidationForNextBuild();
 
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
-                if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
+                if (_extensionPathProvider.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
                 {
                     extensionsMetadataPath = resolvedPath;
                 }

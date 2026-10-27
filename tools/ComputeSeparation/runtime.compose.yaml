@@ -8,6 +8,10 @@ services:
       AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
       AzureFunctionsJobHost__logging__logLevel__default: Information
       AzureFunctionsJobHost__logging__console__isEnabled: "true"
+      AzureWebJobsStorage: ${QUEUE_STORAGE_CONNECTION:-}
+      ExtensionPayloadInputQueue: ${EXTENSION_INPUT_QUEUE:-extension-payload-input}
+      ExtensionPayloadOutputQueue: ${EXTENSION_OUTPUT_QUEUE:-extension-payload-output}
+      Logging__LogLevel__Azure.Functions.Rpc.Client: Debug
     ports:
       - "127.0.0.1:${COMPUTE_HOST_PORT:?Aspire must allocate the Host port}:8080"
     tmpfs:

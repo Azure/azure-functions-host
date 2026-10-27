@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public static class ScriptHostBuilderExtensions
     {
         private const string BundleManagerKey = "MS_BundleManager";
+        private const string ExtensionPathProviderKey = "MS_ExtensionPathProvider";
         private const string StartupTypeLocatorKey = "MS_StartupTypeLocator";
         private const string DelayedConfigurationActionKey = "MS_DelayedConfigurationAction";
         private const string ConfigurationSnapshotKey = "MS_ConfigurationSnapshot";
@@ -167,6 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption, httpClientFactory);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
                 var workerConfigCacheInvalidator = applicationOptions.RootServiceProvider.GetService<WorkerConfigCacheInvalidator>();
+                var extensionPathProvider = applicationOptions.RootServiceProvider.GetService<IExtensionPathProvider>() ?? new DefaultExtensionPathProvider();
 
                 var locator = new ScriptStartupTypeLocator(
                     applicationOptions.ScriptPath,
@@ -176,11 +178,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     metricsLogger,
                     environment,
                     extensionRequirementOptions,
-                    workerConfigCacheInvalidator);
+                    workerConfigCacheInvalidator,
+                    extensionPathProvider);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.
                 context.Properties[BundleManagerKey] = bundleManager;
+                context.Properties[ExtensionPathProviderKey] = extensionPathProvider;
                 context.Properties[StartupTypeLocatorKey] = locator;
 
                 // If we're skipping host initialization, this key will not exist and this will also be skipped.
@@ -272,6 +276,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
+                var extensionPathProvider = context.Properties.GetAndRemove<IExtensionPathProvider>(ExtensionPathProviderKey);
+                webJobsBuilder.Services.AddSingleton<IExtensionPathProvider>(_ => extensionPathProvider);
 
                 if (!skipHostInitialization)
                 {
@@ -412,6 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.TryAddSingleton<IExtensionPathProvider, DefaultExtensionPathProvider>();
             services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
