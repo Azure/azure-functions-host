@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -139,7 +140,8 @@ public class WorkerProxyJsonContextTests
     [Fact]
     public void InitialState_ContainsOnlyPublicShapeAndOmitsUnknownIdentity()
     {
-        WorkerInstanceState response = WorkerInstanceState.FromState(WorkerPodState.CreateUnassigned("pod"));
+        WorkerInstanceState response = WorkerInstanceState.FromState(
+            WorkerPodState.CreateUnassigned("pod", DateTimeOffset.UnixEpoch));
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerInstanceState);
         using JsonDocument document = JsonDocument.Parse(json);
@@ -172,7 +174,8 @@ public class WorkerProxyJsonContextTests
             StartupMode: startupMode,
             FunctionAppName: "private-app",
             FunctionGroupName: "group",
-            IsAlwaysReady: isAlwaysReady);
+            IsAlwaysReady: isAlwaysReady,
+            StartupTime: DateTimeOffset.UnixEpoch);
         WorkerInstanceState response = WorkerInstanceState.FromState(state);
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerInstanceState);
@@ -198,7 +201,18 @@ public class WorkerProxyJsonContextTests
     [Fact]
     public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced()
     {
-        WorkerPodState ready = new("pod", 3, 1, true, "worker", WorkerAssignmentState.Ready, WorkerStartupMode.Preconfigured, "app", "group", false);
+        WorkerPodState ready = new(
+            "pod",
+            3,
+            1,
+            true,
+            "worker",
+            WorkerAssignmentState.Ready,
+            WorkerStartupMode.Preconfigured,
+            "app",
+            "group",
+            false,
+            DateTimeOffset.UnixEpoch);
         WorkerInstanceState retained = WorkerInstanceState.FromState(ready);
         WorkerPodState terminated = ready with
         {
