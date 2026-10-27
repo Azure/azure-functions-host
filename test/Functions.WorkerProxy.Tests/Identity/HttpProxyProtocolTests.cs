@@ -18,14 +18,17 @@ namespace Azure.Functions.WorkerProxy.Tests.Identity;
 
 public sealed class HttpProxyProtocolTests
 {
-    [Fact]
-    public async Task EnabledIdentityProxy_DoesNotEmitFrameworkRequestUriLogs()
+    [Theory]
+    [InlineData("Logging:Console:LogLevel:Default")]
+    [InlineData("Logging:Console:LogLevel:Microsoft.AspNetCore.Hosting.Diagnostics")]
+    public async Task EnabledIdentityProxy_DoesNotEmitFrameworkRequestUriLogs(string providerOverride)
     {
         Dictionary<string, string?> configuration = new()
         {
             ["WorkerProxy:IdentityProxy:Enabled"] = "true",
             ["WorkerProxy:IdentityProxy:Port"] = "0",
-            ["IDENTITY_HEADER"] = "local-test-secret"
+            ["IDENTITY_HEADER"] = "local-test-secret",
+            [providerOverride] = "Information"
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         ILogger logger = factory.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Microsoft.AspNetCore.Hosting.Diagnostics");

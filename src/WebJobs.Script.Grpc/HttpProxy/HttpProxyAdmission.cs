@@ -8,12 +8,18 @@ using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 
+/// <summary>
+/// Reserves request slots and conservative buffer bytes atomically, without introducing a capacity wait queue.
+/// </summary>
 internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
 {
     private readonly Lock _lock = new();
     private int _requests;
     private long _bytes;
 
+    /// <summary>
+    /// Reserves one request and its buffer allowance immediately, or returns null when either limit is exhausted.
+    /// </summary>
     internal Lease? TryAcquire(long bytes)
     {
         lock (_lock)
@@ -29,6 +35,9 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
         }
     }
 
+    /// <summary>
+    /// Shares one reservation between callers and transport cleanup; only the last owner releases capacity.
+    /// </summary>
     internal sealed class Lease : IDisposable
     {
         private Reservation? _reservation;
@@ -40,6 +49,9 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
 
         internal static Lease Create(HttpProxyAdmission owner, long bytes) => new(new Reservation(owner, bytes));
 
+        /// <summary>
+        /// Keeps the reservation alive when queued or in-flight transport work outlives its HTTP caller.
+        /// </summary>
         internal Lease Retain()
         {
             Reservation reservation = _reservation ?? throw new ObjectDisposedException(nameof(Lease));
@@ -47,6 +59,7 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
             return new Lease(reservation);
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             if (Interlocked.Exchange(ref _reservation, null) is { } reservation

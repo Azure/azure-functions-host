@@ -15,7 +15,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
 
-// The root-owned transport handles proxy requests before a WorkerChannel or ScriptHost is initialized.
+/// <summary>
+/// Services reverse HTTP controls on the root-owned transport before the customer worker or ScriptHost initializes.
+/// </summary>
+/// <remarks>Ordinary worker messages retain their existing channel semantics and share the same sole gRPC writer.</remarks>
 internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
 {
     private readonly Lock _requestStateLock = new();
@@ -24,11 +27,13 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
     private readonly HttpProxyOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly HttpProxyAdmission _hostAdmission;
+    private readonly HttpProxyAdmission _transportAdmission;
     private readonly ILogger _logger;
     private readonly Channel<StreamingMessage> _inbound = Channel.CreateUnbounded<StreamingMessage>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = true, AllowSynchronousContinuations = false });
 
     private readonly Dictionary<string, PendingRequest> _requests = new(StringComparer.Ordinal);
+    // Request IDs retire before terminal delivery; operations retain both budgets until the physical write ends.
     private readonly HashSet<PendingRequest> _operations = [];
     private readonly CancellationTokenSource _shutdown = new();
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
@@ -44,6 +49,7 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
         _options = options;
         _timeProvider = timeProvider;
         _hostAdmission = hostAdmission;
+        _transportAdmission = new(options.MaxPendingRequests, options.MaxBufferedBytes);
         _logger = logger;
         Reader = _inbound.Reader;
         Writer = inner.Writer;
@@ -51,6 +57,9 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
         _helloTask = SendHelloAsync();
     }
 
+    /// <summary>
+    /// Negotiates proxy protocol support and limits independently of the customer's StartStream/WorkerInit handshake.
+    /// </summary>
     private async Task SendHelloAsync()
     {
         try
@@ -71,6 +80,9 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
         }
     }
 
+    /// <summary>
+    /// Consumes proxy controls without blocking the stream reader on upstream HTTP work.
+    /// </summary>
     private async Task ReadAsync()
     {
         Exception error = null;
@@ -104,6 +116,9 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
         }
     }
 
+    /// <summary>
+    /// Binds controls to this transport session and dispatches request or cancellation work.
+    /// </summary>
     private void Process(HttpProxyMessage message)
     {
         if (!string.Equals(message.SessionId, _sessionId, StringComparison.Ordinal))
@@ -158,6 +173,9 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
         _ = ExecuteAsync(message.RequestId, request, pending);
     }
 
+    /// <summary>
+    /// Owns an admitted operation through its single terminal response, including the response's physical write/discard.
+    /// </summary>
     private async Task ExecuteAsync(string requestId, HttpProxyRequest request, PendingRequest pending)
     {
         HttpProxyMessage terminal = new() { SessionId = _sessionId, RequestId = requestId };
@@ -167,10 +185,13 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
             using CancellationTokenSource deadline = new(timeout, _timeProvider);
             using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(
                 deadline.Token, pending.Token, _shutdown.Token);
-            using IDisposable admission = _hostAdmission.TryAcquire(_options.ReservationBytes);
+            using IDisposable transportAdmission = _transportAdmission.TryAcquire(_options.ReservationBytes);
+            using IDisposable hostAdmission = transportAdmission is not null
+                ? _hostAdmission.TryAcquire(_options.ReservationBytes)
+                : null;
             try
             {
-                if (admission is null)
+                if (transportAdmission is null || hostAdmission is null)
                 {
                     throw new HttpProxyException(HttpProxyFailure.Types.Code.TooManyRequests);
                 }
@@ -215,7 +236,7 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
                 await _inner.WriteTrackedAsync(new() { HttpProxy = terminal }, _shutdown.Token, () =>
                 {
                     // A peer can receive the terminal frame and send its next request before WriteAsync returns.
-                    // Retire cancellation/admission identity before delivery, but retain buffer ownership until the write finishes.
+                    // Retire the request ID before delivery, but keep both admission leases until the write finishes.
                     lock (_requestStateLock)
                     {
                         if (_requests.TryGetValue(requestId, out PendingRequest current) && ReferenceEquals(current, pending))
@@ -255,18 +276,24 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
         }
     }
 
+    /// <summary>
+    /// Waits for the currently owned operations, including any terminal messages still queued for delivery.
+    /// </summary>
+    internal Task WaitForPendingOperationsAsync()
+    {
+        lock (_requestStateLock)
+        {
+            return Task.WhenAll(_operations.Select(static request => request.Completed.Task));
+        }
+    }
+
+    /// <inheritdoc />
     protected override async ValueTask DisposeAsyncCore()
     {
         await _shutdown.CancelAsync();
         await _inner.DisposeAsync();
         await Task.WhenAll(_readTask, _helloTask);
-        Task[] pending;
-        lock (_requestStateLock)
-        {
-            pending = [.. _operations.Select(static request => request.Completed.Task)];
-        }
-
-        await Task.WhenAll(pending);
+        await WaitForPendingOperationsAsync();
         _shutdown.Dispose();
     }
 

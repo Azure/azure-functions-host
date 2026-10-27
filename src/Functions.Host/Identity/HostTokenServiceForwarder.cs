@@ -18,12 +18,17 @@ using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Host.Identity;
 
+/// <summary>
+/// Forwards opaque identity HTTP requests to the app-scoped upstream selected by protected Host configuration.
+/// </summary>
+/// <remarks>The Host supplies the upstream credential; the worker's local route never selects the destination.</remarks>
 internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IHttpClientFactory clients,
     IOptionsMonitor<ScriptApplicationHostOptions> applicationOptions, IScriptWebHostEnvironment environment,
     ILogger<HostTokenServiceForwarder> logger) : IHttpProxyRequestHandler
 {
     internal const string ClientName = nameof(HostTokenServiceForwarder);
 
+    /// <inheritdoc />
     public async Task<HttpProxyResponse> SendAsync(HttpProxyRequest request, HttpProxyLimits limits, CancellationToken cancellationToken)
     {
         await WaitForPreparationAsync(cancellationToken);
@@ -108,11 +113,15 @@ internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IH
         }
     }
 
+    /// <summary>
+    /// Waits for app-scoped Host configuration within the request's existing deadline, without starting a ScriptHost.
+    /// </summary>
     private async Task WaitForPreparationAsync(CancellationToken cancellationToken)
     {
         while (true)
         {
             TaskCompletionSource changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Subscribe before checking state so preparation cannot complete between the check and the subscription.
             using IDisposable? subscription = applicationOptions.OnChange(_ => changed.TrySetResult());
             if (!applicationOptions.CurrentValue.IsStandbyConfiguration)
             {

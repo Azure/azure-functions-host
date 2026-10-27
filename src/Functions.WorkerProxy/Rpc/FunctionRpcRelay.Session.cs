@@ -169,13 +169,6 @@ internal sealed partial class FunctionRpcRelay
             // out of band. The write must finish before gRPC writes trailers to the same response.
             _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
-            if (side is FunctionRpcRelaySide.Runtime)
-            {
-                while (source.TryRead(out _))
-                {
-                }
-            }
-
             return await _completion.Task;
         }
 
@@ -220,6 +213,9 @@ internal sealed partial class FunctionRpcRelay
             });
         }
 
+        /// <summary>
+        /// Makes only the Host-facing stream available to the identity bridge, before the customer stream attaches.
+        /// </summary>
         private IdentityProxyService.Connection? AttachIdentityProxy(FunctionRpcRelaySide side, CancellationToken cancellationToken)
         {
             if (side is not FunctionRpcRelaySide.Runtime || identityProxy is not { Enabled: true })
@@ -230,6 +226,9 @@ internal sealed partial class FunctionRpcRelay
             return identityProxy.Attach(WriteToRuntimeAsync, cancellationToken);
         }
 
+        /// <summary>
+        /// Shares the runtime queue's sole writer while retaining proxy ownership until physical write or discard.
+        /// </summary>
         private Task<bool> WriteToRuntimeAsync(StreamingMessage message, CancellationToken cancellationToken, Func<bool>? prepare)
         {
             return _runtimeWrites.WriteAsync(_toRuntime.Writer, message, cancellationToken, prepare);
@@ -384,6 +383,12 @@ internal sealed partial class FunctionRpcRelay
             {
                 if (side is FunctionRpcRelaySide.Runtime)
                 {
+                    _toRuntime.Writer.TryComplete();
+                    // This task is the sole reader. Drop abandoned HTTP payloads before releasing tracked ownership.
+                    while (source.TryRead(out _))
+                    {
+                    }
+
                     _runtimeWrites.Complete(new IOException("The HTTP proxy transport closed."));
                 }
             }

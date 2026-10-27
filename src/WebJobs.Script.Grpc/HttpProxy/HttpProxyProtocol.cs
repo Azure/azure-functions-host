@@ -14,6 +14,9 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 
+/// <summary>
+/// Validates bounded HTTP envelopes without interpreting identity selectors, API versions, or token response bodies.
+/// </summary>
 internal static class HttpProxyProtocol
 {
     internal const uint Version = 1;
@@ -33,6 +36,9 @@ internal static class HttpProxyProtocol
     internal static bool IsToken(string value) => value.Length > 0 && value.All(static character =>
         char.IsAsciiLetterOrDigit(character) || "!#$%&'*+-.^_`|~".Contains(character));
 
+    /// <summary>
+    /// Restricts configuration and request paths to token-route syntax, excluding management and specialization paths.
+    /// </summary>
     internal static bool IsTokenPath(string path) => path.Length > 0 && path[0] == '/'
         && path.All(static character => char.IsAsciiLetterOrDigit(character) || character is '/' or '-' or '_' or '.')
         && !path.Contains("..", StringComparison.Ordinal) && !path.Contains("//", StringComparison.Ordinal)
@@ -48,6 +54,9 @@ internal static class HttpProxyProtocol
         }
     }
 
+    /// <summary>
+    /// Splits a bounded origin-form target while leaving its raw query escaping, ordering, and duplicate keys unchanged.
+    /// </summary>
     internal static (string Path, string Query) ParseTarget(string target, HttpProxyLimits limits)
     {
         int query = target.IndexOf('?');
@@ -62,6 +71,9 @@ internal static class HttpProxyProtocol
         return (path, query < 0 ? string.Empty : target[query..]);
     }
 
+    /// <summary>
+    /// Validates header bounds and removes hop-by-hop and credential headers while preserving repeated end-to-end values.
+    /// </summary>
     internal static List<HttpProxyHeader> FilterHeaders(IEnumerable<HttpProxyHeader> source, HttpProxyLimits limits)
     {
         List<HttpProxyHeader> headers = [.. source];
@@ -116,6 +128,9 @@ internal static class HttpProxyProtocol
         return header;
     }
 
+    /// <summary>
+    /// Buffers an opaque body up to its limit, probing one extra byte to detect overflow without trusting Content-Length.
+    /// </summary>
     internal static async Task<ByteString> ReadBodyAsync(Stream stream, int maximumBytes, bool response, CancellationToken cancellationToken)
     {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(Math.Min(maximumBytes, 8192));

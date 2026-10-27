@@ -5,6 +5,9 @@ using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 
 namespace Azure.Functions.WorkerProxy.Identity;
 
+/// <summary>
+/// Configures the loopback identity listener separately from the Host-selected upstream endpoint and credential.
+/// </summary>
 internal sealed class IdentityProxyOptions : HttpProxyOptions
 {
     public const string SectionName = "WorkerProxy:IdentityProxy";

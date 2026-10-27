@@ -55,14 +55,7 @@ internal static class WorkerProxyApplication
         builder.Services.AddOptions<IdentityProxyOptions>()
             .BindConfiguration(IdentityProxyOptions.SectionName)
             .ValidateOnStart();
-        builder.Services.AddOptions<LoggerFilterOptions>().Configure<IOptions<IdentityProxyOptions>>(static (logging, identity) =>
-        {
-            if (identity.Value.Enabled)
-            {
-                // The framework's request-start/finish messages include the raw identity query.
-                logging.Rules.Add(new LoggerFilterRule(null, "Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning, null));
-            }
-        });
+        builder.Services.AddSingleton<IPostConfigureOptions<LoggerFilterOptions>, IdentityProxyLoggingOptionsSetup>();
         builder.Services.AddSingleton<IdentityProxyService>();
         builder.Services.AddSingleton<IdentityProxyMiddleware>();
         builder.Services.AddSingleton<WorkerPodStateManager>();
