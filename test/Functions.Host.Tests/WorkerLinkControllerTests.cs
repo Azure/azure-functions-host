@@ -34,12 +34,33 @@ public class WorkerLinkControllerTests
     private const string PrivateDiagnostic = "private-worker-initialization-diagnostic";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
+    private readonly Mock<IWorkerLinkAcknowledgementClient> _acknowledgementClient = new(MockBehavior.Strict);
+
+    public WorkerLinkControllerTests()
+    {
+        _acknowledgementClient
+            .Setup(client => client.AcknowledgeAsync(
+                It.IsAny<Uri>(),
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+    }
 
     [Fact]
-    public void Constructor_NullLoggerOrRegistry_Throws()
+    public void Constructor_NullDependency_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object));
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            new WorkerLinkController(null!, _registry.Object, _acknowledgementClient.Object));
+        Assert.Throws<ArgumentNullException>(() =>
+            new WorkerLinkController(
+                NullLogger<WorkerLinkController>.Instance,
+                null!,
+                _acknowledgementClient.Object));
+        Assert.Throws<ArgumentNullException>(() =>
+            new WorkerLinkController(
+                NullLogger<WorkerLinkController>.Instance,
+                _registry.Object,
+                null!));
     }
 
     [Theory]
@@ -49,13 +70,28 @@ public class WorkerLinkControllerTests
     {
         using CancellationTokenSource cancellation = new();
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource acknowledgementStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource acknowledgement = new(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken registryToken = default;
+        CancellationToken acknowledgementToken = default;
+        FunctionsSplitPodIdentity? acknowledgedRuntime = null;
         _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(grpcEndpoint), It.IsAny<CancellationToken>()))
             .Callback<string, Uri, CancellationToken>((_, _, token) => registryToken = token)
             .Returns(completion.Task);
+        _acknowledgementClient
+            .Setup(client => client.AcknowledgeAsync(
+                new Uri(grpcEndpoint),
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Uri, FunctionsSplitPodIdentity, CancellationToken>((_, runtime, token) =>
+            {
+                acknowledgedRuntime = runtime;
+                acknowledgementToken = token;
+                acknowledgementStarted.TrySetResult();
+            })
+            .Returns(acknowledgement.Task);
         WorkerLinkRequest request = ValidRequest();
         request.WorkerGrpcEndpoint = grpcEndpoint;
-        request.WorkerContainerEncryptionKey = "reserved-test-value";
 
         Task<IActionResult> link = CreateController().LinkWorker(WorkerId, request, cancellation.Token);
         Assert.True(registryToken.CanBeCanceled);
@@ -63,9 +99,43 @@ public class WorkerLinkControllerTests
         Assert.False(registryToken.IsCancellationRequested);
         Assert.False(link.IsCompleted);
         completion.SetResult(new(null!, IsNewLink: true));
+        await acknowledgementStarted.Task.WaitAsync(TestTimeout);
+        Assert.False(link.IsCompleted);
+        Assert.Same(request.Runtime, acknowledgedRuntime);
+        Assert.Equal(cancellation.Token, acknowledgementToken);
+        acknowledgement.SetResult();
         StatusCodeResult result = Assert.IsType<StatusCodeResult>(await link);
         Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
-        VerifyOnlyLinkCall();
+        VerifyOnlyLinkCall(acknowledged: true);
+    }
+
+    [Fact]
+    public async Task LinkWorker_LegionIpv4Endpoint_NormalizesToHttpUri()
+    {
+        const string legionEndpoint = "100.64.1.12:50053";
+        Uri normalizedEndpoint = new("http://100.64.1.12:50053/");
+        _registry.Setup(registry => registry.LinkAsync(
+                WorkerId,
+                normalizedEndpoint,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        WorkerLinkRequest request = ValidRequest();
+        request.WorkerGrpcEndpoint = legionEndpoint;
+
+        StatusCodeResult result = Assert.IsType<StatusCodeResult>(
+            await CreateController().LinkWorker(WorkerId, request));
+
+        Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
+        _registry.Verify(registry => registry.LinkAsync(
+            WorkerId,
+            normalizedEndpoint,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _registry.VerifyNoOtherCalls();
+        _acknowledgementClient.Verify(client => client.AcknowledgeAsync(
+            normalizedEndpoint,
+            request.Runtime!,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _acknowledgementClient.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -135,6 +205,74 @@ public class WorkerLinkControllerTests
     }
 
     [Theory]
+    [InlineData(nameof(WorkerLinkFailureReason.Conflict), StatusCodes.Status409Conflict, "LinkConflict")]
+    [InlineData("Unavailable", StatusCodes.Status503ServiceUnavailable, "WorkerUnavailable")]
+    [InlineData("Timeout", StatusCodes.Status503ServiceUnavailable, "LinkTimeout")]
+    public async Task LinkWorker_AcknowledgementFailure_DoesNotReturnSuccess(
+        string failure,
+        int status,
+        string code)
+    {
+        _registry.Setup(registry => registry.LinkAsync(
+                WorkerId,
+                new Uri(ValidGrpcEndpoint),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        Exception exception = failure switch
+        {
+            nameof(WorkerLinkFailureReason.Conflict) =>
+                new WorkerLinkException(WorkerLinkFailureReason.Conflict, PrivateDiagnostic),
+            "Unavailable" => new GrpcException(new Status(StatusCode.Unavailable, PrivateDiagnostic)),
+            "Timeout" => new TimeoutException(PrivateDiagnostic),
+            _ => throw new ArgumentOutOfRangeException(nameof(failure)),
+        };
+        _acknowledgementClient
+            .Setup(client => client.AcknowledgeAsync(
+                new Uri(ValidGrpcEndpoint),
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+
+        IActionResult result = await CreateController().LinkWorker(WorkerId, ValidRequest());
+
+        AssertLinkError(result, status, code);
+        VerifyOnlyLinkCall(acknowledged: true);
+    }
+
+    [Fact]
+    public async Task LinkWorker_CallerCancellationDuringAcknowledgement_PropagatesCallerToken()
+    {
+        using CancellationTokenSource cancellation = new();
+        TaskCompletionSource<CancellationToken> acknowledgementStarted =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _registry.Setup(registry => registry.LinkAsync(
+                WorkerId,
+                new Uri(ValidGrpcEndpoint),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        _acknowledgementClient
+            .Setup(client => client.AcknowledgeAsync(
+                new Uri(ValidGrpcEndpoint),
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()))
+            .Returns((Uri _, FunctionsSplitPodIdentity _, CancellationToken token) =>
+            {
+                acknowledgementStarted.TrySetResult(token);
+                return Task.Delay(Timeout.InfiniteTimeSpan, token);
+            });
+
+        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest(), cancellation.Token);
+        CancellationToken acknowledgementToken = await acknowledgementStarted.Task.WaitAsync(TestTimeout);
+        cancellation.Cancel();
+
+        OperationCanceledException actual = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => link.WaitAsync(TestTimeout));
+        Assert.Equal(cancellation.Token, actual.CancellationToken);
+        Assert.True(acknowledgementToken.IsCancellationRequested);
+        VerifyOnlyLinkCall(acknowledged: true);
+    }
+
+    [Theory]
     [InlineData(true, StatusCodes.Status201Created)]
     [InlineData(false, StatusCodes.Status200OK)]
     public async Task LinkWorker_CompletedLink_UsesRegistryCreationResult(bool isNewLink, int expectedStatus)
@@ -147,7 +285,7 @@ public class WorkerLinkControllerTests
         Assert.True(link.IsCompletedSuccessfully);
         StatusCodeResult result = Assert.IsType<StatusCodeResult>(await link);
         Assert.Equal(expectedStatus, result.StatusCode);
-        VerifyOnlyLinkCall();
+        VerifyOnlyLinkCall(acknowledged: true);
     }
 
     [Fact]
@@ -170,7 +308,7 @@ public class WorkerLinkControllerTests
         _registry.Setup(registry => registry.LinkAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(initialization.Task);
         WorkerLinkController controller = CreateController();
-        WorkerLinkRequest otherRequest = new() { WorkerGrpcEndpoint = ValidGrpcEndpoint };
+        WorkerLinkRequest otherRequest = ValidRequest();
 
         Task<IActionResult> first = controller.LinkWorker(WorkerId, ValidRequest());
         Task<IActionResult> replay = controller.LinkWorker(WorkerId, ValidRequest());
@@ -185,6 +323,11 @@ public class WorkerLinkControllerTests
         _registry.Verify(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Exactly(2));
         _registry.Verify(registry => registry.LinkAsync("other-worker", new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
+        _acknowledgementClient.Verify(client => client.AcknowledgeAsync(
+            new Uri(ValidGrpcEndpoint),
+            It.IsAny<FunctionsSplitPodIdentity>(),
+            It.IsAny<CancellationToken>()), Times.Exactly(3));
+        _acknowledgementClient.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -273,7 +416,7 @@ public class WorkerLinkControllerTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LinkWorker_LogsStructuredOutcomeWithoutReservedKey(bool fail)
+    public async Task LinkWorker_LogsStructuredOutcomeWithoutRuntimeAccessKey(bool fail)
     {
         Mock<ILogger<WorkerLinkController>> logger = new();
         logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
@@ -296,8 +439,8 @@ public class WorkerLinkControllerTests
                 ? Task.FromException<WorkerLinkResult>(new WorkerLinkException(WorkerLinkFailureReason.Conflict, "Conflict."))
                 : Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true)));
         WorkerLinkRequest request = ValidRequest();
-        request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
-        WorkerLinkController controller = new(logger.Object, _registry.Object);
+        request.RuntimeAccessKey = "runtime-access-key-do-not-log";
+        WorkerLinkController controller = new(logger.Object, _registry.Object, _acknowledgementClient.Object);
 
         await controller.LinkWorker(WorkerId, request);
 
@@ -306,10 +449,19 @@ public class WorkerLinkControllerTests
         Dictionary<string, object> loggedState = Assert.IsType<Dictionary<string, object>>(state);
         Assert.Equal(WorkerId, loggedState["workerId"]);
         Assert.True(Assert.IsType<double>(loggedState["elapsedMilliseconds"]) >= 0);
-        Assert.DoesNotContain(request.WorkerContainerEncryptionKey, rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain(request.RuntimeAccessKey, rendered, StringComparison.Ordinal);
         if (fail)
         {
             Assert.Equal("LinkConflict", loggedState["reason"]);
+            _acknowledgementClient.VerifyNoOtherCalls();
+        }
+        else
+        {
+            _acknowledgementClient.Verify(client => client.AcknowledgeAsync(
+                new Uri(ValidGrpcEndpoint),
+                request.Runtime!,
+                It.IsAny<CancellationToken>()), Times.Once);
+            _acknowledgementClient.VerifyNoOtherCalls();
         }
     }
 
@@ -338,11 +490,84 @@ public class WorkerLinkControllerTests
     [Fact]
     public async Task LinkWorker_MissingGrpcEndpoint_ReturnsRequiredWithoutLinking()
     {
-        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(WorkerId, new WorkerLinkRequest()));
+        WorkerLinkRequest request = ValidRequest();
+        request.WorkerGrpcEndpoint = null;
+        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(WorkerId, request));
         RequestValidationError error = Assert.Single(errors);
         Assert.Equal("Required", error.Code);
         Assert.Equal("workerGrpcEndpoint", error.Target);
         _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("runtimeAccessKey", "Required")]
+    [InlineData("runtime", "Required")]
+    [InlineData("runtime.resourceNamespace", "Required")]
+    [InlineData("runtime.podName", "Required")]
+    [InlineData("runtime.podGuid", "Required")]
+    [InlineData("runtime.legionStampName", "Required")]
+    [InlineData("runtime.podType", "Required")]
+    [InlineData("runtime.podType.invalid", "InvalidValue")]
+    [InlineData("runtime.app", "Required")]
+    [InlineData("runtime.app.functionAppName", "Required")]
+    [InlineData("runtime.app.functionAppSiteId", "Required")]
+    [InlineData("runtime.app.antaresStampName", "Required")]
+    public async Task LinkWorker_MissingOrInvalidRuntimeIdentity_ReturnsExactValidationError(
+        string target,
+        string expectedCode)
+    {
+        WorkerLinkRequest request = ValidRequest();
+        string expectedTarget = target;
+        switch (target)
+        {
+            case "runtimeAccessKey":
+                request.RuntimeAccessKey = " ";
+                break;
+            case "runtime":
+                request.Runtime = null;
+                break;
+            case "runtime.resourceNamespace":
+                request.Runtime!.ResourceNamespace = null;
+                break;
+            case "runtime.podName":
+                request.Runtime!.PodName = null;
+                break;
+            case "runtime.podGuid":
+                request.Runtime!.PodGuid = Guid.Empty;
+                break;
+            case "runtime.legionStampName":
+                request.Runtime!.LegionStampName = null;
+                break;
+            case "runtime.podType":
+                request.Runtime!.PodType = null;
+                break;
+            case "runtime.podType.invalid":
+                request.Runtime!.PodType = "FunctionsSplitWorkerPod";
+                expectedTarget = "runtime.podType";
+                break;
+            case "runtime.app":
+                request.Runtime!.App = null;
+                break;
+            case "runtime.app.functionAppName":
+                request.Runtime!.App!.FunctionAppName = null;
+                break;
+            case "runtime.app.functionAppSiteId":
+                request.Runtime!.App!.FunctionAppSiteId = null;
+                break;
+            case "runtime.app.antaresStampName":
+                request.Runtime!.App!.AntaresStampName = null;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(target));
+        }
+
+        RequestValidationError error = Assert.Single(
+            AssertBadRequest(await CreateController().LinkWorker(WorkerId, request)));
+
+        Assert.Equal(expectedCode, error.Code);
+        Assert.Equal(expectedTarget, error.Target);
+        _registry.VerifyNoOtherCalls();
+        _acknowledgementClient.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -389,6 +614,11 @@ public class WorkerLinkControllerTests
         Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
         _registry.Verify(registry => registry.LinkAsync(workerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
+        _acknowledgementClient.Verify(client => client.AcknowledgeAsync(
+            It.IsAny<Uri>(),
+            It.IsAny<FunctionsSplitPodIdentity>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _acknowledgementClient.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -405,7 +635,14 @@ public class WorkerLinkControllerTests
     [InlineData("   ")]
     [InlineData("not-a-url")]
     [InlineData("worker-proxy:50053")]
+    [InlineData("100.64.1.12")]
+    [InlineData("100.64.1.12:0")]
+    [InlineData("100.64.1.12:65536")]
+    [InlineData("100.64.1.999:50053")]
+    [InlineData(" 100.64.1.12:50053")]
     [InlineData("ftp://100.64.1.12:50053")]
+    [InlineData("http://100.64.1.12:0")]
+    [InlineData("http://user@100.64.1.12:50053")]
     [InlineData("http://user:password@100.64.1.12:50053")]
     [InlineData("http://100.64.1.12:50053/path")]
     [InlineData("http://100.64.1.12:50053?query=value")]
@@ -422,12 +659,27 @@ public class WorkerLinkControllerTests
     }
 
     private WorkerLinkController CreateController()
-        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object);
+        => new(
+            NullLogger<WorkerLinkController>.Instance,
+            _registry.Object,
+            _acknowledgementClient.Object);
 
-    private void VerifyOnlyLinkCall()
+    private void VerifyOnlyLinkCall(bool acknowledged = false)
     {
         _registry.Verify(registry => registry.LinkAsync(WorkerId, It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
+        if (acknowledged)
+        {
+            _acknowledgementClient.Verify(client => client.AcknowledgeAsync(
+                It.IsAny<Uri>(),
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+            _acknowledgementClient.VerifyNoOtherCalls();
+        }
+        else
+        {
+            _acknowledgementClient.VerifyNoOtherCalls();
+        }
     }
 
     private static WorkerLinkError AssertLinkError(IActionResult result, int statusCode, string code)
@@ -443,7 +695,25 @@ public class WorkerLinkControllerTests
     }
 
     private static WorkerLinkRequest ValidRequest()
-        => new() { WorkerGrpcEndpoint = ValidGrpcEndpoint };
+        => new()
+        {
+            WorkerGrpcEndpoint = ValidGrpcEndpoint,
+            RuntimeAccessKey = "runtime-access-key",
+            Runtime = new()
+            {
+                ResourceNamespace = "runtime-namespace",
+                PodName = "runtime-pod",
+                PodGuid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                LegionStampName = "legion-stamp",
+                PodType = "FunctionsSplitRuntimePod",
+                App = new()
+                {
+                    FunctionAppName = "test-app",
+                    FunctionAppSiteId = 42,
+                    AntaresStampName = "antares-stamp"
+                }
+            }
+        };
 
     private static IReadOnlyList<RequestValidationError> AssertBadRequest(IActionResult result)
     {
@@ -455,7 +725,7 @@ public class WorkerLinkControllerTests
         Assert.All(errors, error =>
         {
             Assert.False(string.IsNullOrWhiteSpace(error.Target));
-            Assert.Contains(error.Code, new[] { "Required", "InvalidEndpoint", "InvalidBody" });
+            Assert.Contains(error.Code, new[] { "Required", "InvalidEndpoint", "InvalidBody", "InvalidValue" });
         });
 
         return errors;

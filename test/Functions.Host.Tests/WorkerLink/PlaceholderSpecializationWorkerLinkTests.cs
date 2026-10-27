@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -40,6 +41,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
+        Mock<IWorkerLinkAcknowledgementClient> acknowledgementClient = new();
         registry.Setup(value => value.LinkAsync(WorkerId, new Uri(GrpcEndpoint), It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
@@ -52,8 +54,14 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         registry.Setup(value => value.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken token) => new TaskCompletionSource<WorkerChannel>().Task.WaitAsync(token));
         registry.Setup(value => value.GetInitializedChannels()).Returns(Array.Empty<WorkerChannel>());
+        acknowledgementClient
+            .Setup(value => value.AcknowledgeAsync(
+                new Uri(GrpcEndpoint),
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        using IHost host = CreateHost(registry.Object);
+        using IHost host = CreateHost(registry.Object, acknowledgementClient.Object);
         await host.StartAsync();
         try
         {
@@ -67,6 +75,12 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
 
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             Assert.False(linkedWithStandbyConfiguration);
+            acknowledgementClient.Verify(value => value.AcknowledgeAsync(
+                new Uri(GrpcEndpoint),
+                It.Is<FunctionsSplitPodIdentity>(runtime =>
+                    runtime.PodName == "runtime-pod"
+                    && runtime.PodType == "FunctionsSplitRuntimePod"),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
         finally
         {
@@ -75,7 +89,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         }
     }
 
-    private static IHost CreateHost(IWorkerChannelRegistry registry)
+    private static IHost CreateHost(
+        IWorkerChannelRegistry registry,
+        IWorkerLinkAcknowledgementClient acknowledgementClient)
         => new HostBuilder()
             .ConfigureAppConfiguration(config => config.AddEnvironmentVariables())
             .ConfigureWebHost(webBuilder => webBuilder
@@ -87,6 +103,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                     services.AddWebJobsScriptHostAuthorization();
                     services.AddWebJobsScriptHost(context.Configuration, ClientWorkerComposition.Instance);
                     services.Replace(ServiceDescriptor.Singleton(registry));
+                    services.Replace(ServiceDescriptor.Singleton(acknowledgementClient));
                 })
                 .Configure(app => app.UseWebJobsScriptHost()))
             .Build();
@@ -95,7 +112,27 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
-            Content = new StringContent($$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}"}""", Encoding.UTF8, "application/json"),
+            Content = new StringContent(
+                $$"""
+                {
+                  "workerGrpcEndpoint":"{{GrpcEndpoint}}",
+                  "runtimeAccessKey":"runtime-access-key",
+                  "runtime":{
+                    "resourceNamespace":"runtime-namespace",
+                    "podName":"runtime-pod",
+                    "podGuid":"11111111-1111-1111-1111-111111111111",
+                    "legionStampName":"legion-stamp",
+                    "podType":"FunctionsSplitRuntimePod",
+                    "app":{
+                      "functionAppName":"test-app",
+                      "functionAppSiteId":42,
+                      "antaresStampName":"antares-stamp"
+                    }
+                  }
+                }
+                """,
+                Encoding.UTF8,
+                "application/json"),
         };
 
         return await client.SendAsync(request, cancellationToken);

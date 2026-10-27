@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Azure.Functions.WorkerProxy.State;
 
 /// <summary>
@@ -11,12 +13,14 @@ internal sealed record WorkerPodState(
     long Revision,
     long? SessionId,
     bool IsWorkerAttached,
+    bool IsRuntimeLinkAcknowledged,
     string? WorkerId,
     WorkerAssignmentState AssignmentState,
     WorkerStartupMode? StartupMode,
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
+    Uri? HttpProxyEndpoint,
     SplitWorkerStaticState SplitStaticState,
     SplitWorkerLink SplitLink)
 {
@@ -31,18 +35,20 @@ internal sealed record WorkerPodState(
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.
     /// </summary>
-    public static WorkerPodState CreateUnassigned(string podName) =>
+    public static WorkerPodState CreateUnassigned(string podName, DateTimeOffset startupTime) =>
         new(
             PodName: podName,
             Revision: 0,
             SessionId: null,
             IsWorkerAttached: false,
+            IsRuntimeLinkAcknowledged: false,
             WorkerId: null,
             AssignmentState: WorkerAssignmentState.Unassigned,
             StartupMode: null,
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null,
-            SplitStaticState: SplitWorkerStaticState.CreatePlaceholder(podName),
+            HttpProxyEndpoint: null,
+            SplitStaticState: SplitWorkerStaticState.CreatePlaceholder(podName, startupTime),
             SplitLink: new(SplitWorkerLinkState.Unlinked));
 }

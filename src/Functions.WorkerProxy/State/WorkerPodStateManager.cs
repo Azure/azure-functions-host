@@ -43,7 +43,7 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName);
+        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
 
     /// <summary>
@@ -222,13 +222,16 @@ internal sealed class WorkerPodStateManager
             }
 
             SplitWorkerLink link = ownsRuntimeLink
-                ? new(SplitWorkerLinkState.Unlinked)
+                ? _state.SplitLink.Runtime is { } acceptedRuntime
+                    ? new(SplitWorkerLinkState.Linked, acceptedRuntime)
+                    : new(SplitWorkerLinkState.Unlinked)
                 : _state.SplitLink;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
+                IsRuntimeLinkAcknowledged = false,
                 SplitLink = link,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
@@ -247,8 +250,7 @@ internal sealed class WorkerPodStateManager
         lock (_stateLock)
         {
             if (_state.AssignmentState == WorkerAssignmentState.Failed
-                || _runtimeLinkSessionId is not null
-                || _state.SplitLink.State != SplitWorkerLinkState.Unlinked)
+                || _runtimeLinkSessionId is not null)
             {
                 return;
             }
@@ -257,8 +259,47 @@ internal sealed class WorkerPodStateManager
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
-                SplitLink = new(SplitWorkerLinkState.Linked)
+                IsRuntimeLinkAcknowledged = false,
+                SplitLink = new(SplitWorkerLinkState.Linking, _state.SplitLink.Runtime)
             });
+        }
+    }
+
+    /// <summary>
+    /// Records or replays the Runtime Host's successful link acknowledgement.
+    /// </summary>
+    public RuntimeLinkAcknowledgementResult AcknowledgeRuntimeLink(SplitPodIdentity runtime)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+
+        lock (_stateLock)
+        {
+            if (_state.SplitLink is { State: SplitWorkerLinkState.Linked, Runtime: { } acknowledged })
+            {
+                return acknowledged == runtime
+                    ? RuntimeLinkAcknowledgementResult.AlreadyAcknowledged
+                    : RuntimeLinkAcknowledgementResult.Conflict;
+            }
+
+            if (_runtimeLinkSessionId is null
+                || _state.SplitLink.State != SplitWorkerLinkState.Linking)
+            {
+                return RuntimeLinkAcknowledgementResult.NotPending;
+            }
+
+            if (_state.SplitLink.Runtime is { } retainedRuntime
+                && retainedRuntime != runtime)
+            {
+                return RuntimeLinkAcknowledgementResult.Conflict;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                IsRuntimeLinkAcknowledged = true,
+                SplitLink = new(SplitWorkerLinkState.Linked, runtime)
+            });
+            return RuntimeLinkAcknowledgementResult.Acknowledged;
         }
     }
 
@@ -284,12 +325,7 @@ internal sealed class WorkerPodStateManager
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            if (!_state.IsWorkerReady)
-            {
-                return WorkerAssignmentResult.WorkerNotReady;
-            }
-
-            // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
+            // Assignment is process-local bookkeeping and can complete before either relay side attaches.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
@@ -298,10 +334,14 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady,
-                SplitStaticState = assignment.SplitStaticState
+                HttpProxyEndpoint = assignment.HttpProxyEndpoint,
+                SplitStaticState = _state.SplitStaticState with
+                {
+                    IsAlwaysReady = assignment.IsAlwaysReady,
+                    FunctionGroup = assignment.FunctionGroupName
+                }
             };
 
-            // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");

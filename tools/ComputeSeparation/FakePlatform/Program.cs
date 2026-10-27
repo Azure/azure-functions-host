@@ -71,8 +71,7 @@ simulate.MapPost("/worker/assign", async (string? worker, IHttpClientFactory cli
         FunctionGroupName,
         false,
         [],
-        string.Empty,
-        CreateWorkerStaticState(selected.PodName, selected.PodGuid));
+        string.Empty);
     using HttpResponseMessage response = await clients.CreateClient(proxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -108,7 +107,10 @@ simulate.MapPost("/worker/link", async (string? worker, IHttpClientFactory clien
         return Results.BadRequest(InvalidWorkerMessage);
     }
 
-    WorkerLink link = new(selected.WorkerGrpcEndpoint.ToString());
+    WorkerLink link = new(
+        selected.WorkerGrpcEndpoint.ToString(),
+        RuntimeAccessKey,
+        CreateRuntimeIdentity());
     using HttpResponseMessage response = await clients.CreateClient(HostClient)
         .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(selected.WorkerId)}", link, cancellationToken);
 
@@ -180,28 +182,20 @@ static string CreateAdminToken(byte[] key)
     return $"{header}.{payload}.{signature}";
 }
 
-static object CreateWorkerStaticState(string podName, Guid podGuid) =>
+static object CreateRuntimeIdentity() =>
     new
     {
-        self = new
+        resourceNamespace = ResourceNamespace,
+        podName = RuntimePodName,
+        podGuid = RuntimePodGuid,
+        legionStampName = LegionStampName,
+        podType = RuntimePodType,
+        app = new
         {
-            resourceNamespace = ResourceNamespace,
-            podName,
-            podGuid,
-            legionStampName = LegionStampName,
-            podType = WorkerPodType,
-            app = new
-            {
-                functionAppName = AppName,
-                functionAppSiteId = FunctionAppSiteId,
-                antaresStampName = AntaresStampName,
-            },
+            functionAppName = AppName,
+            functionAppSiteId = FunctionAppSiteId,
+            antaresStampName = AntaresStampName,
         },
-        isDiscoveryPod = false,
-        isAlwaysReady = false,
-        functionGroup = FunctionGroupName,
-        configLastModifiedTime = 0,
-        contentLastModifiedTime = 0,
     };
 
 internal partial class Program
@@ -217,8 +211,11 @@ internal partial class Program
     private const string ResourceNamespace = "aspire-local";
     private const string LegionStampName = "aspire-local";
     private const string AntaresStampName = "aspire-local";
-    private const string WorkerPodType = "FunctionsSplitWorkerPod";
+    private const string RuntimeAccessKey = "aspire-local-runtime-key";
+    private const string RuntimePodName = "runtime-pod";
+    private const string RuntimePodType = "FunctionsSplitRuntimePod";
     private const int FunctionAppSiteId = 1;
+    private static readonly Guid RuntimePodGuid = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     private sealed class FakePlatformOptions : WorkerOptions
     {
@@ -253,10 +250,9 @@ internal partial class Program
         string FunctionGroupName,
         bool IsAlwaysReady,
         Dictionary<string, string> Environment,
-        string FunctionAppDirectory,
-        object StaticState);
+        string FunctionAppDirectory);
 
-    private sealed record WorkerLink(string WorkerGrpcEndpoint);
+    private sealed record WorkerLink(string WorkerGrpcEndpoint, string RuntimeAccessKey, object Runtime);
 
     private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 }

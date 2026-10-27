@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -33,7 +34,9 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
     internal HttpClient Client { get; }
 
     internal static async Task<WorkerLinkTestHost> StartAsync(CancellationToken cancellationToken,
-        IWorkerChannelRegistry registry, bool includeCompute = true)
+        IWorkerChannelRegistry registry,
+        IWorkerLinkAcknowledgementClient acknowledgementClient,
+        bool includeCompute = true)
     {
         IHost host = new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -59,6 +62,7 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             services.AddSingleton(registry);
+                            services.AddSingleton(acknowledgementClient);
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
                         }
 

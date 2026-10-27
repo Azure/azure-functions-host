@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
@@ -37,18 +39,22 @@ public sealed partial class WorkerLinkController : Controller
 
     private readonly ILogger<WorkerLinkController> _logger;
     private readonly IWorkerChannelRegistry _registry;
+    private readonly IWorkerLinkAcknowledgementClient _acknowledgementClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
+    /// <param name="acknowledgementClient">The client that publishes accepted Runtime identity to WorkerProxy.</param>
     public WorkerLinkController(
         ILogger<WorkerLinkController> logger,
-        IWorkerChannelRegistry registry)
+        IWorkerChannelRegistry registry,
+        IWorkerLinkAcknowledgementClient acknowledgementClient)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _acknowledgementClient = acknowledgementClient ?? throw new ArgumentNullException(nameof(acknowledgementClient));
     }
 
     /// <summary>
@@ -80,8 +86,12 @@ public sealed partial class WorkerLinkController : Controller
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
-        if (errors.Count > 0 || grpcEndpoint is null)
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(
+            workerId,
+            request,
+            out Uri? grpcEndpoint,
+            out FunctionsSplitPodIdentity? runtime);
+        if (errors.Count > 0 || grpcEndpoint is null || runtime is null)
         {
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds);
@@ -89,13 +99,14 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, runtime, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
-        out Uri? grpcEndpoint)
+        out Uri? grpcEndpoint, out FunctionsSplitPodIdentity? runtime)
     {
         grpcEndpoint = null;
+        runtime = null;
         List<RequestValidationError> errors = [];
 
         if (string.IsNullOrWhiteSpace(workerId))
@@ -119,17 +130,29 @@ public sealed partial class WorkerLinkController : Controller
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
+        if (string.IsNullOrWhiteSpace(request.RuntimeAccessKey))
+        {
+            errors.Add(new(ErrorCodes.Required, "runtimeAccessKey"));
+        }
+
+        ValidateRuntimeIdentity(request.Runtime, errors, out runtime);
+
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        FunctionsSplitPodIdentity runtime,
+        long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
+            await _acknowledgementClient.AcknowledgeAsync(grpcEndpoint, runtime, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
@@ -159,6 +182,62 @@ public sealed partial class WorkerLinkController : Controller
         }
     }
 
+    private static void ValidateRuntimeIdentity(
+        FunctionsSplitPodIdentity? request,
+        List<RequestValidationError> errors,
+        out FunctionsSplitPodIdentity? runtime)
+    {
+        runtime = null;
+        if (request is null)
+        {
+            errors.Add(new(ErrorCodes.Required, "runtime"));
+            return;
+        }
+
+        AddRequired(request.ResourceNamespace, "runtime.resourceNamespace", errors);
+        AddRequired(request.PodName, "runtime.podName", errors);
+        if (request.PodGuid is not { } podGuid || podGuid == Guid.Empty)
+        {
+            errors.Add(new(ErrorCodes.Required, "runtime.podGuid"));
+        }
+
+        AddRequired(request.LegionStampName, "runtime.legionStampName", errors);
+        if (!string.Equals(request.PodType, "FunctionsSplitRuntimePod", StringComparison.Ordinal))
+        {
+            errors.Add(new(
+                string.IsNullOrWhiteSpace(request.PodType) ? ErrorCodes.Required : ErrorCodes.InvalidValue,
+                "runtime.podType"));
+        }
+
+        if (request.App is not { } app)
+        {
+            errors.Add(new(ErrorCodes.Required, "runtime.app"));
+        }
+        else
+        {
+            AddRequired(app.FunctionAppName, "runtime.app.functionAppName", errors);
+            if (app.FunctionAppSiteId is null)
+            {
+                errors.Add(new(ErrorCodes.Required, "runtime.app.functionAppSiteId"));
+            }
+
+            AddRequired(app.AntaresStampName, "runtime.app.antaresStampName", errors);
+        }
+
+        if (errors.Count == 0)
+        {
+            runtime = request;
+        }
+    }
+
+    private static void AddRequired(string? value, string target, List<RequestValidationError> errors)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            errors.Add(new(ErrorCodes.Required, target));
+        }
+    }
+
     private ObjectResult CreateLinkFailureResponse(string workerId, WorkerLinkFailureReason reason,
         long started, Exception exception)
     {
@@ -182,22 +261,74 @@ public sealed partial class WorkerLinkController : Controller
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
     }
 
-    // Accept only HTTP(S) authorities without credentials, non-root paths, queries, or fragments.
+    // Legion publishes PodIpv4Endpoint as IPv4:port. Keep accepting the existing absolute URI form for compatibility.
     private static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
-        => Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
+    {
+        endpoint = null;
+        if (TryParseIpv4Endpoint(value, out IPAddress? address, out int port))
+        {
+            endpoint = new UriBuilder(Uri.UriSchemeHttp, address.ToString(), port).Uri;
+            return true;
+        }
+
+        return Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
             (string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) &&
             !string.IsNullOrWhiteSpace(endpoint.Host) &&
+            endpoint.Port > 0 &&
             string.IsNullOrEmpty(endpoint.UserInfo) &&
             string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal) &&
             string.IsNullOrEmpty(endpoint.Query) &&
             string.IsNullOrEmpty(endpoint.Fragment);
+    }
+
+    private static bool TryParseIpv4Endpoint(
+        string? value,
+        [NotNullWhen(true)] out IPAddress? address,
+        out int port)
+    {
+        address = null;
+        port = 0;
+        if (value is null
+            || !string.Equals(value, value.Trim(), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        int separator = value.LastIndexOf(':');
+        if (separator <= 0
+            || separator == value.Length - 1
+            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out port)
+            || port is < 1 or > IPEndPoint.MaxPort)
+        {
+            return false;
+        }
+
+        string[] octets = value[..separator].Split('.');
+        if (octets.Length != 4)
+        {
+            return false;
+        }
+
+        Span<byte> bytes = stackalloc byte[4];
+        for (int index = 0; index < octets.Length; index++)
+        {
+            if (!byte.TryParse(octets[index], NumberStyles.None, CultureInfo.InvariantCulture, out bytes[index]))
+            {
+                return false;
+            }
+        }
+
+        address = new IPAddress(bytes);
+        return true;
+    }
 
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.
     private static class ErrorCodes
     {
         public const string InvalidBody = nameof(InvalidBody);
         public const string InvalidEndpoint = nameof(InvalidEndpoint);
+        public const string InvalidValue = nameof(InvalidValue);
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
         public const string Required = nameof(Required);

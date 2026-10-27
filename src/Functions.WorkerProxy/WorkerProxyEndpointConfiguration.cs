@@ -72,6 +72,14 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     }
 
     /// <summary>
+    /// Determines whether a request arrived on the runtime-facing gRPC listener.
+    /// </summary>
+    public bool IsRuntimeGrpcPort(int localPort)
+    {
+        return GetPort(_runtime) == localPort;
+    }
+
+    /// <summary>
     /// Resolves a local listener port to its FunctionRpc relay side.
     /// </summary>
     /// <param name="localPort">The local port that accepted the request.</param>

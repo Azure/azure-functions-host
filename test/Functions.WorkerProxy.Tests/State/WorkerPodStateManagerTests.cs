@@ -23,6 +23,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(0, state.Revision);
         Assert.Null(state.SessionId);
         Assert.False(state.IsWorkerAttached);
+        Assert.False(state.IsRuntimeLinkAcknowledged);
         Assert.False(state.IsWorkerReady);
         Assert.Null(state.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
@@ -31,6 +32,8 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
         Assert.Null(state.IsAlwaysReady);
+        Assert.Equal(SplitWorkerLinkState.Unlinked, state.SplitLink.State);
+        Assert.Null(state.SplitLink.Runtime);
         Assert.Same(state, manager.State);
     }
 
@@ -80,23 +83,21 @@ public partial class WorkerPodStateManagerTests
     }
 
     [Fact]
-    public void NotReadyAssignment_DoesNotClaimIdentityOrChangeRevision()
+    public void AssignmentBeforeWorker_ClaimsIdentityAndBecomesReadyAfterStartStream()
     {
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
-        WorkerPodState initial = manager.State;
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("rejected")));
-        Assert.Same(initial, manager.State);
-        Assert.Null(manager.State.StartupMode);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment("accepted")));
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(1, assigned.Revision);
+        Assert.Equal("accepted", assigned.FunctionAppName);
+        Assert.Equal(WorkerPodStatus.None, assigned.PodStatus);
 
         manager.OnWorkerAttached(1);
-        WorkerPodState attached = manager.State;
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("also-rejected")));
-        Assert.Same(attached, manager.State);
-
         manager.OnWorkerStartStream(1, "worker");
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment("accepted", WorkerStartupMode.SpecializationRequired)));
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment("accepted")));
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.Equal("accepted", manager.State.FunctionAppName);
-        Assert.Equal(WorkerStartupMode.SpecializationRequired, manager.State.StartupMode);
     }
 
     [Fact]
@@ -134,7 +135,7 @@ public partial class WorkerPodStateManagerTests
         WorkerPodStateManager manager = CreateReadyManager();
         manager.OnSessionTerminated(1);
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
 
         Assert.True(manager.OnWorkerAttached(2));
         Assert.False(manager.State.IsWorkerReady);
@@ -145,9 +146,8 @@ public partial class WorkerPodStateManagerTests
         Assert.False(manager.OnWorkerStartStream(1, "old-worker"));
         Assert.False(manager.OnSessionTerminated(1));
         Assert.Same(replacement, manager.State);
-        Assert.Equal(5, replacement.Revision);
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
         Assert.Equal(6, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
     }
 
     [Fact]
@@ -342,21 +342,84 @@ public partial class WorkerPodStateManagerTests
             await Task.WhenAll(assignment, termination);
 
             WorkerAssignmentResult result = await assignment;
+            Assert.Equal(WorkerAssignmentResult.Created, result);
             Assert.False(manager.State.IsWorkerReady);
             Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
-            if (result == WorkerAssignmentResult.Created)
+            if (manager.State.AssignmentState == WorkerAssignmentState.Failed)
             {
-                Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
                 Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
-                Assert.Equal(4, manager.State.Revision);
             }
             else
             {
-                Assert.Equal(WorkerAssignmentResult.WorkerNotReady, result);
-                Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
-                Assert.Equal(3, manager.State.Revision);
+                Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+                Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
             }
+
+            Assert.Equal(4, manager.State.Revision);
         }
+    }
+
+    [Fact]
+    public void RuntimeLink_AcknowledgementIsExactIdempotentAndRetainedAfterTermination()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        SplitPodIdentity runtime = CreateRuntimeIdentity();
+        manager.OnRuntimeAttached(1);
+
+        Assert.Equal(SplitWorkerLinkState.Linking, manager.State.SplitLink.State);
+        Assert.Null(manager.State.SplitLink.Runtime);
+        Assert.False(manager.State.IsRuntimeLinkAcknowledged);
+        Assert.Equal(RuntimeLinkAcknowledgementResult.Acknowledged, manager.AcknowledgeRuntimeLink(runtime));
+        WorkerPodState linked = manager.State;
+        Assert.Equal(SplitWorkerLinkState.Linked, linked.SplitLink.State);
+        Assert.Equal(runtime, linked.SplitLink.Runtime);
+        Assert.True(linked.IsRuntimeLinkAcknowledged);
+
+        Assert.Equal(RuntimeLinkAcknowledgementResult.AlreadyAcknowledged, manager.AcknowledgeRuntimeLink(runtime));
+        Assert.Equal(RuntimeLinkAcknowledgementResult.Conflict, manager.AcknowledgeRuntimeLink(CreateRuntimeIdentity("other-runtime")));
+        Assert.Same(linked, manager.State);
+
+        Assert.True(manager.OnSessionTerminated(1));
+        WorkerPodState terminated = manager.State;
+        Assert.Equal(linked.Revision + 1, terminated.Revision);
+        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Linked, runtime), terminated.SplitLink);
+        Assert.False(terminated.IsRuntimeLinkAcknowledged);
+    }
+
+    [Fact]
+    public void RuntimeLink_TerminationBeforeAcknowledgementReturnsToUnlinked()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        manager.OnRuntimeAttached(1);
+
+        Assert.True(manager.OnSessionTerminated(1));
+
+        Assert.Equal(SplitWorkerLinkState.Unlinked, manager.State.SplitLink.State);
+        Assert.Null(manager.State.SplitLink.Runtime);
+        Assert.Equal(RuntimeLinkAcknowledgementResult.NotPending, manager.AcknowledgeRuntimeLink(CreateRuntimeIdentity()));
+    }
+
+    [Fact]
+    public void SplitState_RunsOnlyAfterAssignmentWorkerReadinessAndCurrentRuntimeAcknowledgement()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        SplitPodIdentity runtime = CreateRuntimeIdentity();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        manager.OnRuntimeAttached(1);
+        Assert.Equal(RuntimeLinkAcknowledgementResult.Acknowledged, manager.AcknowledgeRuntimeLink(runtime));
+        Assert.Equal(SplitWorkerStatus.Starting, SplitWorkerOriginState.FromState(manager.State).Status);
+
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        SplitWorkerOriginState running = SplitWorkerOriginState.FromState(manager.State);
+        Assert.Equal(SplitWorkerStatus.Running, running.Status);
+        Assert.False(running.IsUnhealthy);
+
+        Assert.True(manager.OnSessionTerminated(1));
+        SplitWorkerOriginState terminated = SplitWorkerOriginState.FromState(manager.State);
+        Assert.Equal(SplitWorkerStatus.Starting, terminated.Status);
+        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Linked, runtime), terminated.Link);
+        Assert.True(terminated.IsUnhealthy);
     }
 
     private static WorkerPodStateManager CreateReadyManager()
@@ -375,19 +438,16 @@ public partial class WorkerPodStateManagerTests
             false,
             new Dictionary<string, string> { ["SETTING"] = "value" },
             "/home/site/wwwroot",
-            new(
-                new(
-                    "namespace",
-                    "pod",
-                    Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                    "stamp",
-                    "FunctionsSplitWorkerPod",
-                    new(appName, 42, "antares-stamp")),
-                IsDiscoveryPod: false,
-                IsAlwaysReady: false,
-                FunctionGroup: "http",
-                ConfigLastModifiedTime: 100,
-                ContentLastModifiedTime: 200));
+            new Uri("http://100.86.0.4:49123/"));
+
+    private static SplitPodIdentity CreateRuntimeIdentity(string podName = "runtime-pod") =>
+        new(
+            "runtime-namespace",
+            podName,
+            Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            "runtime-stamp",
+            "FunctionsSplitRuntimePod",
+            new("app", 42, "antares-stamp"));
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });

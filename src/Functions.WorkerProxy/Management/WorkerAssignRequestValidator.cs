@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Net;
 using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -18,12 +20,9 @@ internal static class WorkerAssignRequestValidator
     /// </summary>
     public static bool TryCreateAssignment(
         WorkerAssignRequest request,
-        string expectedPodName,
         [NotNullWhen(true)] out WorkerAssignment? assignment,
         out IReadOnlyList<RequestValidationError> validationErrors)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(expectedPodName);
-
         assignment = null;
         List<RequestValidationError> errors = [];
         validationErrors = errors;
@@ -51,19 +50,13 @@ internal static class WorkerAssignRequestValidator
         }
 
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
-        ValidateSplitStaticState(
-            request,
-            expectedPodName,
-            errors,
-            out SplitWorkerStaticState? splitStaticState);
-
+        Uri? httpProxyEndpoint = ValidateHttpProxyEndpoint(request.HttpProxyEndpoint, errors);
         if (errors.Count > 0
             || startupMode is not { } selectedStartupMode
             || request.FunctionAppName is not { } functionAppName
             || request.FunctionGroupName is not { } functionGroupName
             || request.FunctionAppDirectory is not { } functionAppDirectory
-            || request.IsAlwaysReady is not { } isAlwaysReady
-            || splitStaticState is not { } validatedStaticState)
+            || request.IsAlwaysReady is not { } isAlwaysReady)
         {
             return false;
         }
@@ -75,130 +68,9 @@ internal static class WorkerAssignRequestValidator
             isAlwaysReady,
             environment,
             functionAppDirectory,
-            validatedStaticState);
+            httpProxyEndpoint);
 
         return true;
-    }
-
-    private static void ValidateSplitStaticState(
-        WorkerAssignRequest request,
-        string expectedPodName,
-        List<RequestValidationError> errors,
-        out SplitWorkerStaticState? staticState)
-    {
-        staticState = null;
-        if (request.StaticState is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState"));
-            return;
-        }
-
-        SplitWorkerStaticStateRequest staticRequest = request.StaticState;
-
-        if (staticRequest.IsDiscoveryPod is not { } isDiscoveryPod
-            || staticRequest.IsAlwaysReady is not { } staticAlwaysReady
-            || staticRequest.ConfigLastModifiedTime is not { } configLastModifiedTime
-            || staticRequest.ContentLastModifiedTime is not { } contentLastModifiedTime)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState"));
-            return;
-        }
-
-        int initialErrorCount = errors.Count;
-        SplitPodIdentity? self = ValidatePodIdentity(
-            staticRequest.Self, "staticState.self", SplitWorkerStaticState.PodType, errors);
-
-        if (staticRequest.FunctionGroup is { } splitFunctionGroup
-            && string.IsNullOrWhiteSpace(splitFunctionGroup))
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.functionGroup"));
-        }
-
-        if (self is not null)
-        {
-            if (!string.Equals(self.PodName, expectedPodName, StringComparison.Ordinal))
-            {
-                errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.self.podName"));
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.FunctionAppName)
-                && !string.Equals(self.App.FunctionAppName, request.FunctionAppName, StringComparison.Ordinal))
-            {
-                errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.self.app.functionAppName"));
-            }
-        }
-
-        if (staticRequest.IsAlwaysReady is { } splitAlwaysReady
-            && request.IsAlwaysReady is { } isAlwaysReady
-            && splitAlwaysReady != isAlwaysReady)
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.isAlwaysReady"));
-        }
-
-        if (staticRequest.FunctionGroup is { } functionGroup
-            && request.FunctionGroupName is { } functionGroupName
-            && !string.IsNullOrWhiteSpace(functionGroup)
-            && !string.IsNullOrWhiteSpace(functionGroupName)
-            && !string.Equals(functionGroup, functionGroupName, StringComparison.Ordinal))
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.functionGroup"));
-        }
-
-        if (errors.Count != initialErrorCount
-            || self is null)
-        {
-            return;
-        }
-
-        staticState = new(
-            self,
-            isDiscoveryPod,
-            staticAlwaysReady,
-            staticRequest.FunctionGroup ?? request.FunctionGroupName,
-            configLastModifiedTime,
-            contentLastModifiedTime);
-    }
-
-    private static SplitPodIdentity? ValidatePodIdentity(
-        SplitPodIdentityRequest? request,
-        string target,
-        string expectedPodType,
-        List<RequestValidationError> errors)
-    {
-        if (request is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, target));
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(request.ResourceNamespace)
-            || string.IsNullOrWhiteSpace(request.PodName)
-            || request.PodGuid is not { } podGuid
-            || podGuid == Guid.Empty
-            || string.IsNullOrWhiteSpace(request.LegionStampName)
-            || string.IsNullOrWhiteSpace(request.PodType)
-            || request.App is not { } app
-            || string.IsNullOrWhiteSpace(app.FunctionAppName)
-            || app.FunctionAppSiteId is not { } functionAppSiteId
-            || string.IsNullOrWhiteSpace(app.AntaresStampName))
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, target));
-            return null;
-        }
-
-        if (!string.Equals(request.PodType, expectedPodType, StringComparison.Ordinal))
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, $"{target}.podType"));
-            return null;
-        }
-
-        return new(
-            request.ResourceNamespace,
-            request.PodName,
-            podGuid,
-            request.LegionStampName,
-            expectedPodType,
-            new(app.FunctionAppName, functionAppSiteId, app.AntaresStampName));
     }
 
     private static WorkerStartupMode? ValidateStartupMode(string? value, List<RequestValidationError> errors)
@@ -246,5 +118,49 @@ internal static class WorkerAssignRequestValidator
         }
 
         return environment;
+    }
+
+    private static Uri? ValidateHttpProxyEndpoint(string? value, List<RequestValidationError> errors)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        int separator = value.LastIndexOf(':');
+        if (separator <= 0
+            || separator == value.Length - 1
+            || !string.Equals(value, value.Trim(), StringComparison.Ordinal)
+            || !TryParseIpv4Address(value[..separator], out IPAddress? address)
+            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
+            || port is < 1 or > IPEndPoint.MaxPort)
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
+            return null;
+        }
+
+        return new UriBuilder(Uri.UriSchemeHttp, address.ToString(), port).Uri;
+    }
+
+    private static bool TryParseIpv4Address(string value, [NotNullWhen(true)] out IPAddress? address)
+    {
+        address = null;
+        string[] octets = value.Split('.');
+        if (octets.Length != 4)
+        {
+            return false;
+        }
+
+        Span<byte> bytes = stackalloc byte[4];
+        for (int index = 0; index < octets.Length; index++)
+        {
+            if (!byte.TryParse(octets[index], NumberStyles.None, CultureInfo.InvariantCulture, out bytes[index]))
+            {
+                return false;
+            }
+        }
+
+        address = new IPAddress(bytes);
+        return true;
     }
 }

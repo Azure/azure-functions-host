@@ -89,14 +89,77 @@ public class WorkerLinkContractTests
     }
 
     [Fact]
-    public void WorkerLinkRequest_Serialization_DoesNotIncludeRemovedHttpEndpoint()
+    public void WorkerLinkRequest_Serialization_UsesCurrentTopLevelMembersAndOmitsRemovedHttpEndpoint()
     {
         WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
-            """{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
+            """{"workerGrpcEndpoint":"100.64.1.12:5001","workerHttpEndpoint":"http://unused:28080"}"""));
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
-        Assert.Equal(new[] { "workerContainerEncryptionKey", "workerGrpcEndpoint" },
+        Assert.Equal(new[] { "runtime", "runtimeAccessKey", "workerGrpcEndpoint" },
             body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
+        Assert.Null(body.Property("workerHttpEndpoint"));
+    }
+
+    [Fact]
+    public void WorkerLinkRequest_Serialization_PreservesFullRuntimeIdentity()
+    {
+        WorkerLinkRequest request = new()
+        {
+            WorkerGrpcEndpoint = "100.64.1.12:5001",
+            RuntimeAccessKey = "runtime-access-key",
+            Runtime = new()
+            {
+                ResourceNamespace = "runtime-namespace",
+                PodName = "runtime-pod",
+                PodGuid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                LegionStampName = "legion-stamp",
+                PodType = "FunctionsSplitRuntimePod",
+                App = new()
+                {
+                    FunctionAppName = "test-app",
+                    FunctionAppSiteId = 42,
+                    AntaresStampName = "antares-stamp"
+                }
+            }
+        };
+
+        string json = JsonConvert.SerializeObject(request);
+
+        Assert.Equal(
+            """{"workerGrpcEndpoint":"100.64.1.12:5001","runtimeAccessKey":"runtime-access-key","runtime":{"resourceNamespace":"runtime-namespace","podName":"runtime-pod","podGuid":"11111111-1111-1111-1111-111111111111","legionStampName":"legion-stamp","podType":"FunctionsSplitRuntimePod","app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"antares-stamp"}}}""",
+            json);
+        Assert.Equal(request.Runtime.PodGuid, JsonConvert.DeserializeObject<WorkerLinkRequest>(json)!.Runtime!.PodGuid);
+    }
+
+    [Fact]
+    public void WorkerLinkAcknowledgementClient_MapsEveryRuntimeIdentityField()
+    {
+        FunctionsSplitPodIdentity runtime = new()
+        {
+            ResourceNamespace = "runtime-namespace",
+            PodName = "runtime-pod",
+            PodGuid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            LegionStampName = "legion-stamp",
+            PodType = "FunctionsSplitRuntimePod",
+            App = new()
+            {
+                FunctionAppName = "test-app",
+                FunctionAppSiteId = 42,
+                AntaresStampName = "antares-stamp"
+            }
+        };
+
+        Azure.Functions.WorkerProxy.Control.SplitPodIdentity identity =
+            WorkerLinkAcknowledgementClient.CreateRuntimeIdentity(runtime);
+
+        Assert.Equal(runtime.ResourceNamespace, identity.ResourceNamespace);
+        Assert.Equal(runtime.PodName, identity.PodName);
+        Assert.Equal(runtime.PodGuid?.ToString("D"), identity.PodGuid);
+        Assert.Equal(runtime.LegionStampName, identity.LegionStampName);
+        Assert.Equal(runtime.PodType, identity.PodType);
+        Assert.Equal(runtime.App.FunctionAppName, identity.App.FunctionAppName);
+        Assert.Equal(runtime.App.FunctionAppSiteId, identity.App.FunctionAppSiteId);
+        Assert.Equal(runtime.App.AntaresStampName, identity.App.AntaresStampName);
     }
 }

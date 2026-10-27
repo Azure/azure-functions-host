@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -76,6 +77,8 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.RpcClientWorkerChannelFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry",
             "Azure.Functions.Rpc.Client.WorkerChannelRegistry");
+        AssertSingleton(services, typeof(IWorkerLinkAcknowledgementClient).FullName!,
+            "Azure.Functions.Host.WorkerLink.WorkerLinkAcknowledgementClient");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IWorkerFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",

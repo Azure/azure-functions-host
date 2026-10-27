@@ -32,21 +32,7 @@ public class ManagementApiEndpointTests
           "isAlwaysReady":false,
           "environment":{"SETTING":"private-value"},
           "functionAppDirectory":"/home/site/wwwroot",
-          "staticState":{
-            "self":{
-              "resourceNamespace":"test-namespace",
-              "podName":"test-worker-pod",
-              "podGuid":"11111111-1111-1111-1111-111111111111",
-              "legionStampName":"legion-test",
-              "podType":"FunctionsSplitWorkerPod",
-              "app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"antares-test"}
-            },
-            "isDiscoveryPod":false,
-            "isAlwaysReady":false,
-            "functionGroup":"test-group",
-            "configLastModifiedTime":100,
-            "contentLastModifiedTime":200
-          }
+          "httpProxyEndpoint":"100.86.0.4:49123"
         }
         """;
 
@@ -148,6 +134,7 @@ public class ManagementApiEndpointTests
     [InlineData("environment", "{\"\":\"private-value\"}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":null}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":123}", null, "Preconfigured")]
+    [InlineData("httpProxyEndpoint", "123", null)]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
         string field, string? value, string? code, string startupMode = "SpecializationRequired")
     {
@@ -229,8 +216,7 @@ public class ManagementApiEndpointTests
             ("Required", "functionGroupName"),
             ("Required", "isAlwaysReady"),
             ("Required", "functionAppDirectory"),
-            (environmentError, "environment"),
-            ("Required", "staticState"));
+            (environmentError, "environment"));
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain("PRIVATE_SETTING", json);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
@@ -616,6 +602,7 @@ public class ManagementApiEndpointTests
     [InlineData("isAlwaysReady", "true", false)]
     [InlineData("environment", "{\"SETTING\":\"PRIVATE-value\"}", false)]
     [InlineData("environment", "{\"setting\":\"private-value\"}", false)]
+    [InlineData("httpProxyEndpoint", "\"100.86.0.5:49123\"", false)]
     [InlineData("startupMode", "\"Preconfigured\"", true)]
     [InlineData("functionAppName", "\"TEST-app\"", true)]
     [InlineData("functionGroupName", "\"TEST-group\"", true)]
@@ -623,6 +610,7 @@ public class ManagementApiEndpointTests
     [InlineData("isAlwaysReady", "true", true)]
     [InlineData("environment", "{\"SETTING\":\"PRIVATE-value\"}", true)]
     [InlineData("environment", "{\"setting\":\"private-value\"}", true)]
+    [InlineData("httpProxyEndpoint", "\"100.86.0.5:49123\"", true)]
     public async Task AllIdentityFieldsConflictEvenAfterTermination(string field, string value, bool terminated)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -642,19 +630,6 @@ public class ManagementApiEndpointTests
         WorkerPodState assigned = manager.State;
         JsonObject different = JsonNode.Parse(ValidAssignment)!.AsObject();
         different[field] = JsonNode.Parse(value);
-        switch (field)
-        {
-            case "functionAppName":
-                different["staticState"]!["self"]!["app"]!["functionAppName"] = JsonNode.Parse(value);
-                break;
-            case "functionGroupName":
-                different["staticState"]!["functionGroup"] = JsonNode.Parse(value);
-                break;
-            case "isAlwaysReady":
-                different["staticState"]!["isAlwaysReady"] = JsonNode.Parse(value);
-                break;
-        }
-
         using StringContent conflictingContent = JsonBody(different.ToJsonString());
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
         await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
@@ -677,34 +652,29 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"SETTING\":\"\"}")]
-    public async Task EmptyEnvironmentOrValueIsValidAndNotReadyDoesNotReserveIdentity(string environment)
+    public async Task EmptyEnvironmentOrValueIsValidAndAssignmentCanPrecedeWorker(string environment)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         WorkerPodState before = manager.State;
-        using StringContent notReadyContent = JsonBody(ValidAssignment);
-        using HttpResponseMessage notReady = await client.PutAsync(AssignPath, notReadyContent, timeout.Token);
-        await AssertAssignmentErrorAsync(notReady, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
-        Assert.Same(before, manager.State);
-        Assert.Equal(0, manager.State.Revision);
-        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
-        Assert.Null(manager.State.FunctionAppName);
-        Assert.Null(manager.State.StartupMode);
-
-        Assert.True(manager.OnWorkerAttached(1));
-        Assert.True(manager.OnWorkerStartStream(1, "worker"));
-        JsonObject assignment = JsonNode.Parse(
-            ValidAssignment.Replace("test-app", "other-app", StringComparison.Ordinal))!.AsObject();
+        JsonObject assignment = JsonNode.Parse(ValidAssignment)!.AsObject();
         assignment["startupMode"] = "Preconfigured";
         assignment["environment"] = JsonNode.Parse(environment);
         using StringContent content = JsonBody(assignment.ToJsonString());
         using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
         await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
-        Assert.Equal(3, manager.State.Revision);
-        Assert.Equal("other-app", manager.State.FunctionAppName);
+        Assert.Equal(before.Revision + 1, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.Equal("test-app", manager.State.FunctionAppName);
         Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
+        Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
+
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
     }
 
     [Theory]

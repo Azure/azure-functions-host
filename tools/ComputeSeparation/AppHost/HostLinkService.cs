@@ -21,8 +21,6 @@ internal sealed partial class HostLinkService(
     ReferenceExpression proxyEndpoint,
     EndpointReference? platformEndpoint,
     string workerId,
-    string workerPodName,
-    Guid workerPodGuid,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
@@ -33,10 +31,11 @@ internal sealed partial class HostLinkService(
     private const string ResourceNamespace = "aspire-local";
     private const string LegionStampName = "aspire-local";
     private const string AntaresStampName = "aspire-local";
-    private const string WorkerPodType = "FunctionsSplitWorkerPod";
+    private const string RuntimeAccessKey = "aspire-local-runtime-key";
+    private const string RuntimePodName = "runtime-pod";
+    private const string RuntimePodType = "FunctionsSplitRuntimePod";
     private const int FunctionAppSiteId = 1;
-
-    private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
+    private static readonly Guid RuntimePodGuid = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -83,6 +82,8 @@ internal sealed partial class HostLinkService(
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerGrpcEndpoint = grpcEndpoint,
+            runtimeAccessKey = RuntimeAccessKey,
+            runtime = CreateRuntimeIdentity(),
         }, cancellationToken);
 
         await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
@@ -94,16 +95,7 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
-        // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
-        HttpResponseMessage assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
-        while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
-        {
-            assign.Dispose();
-            await Task.Delay(AssignRetryDelay, cancellationToken);
-            assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
-        }
-
-        using (assign)
+        using (HttpResponseMessage assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken))
         {
             await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
         }
@@ -127,19 +119,12 @@ internal sealed partial class HostLinkService(
             isAlwaysReady = false,
             environment = new Dictionary<string, string>(),
             functionAppDirectory = string.Empty,
-            staticState = CreateWorkerStaticState(),
         };
 
-        // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
-        HttpResponseMessage assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
-        while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
-        {
-            assign.Dispose();
-            await Task.Delay(AssignRetryDelay, cancellationToken);
-            assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
-        }
-
-        using (assign)
+        using (HttpResponseMessage assign = await client.PutAsJsonAsync(
+            "/admin/worker/assignment",
+            assignment,
+            cancellationToken))
         {
             await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
         }
@@ -147,28 +132,20 @@ internal sealed partial class HostLinkService(
         Log.WorkerAssigned(logger, workerId, FunctionGroupName);
     }
 
-    private object CreateWorkerStaticState() =>
+    private static object CreateRuntimeIdentity() =>
         new
         {
-            self = new
+            resourceNamespace = ResourceNamespace,
+            podName = RuntimePodName,
+            podGuid = RuntimePodGuid,
+            legionStampName = LegionStampName,
+            podType = RuntimePodType,
+            app = new
             {
-                resourceNamespace = ResourceNamespace,
-                podName = workerPodName,
-                podGuid = workerPodGuid,
-                legionStampName = LegionStampName,
-                podType = WorkerPodType,
-                app = new
-                {
-                    functionAppName = FunctionAppName,
-                    functionAppSiteId = FunctionAppSiteId,
-                    antaresStampName = AntaresStampName,
-                },
+                functionAppName = FunctionAppName,
+                functionAppSiteId = FunctionAppSiteId,
+                antaresStampName = AntaresStampName,
             },
-            isDiscoveryPod = false,
-            isAlwaysReady = false,
-            functionGroup = FunctionGroupName,
-            configLastModifiedTime = 0,
-            contentLastModifiedTime = 0,
         };
 
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)

@@ -12,6 +12,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -217,8 +218,12 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_BlockedCapabilityLogging_DoesNotBlockShutdown()
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
-        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
+        WorkerPodStateManager stateManager = CreatePodStateManager();
+        WorkerHttpCapabilityProvider provider = new(
+            Options.Create(new WorkerProxyOptions()),
+            stateManager,
+            logger);
+        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, stateManager);
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(

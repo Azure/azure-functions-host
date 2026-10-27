@@ -457,7 +457,11 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay(WorkerPodStateManager? stateManager = null)
     {
-        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), stateManager ?? CreatePodStateManager());
+        stateManager ??= CreatePodStateManager();
+        return new FunctionRpcRelay(
+            NullLogger<FunctionRpcRelay>.Instance,
+            CreateCapabilityProvider(stateManager: stateManager),
+            stateManager);
     }
 
     private static WorkerPodStateManager CreatePodStateManager()
@@ -466,9 +470,14 @@ public partial class FunctionRpcRelayTests
     private static StreamingMessage CreateStartStream(string requestId = "worker-start")
         => new() { RequestId = requestId, StartStream = new() { WorkerId = "test-worker" } };
 
-    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
+    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(
+        WorkerProxyOptions? options = null,
+        WorkerPodStateManager? stateManager = null)
     {
-        return new(Options.Create(options ?? new()), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(
+            Options.Create(options ?? new()),
+            stateManager ?? CreatePodStateManager(),
+            NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)

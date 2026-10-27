@@ -1,9 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
@@ -11,8 +9,9 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// The HTTP proxy endpoint is optional; all other fields are required. The directory may be empty
+/// for Preconfigured but must be nonblank for SpecializationRequired. Configuration is currently
+/// retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -37,44 +36,8 @@ internal sealed class WorkerAssignRequest
 
     public string? FunctionAppDirectory { get; init; }
 
-    public SplitWorkerStaticStateRequest? StaticState { get; init; }
-}
-
-internal sealed class SplitWorkerStaticStateRequest
-{
-    public SplitPodIdentityRequest? Self { get; init; }
-
-    public bool? IsDiscoveryPod { get; init; }
-
-    public bool? IsAlwaysReady { get; init; }
-
-    public string? FunctionGroup { get; init; }
-
-    public long? ConfigLastModifiedTime { get; init; }
-
-    public long? ContentLastModifiedTime { get; init; }
-}
-
-internal sealed class SplitPodIdentityRequest
-{
-    public string? ResourceNamespace { get; init; }
-
-    public string? PodName { get; init; }
-
-    public Guid? PodGuid { get; init; }
-
-    public string? LegionStampName { get; init; }
-
-    public string? PodType { get; init; }
-
-    public SplitFunctionAppIdentityRequest? App { get; init; }
-}
-
-internal sealed class SplitFunctionAppIdentityRequest
-{
-    public string? FunctionAppName { get; init; }
-
-    public int? FunctionAppSiteId { get; init; }
-
-    public string? AntaresStampName { get; init; }
+    /// <summary>
+    /// Gets the optional platform-assigned WorkerProxy HTTP endpoint in IPv4:port form.
+    /// </summary>
+    public string? HttpProxyEndpoint { get; init; }
 }

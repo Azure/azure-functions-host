@@ -192,8 +192,6 @@ if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
         workerGrpcEndpoint,
         platformEndpoint,
         workerId,
-        podName,
-        workerPodGuid,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
         services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>()));
