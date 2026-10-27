@@ -8,6 +8,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -24,7 +25,8 @@ internal sealed partial class FunctionRpcRelay
         long id,
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
-        WorkerPodStateManager stateManager)
+        WorkerPodStateManager stateManager,
+        IWorkerSystemEventGenerator? systemEventGenerator)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
@@ -34,13 +36,18 @@ internal sealed partial class FunctionRpcRelay
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+
+        /// <summary>
+        /// Gets the monotonically increasing identity of this relay session.
+        /// </summary>
+        public long Id => id;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -235,6 +242,7 @@ internal sealed partial class FunctionRpcRelay
 
             if (isFirstMessage)
             {
+                WorkerStartStreamFailure? failure = null;
                 lock (_stateLock)
                 {
                     // A delayed read from a terminated session must not restore readiness.
@@ -245,11 +253,31 @@ internal sealed partial class FunctionRpcRelay
 
                     if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
                     {
+                        failure = WorkerStartStreamFailure.InvalidMessage;
+                    }
+                    else if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId))
+                    {
+                        failure = WorkerStartStreamFailure.StaleOrRepeated;
+                    }
+                }
+
+                if (failure is { } startStreamFailure)
+                {
+                    Log.WorkerStartStreamRejected(logger, id, startStreamFailure);
+                    if (startStreamFailure == WorkerStartStreamFailure.InvalidMessage)
+                    {
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
-
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
                 }
+                else
+                {
+                    Log.WorkerStartStreamAccepted(logger, id);
+                }
+            }
+
+            if (message.RpcLog is { LogCategory: RpcLog.Types.RpcLogCategory.System } workerLog)
+            {
+                systemEventGenerator?.LogWorkerEvent(workerLog);
             }
 
             return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
@@ -288,6 +316,8 @@ internal sealed partial class FunctionRpcRelay
                     _capabilities = capabilities;
                     _workerHttpDestination = destination;
                 }
+
+                Log.WorkerInitializationCompleted(logger, id);
             }
             else
             {
@@ -466,7 +496,7 @@ internal sealed partial class FunctionRpcRelay
         {
             if (_terminalState is not null && !HasAttachmentsLocked())
             {
-                _released.TrySetResult(true);
+                _released.TrySetResult();
             }
         }
     }
@@ -490,5 +520,20 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+
+        [LoggerMessage(6, LogLevel.Information,
+            "FunctionRpc relay session {SessionId} accepted worker StartStream.")]
+        public static partial void WorkerStartStreamAccepted(ILogger logger, long sessionId);
+
+        [LoggerMessage(7, LogLevel.Warning,
+            "FunctionRpc relay session {SessionId} rejected worker StartStream because {Reason}.")]
+        public static partial void WorkerStartStreamRejected(
+            ILogger logger,
+            long sessionId,
+            WorkerStartStreamFailure reason);
+
+        [LoggerMessage(8, LogLevel.Information,
+            "FunctionRpc relay session {SessionId} completed worker initialization.")]
+        public static partial void WorkerInitializationCompleted(ILogger logger, long sessionId);
     }
 }

@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -24,14 +25,17 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
-    WorkerPodStateManager stateManager)
+    WorkerPodStateManager stateManager,
+    IWorkerSystemEventGenerator? systemEventGenerator = null)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+    private readonly IWorkerSystemEventGenerator? _systemEventGenerator = systemEventGenerator;
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
-    private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
     private FunctionRpcRelayTerminalState? _lastTerminalState;
     private long _nextSessionId;
@@ -123,41 +127,49 @@ internal sealed partial class FunctionRpcRelay(
         ArgumentNullException.ThrowIfNull(requestStream);
         ArgumentNullException.ThrowIfNull(responseStream);
 
-        FunctionRpcRelaySession session;
+        FunctionRpcRelaySession? session = null;
+        FunctionRpcRelayAttachmentFailure? rejection = null;
+        string? rejectionMessage = null;
 
         lock (_syncLock)
         {
             if (_stopping)
             {
-                throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
-                    "The FunctionRpc relay is shutting down.");
+                rejection = FunctionRpcRelayAttachmentFailure.Shutdown;
+                rejectionMessage = "The FunctionRpc relay is shutting down.";
             }
-
-            if (_currentSession?.IsTerminalAndReleased == true)
+            else
             {
-                ClearCurrentSessionLocked();
-            }
-
-            session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager);
-
-            FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
-            if (attachResult != FunctionRpcRelayAttachResult.Attached)
-            {
-                (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
+                if (_currentSession?.IsTerminalAndReleased == true)
                 {
-                    FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
-                        $"A {side} FunctionRpc stream is already attached."),
-                    FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
-                        "The previous FunctionRpc relay session is still tearing down."),
-                    _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
-                };
+                    ClearCurrentSessionLocked();
+                }
 
-                throw new FunctionRpcRelayAttachmentException(side, failure, message);
+                session = _currentSession ??= new FunctionRpcRelaySession(
+                    Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, _systemEventGenerator);
+
+                FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
+                if (attachResult != FunctionRpcRelayAttachResult.Attached)
+                {
+                    (rejection, rejectionMessage) = attachResult switch
+                    {
+                        FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
+                            $"A {side} FunctionRpc stream is already attached."),
+                        FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
+                            "The previous FunctionRpc relay session is still tearing down."),
+                        _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
+                    };
+                }
             }
         }
 
-        return RunAttachmentAsync(session, side, requestStream, responseStream, cancellationToken);
+        if (rejection is { } failure)
+        {
+            Log.AttachmentRejected(logger, session?.Id ?? 0, side, failure);
+            throw new FunctionRpcRelayAttachmentException(side, failure, rejectionMessage!);
+        }
+
+        return RunAttachmentAsync(session!, side, requestStream, responseStream, cancellationToken);
     }
 
     /// <summary>
@@ -199,6 +211,7 @@ internal sealed partial class FunctionRpcRelay(
     {
         try
         {
+            Log.AttachmentAccepted(logger, session.Id, side);
             return await session.RunAsync(side, requestStream, responseStream, cancellationToken);
         }
         finally
@@ -219,7 +232,7 @@ internal sealed partial class FunctionRpcRelay(
                 TryClearReleasedSession(session);
             }
 
-            _stopCompletionSource.TrySetResult(true);
+            _stopCompletionSource.TrySetResult();
         }
         catch (Exception exception)
         {
@@ -243,5 +256,23 @@ internal sealed partial class FunctionRpcRelay(
         FunctionRpcRelaySession session = _currentSession ?? throw new InvalidOperationException("There is no current relay session to clear.");
         _lastTerminalState = session.TerminalState;
         _currentSession = null;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(4, LogLevel.Information,
+            "FunctionRpc relay session {SessionId} accepted the {Side} attachment.")]
+        public static partial void AttachmentAccepted(
+            ILogger logger,
+            long sessionId,
+            FunctionRpcRelaySide side);
+
+        [LoggerMessage(5, LogLevel.Warning,
+            "FunctionRpc relay session {SessionId} rejected the {Side} attachment because {Reason}.")]
+        public static partial void AttachmentRejected(
+            ILogger logger,
+            long sessionId,
+            FunctionRpcRelaySide side,
+            FunctionRpcRelayAttachmentFailure reason);
     }
 }

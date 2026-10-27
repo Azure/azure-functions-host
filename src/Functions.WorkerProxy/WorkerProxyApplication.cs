@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -15,6 +16,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy;
@@ -46,6 +49,27 @@ internal static class WorkerProxyApplication
             .ValidateOnStart();
         builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
+        builder.Services.AddSingleton<IWorkerSystemEventGenerator, WorkerPodEventGenerator>();
+        builder.Services.AddSingleton<ILoggerProvider, WorkerSystemLoggerProvider>();
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(null, LogLevel.None);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.AspNetCoreHostingCategory,
+            LogLevel.Information);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.AspNetCoreCategoryPrefix,
+            LogLevel.Warning);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.GrpcCategoryPrefix,
+            LogLevel.Warning);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.YarpCategoryPrefix,
+            LogLevel.Warning);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.ReadinessProbeCategory,
+            LogLevel.Warning);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.RelayCategory,
+            LogLevel.Warning);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.ConfigureHttpJsonOptions(options =>
@@ -63,6 +87,7 @@ internal static class WorkerProxyApplication
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
+        RegisterLifecycleEvents(app);
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
@@ -70,6 +95,22 @@ internal static class WorkerProxyApplication
         app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;
+    }
+
+    private static void RegisterLifecycleEvents(WebApplication app)
+    {
+        IWorkerSystemEventGenerator eventGenerator =
+            app.Services.GetRequiredService<IWorkerSystemEventGenerator>();
+        app.Lifetime.ApplicationStarted.Register(
+            () => eventGenerator.LogProxyEvent(
+                LogLevel.Information,
+                "WorkerProxyStarted",
+                "WorkerProxy started."));
+        app.Lifetime.ApplicationStopping.Register(
+            () => eventGenerator.LogProxyEvent(
+                LogLevel.Information,
+                "WorkerProxyShutdownStarted",
+                "WorkerProxy shutdown started."));
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
