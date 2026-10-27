@@ -117,7 +117,7 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void Format_UsesWorkerProxyConsoleContract()
+    public void Format_UsesSharedWorkerPodConsoleContract()
     {
         using WorkerPodEventGenerator generator = CreateEventGenerator();
         WorkerPodEventGenerator.WorkerSystemLogRecord record = generator.CreateProxyRecord(
@@ -129,7 +129,7 @@ public class WorkerSystemLoggingTests
         string formatted = generator.Format(record);
 
         Assert.StartsWith(
-            $"{WorkerPodEventGenerator.ProxyEventStreamName} ",
+            $"{WorkerPodEventGenerator.EventStreamName} ",
             formatted,
             StringComparison.Ordinal);
         Assert.Contains(",WorkerProxyStarted,Worker.Proxy,", formatted, StringComparison.Ordinal);
@@ -171,17 +171,20 @@ public class WorkerSystemLoggingTests
         eventGenerator.LogWorkerEvent(CreateWorkerLog(RpcLog.Types.Level.Warning));
         await eventGenerator.CompleteAsync();
 
-        Assert.Contains(
-            $"{WorkerPodEventGenerator.ProxyEventStreamName} ",
-            output.ToString(),
-            StringComparison.Ordinal);
-        Assert.Contains(
-            $"{WorkerPodEventGenerator.WorkerEventStreamName} ",
-            output.ToString(),
-            StringComparison.Ordinal);
-        Assert.Contains("WorkerProxyStarted", output.ToString(), StringComparison.Ordinal);
-        Assert.Contains("Worker.LanguageWorker", output.ToString(), StringComparison.Ordinal);
-        Assert.Contains("worker-system-message", output.ToString(), StringComparison.Ordinal);
+        string[] lines = output.ToString().Split(
+            Environment.NewLine,
+            StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, lines.Length);
+        Assert.All(
+            lines,
+            line => Assert.StartsWith(
+                $"{WorkerPodEventGenerator.EventStreamName} ",
+                line,
+                StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("WorkerProxyStarted", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("Worker.Proxy", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("Worker.LanguageWorker", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("worker-system-message", StringComparison.Ordinal));
     }
 
     [Fact]

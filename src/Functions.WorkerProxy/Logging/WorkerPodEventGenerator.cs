@@ -17,8 +17,7 @@ namespace Azure.Functions.WorkerProxy.Logging;
 
 internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDisposable
 {
-    internal const string WorkerEventStreamName = "MS_FUNCTIONS_WORKER_POD_LOGS";
-    internal const string ProxyEventStreamName = "MS_FUNCTIONS_WORKER_PROXY_LOGS";
+    internal const string EventStreamName = "MS_FUNCTIONS_WORKER_POD_LOGS";
     internal const string WorkerSource = "Worker.LanguageWorker";
     internal const string ProxySource = "Worker.Proxy";
     internal const int MaximumRecordBytes = 32 * 1024;
@@ -157,7 +156,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             string.Empty
         ];
 
-        string formatted = $"{GetEventStreamName(record.Source)} {string.Join(',', fields)}";
+        string formatted = $"{EventStreamName} {string.Join(',', fields)}";
         return Encoding.UTF8.GetByteCount(formatted) <= MaximumRecordBytes
             ? formatted
             : CreateOversizedRecord(record.Level, record.Source, record.Timestamp);
@@ -205,7 +204,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             string.Empty
         ];
 
-        return $"{GetEventStreamName(source)} {string.Join(',', fields)}";
+        return $"{EventStreamName} {string.Join(',', fields)}";
     }
 
     private static int MapEventLevel(LogLevel level)
@@ -220,13 +219,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         };
 
         return (int)eventLevel;
-    }
-
-    private static string GetEventStreamName(string source)
-    {
-        return string.Equals(source, ProxySource, StringComparison.Ordinal)
-            ? ProxyEventStreamName
-            : WorkerEventStreamName;
     }
 
     private static LogLevel MapLogLevel(RpcLog.Types.Level level)
