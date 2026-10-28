@@ -29,8 +29,8 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
-        AssertSingleton<IHostConfigurationDeliveryValidator, HostConfigurationDeliveryValidator>(services);
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(HostConfigurationDeliveryValidator));
+        AssertSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>(services);
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerHostConfigurationParser));
         AssertSingleton(services, typeof(IHttpProxyService), "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);

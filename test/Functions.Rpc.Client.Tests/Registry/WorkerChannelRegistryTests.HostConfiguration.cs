@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +20,7 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed partial class WorkerChannelRegistryTests
 {
     [Theory]
-    [MemberData(nameof(HostConfigurationDeliveryValidatorTests.InvalidDeliveries), MemberType = typeof(HostConfigurationDeliveryValidatorTests))]
+    [MemberData(nameof(WorkerHostConfigurationParserTests.InvalidDeliveries), MemberType = typeof(WorkerHostConfigurationParserTests))]
     public async Task LinkAsync_InvalidHostConfigurationDoesNotPublishOrPoisonFirstConfiguration(
         HostConfiguration delivery, string expectedReason)
     {
@@ -48,6 +49,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
         Assert.Equal(expectedReason, exception.Message);
+        Assert.Null(exception.InnerException);
         Assert.False(waiter.IsCompleted);
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
@@ -105,16 +107,16 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_RetainsExactSourceReturnedByValidator()
+    public async Task LinkAsync_RetainsExactSourceReturnedByParser()
     {
-        var validator = new Mock<IHostConfigurationDeliveryValidator>(MockBehavior.Strict);
+        var parser = new Mock<IWorkerHostConfigurationParser>(MockBehavior.Strict);
         var firstSource = new Mock<IConfigurationSource>(MockBehavior.Strict);
         var laterSource = new Mock<IConfigurationSource>(MockBehavior.Strict);
         ChannelControl first = new("first") { HostConfiguration = CreateHostConfiguration("first") };
         ChannelControl later = new("later") { HostConfiguration = CreateHostConfiguration("later") };
-        validator.Setup(value => value.Validate(first.HostConfiguration)).Returns(firstSource.Object);
-        validator.Setup(value => value.Validate(later.HostConfiguration)).Returns(laterSource.Object);
-        RegistryHarness harness = new(null, hostConfigurationDeliveryValidator: validator.Object);
+        parser.Setup(value => value.Parse(first.HostConfiguration)).Returns(firstSource.Object);
+        parser.Setup(value => value.Parse(later.HostConfiguration)).Returns(laterSource.Object);
+        RegistryHarness harness = new(null, workerHostConfigurationParser: parser.Object);
         harness.Enqueue(first);
         harness.Enqueue(later);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -131,11 +133,59 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.True(await registry.UnlinkAsync("later"));
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Same(firstSource.Object, sourceProvider.GetConfigurationSource());
-        validator.Verify(value => value.Validate(first.HostConfiguration), Times.Once);
-        validator.Verify(value => value.Validate(later.HostConfiguration), Times.Once);
-        validator.VerifyNoOtherCalls();
+        parser.Verify(value => value.Parse(first.HostConfiguration), Times.Once);
+        parser.Verify(value => value.Parse(later.HostConfiguration), Times.Once);
+        parser.VerifyNoOtherCalls();
         firstSource.VerifyNoOtherCalls();
         laterSource.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task LinkAsync_ParserConfigurationFailureUsesExistingLinkFailureContract()
+    {
+        var parser = new Mock<IWorkerHostConfigurationParser>(MockBehavior.Strict);
+        ChannelControl worker = new("worker") { HostConfiguration = CreateHostConfiguration("rejected") };
+        parser.Setup(value => value.Parse(worker.HostConfiguration))
+            .Throws(new HostConfigurationException("The supplied Host configuration was rejected."));
+        RegistryHarness harness = new(null, workerHostConfigurationParser: parser.Object);
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<Microsoft.Azure.WebJobs.Script.Grpc.WorkerChannel> waiter = registry.WaitForFirstInitializedAsync();
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() =>
+            registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout));
+
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
+        Assert.Equal("The supplied Host configuration was rejected.", exception.Message);
+        Assert.Null(exception.InnerException);
+        Assert.False(waiter.IsCompleted);
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
+        Assert.Equal(1, worker.DisposeCount);
+        parser.Verify(value => value.Parse(worker.HostConfiguration), Times.Once);
+        parser.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task LinkAsync_UnexpectedParserFailureIsNotTranslated()
+    {
+        var parser = new Mock<IWorkerHostConfigurationParser>(MockBehavior.Strict);
+        ChannelControl worker = new("worker") { HostConfiguration = CreateHostConfiguration("rejected") };
+        InvalidOperationException failure = new("Unexpected parser failure.");
+        parser.Setup(value => value.Parse(worker.HostConfiguration)).Throws(failure);
+        RegistryHarness harness = new(null, workerHostConfigurationParser: parser.Object);
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout));
+
+        Assert.Same(failure, exception);
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
+        Assert.Equal(1, worker.DisposeCount);
+        parser.Verify(value => value.Parse(worker.HostConfiguration), Times.Once);
+        parser.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -176,7 +226,7 @@ public sealed partial class WorkerChannelRegistryTests
     public async Task LinkAsync_RejectedCandidateDoesNotPreventFileBasedLoadingSelection()
     {
         RegistryHarness harness = new();
-        ChannelControl rejected = new("worker") { HostConfiguration = new() { Status = HostConfiguration.Types.Status.ReadError } };
+        ChannelControl rejected = new("worker") { HostConfiguration = new() { Status = HostConfiguration.Types.Status.Error } };
         ChannelControl replacement = new("worker");
         harness.Enqueue(rejected);
         harness.Enqueue(replacement);
@@ -193,8 +243,8 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(false, HostConfiguration.Types.Status.ReadError)]
-    [InlineData(true, HostConfiguration.Types.Status.ReadError)]
+    [InlineData(false, HostConfiguration.Types.Status.Error)]
+    [InlineData(true, HostConfiguration.Types.Status.Error)]
     [InlineData(false, HostConfiguration.Types.Status.TooLarge)]
     [InlineData(true, HostConfiguration.Types.Status.TooLarge)]
     [InlineData(false, (HostConfiguration.Types.Status)5)]

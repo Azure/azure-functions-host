@@ -277,14 +277,11 @@ public sealed partial class WorkerChannelRegistryTests
     {
         FunctionRpcDuplexChannelFactory duplexFactory = new(clientFactory, NullLogger<FunctionRpcDuplexChannelFactory>.Instance);
         RpcClientWorkerChannelFactory channelFactory = CreateRealChannelFactory();
-        var applicationOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
-        applicationOptions.SetupGet(options => options.CurrentValue)
-            .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = true });
-        HostConfigurationDeliveryValidator hostConfigurationDeliveryValidator = new(
-            new ConfigurationBuilder().Build(), applicationOptions.Object, NullLogger<HostConfigurationDeliveryValidator>.Instance);
+        WorkerHostConfigurationParser workerHostConfigurationParser = new(
+            new ConfigurationBuilder().Build(), NullLogger<WorkerHostConfigurationParser>.Instance);
 
         return linkTimeout.HasValue
-            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, hostConfigurationDeliveryValidator)
-            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, hostConfigurationDeliveryValidator);
+            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, workerHostConfigurationParser)
+            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
     }
 }

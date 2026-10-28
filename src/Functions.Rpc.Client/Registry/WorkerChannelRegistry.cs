@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -42,7 +43,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
-    private readonly IHostConfigurationDeliveryValidator _hostConfigurationDeliveryValidator;
+    private readonly IWorkerHostConfigurationParser _workerHostConfigurationParser;
     private IConfigurationSource _hostConfigurationSource;
     private bool _hostConfigurationSourceSelected;
     private ChannelSetupContext _activeSetupContext;
@@ -57,8 +58,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        IHostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
-        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, hostConfigurationDeliveryValidator)
+        IWorkerHostConfigurationParser workerHostConfigurationParser)
+        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, workerHostConfigurationParser)
     {
     }
 
@@ -67,7 +68,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout,
-        IHostConfigurationDeliveryValidator hostConfigurationDeliveryValidator)
+        IWorkerHostConfigurationParser workerHostConfigurationParser)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -75,7 +76,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
-        _hostConfigurationDeliveryValidator = hostConfigurationDeliveryValidator ?? throw new ArgumentNullException(nameof(hostConfigurationDeliveryValidator));
+        _workerHostConfigurationParser = workerHostConfigurationParser ?? throw new ArgumentNullException(nameof(workerHostConfigurationParser));
     }
 
     public Task<WorkerLinkResult> LinkAsync(
@@ -185,7 +186,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                IConfigurationSource configurationSource = _hostConfigurationDeliveryValidator.Validate(candidate.HostConfiguration);
+                IConfigurationSource configurationSource;
+                try
+                {
+                    configurationSource = _workerHostConfigurationParser.Parse(candidate.HostConfiguration);
+                }
+                catch (HostConfigurationException exception)
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable, exception.Message);
+                }
+
                 RegisterInitializedChannel(workerId, slot, candidate, configurationSource, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;

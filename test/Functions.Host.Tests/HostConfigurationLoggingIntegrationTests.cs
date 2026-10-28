@@ -33,14 +33,14 @@ namespace Azure.Functions.Host.Tests;
 [Collection(nameof(EnvironmentVariableCollection))]
 public sealed class HostConfigurationLoggingIntegrationTests
 {
-    private const string RejectionCategory = "Azure.Functions.Rpc.Client.HostConfigurationDeliveryValidator";
+    private const string RejectionCategory = "Azure.Functions.Rpc.Client.WorkerHostConfigurationParser";
     private const string RejectionEvent = "HostConfigurationRejected";
     private const string ConsoleControl = "Root Host configuration diagnostic console control.";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
     [InlineData((HostConfiguration.Types.Status)5, "The Host configuration delivery status is unspecified or unsupported.")]
-    [InlineData(HostConfiguration.Types.Status.ReadError, "The worker could not read host.json.")]
+    [InlineData(HostConfiguration.Types.Status.Error, "The worker could not produce Host configuration.")]
     [InlineData(HostConfiguration.Types.Status.TooLarge, "The Host configuration exceeds the 65,536-byte limit.")]
     [InlineData(HostConfiguration.Types.Status.Available, "The Host configuration exceeds the 65,536-byte limit.")]
     public async Task RejectedConfiguration_UsesRootSystemEventSinkBeforeScriptHostStarts(

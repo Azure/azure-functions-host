@@ -285,7 +285,6 @@ public class RpcClientScriptHostStartupIntegrationTests
     {
         RpcHostConfiguration firstConfiguration = CreateHostConfiguration("""
             {
-                "version": "2.0",
                 "functionTimeout": "00:03:00",
                 "extensions": { "custom": { "setting": "first", "values": [1, true] } },
                 "logging": { "applicationInsights": { "customRedactionSentinel": "customer-secret" } }
@@ -421,7 +420,7 @@ public class RpcClientScriptHostStartupIntegrationTests
             string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Warning, diagnostic.Level);
         Assert.Equal("Host configuration was rejected. " +
-            "The Host configuration is not valid JSON with a supported schema version and configuration profile.",
+            "The Host configuration must be a JSON object with a supported configuration profile.",
             diagnostic.Message);
         Assert.Null(diagnostic.Exception);
         Assert.DoesNotContain(testHost.Logs, log =>
@@ -435,7 +434,7 @@ public class RpcClientScriptHostStartupIntegrationTests
     }
 
     [Fact]
-    public async Task FirstLink_ExplicitMissingUsesDefaultsWithoutCreatingFile()
+    public async Task FirstLink_ExplicitMissingUsesEmptyConfigurationWithoutFileBootstrapDefaults()
     {
         await using TestWorker worker = await TestWorker.StartAsync("worker",
             hostConfiguration: new() { Status = RpcHostConfiguration.Types.Status.Missing });
@@ -448,7 +447,12 @@ public class RpcClientScriptHostStartupIntegrationTests
         await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
 
-        Assert.True(manager.Services!.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.IsDefaultHostConfig);
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        Assert.False(scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.IsDefaultHostConfig);
+        IConfiguration configuration = scriptServices.GetRequiredService<IConfiguration>();
+        Assert.Null(configuration["AzureFunctionsJobHost:version"]);
+        Assert.Null(configuration["AzureFunctionsJobHost:extensionBundle:id"]);
+        Assert.Null(configuration["AzureFunctionsJobHost:managedDependency:Enabled"]);
         Assert.False(File.Exists(Path.Combine(testHost.ScriptPath, "host.json")));
     }
 
@@ -476,7 +480,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
         IConfiguration configuration = scriptServices.GetRequiredService<IConfiguration>();
         Assert.Equal(explicitMissing ? null : "local", configuration["AzureFunctionsJobHost:extensions:custom:setting"]);
-        Assert.Equal(explicitMissing, scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.IsDefaultHostConfig);
+        Assert.False(scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.IsDefaultHostConfig);
         Assert.Equal(localJson, File.ReadAllText(localPath));
         Assert.DoesNotContain(testHost.Logs, log =>
             string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));

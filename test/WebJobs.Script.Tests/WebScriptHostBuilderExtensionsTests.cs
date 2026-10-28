@@ -125,8 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void AddWebScriptHost_WorkerConfigurationIsLoadedBeforeLateConfigurationHooks()
         {
             HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
-                """{"version":"2.0","functionTimeout":"00:03:00","extensions":{"custom":{"setting":"worker"}}}""",
-                new(new ScriptApplicationHostOptions()));
+                """{"functionTimeout":"00:03:00","extensions":{"custom":{"setting":"worker"}}}""");
             int builds = 0;
             var source = new Mock<IConfigurationSource>();
             source.Setup(value => value.Build(It.IsAny<IConfigurationBuilder>()))
@@ -179,8 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void AddWebScriptHost_WorkerBundleSettingsAreUsedByExtensionPrebuild()
         {
             HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
-                """{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"invalid"}}""",
-                new(new ScriptApplicationHostOptions()));
+                """{"extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"invalid"}}""");
             var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource()).Returns(snapshot);
             var lateHook = new Mock<IConfigureBuilder<IConfigurationBuilder>>();
@@ -202,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using TestScopedEnvironmentVariable environment = new("AzureFunctionsJobHost__functionTimeout", "00:04:00");
             HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
-                """{"version":"2.0","functionTimeout":"00:03:00"}""", new(new ScriptApplicationHostOptions()));
+                """{"functionTimeout":"00:03:00"}""");
             var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
             sourceProvider.Setup(value => value.GetConfigurationSource()).Returns(snapshot);
 

@@ -26,41 +26,22 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, false, false, "", null)]
-    [InlineData(null, true, false, "", null)]
-    [InlineData(null, false, true, "", null)]
-    [InlineData(null, false, false, "powershell", null)]
-    [InlineData(null, true, false, "powershell", null)]
-    [InlineData("{}", false, false, "powershell", null)]
-    [InlineData("{}", true, false, "powershell", null)]
-    [InlineData("{}", false, true, "", null)]
-    [InlineData("""{"version":"2.0","configurationProfile":"mcp-custom-handler"}""", false, false, "", null)]
-    [InlineData("""{"version":"2.0","configurationProfile":"web-app-custom-handler","http":{"routePrefix":"custom"}}""", false, false, "", null)]
-    [InlineData("""{"version":"2.0","configurationProfile":"default"}""", false, false, "", "mcp-custom-handler")]
-    [InlineData("""{"version":"2.0","configurationProfile":"mcp-custom-handler"}""", false, false, "", "default")]
-    [InlineData("""{"version":"2.0","extensions":{"unknown":{"flag":true,"values":[1,2.5,null,"value",{"deep":false}]}},"custom":{"date":"2026-01-01T00:00:00Z","empty":[]}}""", false, false, "", null)]
-    public void Parse_MatchesFileDefaultsProfilesAndFlattening(
-        string? content, bool readOnly, bool logicApp, string runtime, string? profile)
+    [InlineData("""{"version":"2.0","configurationProfile":"mcp-custom-handler"}""", null)]
+    [InlineData("""{"version":"2.0","configurationProfile":"web-app-custom-handler","http":{"routePrefix":"custom"}}""", null)]
+    [InlineData("""{"version":"2.0","configurationProfile":"default"}""", "mcp-custom-handler")]
+    [InlineData("""{"version":"2.0","configurationProfile":"mcp-custom-handler"}""", "default")]
+    [InlineData("""{"version":"2.0","extensions":{"unknown":{"flag":true,"values":[1,2.5,null,"value",{"deep":false}]}},"custom":{"date":"2026-01-01T00:00:00Z","empty":[]}}""", null)]
+    public void Parse_MatchesFileProfilesAndFlattening(string content, string? profile)
     {
-        HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions
+        HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions { ScriptPath = _directory })
         {
-            ScriptPath = _directory,
-            IsFileSystemReadOnly = readOnly,
-        })
-        {
-            IsLogicApp = logicApp,
-            WorkerRuntime = runtime,
             ConfigProfile = profile,
         };
-        HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(content, options);
+        HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(content, profile);
         IConfigurationRoot remote = new ConfigurationBuilder().Add(snapshot).Build();
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
 
-        if (content is not null)
-        {
-            File.WriteAllText(Path.Combine(_directory, "host.json"), content);
-        }
-
+        File.WriteAllText(Path.Combine(_directory, "host.json"), content);
         IConfigurationRoot local = new ConfigurationBuilder().Add(new HostJsonFileConfigurationSource(
             options, NullLoggerFactory.Instance, Mock.Of<IMetricsLogger>())).Build();
 
@@ -70,26 +51,100 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
     }
 
     [Theory]
+    [InlineData(null, false, false, "")]
+    [InlineData(null, true, false, "")]
+    [InlineData(null, false, true, "")]
+    [InlineData(null, true, true, "powershell")]
+    [InlineData(null, false, false, "powershell")]
+    [InlineData(null, true, false, "powershell")]
+    [InlineData("{}", false, false, "powershell")]
+    [InlineData("{}", true, false, "powershell")]
+    [InlineData("{}", false, true, "")]
+    public void Parse_LeavesBootstrapDefaultsExclusiveToFileLoading(
+        string? content, bool readOnly, bool logicApp, string runtime)
+    {
+        IConfigurationRoot delivered = new ConfigurationBuilder().Add(HostConfigurationSnapshot.Parse(content)).Build();
+
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
+        Assert.Equal("default", delivered["AzureFunctionsJobHost:configurationProfile"]);
+        Assert.Null(delivered["AzureFunctionsJobHost:version"]);
+        Assert.Null(delivered["AzureFunctionsJobHost:isDefaultHostConfig"]);
+        Assert.Null(delivered["AzureFunctionsJobHost:extensionBundle:id"]);
+        Assert.Null(delivered["AzureFunctionsJobHost:managedDependency:Enabled"]);
+
+        if (content is not null)
+        {
+            File.WriteAllText(Path.Combine(_directory, "host.json"), content);
+        }
+
+        HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions
+        {
+            ScriptPath = _directory,
+            IsFileSystemReadOnly = readOnly,
+        })
+        {
+            IsLogicApp = logicApp,
+            WorkerRuntime = runtime,
+        };
+        IConfigurationRoot local = new ConfigurationBuilder().Add(new HostJsonFileConfigurationSource(
+            options, NullLoggerFactory.Instance, Mock.Of<IMetricsLogger>())).Build();
+
+        Assert.Equal("2.0", local["AzureFunctionsJobHost:version"]);
+        Assert.Equal("True", local["AzureFunctionsJobHost:isDefaultHostConfig"]);
+        Assert.Equal(!readOnly && string.Equals(runtime, "powershell", StringComparison.Ordinal) ? "True" : null,
+            local["AzureFunctionsJobHost:managedDependency:Enabled"]);
+        string? expectedBundle = content is null && !readOnly
+            ? logicApp ? ScriptConstants.WorkFlowExtensionBundleId : ScriptConstants.DefaultExtensionBundleId
+            : null;
+        Assert.Equal(expectedBundle, local["AzureFunctionsJobHost:extensionBundle:id"]);
+    }
+
+    [Theory]
+    [InlineData("""{"logging":{"logLevel":{"default":"Information"}}}""")]
+    [InlineData("""{"version":"3.0","logging":{"logLevel":{"default":"Information"}}}""")]
+    public void Parse_DoesNotRequireFileSchemaVersion(string content)
+    {
+        IConfigurationRoot delivered = new ConfigurationBuilder().Add(HostConfigurationSnapshot.Parse(content)).Build();
+
+        Assert.Equal("Information", delivered["AzureFunctionsJobHost:logging:logLevel:default"]);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
+    }
+
+    [Fact]
+    public void Parse_PreservesExplicitBundleAndManagedDependencySettings()
+    {
+        HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse("""
+            {
+                "extensionBundle": { "id": "explicit-bundle", "version": "[4.*, 5.0.0)" },
+                "managedDependency": { "Enabled": true }
+            }
+            """);
+
+        IConfigurationRoot delivered = new ConfigurationBuilder().Add(snapshot).Build();
+
+        Assert.Equal("explicit-bundle", delivered["AzureFunctionsJobHost:extensionBundle:id"]);
+        Assert.Equal("[4.*, 5.0.0)", delivered["AzureFunctionsJobHost:extensionBundle:version"]);
+        Assert.Equal("True", delivered["AzureFunctionsJobHost:managedDependency:Enabled"]);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("[]")]
     [InlineData("null")]
     [InlineData("\"customer-secret\"")]
     [InlineData("{\"customer-secret\"")]
-    [InlineData("""{"version":"customer-secret"}""")]
-    [InlineData("""{"version":{"customer-secret":true}}""")]
-    [InlineData("""{"version":["customer-secret"]}""")]
     [InlineData("""{"configurationProfile":"customer-secret"}""")]
-    [InlineData("""{"version":"2.0","configurationProfile":"customer-secret"}""")]
-    [InlineData("""{"version":"2.0","configurationProfile":{"customer-secret":true}}""")]
+    [InlineData("""{"configurationProfile":{"customer-secret":true}}""")]
+    [InlineData("""{"configurationProfile":["customer-secret"]}""")]
     public void Parse_InvalidConfigurationThrowsWithoutContentOrParserException(string content)
     {
         HostConfigurationException exception = Assert.Throws<HostConfigurationException>(() =>
-            HostConfigurationSnapshot.Parse(content, new(new ScriptApplicationHostOptions { ScriptPath = _directory })));
+            HostConfigurationSnapshot.Parse(content));
 
         Assert.Null(exception.InnerException);
         Assert.Equal(
-            "The Host configuration is not valid JSON with a supported schema version and configuration profile.",
+            "The Host configuration must be a JSON object with a supported configuration profile.",
             exception.Message);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
@@ -98,10 +153,8 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
     [Fact]
     public void Parse_InvalidBootstrapProfileThrowsWithoutContent()
     {
-        HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions()) { ConfigProfile = "customer-secret" };
-
         HostConfigurationException exception = Assert.Throws<HostConfigurationException>(() =>
-            HostConfigurationSnapshot.Parse("""{"version":"2.0"}""", options));
+            HostConfigurationSnapshot.Parse("{}", "customer-secret"));
 
         Assert.Null(exception.InnerException);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
@@ -111,8 +164,7 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
     public void Build_DoesNotExposeMutableSnapshotOrReadFiles()
     {
         HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
-            """{"version":"2.0","extensions":{"custom":{"setting":"worker"}}}""",
-            new(new ScriptApplicationHostOptions { ScriptPath = _directory }));
+            """{"extensions":{"custom":{"setting":"worker"}}}""");
         IConfigurationRoot first = new ConfigurationBuilder().Add(snapshot).Build();
         first["AzureFunctionsJobHost:extensions:custom:setting"] = "child-only";
         File.WriteAllText(Path.Combine(_directory, "host.json"), "invalid local document");
@@ -128,8 +180,7 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
     public void Build_PreservesOverridesAndUnknownSections()
     {
         HostConfigurationSnapshot snapshot = HostConfigurationSnapshot.Parse(
-            """{"version":"2.0","configurationProfile":"mcp-custom-handler","http":{"routePrefix":"worker"},"extensions":{"unknown":{"values":[true,2,null]}}}""",
-            new(new ScriptApplicationHostOptions()));
+            """{"configurationProfile":"mcp-custom-handler","http":{"routePrefix":"worker"},"extensions":{"unknown":{"values":[true,2,null]}}}""");
         IConfigurationRoot configuration = new ConfigurationBuilder()
             .Add(snapshot)
             .AddInMemoryCollection(new Dictionary<string, string?>

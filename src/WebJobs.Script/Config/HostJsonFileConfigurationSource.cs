@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -124,7 +125,23 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         TryWriteHostJson(hostJsonPath, hostConfigObject);
                     }
 
-                    HostConfigurationSnapshot.ValidateVersion(hostConfigObject);
+                    string version = hostConfigObject["version"]?.Value<string>();
+                    if (string.IsNullOrEmpty(version))
+                    {
+                        throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
+                    }
+
+                    if (!string.Equals(version, "2.0", StringComparison.Ordinal))
+                    {
+                        StringBuilder message = new($"'{version}' is an invalid value for {ScriptConstants.HostMetadataFileName} 'version' property. We recommend you set the 'version' property to '2.0'. ");
+                        if (version.StartsWith("3", StringComparison.OrdinalIgnoreCase))
+                        {
+                            message.Append($"This does not correspond to the function runtime version, only to the schema version of the {ScriptConstants.HostMetadataFileName} file. ");
+                        }
+
+                        message.Append($"See https://aka.ms/functions-hostjson for more information on this configuration file.");
+                        throw new HostConfigurationException(message.ToString());
+                    }
                 }
 
                 return hostConfigObject;
@@ -161,10 +178,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         // There isn't a clean way to create a new function app resource with host.json as initial payload.
                         // So a newly created function app from the portal would have no host.json. In that case we need to
                         // create a new function app with host.json that includes a matching extension bundle based on the app kind.
-                        hostConfigObject = HostConfigurationSnapshot.CreateDefault(Options, includeBundle: true);
-                        if (hostConfigObject["extensionBundle"] is JObject bundle)
+                        hostConfigObject = GetDefaultHostConfigObject();
+                        if (!Options.Host.IsFileSystemReadOnly)
                         {
-                            string bundleConfiguration = "{ 'id': '" + bundle["id"] + "', 'version': '" + bundle["version"] + "'}";
+                            string bundleId = Options.IsLogicApp ? ScriptConstants.WorkFlowExtensionBundleId : ScriptConstants.DefaultExtensionBundleId;
+                            string bundleVersion = Options.IsLogicApp ? ScriptConstants.LogicAppDefaultExtensionBundleVersion : ScriptConstants.DefaultExtensionBundleVersion;
+                            hostConfigObject.Add("extensionBundle", new JObject { ["id"] = bundleId, ["version"] = bundleVersion });
+                            string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '" + bundleVersion + "'}";
                             _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
                         }
 
@@ -178,14 +198,32 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject GetDefaultHostConfigObject()
             {
-                return HostConfigurationSnapshot.CreateDefault(Options);
+                JObject document = new()
+                {
+                    ["version"] = "2.0",
+                    ["isDefaultHostConfig"] = true,
+                };
+                if (!Options.Host.IsFileSystemReadOnly &&
+                    string.Equals(Options.WorkerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    document.Add("managedDependency", new JObject { ["Enabled"] = true });
+                }
+
+                return document;
             }
 
             private HostConfigurationProfile GetConfigProfile(JObject hostFile)
             {
                 ArgumentNullException.ThrowIfNull(hostFile);
 
-                return HostConfigurationSnapshot.GetProfile(hostFile, Options);
+                try
+                {
+                    return Options.GetConfigProfile(hostFile);
+                }
+                catch (NotSupportedException exception)
+                {
+                    throw new HostConfigurationException(exception.Message, exception);
+                }
             }
 
             private void TryWriteHostJson(string filePath, JObject content)

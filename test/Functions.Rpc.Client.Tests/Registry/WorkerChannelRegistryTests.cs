@@ -1831,15 +1831,11 @@ public sealed partial class WorkerChannelRegistryTests
         public RegistryHarness(
             TimeSpan? linkTimeout,
             IConfiguration configuration = null,
-            IHostConfigurationDeliveryValidator hostConfigurationDeliveryValidator = null)
+            IWorkerHostConfigurationParser workerHostConfigurationParser = null)
         {
             HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-            Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationOptions = new();
-            applicationOptions.SetupGet(options => options.CurrentValue)
-                .Returns(new ScriptApplicationHostOptions { IsFileSystemReadOnly = true, ScriptPath = "c:\\test" });
-            hostConfigurationDeliveryValidator ??= new HostConfigurationDeliveryValidator(
+            workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
                 configuration ?? new ConfigurationBuilder().Build(),
-                applicationOptions.Object,
                 HostConfigurationLogger.Object);
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
@@ -1878,15 +1874,15 @@ public sealed partial class WorkerChannelRegistryTests
                     return channel;
                 });
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, hostConfigurationDeliveryValidator)
-                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, hostConfigurationDeliveryValidator);
+                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, workerHostConfigurationParser)
+                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
 
         internal Mock<IDuplexChannelFactory<StreamingMessage>> DuplexFactory { get; } = new();
 
-        internal Mock<ILogger<HostConfigurationDeliveryValidator>> HostConfigurationLogger { get; } = new();
+        internal Mock<ILogger<WorkerHostConfigurationParser>> HostConfigurationLogger { get; } = new();
 
         internal WorkerChannelRegistry Registry { get; }
 
