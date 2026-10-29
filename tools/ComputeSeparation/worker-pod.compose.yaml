@@ -4,10 +4,16 @@ services:
       context: ../..
       dockerfile: tools/ComputeSeparation/WorkerProxy/Dockerfile
     environment:
+      WEBSITE_POD_NAME: ${WORKER_POD_NAME:-worker-pod-1}
       WORKERPROXY__HTTPPROXYENDPOINT: http://${WORKER_PROXY_ALIAS:?Aspire must supply a unique Proxy alias}:28080
       Logging__LogLevel__Azure.Functions.WorkerProxy.Http: Debug
     ports:
       - "127.0.0.1:${WORKER_PROXY_MANAGEMENT_PORT:?Aspire must allocate the management port}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/50054'"]
+      interval: 1s
+      timeout: 1s
+      retries: 60
     networks:
       compute:
         aliases:
@@ -18,8 +24,13 @@ services:
       context: ../..
       dockerfile: tools/ComputeSeparation/SampleIsolatedApp/Dockerfile
     network_mode: service:worker-proxy
+    environment:
+      AzureWebJobsStorage: ${QUEUE_STORAGE_CONNECTION:-}
+      ExtensionPayloadInputQueue: ${EXTENSION_INPUT_QUEUE:-extension-payload-input}
+      ExtensionPayloadOutputQueue: ${EXTENSION_OUTPUT_QUEUE:-extension-payload-output}
     depends_on:
-      - worker-proxy
+      worker-proxy:
+        condition: service_healthy
     command:
       - --functions-uri
       - http://127.0.0.1:50054

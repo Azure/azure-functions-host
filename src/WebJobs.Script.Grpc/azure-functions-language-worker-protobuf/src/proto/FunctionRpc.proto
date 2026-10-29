@@ -92,7 +92,37 @@ message StreamingMessage {
     
     // Worker responds after warming up with the warmup result
     WorkerWarmupResponse worker_warmup_response = 34;
-    
+
+    // Host explicitly requests a ZIP from a worker advertising ExtensionPayload="1".
+    GetExtensionPayloadRequest get_extension_payload_request = 35;
+    // Worker sends ordered ZIP chunks followed by one terminal result while connected.
+    ExtensionPayloadResponse extension_payload_response = 36;
+  }
+}
+
+// All messages for one extension transfer use the same StreamingMessage.request_id.
+// Paths are worker-local and are never supplied by the host.
+// The capability advertises support, not an instruction to send. The host acquires
+// its first accepted source and reuses it for later worker links without requesting
+// or comparing another payload. Workers send no ZIP without an explicit request.
+message GetExtensionPayloadRequest {
+}
+
+// The ZIP contains worker-filtered root extensions.json and .azurefunctions assets.
+// The producer excludes its Host-only worker bootstrap and its startup entry.
+// Limits: 256 MiB ZIP, 1 GiB expanded, 1 MiB manifest input/output, and 10000 filesystem entries
+// including implicit directories. Paths have at most 32 segments. The archive has
+// no comment or ZIP64 end records.
+// Chunks are nonempty and contain at most 65536 bytes; offset is the number of ZIP
+// bytes preceding this message. A terminal result carries the final byte count in
+// offset. Success is required before the host may use the completed archive.
+// Connection loss or worker shutdown cancels the transfer and removes its temporary
+// archive; a terminal result is not required on a closed or shutting-down connection.
+message ExtensionPayloadResponse {
+  uint64 offset = 1;
+  oneof content {
+    bytes chunk = 2;
+    StatusResult result = 3;
   }
 }
 

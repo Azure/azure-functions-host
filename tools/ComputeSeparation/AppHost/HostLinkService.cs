@@ -25,6 +25,9 @@ internal sealed partial class HostLinkService(
     ILogger<HostLinkService> logger) : BackgroundService
 {
     private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
+    private readonly TaskCompletionSource _linked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public Task Linked => _linked.Task;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -46,17 +49,21 @@ internal sealed partial class HostLinkService(
             }
 
             Log.WorkerLinked(logger, workerId, new Uri(new Uri(hostAddress), "/api/hello"));
+            _linked.TrySetResult();
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+            _linked.TrySetCanceled(stoppingToken);
         }
         catch (OperationCanceledException exception)
         {
             Log.WorkerLinkTimedOut(logger, workerId, exception);
+            _linked.TrySetException(exception);
         }
         catch (HttpRequestException exception)
         {
             Log.WorkerLinkFailed(logger, workerId, exception);
+            _linked.TrySetException(exception);
         }
     }
 

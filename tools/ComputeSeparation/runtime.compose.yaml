@@ -1,4 +1,41 @@
 services:
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
+    command:
+      - azurite
+      - -l
+      - /data
+      - --blobHost
+      - 0.0.0.0
+      - --queueHost
+      - 0.0.0.0
+      - --tableHost
+      - 0.0.0.0
+      - --disableProductStyleUrl
+      - --skipApiVersionCheck
+    ports:
+      - "127.0.0.1:${AZURITE_BLOB_PORT:?Aspire must allocate the blob port}:10000"
+      - "127.0.0.1:${AZURITE_QUEUE_PORT:?Aspire must allocate the queue port}:10001"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          const net = require('net');
+          for (const port of [10000, 10001]) {
+            const socket = net.connect(port, '127.0.0.1');
+            socket.once('connect', () => socket.destroy());
+            socket.once('error', () => process.exit(1));
+          }
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    tmpfs:
+      - /data
+    networks:
+      - compute
+
   functions-host:
     build:
       context: ../..
@@ -8,10 +45,17 @@ services:
       AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
       AzureFunctionsJobHost__logging__logLevel__default: Information
       AzureFunctionsJobHost__logging__console__isEnabled: "true"
+      AzureWebJobsStorage: ${QUEUE_STORAGE_CONNECTION:-}
+      ExtensionPayloadInputQueue: ${EXTENSION_INPUT_QUEUE:-extension-payload-input}
+      ExtensionPayloadOutputQueue: ${EXTENSION_OUTPUT_QUEUE:-extension-payload-output}
+      Logging__LogLevel__Azure.Functions.Rpc.Client: Debug
     ports:
       - "127.0.0.1:${COMPUTE_HOST_PORT:?Aspire must allocate the Host port}:8080"
     tmpfs:
       - /tmp/functions
+    depends_on:
+      azurite:
+        condition: service_healthy
     networks:
       - compute
 

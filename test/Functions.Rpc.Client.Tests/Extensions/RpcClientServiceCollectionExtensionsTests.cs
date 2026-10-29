@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
@@ -32,6 +33,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
+        AssertSingleton<IExtensionPathProvider, RpcClientExtensionPathProvider>(services);
         AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator));
@@ -117,6 +119,30 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         rootRegistry.Verify(registry => registry.DisposeAsync(), Times.Never);
         Assert.False(channelDisposed);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClientCompositionReplacesDefaultPathsRegardlessOfCommonRegistrationOrder(bool commonFirst)
+    {
+        ServiceCollection services = new();
+        services.AddLogging();
+        if (commonFirst)
+        {
+            ScriptHostBuilderExtensions.AddCommonServices(services);
+        }
+
+        services.AddRpcClientServices();
+        if (!commonFirst)
+        {
+            ScriptHostBuilderExtensions.AddCommonServices(services);
+        }
+
+        AssertSingleton<IExtensionPathProvider, RpcClientExtensionPathProvider>(services);
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.IsType<RpcClientExtensionPathProvider>(provider.GetRequiredService<IExtensionPathProvider>());
+        Assert.Same(provider.GetRequiredService<IExtensionPathProvider>(), provider.GetRequiredService<IExtensionPathProvider>());
     }
 
     [Fact]

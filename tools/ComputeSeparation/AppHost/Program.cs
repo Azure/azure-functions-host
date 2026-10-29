@@ -12,6 +12,11 @@ const string ManagementEndpointName = "management";
 const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
+const string BlobEndpointName = "blob";
+const string QueueEndpointName = "queue";
+// Azurite's public development account is shared by the host-facing and container-facing connections.
+const string EmulatorConnectionPrefix = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=" +
+    "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -23,6 +28,14 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 
 bool multipleWorkers = builder.Configuration.GetValue("ComputeSeparation:MultipleWorkers", false);
 bool autoLink = builder.Configuration.GetValue("ComputeSeparation:AutoLink", true);
+bool verifyQueue = builder.Configuration.GetValue("ComputeSeparation:VerifyQueueTrigger", false);
+if (verifyQueue && (!useContainers || !autoLink))
+{
+    throw new InvalidOperationException("QueueTrigger acceptance requires container mode with automatic linking.");
+}
+
+string inputQueue = verifyQueue ? $"payload-input-{Guid.NewGuid():N}" : "sample-input";
+string outputQueue = verifyQueue ? $"payload-output-{Guid.NewGuid():N}" : "sample-output";
 if (multipleWorkers && (useContainers || autoLink))
 {
     throw new InvalidOperationException("Multiple workers require project mode with ComputeSeparation:AutoLink=false.");
@@ -36,6 +49,7 @@ await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : 
 EndpointReference hostEndpoint;
 EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
+ReferenceExpression hostStorageConnection;
 string[] dependencies;
 
 if (topology is not null)
@@ -47,6 +61,8 @@ if (topology is not null)
             "compose", "--file", topology.Runtime.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"),
             name: HttpEndpointName, env: "COMPUTE_HOST_PORT")
+        .WithHttpEndpoint(name: BlobEndpointName, env: "AZURITE_BLOB_PORT")
+        .WithHttpEndpoint(name: QueueEndpointName, env: "AZURITE_QUEUE_PORT")
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.Runtime.ProjectName)
@@ -56,7 +72,7 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
-    builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
+    IResourceBuilder<ExecutableResource> workerPod = builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
             "compose", "--file", topology.WorkerPod.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:ManagementPort"),
             name: ManagementEndpointName, env: "WORKER_PROXY_MANAGEMENT_PORT")
@@ -64,6 +80,7 @@ if (topology is not null)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
         .WithEnvironment("WORKER_PROXY_ALIAS", topology.ProxyAlias)
         .WithEnvironment("WORKER_ID", workerId)
+        .WithEnvironment("WORKER_POD_NAME", workerId)
         .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
         .WithEnvironment(context => context.EnvironmentVariables[ComposeSession.GenerationVariable] = topology.WorkerPod.Generation)
@@ -73,12 +90,27 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
+    string containerStorageConnection = $"{EmulatorConnectionPrefix};BlobEndpoint=http://azurite:10000/devstoreaccount1;" +
+        "QueueEndpoint=http://azurite:10001/devstoreaccount1";
+    foreach (IResourceBuilder<ExecutableResource> resource in new[] { runtime, workerPod })
+    {
+        resource.WithEnvironment("QUEUE_STORAGE_CONNECTION", containerStorageConnection)
+            .WithEnvironment("EXTENSION_INPUT_QUEUE", inputQueue)
+            .WithEnvironment("EXTENSION_OUTPUT_QUEUE", outputQueue);
+    }
+
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
+    hostStorageConnection = CreateStorageConnection(runtime.GetEndpoint(BlobEndpointName), runtime.GetEndpoint(QueueEndpointName));
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
 {
+    var storage = builder.AddAzureStorage("queue-storage").RunAsEmulator();
+    var queues = storage.AddQueues("queues");
+    var blobs = storage.AddBlobs("blobs");
+    hostStorageConnection = CreateStorageConnection(storage.GetEndpoint("blob"), storage.GetEndpoint("queue"));
+
     IResourceBuilder<ProjectResource> functionsHost = builder.AddProject<Projects.Functions_Host>("functions-host", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
@@ -92,6 +124,11 @@ else
         .WithEnvironment("AzureFunctionsWebHost__IsFileSystemReadOnly", "true")
         .WithEnvironment("AzureFunctionsJobHost__logging__logLevel__default", "Information")
         .WithEnvironment("AzureFunctionsJobHost__logging__console__isEnabled", "true")
+        .WithEnvironment("ExtensionPayloadInputQueue", inputQueue)
+        .WithEnvironment("ExtensionPayloadOutputQueue", outputQueue)
+        .WithEnvironment("AzureWebJobsStorage", hostStorageConnection)
+        .WaitFor(queues)
+        .WaitFor(blobs)
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName);
 
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
@@ -159,12 +196,17 @@ else
         });
 
         builder.AddProject<Projects.SampleIsolatedApp>($"isolated-worker{suffix}", launchProfileName: null)
+            .WithEnvironment("ExtensionPayloadInputQueue", inputQueue)
+            .WithEnvironment("ExtensionPayloadOutputQueue", outputQueue)
+            .WithEnvironment("AzureWebJobsStorage", hostStorageConnection)
             .WithArgs(
                 "--functions-uri", proxy.GetEndpoint(WorkerGrpcEndpointName),
                 "--functions-worker-id", linkedWorkerId,
                 "--functions-request-id", Guid.NewGuid().ToString(),
                 "--functions-grpc-max-message-length", "134217728")
-            .WaitFor(proxy);
+            .WaitFor(proxy)
+            .WaitFor(queues)
+            .WaitFor(blobs);
 
         // One platform owns the known proxy mappings; simulation requests select a mapping by resource name.
         fakePlatform
@@ -179,7 +221,7 @@ else
 
 if (autoLink)
 {
-    builder.Services.AddHostedService(services => new HostLinkService(
+    builder.Services.AddSingleton(services => new HostLinkService(
         hostEndpoint,
         workerGrpcEndpoint,
         platformEndpoint,
@@ -187,9 +229,29 @@ if (autoLink)
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
         services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>()));
+    builder.Services.AddHostedService(services => services.GetRequiredService<HostLinkService>());
+    if (verifyQueue)
+    {
+        builder.Services.AddHostedService(services => new QueueTriggerVerificationService(
+            hostStorageConnection, inputQueue, outputQueue, topology!, hostEndpoint,
+            Path.Combine(repositoryRoot, "out", "extension-payload", "evidence", inputQueue),
+            services.GetRequiredService<HostLinkService>(),
+            services.GetRequiredService<IHostApplicationLifetime>(),
+            services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<QueueTriggerVerificationService>>()));
+    }
 }
 
 await builder.Build().RunAsync();
+
+static ReferenceExpression CreateStorageConnection(EndpointReference blob, EndpointReference queue)
+{
+    ReferenceExpression blobUrl = ReferenceExpression.Create(
+        $"{blob.Property(EndpointProperty.Scheme)}://{blob.Property(EndpointProperty.IPV4Host)}:{blob.Property(EndpointProperty.Port)}/devstoreaccount1");
+    ReferenceExpression queueUrl = ReferenceExpression.Create(
+        $"{queue.Property(EndpointProperty.Scheme)}://{queue.Property(EndpointProperty.IPV4Host)}:{queue.Property(EndpointProperty.Port)}/devstoreaccount1");
+
+    return ReferenceExpression.Create($"{EmulatorConnectionPrefix};BlobEndpoint={blobUrl};QueueEndpoint={queueUrl}");
+}
 
 static int? GetOptionalPort(IConfiguration configuration, string key)
 {

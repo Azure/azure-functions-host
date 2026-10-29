@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -306,6 +307,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var content = JObject.Parse(result.Content);
             var triggers = content["triggers"];
             Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+        }
+
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(false, false, true)]
+        [InlineData(false, true, false)]
+        [InlineData(false, true, true)]
+        [InlineData(true, false, false)]
+        [InlineData(true, false, true)]
+        [InlineData(true, true, false)]
+        [InlineData(true, true, true)]
+        public async Task GetTriggersAsync_DurableVersionLookup_OverridesOnlyTheSelectedSource(bool selectedSource, bool legacyCheck, bool useBundles)
+        {
+            _mockEnvironment.Setup(value => value.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
+            _vars[EnvironmentSettingNames.AzureWebJobsFeatureFlags] = legacyCheck ? ScriptConstants.FeatureFlagEnableLegacyDurableVersionCheck : null;
+            using TestScopedEnvironmentVariable environment = new(_vars);
+            SetupDurableExtension(GetHostConfig(new JObject(), useBundles).ToString(), durableExtensionJsonVersion: "2.0.0.0");
+            string metadataPath = Path.Combine(_hostOptions.ScriptPath, "selected-extensions");
+            string probingPath = null;
+            Mock<IExtensionPathProvider> paths = new(MockBehavior.Strict);
+            paths.SetupGet(value => value.UseExtensionBundles).Returns(!selectedSource);
+            if (selectedSource)
+            {
+                paths.Setup(value => value.TryResolveExtensionsMetadataPath(_hostOptions.ScriptPath, out metadataPath, out probingPath)).Returns(true);
+                Mock.Get(FileUtility.Instance.File).Setup(value => value.Open(
+                    Path.Combine(metadataPath, ScriptConstants.ExtensionsMetadataFileName), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()))
+                    .Returns(() => new MemoryStream(Encoding.UTF8.GetBytes(GetExtensionsJson("1.8.3.0"))));
+            }
+
+            Mock.Get(_syncScriptHostManager).As<IServiceProvider>()
+                .Setup(value => value.GetService(typeof(IExtensionPathProvider))).Returns(paths.Object);
+
+            var result = await _functionsSyncManager.GetTriggersAsync();
+
+            bool usesV1 = selectedSource || (legacyCheck && useBundles);
+            Assert.True(result.Success);
+            Assert.Equal(GetExpectedTriggersPayload(postedConnection: null, postedTaskHub: usesV1 ? null : "TestHubValue", durableVersion: usesV1 ? "V1" : "V2"),
+                JObject.Parse(result.Content)["triggers"].ToString(Formatting.None));
+            paths.Verify(value => value.TryResolveExtensionsMetadataPath(_hostOptions.ScriptPath, out metadataPath, out probingPath),
+                selectedSource ? Times.Once() : Times.Never());
         }
 
         [Fact]

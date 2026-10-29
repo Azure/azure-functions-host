@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Owns first-link activation and shutdown while borrowing the root ScriptHost service and worker registry.
+/// Owns activation after worker initialization and shutdown while borrowing the root ScriptHost service and worker registry.
 /// </summary>
 /// <param name="channelRegistry">The root-owned worker channel registry.</param>
 /// <param name="scriptHost">The root-owned ScriptHost service, supplied without an automatic hosted-service registration.</param>
@@ -39,7 +39,7 @@ internal sealed partial class RpcClientScriptHostStartupCoordinator(
     private Task? _disposeTask;
 
     /// <summary>
-    /// Gets the first-link activation task, or <see langword="null"/> before this hosted service starts.
+    /// Gets the activation task that waits for worker initialization and prepared extensions, or <see langword="null"/> before this service starts.
     /// </summary>
     /// <remarks>
     /// Completion means the initial call to <see cref="IHostedService.StartAsync"/> has returned, not that ScriptHost is running.

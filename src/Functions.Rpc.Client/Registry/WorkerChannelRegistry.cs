@@ -21,9 +21,10 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 /// <remarks>
 /// Admission and replay decisions are atomic. Different workers can link concurrently.
-/// The registry publishes a channel after its WorkerInit handshake succeeds, configures it for the active ScriptHost
-/// context, and retains terminal identities. Initialized channels remain available for metadata bootstrap before a
-/// ScriptHost function set is known; only ready channels are available for invocation dispatch.
+/// A link returns after its WorkerInit handshake and registration. Initialization additionally prepares the extension
+/// source, including receiving and extracting assemblies to disk, before publishing the channel for metadata and ScriptHost
+/// startup. The registry then configures it for the active ScriptHost context and retains terminal identities.
+/// Only ready channels are available for invocation dispatch.
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 {
@@ -33,6 +34,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
+    private readonly WorkerExtensionPayloadManager _extensionPayloads;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
     private readonly HashSet<Task> _monitorTasks = [];
@@ -51,7 +53,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger)
-        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout)
+        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, null)
+    {
+    }
+
+    public WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger,
+        WorkerExtensionPayloadManager extensionPayloads)
+        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout, extensionPayloads)
     {
     }
 
@@ -60,10 +71,21 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout)
+        : this(duplexChannelFactory, channelFactory, logger, linkTimeout, null)
+    {
+    }
+
+    private WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger,
+        TimeSpan linkTimeout,
+        WorkerExtensionPayloadManager extensionPayloads)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _extensionPayloads = extensionPayloads;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
@@ -176,7 +198,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                RegisterInitializedChannel(workerId, slot, candidate, operationSource.Token);
+                RegisterLinkedChannel(workerId, slot, candidate, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
                 candidate = null;
@@ -281,7 +303,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         lock (_stateLock)
         {
-            if (!_disposed && _slots.TryGetValue(workerId, out WorkerSlot slot) && slot.Channel is not null)
+            if (!_disposed && _slots.TryGetValue(workerId, out WorkerSlot slot) && slot.Initialized && slot.Channel is not null)
             {
                 channel = slot.Channel;
                 return true;
@@ -301,7 +323,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 return [];
             }
 
-            return [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)];
+            return [.. _slots.Values.Where(slot => slot.Initialized && slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)];
         }
     }
 
@@ -329,7 +351,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
             foreach (WorkerSlot slot in _slots.Values)
             {
-                if (slot.Channel is null)
+                if (slot.Channel is null || !slot.Initialized)
                 {
                     continue;
                 }
@@ -398,24 +420,32 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     public async Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         while (true)
         {
-            Task initializedChannelAvailable;
+            cancellationToken.ThrowIfCancellationRequested();
+            Task available;
             lock (_stateLock)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
-                RpcClientWorkerChannel channel = _slots.Values.FirstOrDefault(slot => slot.Channel is not null)?.Channel;
+                RpcClientWorkerChannel channel = _slots.Values
+                    .Where(slot => slot.Initialized && slot.Channel is { IsTerminated: false })
+                    .Select(slot => slot.Channel)
+                    .OrderBy(channel => channel.Id, StringComparer.Ordinal)
+                    .FirstOrDefault();
                 if (channel is not null)
                 {
                     return channel;
                 }
 
-                initializedChannelAvailable = _initializedChannelAvailable.Task;
+                if (_initializedChannelAvailable.Task.IsCompleted)
+                {
+                    _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
+
+                available = _initializedChannelAvailable.Task;
             }
 
-            await initializedChannelAvailable.WaitAsync(cancellationToken);
+            await available.WaitAsync(cancellationToken);
         }
     }
 
@@ -484,6 +514,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
 
         slot.Channel = null;
+        slot.Initialized = false;
         slot.AttemptedSetupContext = null;
         slot.SetupException = null;
         if (slot.LinkTask is not null)
@@ -496,7 +527,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         {
             // Remove the detached channel from the published snapshot before channel disposal begins.
             SignalReadyChannelsLocked();
-            if (!_slots.Values.Any(slot => slot.Channel is not null))
+            if (_initializedChannelAvailable.Task.IsCompleted &&
+                !_slots.Values.Any(slot => slot.Initialized && slot.Channel is { IsTerminated: false }))
             {
                 _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
             }
@@ -606,9 +638,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private void RegisterInitializedChannel(string workerId, WorkerSlot slot, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
+    private void RegisterLinkedChannel(string workerId, WorkerSlot slot, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
     {
         Task monitorTask;
+        Task preparationTask = null;
 
         lock (_stateLock)
         {
@@ -624,16 +657,72 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             slot.Channel = channel;
+            slot.Initialized = _extensionPayloads is null;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);
-
-            // Signal initialized-channel availability without starting ScriptHost here.
-            _initializedChannelAvailable.TrySetResult();
+            if (slot.Initialized)
+            {
+                _initializedChannelAvailable.TrySetResult();
+            }
+            else
+            {
+                preparationTask = PrepareExtensionPayloadAsync(slot, channel);
+                _monitorTasks.Add(preparationTask);
+            }
         }
 
         _ = ConfigureSlotInBackgroundAsync(slot);
         _ = monitorTask.ContinueWith(static (task, state) => ((WorkerChannelRegistry)state).OnMonitorCompleted(task), this,
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        if (preparationTask is not null)
+        {
+            _ = preparationTask.ContinueWith(static (task, state) => ((WorkerChannelRegistry)state).OnMonitorCompleted(task), this,
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+    }
+
+    private async Task PrepareExtensionPayloadAsync(WorkerSlot slot, RpcClientWorkerChannel channel)
+    {
+        // Link admission ends at WorkerInit. This work belongs to the root/link lifetime, not the HTTP request.
+        await Task.Yield();
+        using CancellationTokenSource lifetime = CancellationTokenSource.CreateLinkedTokenSource(_shutdownSource.Token);
+        try
+        {
+            Task preparation = _extensionPayloads.PrepareAsync(channel, lifetime.Token);
+            if (!ReferenceEquals(await Task.WhenAny(preparation, channel.Completion), preparation))
+            {
+                await lifetime.CancelAsync();
+            }
+
+            await preparation;
+            lock (_stateLock)
+            {
+                if (_disposed || !ReferenceEquals(slot.Channel, channel) || channel.IsTerminated)
+                {
+                    return;
+                }
+
+                slot.Initialized = true;
+                _initializedChannelAvailable.TrySetResult();
+                ConfigureSlotLocked(slot);
+            }
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+            // Root shutdown owns channel disposal and waits for this preparation to release its staging files.
+        }
+        catch (Exception exception)
+        {
+            Log.ExtensionPayloadRejected(_logger, exception, channel.Id);
+            try
+            {
+                await UnlinkAsync(channel.Id);
+            }
+            catch (Exception cleanupException)
+            {
+                Log.ChannelDisposalFailed(_logger, new AggregateException(exception, cleanupException), channel.Id);
+            }
+        }
     }
 
     private async Task ConfigureSlotInBackgroundAsync(WorkerSlot slot)
@@ -659,6 +748,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         RpcClientWorkerChannel channel = slot.Channel;
         if (setupContext is null ||
             channel is null ||
+            !slot.Initialized ||
             ReferenceEquals(slot.AttemptedSetupContext, setupContext))
         {
             return;
@@ -692,6 +782,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         return [.. _slots.Values
             .Where(slot =>
                 ReferenceEquals(slot.AttemptedSetupContext, setupContext) &&
+                slot.Initialized &&
                 slot.SetupException is null &&
                 slot.Channel is { IsReadyForInvocations: true })
             .Select(slot => (WorkerChannel)slot.Channel)];
@@ -774,6 +865,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         public RpcClientWorkerChannel Channel { get; set; }
 
+        public bool Initialized { get; set; }
+
         // The initial link owns this gate before its slot is published.
         public SemaphoreSlim Gate { get; } = new(0, 1);
 
@@ -814,5 +907,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(6, LogLevel.Warning, "The extension payload for worker {WorkerId} was rejected; its link will be removed.")]
+        public static partial void ExtensionPayloadRejected(ILogger logger, Exception exception, string workerId);
     }
 }

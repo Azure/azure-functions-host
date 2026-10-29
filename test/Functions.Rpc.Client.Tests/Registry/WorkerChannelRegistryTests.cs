@@ -1826,7 +1826,7 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
-        public RegistryHarness(TimeSpan? linkTimeout)
+        public RegistryHarness(TimeSpan? linkTimeout, WorkerExtensionPayloadManager extensionPayloads = null)
         {
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
@@ -1864,7 +1864,9 @@ public sealed partial class WorkerChannelRegistryTests
 
                     return channel;
                 });
-            Registry = linkTimeout.HasValue
+            Registry = extensionPayloads is not null
+                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, extensionPayloads)
+                : linkTimeout.HasValue
                 ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
                 : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
         }
@@ -1959,6 +1961,8 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal string Id { get; }
 
+        internal string ExtensionPayloadCapability { get; set; }
+
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
 
         internal int SetupAttempts => Interlocked.CompareExchange(ref _setupAttempts, 0, 0);
@@ -2045,13 +2049,16 @@ public sealed partial class WorkerChannelRegistryTests
                     return;
                 }
 
-                await Transport.SendResponseAsync(new StreamingMessage
+                WorkerInitResponse response = new()
                 {
-                    WorkerInitResponse = new WorkerInitResponse
-                    {
-                        Result = new() { Status = StatusResult.Types.Status.Success },
-                    },
-                });
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                };
+                if (ExtensionPayloadCapability is not null)
+                {
+                    response.Capabilities.Add(WorkerExtensionPayloadManager.CapabilityName, ExtensionPayloadCapability);
+                }
+
+                await Transport.SendResponseAsync(new() { WorkerInitResponse = response });
             }
             catch (ChannelClosedException)
             {
