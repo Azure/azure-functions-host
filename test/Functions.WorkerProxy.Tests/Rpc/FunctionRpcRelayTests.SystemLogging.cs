@@ -53,7 +53,11 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
         if (expectedInConsolePipeline)
         {
-            Assert.Equal(log.RpcLog, Assert.Single(eventGenerator.WorkerLogs));
+            CapturedSystemLog record = Assert.Single(eventGenerator.WorkerLogs);
+            Assert.Equal(level, record.Level);
+            Assert.Equal(log.RpcLog.EventId, record.EventName);
+            Assert.Equal(log.RpcLog.Message, record.Message);
+            Assert.Equal(WorkerSystemLoggerProvider.WorkerCategory, record.Source);
         }
         else
         {
@@ -166,7 +170,9 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(log, timeout.Token);
 
         Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
-        Assert.Equal(log.RpcLog, Assert.Single(eventGenerator.WorkerLogs));
+        CapturedSystemLog record = Assert.Single(eventGenerator.WorkerLogs);
+        Assert.Equal(log.RpcLog.EventId, record.EventName);
+        Assert.Equal(log.RpcLog.Message, record.Message);
     }
 
     private static async Task InitializeWorkerAsync(
@@ -230,20 +236,50 @@ public partial class FunctionRpcRelayTests
 
     private sealed class CapturingEventGenerator : IWorkerSystemEventGenerator
     {
-        public ConcurrentQueue<RpcLog> WorkerLogs { get; } = [];
+        public ConcurrentQueue<CapturedSystemLog> WorkerLogs { get; } = [];
 
         public ConcurrentQueue<CapturedProxyLog> ProxyRecords { get; } = [];
 
-        public void LogWorkerEvent(RpcLog log)
+        public void LogEvent(
+            LogLevel level,
+            string eventName,
+            string source,
+            string details,
+            string summary,
+            string exceptionType,
+            string exceptionMessage,
+            string invocationId)
         {
-            WorkerLogs.Enqueue(log.Clone());
-        }
+            if (string.Equals(
+                source,
+                WorkerSystemLoggerProvider.WorkerCategory,
+                StringComparison.Ordinal))
+            {
+                WorkerLogs.Enqueue(new(
+                    (RpcLog.Types.Level)level,
+                    eventName,
+                    source,
+                    details,
+                    summary,
+                    exceptionType,
+                    exceptionMessage,
+                    invocationId));
+                return;
+            }
 
-        public void LogProxyEvent(LogLevel level, string eventName, string message)
-        {
-            ProxyRecords.Enqueue(new(eventName, message));
+            ProxyRecords.Enqueue(new(eventName, summary));
         }
     }
+
+    private sealed record CapturedSystemLog(
+        RpcLog.Types.Level Level,
+        string EventName,
+        string Source,
+        string Details,
+        string Message,
+        string ExceptionType,
+        string ExceptionMessage,
+        string InvocationId);
 
     private sealed record CapturedProxyLog(string EventName, string Message);
 }

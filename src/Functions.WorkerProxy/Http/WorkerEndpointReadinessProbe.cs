@@ -93,7 +93,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (SocketException exception)
             {
-                Log.DestinationResolutionFailed(_logger, exception);
+                Log.DestinationResolutionFailed(_logger, exception, destination);
                 return WorkerEndpointReadinessResult.NameResolutionFailed;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -102,19 +102,14 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (OperationCanceledException)
             {
-                Log.DestinationNotReady(
-                    _logger,
-                    lastError,
-                    GetFailureResult(lastError),
-                    stopwatch.Elapsed,
-                    attempts);
+                Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
                 return GetFailureResult(lastError);
             }
         }
 
         if (addresses.Length == 0)
         {
-            Log.DestinationResolutionFailed(_logger, exception: null);
+            Log.DestinationResolutionFailed(_logger, exception: null, destination);
             return WorkerEndpointReadinessResult.NameResolutionFailed;
         }
 
@@ -145,12 +140,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.DestinationNotReady(
-                        _logger,
-                        lastError,
-                        GetFailureResult(lastError),
-                        stopwatch.Elapsed,
-                        attempts);
+                    Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
                     return GetFailureResult(lastError);
                 }
             }
@@ -165,23 +155,13 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (OperationCanceledException)
             {
-                Log.DestinationNotReady(
-                    _logger,
-                    lastError,
-                    GetFailureResult(lastError),
-                    stopwatch.Elapsed,
-                    attempts);
+                Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
                 return GetFailureResult(lastError);
             }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        Log.DestinationNotReady(
-            _logger,
-            lastError,
-            GetFailureResult(lastError),
-            stopwatch.Elapsed,
-            attempts);
+        Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
 
         return GetFailureResult(lastError);
     }
@@ -201,12 +181,8 @@ internal sealed partial class WorkerEndpointReadinessProbe(
 
     private static partial class Log
     {
-        [LoggerMessage(
-            0,
-            LogLevel.Warning,
-            "Worker HTTP destination could not be resolved.",
-            EventName = "WorkerHttpDestinationResolutionFailed")]
-        public static partial void DestinationResolutionFailed(ILogger logger, Exception? exception);
+        [LoggerMessage(0, LogLevel.Warning, "Worker HTTP destination {Destination} could not be resolved.")]
+        public static partial void DestinationResolutionFailed(ILogger logger, Exception? exception, Uri destination);
 
         [LoggerMessage(1, LogLevel.Information,
             "Worker HTTP destination {Destination} became ready after {ElapsedMilliseconds} ms and {Attempts} attempts.")]
@@ -215,22 +191,19 @@ internal sealed partial class WorkerEndpointReadinessProbe(
         public static void DestinationNotReady(
             ILogger logger,
             Exception? exception,
-            WorkerEndpointReadinessResult result,
+            Uri destination,
             TimeSpan elapsed,
             int attempts)
         {
-            DestinationNotReady(logger, exception, result, elapsed.TotalMilliseconds, attempts);
+            DestinationNotReady(logger, exception, destination, elapsed.TotalMilliseconds, attempts);
         }
 
-        [LoggerMessage(
-            2,
-            LogLevel.Warning,
-            "Worker HTTP readiness completed with {Result} after {ElapsedMilliseconds} ms and {Attempts} attempts.",
-            EventName = "WorkerHttpReadinessFailed")]
+        [LoggerMessage(2, LogLevel.Warning,
+            "Worker HTTP destination {Destination} was not ready after {ElapsedMilliseconds} ms and {Attempts} attempts.")]
         private static partial void DestinationNotReady(
             ILogger logger,
             Exception? exception,
-            WorkerEndpointReadinessResult result,
+            Uri destination,
             double elapsedMilliseconds,
             int attempts);
 

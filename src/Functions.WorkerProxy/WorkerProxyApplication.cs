@@ -64,6 +64,9 @@ internal static partial class WorkerProxyApplication
         builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
             WorkerSystemLoggerProvider.AssignmentCategory,
             LogLevel.Information);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.WorkerCategory,
+            LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.ConfigureHttpJsonOptions(options =>

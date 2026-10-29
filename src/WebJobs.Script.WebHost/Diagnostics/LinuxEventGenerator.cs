@@ -2,13 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.Tracing;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public abstract class LinuxEventGenerator : IEventGenerator
     {
-        public static readonly string EventTimestampFormat = LinuxEventFormatting.EventTimestampFormat;
+        public static readonly string EventTimestampFormat = "O";
 
         // These names should match the source file names for fluentd
         public static readonly string FunctionsLogsCategory = "functionslogsv2";
@@ -18,7 +19,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal static string NormalizeString(string value, bool addEnclosingQuotes = true)
         {
-            return LinuxEventFormatting.NormalizeString(value, addEnclosingQuotes);
+            // Need to remove newlines for csv output
+            value = value.Replace(Environment.NewLine, " ");
+
+            // Need to replace double quotes with single quotes as
+            // our regex query looks at double quotes as delimeter for
+            // individual column
+            // TODO: Once the regex takes into account for quotes, we can
+            // safely remove this
+            value = value.Replace("\"", "'");
+
+            // Wrap string literals in enclosing quotes
+            // For string columns that may contain quotes and/or
+            // our delimiter ',', before writing the value we
+            // enclose in quotes. This allows us to define matching
+            // groups based on quotes for these values.
+            return addEnclosingQuotes ? $"\"{value}\"" : value;
         }
 
         /// <summary>
@@ -26,8 +42,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// that is performed for ETW event logging in <see cref="EtwEventGenerator"/>, so we
         /// have consistent log levels across platforms.
         /// </summary>
-        internal static System.Diagnostics.Tracing.EventLevel ToEventLevel(LogLevel level) =>
-            LinuxEventFormatting.ToEventLevel(level);
+        internal static EventLevel ToEventLevel(LogLevel level)
+        {
+            switch (level)
+            {
+                case LogLevel.Trace:
+                case LogLevel.Debug:
+                    return EventLevel.Verbose;
+                case LogLevel.Information:
+                    return EventLevel.Informational;
+                case LogLevel.Warning:
+                    return EventLevel.Warning;
+                case LogLevel.Error:
+                    return EventLevel.Error;
+                case LogLevel.Critical:
+                    return EventLevel.Critical;
+                default:
+                    return EventLevel.LogAlways;
+            }
+        }
 
         public abstract void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName,
             string functionName, string eventName,

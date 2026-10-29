@@ -26,7 +26,7 @@ internal sealed partial class FunctionRpcRelay
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
         WorkerPodStateManager stateManager,
-        IWorkerSystemEventGenerator? systemEventGenerator)
+        ILogger? workerSystemLogger)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
@@ -43,11 +43,6 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
-
-        /// <summary>
-        /// Gets the monotonically increasing identity of this relay session.
-        /// </summary>
-        public long Id => id;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -242,7 +237,6 @@ internal sealed partial class FunctionRpcRelay
 
             if (isFirstMessage)
             {
-                bool invalidMessage;
                 lock (_stateLock)
                 {
                     // A delayed read from a terminated session must not restore readiness.
@@ -254,29 +248,16 @@ internal sealed partial class FunctionRpcRelay
                     if (message.StartStream is not { } startStream
                         || string.IsNullOrWhiteSpace(startStream.WorkerId))
                     {
-                        invalidMessage = true;
+                        throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
-                    else
-                    {
-                        invalidMessage = false;
-                        stateManager.OnWorkerStartStream(id, startStream.WorkerId);
-                    }
-                }
 
-                if (invalidMessage)
-                {
-                    Log.WorkerStartStreamRejected(logger, id);
-                    throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
+                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
                 }
             }
 
-            if (message.RpcLog is { LogCategory: RpcLog.Types.RpcLogCategory.System } workerLog
-                && workerLog.Level is RpcLog.Types.Level.Information
-                    or RpcLog.Types.Level.Warning
-                    or RpcLog.Types.Level.Error
-                    or RpcLog.Types.Level.Critical)
+            if (message.RpcLog is { LogCategory: RpcLog.Types.RpcLogCategory.System } workerLog)
             {
-                systemEventGenerator?.LogWorkerEvent(workerLog);
+                workerSystemLogger?.LogWorkerEvent(workerLog);
             }
 
             return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
@@ -517,9 +498,5 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
-
-        [LoggerMessage(7, LogLevel.Warning,
-            "FunctionRpc relay session {SessionId} rejected worker StartStream because InvalidMessage.")]
-        public static partial void WorkerStartStreamRejected(ILogger logger, long sessionId);
     }
 }
