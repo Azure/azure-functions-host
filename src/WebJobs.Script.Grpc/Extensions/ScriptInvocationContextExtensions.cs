@@ -264,13 +264,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         public static void SetException(this ScriptInvocationContext context, Exception exception)
+            => context.TrySetException(exception);
+
+        /// <summary>
+        /// Attempts to fail the invocation and records the exception on its activity only if failure wins completion.
+        /// </summary>
+        /// <param name="context">The invocation to fail.</param>
+        /// <param name="exception">The invocation failure.</param>
+        /// <returns><see langword="true"/> if the invocation was failed; otherwise, <see langword="false"/>.</returns>
+        public static bool TrySetException(this ScriptInvocationContext context, Exception exception)
         {
-            context.ResultSource?.TrySetException(exception);
+            if (context.ResultSource?.TrySetException(exception) is not true)
+            {
+                return false;
+            }
 
             // If AsyncExecutionContext is null, skip running.
-            if (context?.AsyncExecutionContext is null)
+            if (context.AsyncExecutionContext is null)
             {
-                return;
+                return true;
             }
 
             // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
@@ -283,6 +295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     Activity.Current?.SetStatus(ActivityStatusCode.Error, invocationState.Exception.Message);
                 },
                 new InvocationState(context, exception));
+
+            return true;
         }
 
         private sealed class InvocationState

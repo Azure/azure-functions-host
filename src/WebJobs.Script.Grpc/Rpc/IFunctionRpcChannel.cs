@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 
@@ -21,15 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         RpcWorkerConfig WorkerConfig { get; }
 
         /// <summary>
-        /// Gets the invocation input buffers keyed by function identifier.
-        /// </summary>
-        IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
-
-        /// <summary>
         /// Attempts to accept an invocation for buffered dispatch.
         /// </summary>
         /// <param name="invocationContext">The invocation to accept.</param>
         /// <returns><see langword="true"/> when the invocation was accepted; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="InvalidOperationException">The function has no invocation buffer on this channel.</exception>
         bool TryPostInvocation(ScriptInvocationContext invocationContext);
 
         /// <summary>

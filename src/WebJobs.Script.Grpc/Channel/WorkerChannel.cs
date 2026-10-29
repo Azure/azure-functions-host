@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly WaitCallback _processInbound;
         private readonly IInvocationMessageDispatcherFactory _messageDispatcherFactory;
         private readonly Lock _disposeLock = new();
-        private readonly object _invocationLock = new object();
+        private readonly Lock _invocationLock = new();
         private readonly object _syncLock = new object();
         private readonly object _metadataLock = new object();
         private readonly Dictionary<string, ScriptInvocationContext> _acceptedInvocations = new(StringComparer.Ordinal);
@@ -191,8 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <inheritdoc />
         public string Id => _workerId;
 
-        /// <inheritdoc />
-        public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
+        internal IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
         /// <inheritdoc />
         public RpcWorkerConfig WorkerConfig => _workerConfig;
@@ -237,8 +236,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             string functionId = invocationContext.FunctionMetadata.GetFunctionId();
             lock (_invocationLock)
             {
-                if (!_functionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer) ||
-                    !TryTrackInvocationLocked(invocationContext, out bool added, out _))
+                if (!_functionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
+                {
+                    throw new InvalidOperationException(
+                        $"Function '{invocationContext.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
+                }
+
+                if (!TryTrackInvocationLocked(invocationContext, out bool added, out _))
                 {
                     return false;
                 }
@@ -1070,8 +1074,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (!_executingInvocations.TryAdd(invocationRequest.InvocationId, invocation))
                 {
                     invocation.Dispose();
-                    exception = new InvalidOperationException(
-                        $"Invocation '{invocationRequest.InvocationId}' is already executing.");
+                    exception = ExceptionDispatchInfo.SetCurrentStackTrace(new InvalidOperationException(
+                        $"Invocation '{invocationRequest.InvocationId}' is already executing."));
                     return false;
                 }
 
@@ -1326,16 +1330,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     if (invokeResponse.Result.IsInvocationSuccess())
                     {
                         ScriptInvocationResult result = await CreateScriptInvocationResult(invokeResponse);
-                        context.ResultSource.SetResult(result);
-
-                        _metricsLogger.LogEvent(_workerInvocationSucccededMetric);
+                        if (context.ResultSource.TrySetResult(result))
+                        {
+                            _metricsLogger.LogEvent(_workerInvocationSucccededMetric);
+                        }
                     }
                     else
                     {
                         var rpcException = invokeResponse.Result.GetRpcException(userCodeExceptionHandlingEnabled);
-                        context.SetException(rpcException);
-
-                        _metricsLogger.LogEvent(_workerInvocationFailedMetric);
+                        if (context.TrySetException(rpcException))
+                        {
+                            _metricsLogger.LogEvent(_workerInvocationFailedMetric);
+                        }
                     }
                 }
                 catch (Exception exc)
@@ -1741,7 +1747,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (_disposing || _disposed)
             {
-                rejectionException = new ObjectDisposedException(GetType().FullName);
+                rejectionException = ExceptionDispatchInfo.SetCurrentStackTrace(new ObjectDisposedException(GetType().FullName));
                 return false;
             }
 
@@ -1961,9 +1967,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void FailInvocation(ScriptInvocationContext context, Exception exception)
         {
-            string invocationId = context?.ExecutionContext?.InvocationId.ToString();
-            _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-            context?.SetException(exception);
+            if (context is not null && context.TrySetException(exception))
+            {
+                string invocationId = context.ExecutionContext.InvocationId.ToString();
+                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
+            }
         }
 
         private void TryFailPendingReload(Exception exception)

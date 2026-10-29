@@ -93,25 +93,18 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private Task DispatchInvocation(ScriptInvocationContext invocationContext, WorkerChannel channel)
     {
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
-        string functionId = invocationContext.FunctionMetadata.GetFunctionId();
-        if (channel.FunctionInputBuffers.ContainsKey(functionId))
+        if (_logger.IsEnabled(LogLevel.Trace))
         {
-            if (_logger.IsEnabled(LogLevel.Trace))
-            {
-                Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
-            }
-
-            if (!channel.TryPostInvocation(invocationContext))
-            {
-                invocationContext.ResultSource.TrySetException(
-                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));
-            }
-
-            return Task.CompletedTask;
+            Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
         }
 
-        throw new InvalidOperationException(
-            $"Function '{invocationContext.FunctionMetadata.Name}' is not loaded by worker '{channel.Id}'.");
+        if (!channel.TryPostInvocation(invocationContext))
+        {
+            invocationContext.ResultSource.TrySetException(
+                new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));
+        }
+
+        return Task.CompletedTask;
     }
 
     public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
