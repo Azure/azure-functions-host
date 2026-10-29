@@ -15,6 +15,7 @@ using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -67,7 +68,7 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void WorkerLogger_PreservesWorkerFields()
+    public void WorkerLogger_SanitizesExceptionContent()
     {
         const string secret = "SuperSecret123";
         string credential = $"https://worker:{secret}@example.com:443 ";
@@ -84,7 +85,10 @@ public class WorkerSystemLoggingTests
             record.Details,
             record.ExceptionMessage);
 
-        Assert.Contains(secret, formatted, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, formatted, StringComparison.Ordinal);
+        Assert.Contains(Sanitizer.SecretReplacement, record.Message, StringComparison.Ordinal);
+        Assert.Contains(Sanitizer.SecretReplacement, record.Details, StringComparison.Ordinal);
+        Assert.Contains(Sanitizer.SecretReplacement, record.ExceptionMessage, StringComparison.Ordinal);
     }
 
     [Fact]

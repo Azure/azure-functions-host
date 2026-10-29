@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.WorkerProxy.Logging;
@@ -79,8 +80,9 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
             {
                 Exception baseException = exception.GetBaseException();
                 exceptionType = baseException.GetType().ToString();
-                exceptionMessage = baseException.Message;
-                details = exception.ToString();
+                exceptionMessage = Sanitizer.Sanitize(baseException.Message);
+                details = Sanitizer.Sanitize(exception.ToString());
+                message = Sanitizer.Sanitize(message);
             }
 
             InvocationState invocationState = new();

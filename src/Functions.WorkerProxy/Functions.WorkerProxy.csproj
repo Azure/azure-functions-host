@@ -21,10 +21,12 @@
     <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
     <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
     <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
+    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Yarp.ReverseProxy" VersionOverride="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\WebJobs.Script\Sanitizer.cs" Link="Logging\Sanitizer.cs" />
     <Compile Include="..\WebJobs.Script.WebHost\Diagnostics\BufferedConsoleWriter.cs" Link="Logging\BufferedConsoleWriter.cs" />
     <InternalsVisibleTo Include="Azure.Functions.WorkerProxy.Tests" />
   </ItemGroup>
