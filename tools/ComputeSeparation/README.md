@@ -84,8 +84,7 @@ Step 1 supplies the actual mapped HTTP(S) origin in the required `httpProxyEndpo
 assignment field for every function group. In project mode the fake platform uses Aspire's allocated endpoint URI;
 in container mode AppHost sends the Proxy's Docker-network origin, reachable from the Host container.
 Scheme-less host:port values are rejected. Assignment must succeed
-before linking triggers worker initialization. See [Mapped HTTP origin](MappedHttpOrigin.md)
-for validation, retry identity, and assignment ordering. WorkerProxy has no startup configuration fallback for this origin.
+before linking triggers worker initialization. WorkerProxy has no startup configuration fallback for this origin.
 
 ### Test-only
 

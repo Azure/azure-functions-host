@@ -32,38 +32,6 @@ public class ManagementApiEndpointTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData("ftp://mapped.example:1234")]
-    [InlineData("http://mapped.example:0")]
-    [InlineData("http://mapped.example:65536")]
-    [InlineData("http://mapped.example:1234/path")]
-    [InlineData("http://user@mapped.example:1234")]
-    [InlineData("http://mapped.example:1234?query")]
-    [InlineData("http://mapped.example:1234#fragment")]
-    [InlineData("http://0.0.0.0:1234")]
-    [InlineData("http://[::]:1234")]
-    [InlineData("http://*:1234")]
-    [InlineData("http://+:1234")]
-    [InlineData("mapped.example:49187")]
-    public async Task MalformedHttpProxyEndpointIsRejectedWithoutClaimingAssignment(string endpoint)
-    {
-        await using WorkerProxyWebApplicationFactory factory = new();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        manager.OnWorkerAttached(1);
-        manager.OnWorkerStartStream(1, "worker");
-        WorkerPodState before = manager.State;
-        using HttpClient client = factory.CreateWorkerProxyClient();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
-        body["httpProxyEndpoint"] = endpoint;
-        using StringContent content = JsonBody(body.ToJsonString());
-        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
-
-        await AssertValidationAsync(response, timeout.Token, ("InvalidValue", "httpProxyEndpoint"));
-        Assert.Same(before, manager.State);
-        Assert.Null(manager.GetAssignment(1));
-    }
-
-    [Theory]
     [InlineData("http://mapped.example:49187", "http://mapped.example:49188")]
     [InlineData("https://mapped.example:49187/", "http://mapped.example:49187/")]
     [InlineData("http://100.86.0.4:49123", "http://100.86.0.4:49124")]
@@ -202,6 +170,18 @@ public class ManagementApiEndpointTests
     [InlineData("httpProxyEndpoint", "null", "Required")]
     [InlineData("httpProxyEndpoint", "\"\"", "Required")]
     [InlineData("httpProxyEndpoint", "\" \"", "Required")]
+    [InlineData("httpProxyEndpoint", "\"ftp://mapped.example:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:0\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:65536\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:1234/path\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://user@mapped.example:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:1234?query\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:1234#fragment\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://0.0.0.0:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://[::]:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://*:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://+:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:49187\"", "InvalidValue")]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
         string field, string? value, string? code, string startupMode = "SpecializationRequired")
     {

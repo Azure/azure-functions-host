@@ -148,8 +148,7 @@ public class WorkerHttpCapabilityProviderTests
 
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
-        return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 
     private static WorkerAssignment CreateAssignment(string endpoint = "http://worker-pod:28080/")

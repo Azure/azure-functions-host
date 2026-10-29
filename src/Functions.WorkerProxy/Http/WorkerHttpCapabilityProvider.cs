@@ -13,9 +13,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// <summary>
 /// Captures the worker's HTTP destination before advertising WorkerProxy to the runtime.
 /// </summary>
-internal sealed partial class WorkerHttpCapabilityProvider(
-    IOptions<WorkerProxyOptions> options,
-    ILogger<WorkerHttpCapabilityProvider> logger)
+internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
     private const string HttpUriCapability = "HttpUri";
