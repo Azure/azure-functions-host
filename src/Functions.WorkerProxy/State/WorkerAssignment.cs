@@ -49,7 +49,7 @@ internal sealed class WorkerAssignment
         ArgumentException.ThrowIfNullOrWhiteSpace(httpProxyEndpoint);
         if (WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(httpProxyEndpoint) is null)
         {
-            throw new ArgumentException("The HTTP proxy endpoint must be an absolute HTTP or HTTPS origin with a nonzero port.", nameof(httpProxyEndpoint));
+            throw new ArgumentException("The HTTP proxy endpoint must be a scheme-less concrete host with an explicit nonzero port.", nameof(httpProxyEndpoint));
         }
 
         foreach ((string key, string value) in environment)
@@ -84,7 +84,7 @@ internal sealed class WorkerAssignment
     public string FunctionAppDirectory { get; }
 
     /// <summary>
-    /// Gets the required mapped HTTP(S) origin frozen by the accepted assignment for every function group.
+    /// Gets the required mapped host:port frozen by the accepted assignment for every function group.
     /// The original string participates in ordinal retry equality, like other assignment strings.
     /// </summary>
     public string HttpProxyEndpoint { get; }

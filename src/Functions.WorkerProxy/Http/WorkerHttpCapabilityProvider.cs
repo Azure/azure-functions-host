@@ -13,12 +13,13 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// <summary>
 /// Captures the worker's HTTP destination before advertising WorkerProxy to the runtime.
 /// </summary>
-internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
+internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, WorkerProxyEndpointConfiguration endpoints, ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
     private const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
+    private readonly WorkerProxyEndpointConfiguration _endpoints = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
@@ -46,11 +47,11 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(assignment.HttpProxyEndpoint);
+        Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(assignment.HttpProxyEndpoint, _endpoints.GetHttpAddress().Scheme);
         if (proxyEndpoint is null)
         {
             throw new InvalidOperationException($"{nameof(WorkerAssignment.HttpProxyEndpoint)} must supply the actual mapped "
-                + "HTTP(S) origin in an accepted assignment before HTTP worker initialization.");
+                + "host:port in an accepted assignment before HTTP worker initialization.");
         }
 
         if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped,

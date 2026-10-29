@@ -26,17 +26,16 @@ public class ManagementApiEndpointTests
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot","httpProxyEndpoint":"http://mapped.example:49187"}
+         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot","httpProxyEndpoint":"mapped.example:49187"}
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData("http://mapped.example:49187", "http://mapped.example:49188")]
-    [InlineData("https://mapped.example:49187/", "http://mapped.example:49187/")]
-    [InlineData("http://100.86.0.4:49123", "http://100.86.0.4:49124")]
-    [InlineData("http://mapped.example:49187", "http://MAPPED.example:49187")]
-    [InlineData("http://[::1]:49187/", "http://[::1]:49188/")]
+    [InlineData("mapped.example:49187", "mapped.example:49188")]
+    [InlineData("100.86.0.4:49123", "100.86.0.4:49124")]
+    [InlineData("mapped.example:49187", "MAPPED.example:49187")]
+    [InlineData("[::1]:49187", "[::1]:49188")]
     public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string endpoint, string changedEndpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -171,17 +170,19 @@ public class ManagementApiEndpointTests
     [InlineData("httpProxyEndpoint", "\"\"", "Required")]
     [InlineData("httpProxyEndpoint", "\" \"", "Required")]
     [InlineData("httpProxyEndpoint", "\"ftp://mapped.example:1234\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://mapped.example:0\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://mapped.example:65536\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://mapped.example:1234/path\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://user@mapped.example:1234\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://mapped.example:1234?query\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://mapped.example:1234#fragment\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://0.0.0.0:1234\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://[::]:1234\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://*:1234\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"http://+:1234\"", "InvalidValue")]
-    [InlineData("httpProxyEndpoint", "\"mapped.example:49187\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:0\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:65536\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:1234/path\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"user@mapped.example:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:1234?query\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:1234#fragment\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"0.0.0.0:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[::]:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"*:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"+:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:49187\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"https://mapped.example:49187\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example\"", "InvalidValue")]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
         string field, string? value, string? code, string startupMode = "SpecializationRequired")
     {

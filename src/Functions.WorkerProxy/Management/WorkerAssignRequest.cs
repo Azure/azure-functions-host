@@ -35,9 +35,6 @@ internal sealed class WorkerAssignRequest
 
     public string? FunctionAppDirectory { get; init; }
 
-    /// <summary>
-    /// Gets the required externally mapped HTTP(S) origin supplied by the platform before assignment for every function group.
-    /// The value must include its HTTP or HTTPS scheme. IPv6 hosts must be bracketed.
-    /// </summary>
+    // Platform-mapped host:port, without a scheme.
     public string? HttpProxyEndpoint { get; init; }
 }

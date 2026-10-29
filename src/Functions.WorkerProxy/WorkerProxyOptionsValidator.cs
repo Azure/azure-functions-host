@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using Azure.Functions.WorkerProxy.Http;
 using Microsoft.Extensions.Options;
@@ -39,9 +40,22 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
-    internal static Uri? ResolveHttpProxyOrigin(string? value)
+    internal static Uri? ResolveHttpProxyOrigin(string? value, string scheme = "http")
     {
-        Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, value);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        int portSeparator = value.LastIndexOf(':');
+        if (portSeparator <= 0
+            || !int.TryParse(value.AsSpan(portSeparator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
+            || port is < 1 or > MaximumPort)
+        {
+            return null;
+        }
+
+        Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, $"{scheme}://{value}");
         if (endpoint is null
             || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
             || endpoint.HostNameType is UriHostNameType.Unknown

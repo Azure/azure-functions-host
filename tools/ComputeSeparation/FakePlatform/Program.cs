@@ -39,7 +39,7 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    string httpProxyEndpoint = workerProxy.HttpProxyEndpoint.AbsoluteUri;
+    string httpProxyEndpoint = workerProxy.HttpProxyEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped);
     WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, httpProxyEndpoint);
     using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);

@@ -76,7 +76,7 @@ internal sealed partial class HostLinkService(
             isAlwaysReady = false,
             environment = new Dictionary<string, string>(),
             functionAppDirectory = string.Empty,
-            httpProxyEndpoint = httpEndpoint,
+            httpProxyEndpoint = new Uri(httpEndpoint).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
         }, cancellationToken), cancellationToken);
 
         string grpcEndpoint = await proxyEndpoint.GetValueAsync(cancellationToken)

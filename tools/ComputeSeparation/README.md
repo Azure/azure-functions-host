@@ -80,10 +80,10 @@ The happy path, in order:
 
 `GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 1 and 3 through the fake platform automatically; `container` sends them directly from AppHost. `project-placeholder-manual` leaves steps 1 to 3 to you.
 
-Step 1 supplies the actual mapped HTTP(S) origin in the required `httpProxyEndpoint`
-assignment field for every function group. In project mode the fake platform uses Aspire's allocated endpoint URI;
-in container mode AppHost sends the Proxy's Docker-network origin, reachable from the Host container.
-Scheme-less host:port values are rejected. Assignment must succeed
+Step 1 supplies the actual mapped `host:port` in the required `httpProxyEndpoint`
+assignment field for every function group. In project mode the fake platform uses Aspire's allocated endpoint authority;
+in container mode AppHost sends the Proxy's Docker-network authority, reachable from the Host container.
+Full URLs are rejected; WorkerProxy derives the advertised HTTP(S) scheme from its HTTP forwarding listener. Assignment must succeed
 before linking triggers worker initialization. WorkerProxy has no startup configuration fallback for this origin.
 
 ### Test-only

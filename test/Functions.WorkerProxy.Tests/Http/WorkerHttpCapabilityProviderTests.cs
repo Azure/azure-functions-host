@@ -24,10 +24,10 @@ public class WorkerHttpCapabilityProviderTests
             ["httpuri"] = "case-sensitive-capability"
         };
 
-        Uri? destination = provider.FinalizeCapabilities(capabilities, CreateAssignment("https://worker-pod.example:48801/"));
+        Uri? destination = provider.FinalizeCapabilities(capabilities, CreateAssignment("worker-pod.example:48801"));
 
         Assert.Equal(new Uri("http://localhost:1234/worker/"), destination);
-        Assert.Equal("https://worker-pod.example:48801/", capabilities["HttpUri"]);
+        Assert.Equal("http://worker-pod.example:48801/", capabilities["HttpUri"]);
         Assert.Equal("true", capabilities["WorkerIndexing"]);
         Assert.Equal("case-sensitive-capability", capabilities["httpuri"]);
     }
@@ -120,18 +120,15 @@ public class WorkerHttpCapabilityProviderTests
     }
 
     [Theory]
-    [InlineData("http://mapped.example:443", "http://mapped.example:443/")]
-    [InlineData("https://mapped.example:80/", "https://mapped.example:80/")]
-    [InlineData("http://[::1]:49187/", "http://[::1]:49187/")]
-    public void AssignedEndpoint_PreservesSchemeAndMappedPort(string endpoint, string origin)
+    [InlineData("mapped.example:443", "http", "http://mapped.example:443/")]
+    [InlineData("mapped.example:80", "https", "https://mapped.example:80/")]
+    [InlineData("[::1]:49187", "http", "http://[::1]:49187/")]
+    public void AssignedEndpoint_ComposesOriginUsingListenerScheme(string endpoint, string scheme, string origin)
     {
-        WorkerHttpCapabilityProvider provider = CreateProvider(new());
-        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), string.Empty, endpoint);
-        Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:1234/" };
+        WorkerAssignment assignment = CreateAssignment(endpoint);
 
-        Assert.Equal(new Uri("http://localhost:1234/"), provider.FinalizeCapabilities(capabilities, assignment));
-        Assert.Equal(origin, capabilities["HttpUri"]);
+        Assert.Equal(origin, WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(assignment.HttpProxyEndpoint, scheme)?.AbsoluteUri);
+        Assert.Equal(endpoint, assignment.HttpProxyEndpoint);
     }
 
     [Fact]
@@ -139,7 +136,7 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpPort = 28080 });
         WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), string.Empty, "http://localhost:1234");
+            new Dictionary<string, string>(), string.Empty, "localhost:1234");
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:1234/worker/" };
 
         Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, assignment));
@@ -148,9 +145,11 @@ public class WorkerHttpCapabilityProviderTests
 
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        WorkerProxyEndpointConfiguration endpoints = new(Options.Create(options));
+        endpoints.Configure(new());
+        return new(Options.Create(options), endpoints, NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 
-    private static WorkerAssignment CreateAssignment(string endpoint = "http://worker-pod:28080/")
+    private static WorkerAssignment CreateAssignment(string endpoint = "worker-pod:28080")
         => new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty, endpoint);
 }

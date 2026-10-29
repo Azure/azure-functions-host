@@ -32,7 +32,7 @@ public partial class FunctionRpcRelayTests
     [InlineData(false)]
     public async Task Relay_NormalInitialization_RewritesOnlyWorkerCapabilities(bool runtimeConnectsFirst)
     {
-        const string proxyEndpoint = "https://worker-pod.example:48801/";
+        const string proxyEndpoint = "http://worker-pod.example:48801/";
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -61,7 +61,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));
         Assert.Equal(WorkerAssignmentResult.Created, factory.Services.GetRequiredService<WorkerPodStateManager>()
-            .Assign(CreateWorkerAssignment(httpProxyEndpoint: proxyEndpoint)));
+            .Assign(CreateWorkerAssignment(httpProxyEndpoint: new Uri(proxyEndpoint).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped))));
         StreamingMessage response = CreateInitResponse("runtime-init", "http://localhost:1234/worker/");
         StreamingMessage expected = response.Clone();
         expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
@@ -119,7 +119,7 @@ public partial class FunctionRpcRelayTests
     [InlineData("http://localhost:1234/worker/")]
     public async Task Relay_FinalizesCapabilitiesOnceOnAnOwnedCopy(string? firstHttpUri)
     {
-        const string proxyEndpoint = "https://worker-pod.example:48801/";
+        const string proxyEndpoint = "http://worker-pod.example:48801/";
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), manager);
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -138,7 +138,7 @@ public partial class FunctionRpcRelayTests
         StreamingMessage start = CreateStartStream();
         await inbound.Writer.WriteAsync(start, timeout.Token);
         Assert.Equal(start, await outbound.Reader.ReadAsync(timeout.Token));
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(httpProxyEndpoint: proxyEndpoint)));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(httpProxyEndpoint: new Uri(proxyEndpoint).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped))));
         StreamingMessage first = CreateInitResponse("first-init", firstHttpUri);
         StreamingMessage expected = first.Clone();
         if (firstHttpUri is not null)
@@ -224,7 +224,10 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_BlockedCapabilityLogging_DoesNotBlockShutdown()
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
-        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions());
+        WorkerProxyEndpointConfiguration endpoints = new(options);
+        endpoints.Configure(new());
+        WorkerHttpCapabilityProvider provider = new(options, endpoints, logger);
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, manager);
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -357,7 +360,8 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
         Assert.Equal(WorkerAssignmentResult.Created, factory.Services.GetRequiredService<WorkerPodStateManager>()
-            .Assign(CreateWorkerAssignment(functionGroupName: "http", httpProxyEndpoint: proxyEndpoint)));
+            .Assign(CreateWorkerAssignment(functionGroupName: "http",
+                httpProxyEndpoint: proxyClient.BaseAddress.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped))));
         await worker.WriteAsync(CreateInitResponse("init", destination.AbsoluteUri), timeout.Token);
         StreamingMessage initialized = await runtime.ReadAsync(timeout.Token);
         Assert.Equal(proxyEndpoint, initialized.WorkerInitResponse.Capabilities["HttpUri"]);
