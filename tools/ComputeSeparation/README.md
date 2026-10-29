@@ -22,9 +22,9 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
-| `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker, plus a local fake-platform project. |
+| `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project` and `container` link the worker automatically. In both, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project` and `container` assign and link the worker automatically. In `project`, AppHost calls through the fake platform; in `container`, AppHost calls WorkerProxy and Host directly. Assignment always precedes linking. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
@@ -56,9 +56,9 @@ neither ID is derived from the other. The proxy names remain `worker-proxy-1` an
 WorkerProxy uses `WEBSITE_POD_NAME`, falling back to `CONTAINER_NAME`, for pod identity.
 AppHost supplies `WEBSITE_POD_NAME` locally from `ComputeSeparation:PodName`.
 
-In both project and container modes, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
+In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
 
-Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order.
+Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
 profile. Aspire supplies each entry's management address, runtime gRPC endpoint, and worker ID. Assign and link requests
@@ -78,11 +78,11 @@ The happy path, in order:
 | 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
 | 4 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
 
-`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` and `container` profiles send steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
+`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 1 and 3 through the fake platform automatically; `container` sends them directly from AppHost. `project-placeholder-manual` leaves steps 1 to 3 to you.
 
 Step 1 supplies the actual mapped HTTP(S) origin in the required `httpProxyEndpoint`
 assignment field for every function group. In project mode the fake platform uses Aspire's allocated endpoint URI;
-in container mode it uses the Proxy's Docker-network origin, reachable from the Host container.
+in container mode AppHost sends the Proxy's Docker-network origin, reachable from the Host container.
 Scheme-less host:port values are rejected. Assignment must succeed
 before linking triggers worker initialization. See [Mapped HTTP origin](MappedHttpOrigin.md)
 for validation, retry identity, and assignment ordering. WorkerProxy has no startup configuration fallback for this origin.
@@ -140,7 +140,7 @@ AppHost generates a random key for each run and gives it to both the Host and th
 
 ## Container behavior
 
-The dashboard has two independent Compose-backed resources, plus a local `fake-platform` project:
+The dashboard has two independent resources, each backed by its own Compose project:
 
 | Resource | Owns |
 | --- | --- |

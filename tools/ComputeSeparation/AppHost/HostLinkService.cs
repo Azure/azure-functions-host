@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net;
+using System.Net.Http.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -11,11 +12,14 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 /// Performs the platform's calls after the Host, Proxy, and selected worker have started.
 /// </summary>
 /// <remarks>
-/// Calls the fake platform in order: assign the pod on the WorkerProxy, then link the worker to the Host.
+/// Assigns the pod before linking it to the Host, through the fake platform in project mode or directly in container mode.
 /// </remarks>
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
-    EndpointReference platformEndpoint,
+    ReferenceExpression proxyEndpoint,
+    EndpointReference? platformEndpoint,
+    EndpointReference proxyManagementEndpoint,
+    ReferenceExpression proxyHttpEndpoint,
     string workerId,
     string[] dependencies,
     ResourceNotificationService notifications,
@@ -33,7 +37,14 @@ internal sealed partial class HostLinkService(
 
             string hostAddress = await hostEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The Host HTTP endpoint was not allocated.");
-            await AssignAndLinkThroughPlatformAsync(startup.Token);
+            if (platformEndpoint is null)
+            {
+                await AssignAndLinkDirectlyAsync(hostAddress, startup.Token);
+            }
+            else
+            {
+                await AssignAndLinkThroughPlatformAsync(startup.Token);
+            }
 
             Log.WorkerLinked(logger, workerId, new Uri(new Uri(hostAddress), "/api/hello"));
         }
@@ -50,19 +61,55 @@ internal sealed partial class HostLinkService(
         }
     }
 
+    private async Task AssignAndLinkDirectlyAsync(string hostAddress, CancellationToken cancellationToken)
+    {
+        string managementAddress = await proxyManagementEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
+        string httpEndpoint = await proxyHttpEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy HTTP endpoint was not allocated.");
+        using HttpClient proxyClient = new() { BaseAddress = new Uri(managementAddress), Timeout = Timeout.InfiniteTimeSpan };
+        await EnsureAssignedAsync(() => proxyClient.PutAsJsonAsync("/admin/worker/assignment", new
+        {
+            startupMode = "Preconfigured",
+            functionAppName = "aspire-sample-app",
+            functionGroupName = "http",
+            isAlwaysReady = false,
+            environment = new Dictionary<string, string>(),
+            functionAppDirectory = string.Empty,
+            httpProxyEndpoint = httpEndpoint,
+        }, cancellationToken), cancellationToken);
+
+        string grpcEndpoint = await proxyEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
+        using HttpClient hostClient = new() { BaseAddress = new Uri(hostAddress), Timeout = Timeout.InfiniteTimeSpan };
+        using HttpResponseMessage response = await hostClient.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
+        {
+            workerGrpcEndpoint = grpcEndpoint,
+        }, cancellationToken);
+        await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
+    }
+
     private async Task AssignAndLinkThroughPlatformAsync(CancellationToken cancellationToken)
     {
-        string platformAddress = await platformEndpoint.GetValueAsync(cancellationToken)
+        string platformAddress = await platformEndpoint!.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
+        await EnsureAssignedAsync(() => client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken),
+            cancellationToken);
 
+        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/worker-proxy-1/link", null, cancellationToken);
+        await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
+    }
+
+    private async Task EnsureAssignedAsync(Func<Task<HttpResponseMessage>> sendAssignment, CancellationToken cancellationToken)
+    {
         // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
-        HttpResponseMessage assign = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
+        HttpResponseMessage assign = await sendAssignment();
         while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
         {
             assign.Dispose();
             await Task.Delay(AssignRetryDelay, cancellationToken);
-            assign = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
+            assign = await sendAssignment();
         }
 
         using (assign)
@@ -71,9 +118,6 @@ internal sealed partial class HostLinkService(
         }
 
         Log.WorkerAssigned(logger, workerId);
-
-        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/worker-proxy-1/link", null, cancellationToken);
-        await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }
 
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)
@@ -96,7 +140,7 @@ internal sealed partial class HostLinkService(
         [LoggerMessage(2, LogLevel.Error, "Failed to link worker {WorkerId}. Resources remain running for diagnosis.")]
         public static partial void WorkerLinkFailed(ILogger logger, string workerId, Exception exception);
 
-        [LoggerMessage(3, LogLevel.Information, "Fake platform assigned the pod for worker {WorkerId} on the WorkerProxy.")]
+        [LoggerMessage(3, LogLevel.Information, "Assigned the pod for worker {WorkerId} on the WorkerProxy.")]
         public static partial void WorkerAssigned(ILogger logger, string workerId);
     }
 }

@@ -34,7 +34,10 @@ using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
-EndpointReference platformEndpoint;
+EndpointReference? platformEndpoint = null;
+EndpointReference workerManagementEndpoint;
+ReferenceExpression workerGrpcEndpoint;
+ReferenceExpression workerHttpEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -74,17 +77,10 @@ if (topology is not null)
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
-    IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
-        .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
-        .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
-        .WithEnvironment("FakePlatform__HostUri", hostEndpoint)
-        .WithEnvironment("FakePlatform__WorkerProxies__0__Name", "worker-proxy-1")
-        .WithEnvironment("FakePlatform__WorkerProxies__0__ManagementUri", workerPod.GetEndpoint(ManagementEndpointName))
-        .WithEnvironment("FakePlatform__WorkerProxies__0__HttpProxyEndpoint", $"http://{topology.ProxyAlias}:28080")
-        .WithEnvironment("FakePlatform__WorkerProxies__0__WorkerGrpcEndpoint", $"http://{topology.ProxyAlias}:50053")
-        .WithEnvironment("FakePlatform__WorkerProxies__0__WorkerId", workerId);
-    platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
-    dependencies = ["runtime", "worker-pod-1", "fake-platform"];
+    workerManagementEndpoint = workerPod.GetEndpoint(ManagementEndpointName);
+    workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
+    workerHttpEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:28080");
+    dependencies = ["runtime", "worker-pod-1"];
 }
 else
 {
@@ -122,7 +118,7 @@ else
         fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", encryptionKey);
     }
 
-    AddProjectWorker(secondWorker: false);
+    IResourceBuilder<ProjectResource> proxyProject = AddProjectWorker(secondWorker: false);
     if (multipleWorkers)
     {
         AddProjectWorker(secondWorker: true);
@@ -131,9 +127,12 @@ else
     platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
+    workerManagementEndpoint = proxyProject.GetEndpoint(ManagementEndpointName);
+    workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
+    workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
     dependencies = ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
 
-    void AddProjectWorker(bool secondWorker)
+    IResourceBuilder<ProjectResource> AddProjectWorker(bool secondWorker)
     {
         int index = secondWorker ? 1 : 0;
         string proxyName = $"worker-proxy-{index + 1}";
@@ -180,6 +179,8 @@ else
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__HttpProxyEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
+
+        return proxy;
     }
 }
 
@@ -187,7 +188,10 @@ if (autoLink)
 {
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
+        workerGrpcEndpoint,
         platformEndpoint,
+        workerManagementEndpoint,
+        workerHttpEndpoint,
         workerId,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),

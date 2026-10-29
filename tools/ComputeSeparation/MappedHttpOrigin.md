@@ -47,10 +47,10 @@ successful `WorkerInitResponse` immediately, then freezes capabilities and publi
 the real HTTP destination before forwarding the response. It does not wait for a
 later assignment. Without an accepted, ready assignment, HTTP initialization fails.
 
-Both project and container harnesses use the fake platform to assign before linking.
-The project harness sends Aspire's allocated endpoint URI in its assignment;
-the container harness sends the Proxy's Docker-network origin, reachable from the Host container.
-Aspire configures these addresses on the fake platform, which supplies the assignment;
+Both harness modes assign before linking. Project mode uses the fake platform
+to send Aspire's allocated endpoint URI in its assignment. Container mode keeps
+its existing three-container topology: AppHost sends assignment and link requests
+directly, supplying the Proxy's Docker-network origin, reachable from the Host container.
 WorkerProxy does not read an origin from an environment variable or startup option.
 Coordinate Legion producer and Host consumer rollout: an older consumer may ignore
 the additive field, while an older producer that omits it cannot assign a worker.
