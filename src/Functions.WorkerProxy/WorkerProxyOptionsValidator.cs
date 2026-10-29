@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Validates WorkerProxy pod identity, listener ports, and the advertised HTTP origin.
+/// Validates WorkerProxy pod identity and listener ports.
 /// </summary>
 internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxyOptions>
 {
@@ -36,19 +36,10 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         AddDistinctPort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.HttpPort, nameof(options.HttpPort), configuredPorts, failures);
 
-        if (!string.IsNullOrWhiteSpace(options.HttpProxyEndpoint))
-        {
-            if (ResolveConfiguredHttpProxyOrigin(options.HttpProxyEndpoint) is null)
-            {
-                failures.Add($"{nameof(options.HttpProxyEndpoint)} must be an absolute HTTP or HTTPS origin with a concrete host, "
-                    + "a nonzero port, and no credentials, path prefix, query, or fragment.");
-            }
-        }
-
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
-    internal static Uri? ResolveConfiguredHttpProxyOrigin(string? value)
+    internal static Uri? ResolveHttpProxyOrigin(string? value)
     {
         Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, value);
         if (endpoint is null

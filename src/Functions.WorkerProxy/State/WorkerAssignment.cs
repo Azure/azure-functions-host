@@ -47,7 +47,7 @@ internal sealed class WorkerAssignment
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(httpProxyEndpoint);
-        if (WorkerProxyOptionsValidator.ResolveConfiguredHttpProxyOrigin(httpProxyEndpoint) is null)
+        if (WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(httpProxyEndpoint) is null)
         {
             throw new ArgumentException("The HTTP proxy endpoint must be an absolute HTTP or HTTPS origin with a nonzero port.", nameof(httpProxyEndpoint));
         }

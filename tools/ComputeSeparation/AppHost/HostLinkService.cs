@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net;
-using System.Net.Http.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -12,13 +11,11 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 /// Performs the platform's calls after the Host, Proxy, and selected worker have started.
 /// </summary>
 /// <remarks>
-/// With a fake platform, the calls go through it in order: assign the pod on the WorkerProxy, then link the worker to
-/// the Host. Without one, only the link request is sent, directly to the Host.
+/// Calls the fake platform in order: assign the pod on the WorkerProxy, then link the worker to the Host.
 /// </remarks>
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
-    ReferenceExpression proxyEndpoint,
-    EndpointReference? platformEndpoint,
+    EndpointReference platformEndpoint,
     string workerId,
     string[] dependencies,
     ResourceNotificationService notifications,
@@ -36,14 +33,7 @@ internal sealed partial class HostLinkService(
 
             string hostAddress = await hostEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The Host HTTP endpoint was not allocated.");
-            if (platformEndpoint is null)
-            {
-                await LinkDirectlyAsync(hostAddress, startup.Token);
-            }
-            else
-            {
-                await AssignAndLinkThroughPlatformAsync(startup.Token);
-            }
+            await AssignAndLinkThroughPlatformAsync(startup.Token);
 
             Log.WorkerLinked(logger, workerId, new Uri(new Uri(hostAddress), "/api/hello"));
         }
@@ -60,22 +50,9 @@ internal sealed partial class HostLinkService(
         }
     }
 
-    private async Task LinkDirectlyAsync(string hostAddress, CancellationToken cancellationToken)
-    {
-        string grpcEndpoint = await proxyEndpoint.GetValueAsync(cancellationToken)
-            ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
-        using HttpClient client = new() { BaseAddress = new Uri(hostAddress), Timeout = Timeout.InfiniteTimeSpan };
-        using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
-        {
-            workerGrpcEndpoint = grpcEndpoint,
-        }, cancellationToken);
-
-        await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
-    }
-
     private async Task AssignAndLinkThroughPlatformAsync(CancellationToken cancellationToken)
     {
-        string platformAddress = await platformEndpoint!.GetValueAsync(cancellationToken)
+        string platformAddress = await platformEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 

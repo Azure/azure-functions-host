@@ -34,8 +34,7 @@ using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
-EndpointReference? platformEndpoint = null;
-ReferenceExpression workerGrpcEndpoint;
+EndpointReference platformEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -56,13 +55,14 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
-    builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
+    IResourceBuilder<ExecutableResource> workerPod = builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
             "compose", "--file", topology.WorkerPod.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:ManagementPort"),
             name: ManagementEndpointName, env: "WORKER_PROXY_MANAGEMENT_PORT")
         .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
         .WithEnvironment("WORKER_PROXY_ALIAS", topology.ProxyAlias)
+        .WithEnvironment("WORKER_POD_NAME", podName)
         .WithEnvironment("WORKER_ID", workerId)
         .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
@@ -74,8 +74,17 @@ if (topology is not null)
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
-    workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
-    dependencies = ["runtime", "worker-pod-1"];
+    IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
+        .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
+        .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
+        .WithEnvironment("FakePlatform__HostUri", hostEndpoint)
+        .WithEnvironment("FakePlatform__WorkerProxies__0__Name", "worker-proxy-1")
+        .WithEnvironment("FakePlatform__WorkerProxies__0__ManagementUri", workerPod.GetEndpoint(ManagementEndpointName))
+        .WithEnvironment("FakePlatform__WorkerProxies__0__HttpProxyEndpoint", $"http://{topology.ProxyAlias}:28080")
+        .WithEnvironment("FakePlatform__WorkerProxies__0__WorkerGrpcEndpoint", $"http://{topology.ProxyAlias}:50053")
+        .WithEnvironment("FakePlatform__WorkerProxies__0__WorkerId", workerId);
+    platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
+    dependencies = ["runtime", "worker-pod-1", "fake-platform"];
 }
 else
 {
@@ -113,7 +122,7 @@ else
         fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", encryptionKey);
     }
 
-    IResourceBuilder<ProjectResource> proxyProject = AddProjectWorker(secondWorker: false);
+    AddProjectWorker(secondWorker: false);
     if (multipleWorkers)
     {
         AddProjectWorker(secondWorker: true);
@@ -122,10 +131,9 @@ else
     platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
-    workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
     dependencies = ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
 
-    IResourceBuilder<ProjectResource> AddProjectWorker(bool secondWorker)
+    void AddProjectWorker(bool secondWorker)
     {
         int index = secondWorker ? 1 : 0;
         string proxyName = $"worker-proxy-{index + 1}";
@@ -172,8 +180,6 @@ else
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__HttpProxyEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
-
-        return proxy;
     }
 }
 
@@ -181,7 +187,6 @@ if (autoLink)
 {
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
-        workerGrpcEndpoint,
         platformEndpoint,
         workerId,
         dependencies,

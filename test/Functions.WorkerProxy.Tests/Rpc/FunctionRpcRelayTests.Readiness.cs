@@ -347,10 +347,11 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group")
+    private static WorkerAssignment CreateWorkerAssignment(
+        string functionGroupName = "test-group", string httpProxyEndpoint = "http://mapped.example:49187")
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
             environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot",
-            httpProxyEndpoint: "http://mapped.example:49187");
+            httpProxyEndpoint: httpProxyEndpoint);
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

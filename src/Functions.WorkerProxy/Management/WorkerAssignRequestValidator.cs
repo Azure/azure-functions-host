@@ -53,7 +53,7 @@ internal static class WorkerAssignRequestValidator
         {
             errors.Add(new(WorkerApiErrorCodes.Required, "httpProxyEndpoint"));
         }
-        else if (WorkerProxyOptionsValidator.ResolveConfiguredHttpProxyOrigin(request.HttpProxyEndpoint) is null)
+        else if (WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(request.HttpProxyEndpoint) is null)
         {
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
         }

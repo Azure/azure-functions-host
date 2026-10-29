@@ -27,7 +27,7 @@ internal sealed partial class WorkerHttpCapabilityProvider(
     /// Finalizes the HTTP capability on a relay-owned copy of the successful initialization response.
     /// </summary>
     /// <param name="capabilities">The capabilities to advertise to the runtime.</param>
-    /// <param name="assignment">The accepted assignment, or null for the explicit legacy configuration path.</param>
+    /// <param name="assignment">The accepted assignment for this live session, required for HTTP initialization.</param>
     /// <returns>The real worker destination, or <see langword="null"/> when HTTP proxying is unavailable.</returns>
     public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment)
     {
@@ -39,19 +39,20 @@ internal sealed partial class WorkerHttpCapabilityProvider(
 
         // Dropping a nonempty HTTP capability would silently switch the runtime to gRPC HTTP payloads.
         // Fail initialization instead when the worker's HTTP transport cannot be configured.
+        if (assignment is null)
+        {
+            throw new InvalidOperationException("An accepted worker assignment is required before HTTP worker initialization.");
+        }
+
         Uri advertisedDestination = ResolveRequiredEndpoint(advertisedEndpoint, $"Worker {HttpUriCapability} capability");
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        // Assignment is authoritative. Only unassigned legacy sessions
-        // may use explicit configuration; never infer a mapping or silently fall back for an assignment.
-        Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveConfiguredHttpProxyOrigin(
-            assignment is null ? _options.HttpProxyEndpoint : assignment.HttpProxyEndpoint);
+        Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(assignment.HttpProxyEndpoint);
         if (proxyEndpoint is null)
         {
             throw new InvalidOperationException($"{nameof(WorkerAssignment.HttpProxyEndpoint)} must supply the actual mapped "
-                + "HTTP(S) origin in an accepted assignment before HTTP worker initialization. "
-                + "Only unassigned legacy sessions may use an explicit WorkerProxy:HttpProxyEndpoint.");
+                + "HTTP(S) origin in an accepted assignment before HTTP worker initialization.");
         }
 
         if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped,

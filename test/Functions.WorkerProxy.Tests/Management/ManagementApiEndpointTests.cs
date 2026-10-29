@@ -40,6 +40,9 @@ public class ManagementApiEndpointTests
     [InlineData("http://mapped.example:1234?query")]
     [InlineData("http://mapped.example:1234#fragment")]
     [InlineData("http://0.0.0.0:1234")]
+    [InlineData("http://[::]:1234")]
+    [InlineData("http://*:1234")]
+    [InlineData("http://+:1234")]
     [InlineData("mapped.example:49187")]
     public async Task MalformedHttpProxyEndpointIsRejectedWithoutClaimingAssignment(string endpoint)
     {

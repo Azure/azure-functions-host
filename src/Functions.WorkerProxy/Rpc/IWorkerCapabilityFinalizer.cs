@@ -16,7 +16,7 @@ internal interface IWorkerCapabilityFinalizer
     /// Updates capabilities on a relay-owned response copy before the relay freezes and forwards them.
     /// </summary>
     /// <param name="capabilities">The mutable capability map from the cloned successful initialization response.</param>
-    /// <param name="assignment">The accepted assignment for this live session, or null for an unassigned legacy session.</param>
+    /// <param name="assignment">The accepted assignment for this live session, or null when no ready assignment exists.</param>
     /// <returns>The real worker HTTP destination, or <see langword="null"/> when HTTP proxying is unavailable.</returns>
     /// <remarks>
     /// Called once per session on its first successful worker initialization response, outside relay lifecycle locks.

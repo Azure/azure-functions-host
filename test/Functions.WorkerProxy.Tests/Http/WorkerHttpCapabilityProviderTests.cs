@@ -16,10 +16,7 @@ public class WorkerHttpCapabilityProviderTests
     [Fact]
     public void FinalizeCapabilities_CapturesDestinationBeforeRewritingHttpUri()
     {
-        WorkerHttpCapabilityProvider provider = CreateProvider(new()
-        {
-            HttpProxyEndpoint = " https://worker-pod.example:48801/ "
-        });
+        WorkerHttpCapabilityProvider provider = CreateProvider(new());
         Dictionary<string, string> capabilities = new()
         {
             ["HttpUri"] = " http://localhost:1234/worker/ ",
@@ -27,7 +24,7 @@ public class WorkerHttpCapabilityProviderTests
             ["httpuri"] = "case-sensitive-capability"
         };
 
-        Uri? destination = provider.FinalizeCapabilities(capabilities, assignment: null);
+        Uri? destination = provider.FinalizeCapabilities(capabilities, CreateAssignment("https://worker-pod.example:48801/"));
 
         Assert.Equal(new Uri("http://localhost:1234/worker/"), destination);
         Assert.Equal("https://worker-pod.example:48801/", capabilities["HttpUri"]);
@@ -40,12 +37,11 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
-            HttpProxyEndpoint = "http://worker-pod:28080",
             WorkerHttpEndpoint = " https://override:1234/prefix/ "
         });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
 
-        Uri? destination = provider.FinalizeCapabilities(capabilities, assignment: null);
+        Uri? destination = provider.FinalizeCapabilities(capabilities, CreateAssignment());
 
         Assert.Equal(new Uri("https://override:1234/prefix/"), destination);
         Assert.Equal("http://worker-pod:28080/", capabilities["HttpUri"]);
@@ -59,7 +55,6 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
-            HttpProxyEndpoint = "http://worker-pod:28080",
             WorkerHttpEndpoint = "http://override:1234"
         });
         Dictionary<string, string> capabilities = new() { ["WorkerIndexing"] = "true" };
@@ -68,7 +63,7 @@ public class WorkerHttpCapabilityProviderTests
             capabilities["HttpUri"] = advertisedEndpoint;
         }
 
-        Assert.Null(provider.FinalizeCapabilities(capabilities, assignment: null));
+        Assert.Null(provider.FinalizeCapabilities(capabilities, CreateAssignment()));
         Assert.False(capabilities.ContainsKey("HttpUri"));
         Assert.Equal("true", capabilities["WorkerIndexing"]);
     }
@@ -83,12 +78,11 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
-            HttpProxyEndpoint = "http://worker-pod:28080",
             WorkerHttpEndpoint = endpoint
         });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, assignment: null));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, CreateAssignment()));
 
         Assert.Contains(nameof(WorkerProxyOptions.WorkerHttpEndpoint), exception.Message);
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
@@ -104,27 +98,24 @@ public class WorkerHttpCapabilityProviderTests
     [InlineData("http://localhost:1234/worker#fragment")]
     public void FinalizeCapabilities_InvalidHttpCapability_FailsInsteadOfChangingInvocationTransport(string advertisedEndpoint)
     {
-        WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = "http://worker-pod:28080" });
+        WorkerHttpCapabilityProvider provider = CreateProvider(new());
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = advertisedEndpoint };
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, assignment: null));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, CreateAssignment()));
 
         Assert.Contains("HttpUri", exception.Message);
         Assert.Equal(advertisedEndpoint, capabilities["HttpUri"]);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData(" ")]
-    public void FinalizeCapabilities_MissingProxyEndpoint_FailsInsteadOfAdvertisingWorkerLoopback(string? proxyEndpoint)
+    [Fact]
+    public void FinalizeCapabilities_MissingAssignment_FailsInsteadOfAdvertisingWorkerLoopback()
     {
-        WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = proxyEndpoint });
+        WorkerHttpCapabilityProvider provider = CreateProvider(new());
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, assignment: null));
 
-        Assert.Contains(nameof(WorkerProxyOptions.HttpProxyEndpoint), exception.Message);
+        Assert.Contains("accepted worker assignment", exception.Message);
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
     }
 
@@ -160,4 +151,7 @@ public class WorkerHttpCapabilityProviderTests
         IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
         return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
+
+    private static WorkerAssignment CreateAssignment(string endpoint = "http://worker-pod:28080/")
+        => new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty, endpoint);
 }
