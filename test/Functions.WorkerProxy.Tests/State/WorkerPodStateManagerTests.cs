@@ -367,7 +367,8 @@ public partial class WorkerPodStateManagerTests
     }
 
     private static WorkerAssignment CreateAssignment(string appName = "app", WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured)
-        => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot");
+        => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" },
+            "/home/site/wwwroot", "http://mapped.example:49187");
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });

@@ -9,7 +9,7 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields except HttpProxyEndpoint are required. The directory may be empty for Preconfigured but must be nonblank
+/// All fields are required. The directory may be empty for Preconfigured but must be nonblank
 /// for SpecializationRequired. Environment and directory are currently retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
@@ -36,9 +36,8 @@ internal sealed class WorkerAssignRequest
     public string? FunctionAppDirectory { get; init; }
 
     /// <summary>
-    /// Gets the externally mapped host:port, supplied by the platform immediately before assignment.
-    /// The value has no URI scheme; WorkerProxy uses its own HTTP listener's scheme when advertising HttpUri.
-    /// Required for HTTP initialization, but optional for non-HTTP workers. IPv6 hosts must be bracketed.
+    /// Gets the required externally mapped HTTP(S) origin supplied by the platform before assignment for every function group.
+    /// The value must include its HTTP or HTTPS scheme. IPv6 hosts must be bracketed.
     /// </summary>
     public string? HttpProxyEndpoint { get; init; }
 }

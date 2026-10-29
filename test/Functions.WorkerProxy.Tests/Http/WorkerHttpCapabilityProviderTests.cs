@@ -129,12 +129,18 @@ public class WorkerHttpCapabilityProviderTests
     }
 
     [Theory]
-    [InlineData("http", "mapped.example:443", "http://mapped.example:443/")]
-    [InlineData("https", "mapped.example:80", "https://mapped.example:80/")]
-    public void AssignedEndpoint_UsesListenerSchemeAndMappedPort(string scheme, string endpoint, string origin)
+    [InlineData("http://mapped.example:443", "http://mapped.example:443/")]
+    [InlineData("https://mapped.example:80/", "https://mapped.example:80/")]
+    [InlineData("http://[::1]:49187/", "http://[::1]:49187/")]
+    public void AssignedEndpoint_PreservesSchemeAndMappedPort(string endpoint, string origin)
     {
-        Uri actual = Assert.IsType<Uri>(WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(endpoint, scheme));
-        Assert.Equal(origin, actual.AbsoluteUri);
+        WorkerHttpCapabilityProvider provider = CreateProvider(new());
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false,
+            new Dictionary<string, string>(), string.Empty, endpoint);
+        Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:1234/" };
+
+        Assert.Equal(new Uri("http://localhost:1234/"), provider.FinalizeCapabilities(capabilities, assignment));
+        Assert.Equal(origin, capabilities["HttpUri"]);
     }
 
     [Fact]
@@ -142,7 +148,7 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpPort = 28080 });
         WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), string.Empty, "localhost:1234");
+            new Dictionary<string, string>(), string.Empty, "http://localhost:1234");
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:1234/worker/" };
 
         Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities, assignment));
@@ -152,8 +158,6 @@ public class WorkerHttpCapabilityProviderTests
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
         IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
-        WorkerProxyEndpointConfiguration endpoints = new(configuredOptions);
-        endpoints.Configure(new());
-        return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance, endpoints);
+        return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 }

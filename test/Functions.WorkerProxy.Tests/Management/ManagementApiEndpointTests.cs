@@ -26,16 +26,21 @@ public class ManagementApiEndpointTests
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot","httpProxyEndpoint":"http://mapped.example:49187"}
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Theory]
-    [InlineData("http://mapped.example:1234")]
-    [InlineData("mapped.example:0")]
-    [InlineData("mapped.example:65536")]
-    [InlineData("mapped.example:1234/path")]
+    [InlineData("ftp://mapped.example:1234")]
+    [InlineData("http://mapped.example:0")]
+    [InlineData("http://mapped.example:65536")]
+    [InlineData("http://mapped.example:1234/path")]
+    [InlineData("http://user@mapped.example:1234")]
+    [InlineData("http://mapped.example:1234?query")]
+    [InlineData("http://mapped.example:1234#fragment")]
+    [InlineData("http://0.0.0.0:1234")]
+    [InlineData("mapped.example:49187")]
     public async Task MalformedHttpProxyEndpointIsRejectedWithoutClaimingAssignment(string endpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -56,11 +61,12 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
-    [InlineData(null, "mapped.example:49187")]
-    [InlineData("100.86.0.4:49123", "100.86.0.4:49124")]
-    [InlineData("mapped.example:49187", "MAPPED.example:49187")]
-    [InlineData("[::1]:49187", null)]
-    public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string? endpoint, string? changedEndpoint)
+    [InlineData("http://mapped.example:49187", "http://mapped.example:49188")]
+    [InlineData("https://mapped.example:49187/", "http://mapped.example:49187/")]
+    [InlineData("http://100.86.0.4:49123", "http://100.86.0.4:49124")]
+    [InlineData("http://mapped.example:49187", "http://MAPPED.example:49187")]
+    [InlineData("http://[::1]:49187/", "http://[::1]:49188/")]
+    public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string endpoint, string changedEndpoint)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -189,6 +195,10 @@ public class ManagementApiEndpointTests
     [InlineData("environment", "{\"\":\"private-value\"}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":null}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":123}", null, "Preconfigured")]
+    [InlineData("httpProxyEndpoint", null, "Required")]
+    [InlineData("httpProxyEndpoint", "null", "Required")]
+    [InlineData("httpProxyEndpoint", "\"\"", "Required")]
+    [InlineData("httpProxyEndpoint", "\" \"", "Required")]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
         string field, string? value, string? code, string startupMode = "SpecializationRequired")
     {
@@ -270,7 +280,8 @@ public class ManagementApiEndpointTests
             ("Required", "functionGroupName"),
             ("Required", "isAlwaysReady"),
             ("Required", "functionAppDirectory"),
-            (environmentError, "environment"));
+            (environmentError, "environment"),
+            ("Required", "httpProxyEndpoint"));
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain("PRIVATE_SETTING", json);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);

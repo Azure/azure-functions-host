@@ -62,7 +62,8 @@ public class ManagementApiHandlersTests
                 new("Required", "functionGroupName"),
                 new("Required", "isAlwaysReady"),
                 new("Required", "functionAppDirectory"),
-                new("Required", "environment")
+                new("Required", "environment"),
+                new("Required", "httpProxyEndpoint")
             ],
             errors);
         Assert.Same(before, manager.State);
@@ -90,7 +91,8 @@ public class ManagementApiHandlersTests
                 new("Required", "functionGroupName"),
                 new("Required", "isAlwaysReady"),
                 new("Required", "functionAppDirectory"),
-                new("InvalidValue", "environment")
+                new("InvalidValue", "environment"),
+                new("Required", "httpProxyEndpoint")
             ],
             errors);
         Assert.Same(before, manager.State);
@@ -127,7 +129,8 @@ public class ManagementApiHandlersTests
                 FunctionAppName = "app",
                 FunctionGroupName = "group",
                 FunctionAppDirectory = "app-directory",
-                IsAlwaysReady = false
+                IsAlwaysReady = false,
+                HttpProxyEndpoint = "http://mapped.example:49187"
             },
             "environmentKey" => CreateRequest(environment: new() { [string.Empty] = "private-value" }),
             "environmentValue" => CreateRequest(environment: new() { ["SETTING"] = value }),
@@ -238,7 +241,8 @@ public class ManagementApiHandlersTests
                 new("Required", "functionGroupName"),
                 new("Required", "isAlwaysReady"),
                 new("Required", "functionAppDirectory"),
-                new("InvalidValue", "environment")
+                new("InvalidValue", "environment"),
+                new("Required", "httpProxyEndpoint")
             ],
             AssertValidation(ManagementApiHandlers.AssignWorker(request, manager)));
         Assert.Same(before, manager.State);
@@ -296,7 +300,8 @@ public class ManagementApiHandlersTests
             StartupMode = startupMode,
             FunctionAppName = "app",
             FunctionGroupName = "group",
-            IsAlwaysReady = false
+            IsAlwaysReady = false,
+            HttpProxyEndpoint = "http://mapped.example:49187"
         };
 
         Assert.Equal<RequestValidationError>(
@@ -644,7 +649,8 @@ public class ManagementApiHandlersTests
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" }
+            Environment = environment ?? new() { ["SETTING"] = "private-value" },
+            HttpProxyEndpoint = "http://mapped.example:49187"
         };
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)

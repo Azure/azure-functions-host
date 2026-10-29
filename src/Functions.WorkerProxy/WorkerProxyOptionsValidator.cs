@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Net;
 using Azure.Functions.WorkerProxy.Http;
 using Microsoft.Extensions.Options;
@@ -48,35 +46,6 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
-    }
-
-    /// <summary>
-    /// Resolves an assigned host:port using a WorkerProxy-selected listener scheme.
-    /// Assignment validation can use HTTP because authority validity is independent of the listener scheme.
-    /// </summary>
-    internal static Uri? ResolveHttpProxyOrigin(string? value, string scheme)
-    {
-        if (scheme != Uri.UriSchemeHttp && scheme != Uri.UriSchemeHttps)
-        {
-            throw new ArgumentException("The HTTP listener scheme must be HTTP or HTTPS.", nameof(scheme));
-        }
-
-        if (string.IsNullOrEmpty(value)
-            || value.Any(char.IsWhiteSpace)
-            || value.AsSpan().IndexOfAny("/\\@?#%".AsSpan()) >= 0)
-        {
-            return null;
-        }
-
-        int separator = value.LastIndexOf(':');
-        if (separator <= 0
-            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
-            || port is < 1 or > MaximumPort)
-        {
-            return null;
-        }
-
-        return ResolveConfiguredHttpProxyOrigin($"{scheme}://{value}");
     }
 
     internal static Uri? ResolveConfiguredHttpProxyOrigin(string? value)
