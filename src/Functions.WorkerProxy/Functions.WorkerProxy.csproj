@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <Compile Include="..\WebJobs.Script.WebHost\Diagnostics\BufferedConsoleWriter.cs" Link="Logging\BufferedConsoleWriter.cs" />
+    <Compile Include="..\WebJobs.Script.WebHost\Diagnostics\LinuxEventFormatting.cs" Link="Logging\LinuxEventFormatting.cs" />
     <Compile Include="..\WebJobs.Script\Sanitizer.String.cs" Link="Diagnostics\Sanitizer.String.cs" />
     <InternalsVisibleTo Include="Azure.Functions.WorkerProxy.Tests" />
   </ItemGroup>

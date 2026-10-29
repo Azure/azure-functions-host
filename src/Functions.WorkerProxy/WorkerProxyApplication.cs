@@ -25,7 +25,7 @@ namespace Azure.Functions.WorkerProxy;
 /// <summary>
 /// Builds the WorkerProxy management and FunctionRpc application.
 /// </summary>
-internal static class WorkerProxyApplication
+internal static partial class WorkerProxyApplication
 {
     private const string ReadyPath = "/admin/instance/ready";
 
@@ -53,23 +53,17 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<ILoggerProvider, WorkerSystemLoggerProvider>();
         builder.Logging.AddFilter<WorkerSystemLoggerProvider>(null, LogLevel.None);
         builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
-            WorkerSystemLoggerProvider.AspNetCoreHostingCategory,
-            LogLevel.Information);
-        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
-            WorkerSystemLoggerProvider.AspNetCoreCategoryPrefix,
-            LogLevel.Warning);
-        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
-            WorkerSystemLoggerProvider.GrpcCategoryPrefix,
-            LogLevel.Warning);
-        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
-            WorkerSystemLoggerProvider.YarpCategoryPrefix,
-            LogLevel.Warning);
-        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
             WorkerSystemLoggerProvider.ReadinessProbeCategory,
             LogLevel.Warning);
         builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
             WorkerSystemLoggerProvider.RelayCategory,
             LogLevel.Warning);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.ApplicationCategory,
+            LogLevel.Information);
+        builder.Logging.AddFilter<WorkerSystemLoggerProvider>(
+            WorkerSystemLoggerProvider.AssignmentCategory,
+            LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.ConfigureHttpJsonOptions(options =>
@@ -99,23 +93,18 @@ internal static class WorkerProxyApplication
 
     private static void RegisterLifecycleEvents(WebApplication app)
     {
-        IWorkerSystemEventGenerator eventGenerator =
-            app.Services.GetRequiredService<IWorkerSystemEventGenerator>();
+        ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger(typeof(WorkerProxyApplication).FullName!);
         app.Lifetime.ApplicationStarted.Register(
-            () => eventGenerator.LogProxyEvent(
-                LogLevel.Information,
-                "WorkerProxyStarted",
-                "WorkerProxy started."));
+            () => Log.WorkerProxyStarted(logger));
         app.Lifetime.ApplicationStopping.Register(
-            () => eventGenerator.LogProxyEvent(
-                LogLevel.Information,
-                "WorkerProxyShutdownStarted",
-                "WorkerProxy shutdown started."));
+            () => Log.WorkerProxyShutdownStarted(logger));
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
     {
         app.UseRouting();
+        app.UseMiddleware<WorkerAssignmentLoggingMiddleware>();
         app.UseEndpoints(static endpoints =>
         {
             endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
@@ -184,5 +173,14 @@ internal static class WorkerProxyApplication
 
         builder.Services.AddSingleton<WorkerHttpForwarder>();
         builder.Services.AddSingleton<WorkerHttpForwardingMiddleware>();
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Information, "WorkerProxy started.", EventName = "WorkerProxyStarted")]
+        public static partial void WorkerProxyStarted(ILogger logger);
+
+        [LoggerMessage(1, LogLevel.Information, "WorkerProxy shutdown started.", EventName = "WorkerProxyShutdownStarted")]
+        public static partial void WorkerProxyShutdownStarted(ILogger logger);
     }
 }

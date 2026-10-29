@@ -3,10 +3,11 @@
 
 using System;
 using System.Buffers;
-using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -27,13 +28,19 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
     internal const int QueueCapacity = 256;
     private const int MaximumExceptionFieldBytes = 12_000;
     private const int MaximumEventNameBytes = 256;
+    private const int MaximumCredentialTokenMatches = 64;
     private const int MaximumSanitizationInputBytes = 64 * 1024;
+    private const string SanitizationWorkLimitReplacement = "[Worker log field omitted because sanitization work exceeded the limit]";
     private const string OversizedFieldReplacement = "[Oversized worker log field omitted]";
     private const string TruncationSuffix = "...[truncated]";
     private const string RpcExceptionType = "Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException";
 
     private readonly BufferedConsoleWriter _writer;
+    private readonly Channel<PendingWorkerLog> _workerLogQueue;
+    private readonly Task _workerLogProcessingTask;
     private readonly TimeProvider _timeProvider;
+    private long _pendingDroppedWorkerLogs;
+    private long _totalDroppedWorkerLogs;
 
     public WorkerPodEventGenerator(TimeProvider timeProvider)
         : this(Console.Out, timeProvider)
@@ -43,30 +50,37 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
     internal WorkerPodEventGenerator(TextWriter writer, TimeProvider timeProvider)
     {
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _workerLogQueue = Channel.CreateBounded<PendingWorkerLog>(
+            new BoundedChannelOptions(QueueCapacity)
+            {
+                SingleReader = true,
+                SingleWriter = false
+            });
         _writer = new BufferedConsoleWriter(
             QueueCapacity,
-            static _ => { },
-            consoleBufferTimeout: TimeSpan.Zero,
-            autoStart: true,
-            BufferedConsoleWriterFullMode.DropWrite,
-            CreateDroppedSummary)
+            static _ => { })
         {
             Writer = writer ?? throw new ArgumentNullException(nameof(writer))
         };
+        _workerLogProcessingTask = ProcessWorkerLogsAsync();
     }
 
-    internal long TotalDroppedRecords => _writer.TotalDroppedWrites;
+    internal long TotalDroppedRecords => Interlocked.Read(ref _totalDroppedWorkerLogs);
 
     public void LogWorkerEvent(RpcLog log)
     {
         ArgumentNullException.ThrowIfNull(log);
 
-        TryEnqueue(CreateWorkerRecord(log, _timeProvider.GetUtcNow()));
+        PendingWorkerLog pendingLog = new(CreateWorkerLogSnapshot(log), _timeProvider.GetUtcNow());
+        if (!_workerLogQueue.Writer.TryWrite(pendingLog))
+        {
+            RecordWorkerLogDrop();
+        }
     }
 
     public void LogProxyEvent(LogLevel level, string eventName, string message)
     {
-        TryEnqueue(CreateProxyRecord(level, eventName, message, _timeProvider.GetUtcNow()));
+        Write(CreateProxyRecord(level, eventName, message, _timeProvider.GetUtcNow()));
     }
 
     internal WorkerSystemLogRecord CreateWorkerRecord(RpcLog log, DateTimeOffset timestamp)
@@ -74,24 +88,25 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         ArgumentNullException.ThrowIfNull(log);
 
         LogLevel level = MapLogLevel(log.Level);
-        string summary = SanitizeAndTruncate(log.Message, MaximumMessageBytes);
+        string summary = SanitizeWorkerField(log.Message, MaximumMessageBytes);
         if (level is not (LogLevel.Error or LogLevel.Critical) || log.Exception is null)
         {
             return new(
-                MapEventLevel(level),
-                string.Empty,
+                (int)LinuxEventFormatting.ToEventLevel(level),
+                log.EventId,
                 WorkerSource,
                 string.Empty,
                 summary,
                 timestamp,
                 string.Empty,
-                string.Empty);
+                string.Empty,
+                log.InvocationId);
         }
 
-        string remoteMessage = SanitizeAndTruncate(
+        string remoteMessage = SanitizeWorkerField(
             log.Exception.Message,
             MaximumRemoteExceptionMessageBytes);
-        string remoteStack = SanitizeAndTruncate(
+        string remoteStack = SanitizeWorkerField(
             log.Exception.StackTrace,
             MaximumRemoteStackTraceBytes);
         string exceptionMessage = TruncateUtf8(
@@ -102,14 +117,15 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             MaximumExceptionFieldBytes);
 
         return new(
-            MapEventLevel(level),
-            string.Empty,
+            (int)LinuxEventFormatting.ToEventLevel(level),
+            log.EventId,
             WorkerSource,
             details,
             summary,
             timestamp,
             RpcExceptionType,
-            exceptionMessage);
+            exceptionMessage,
+            log.InvocationId);
     }
 
     internal WorkerSystemLogRecord CreateProxyRecord(
@@ -119,12 +135,13 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         DateTimeOffset timestamp)
     {
         return new(
-            MapEventLevel(level),
+            (int)LinuxEventFormatting.ToEventLevel(level),
             TruncateUtf8(eventName, MaximumEventNameBytes),
             ProxySource,
             string.Empty,
-            SanitizeAndTruncate(message, MaximumMessageBytes),
+            TruncateUtf8(message, MaximumMessageBytes),
             timestamp,
+            string.Empty,
             string.Empty,
             string.Empty);
     }
@@ -137,15 +154,17 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             string.Empty,
             string.Empty,
             string.Empty,
-            SanitizeUnquoted(record.EventName),
+            record.EventName,
             record.Source,
-            Quote(record.Details),
-            Quote(record.Summary),
+            LinuxEventFormatting.NormalizeString(record.Details),
+            LinuxEventFormatting.NormalizeString(record.Summary),
             string.Empty,
-            record.Timestamp.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
-            SanitizeUnquoted(record.ExceptionType),
-            Quote(record.ExceptionMessage),
-            string.Empty,
+            record.Timestamp.UtcDateTime.ToString(
+                LinuxEventFormatting.EventTimestampFormat,
+                CultureInfo.InvariantCulture),
+            record.ExceptionType,
+            LinuxEventFormatting.NormalizeString(record.ExceptionMessage),
+            record.InvocationId,
             string.Empty,
             string.Empty,
             string.Empty,
@@ -162,22 +181,43 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             : CreateOversizedRecord(record.Level, record.Source, record.Timestamp);
     }
 
-    internal bool TryEnqueue(WorkerSystemLogRecord record)
+    internal void Write(WorkerSystemLogRecord record)
     {
-        return _writer.TryWrite(Format(record));
+        _writer.WriteHandler(Format(record));
     }
 
     public void Dispose()
     {
+        _workerLogQueue.Writer.TryComplete();
+        _workerLogProcessingTask.GetAwaiter().GetResult();
         _writer.Dispose();
     }
 
-    internal Task CompleteAsync()
+    internal async Task CompleteAsync()
     {
-        return _writer.CompleteAsync();
+        _workerLogQueue.Writer.TryComplete();
+        await _workerLogProcessingTask;
+        await _writer.CompleteAsync();
     }
 
-    private static string CreateOversizedRecord(int level, string source, DateTimeOffset timestamp)
+    private static LogLevel MapLogLevel(RpcLog.Types.Level level)
+    {
+        return level switch
+        {
+            RpcLog.Types.Level.Trace => LogLevel.Trace,
+            RpcLog.Types.Level.Debug => LogLevel.Debug,
+            RpcLog.Types.Level.Information => LogLevel.Information,
+            RpcLog.Types.Level.Warning => LogLevel.Warning,
+            RpcLog.Types.Level.Error => LogLevel.Error,
+            RpcLog.Types.Level.Critical => LogLevel.Critical,
+            _ => LogLevel.None
+        };
+    }
+
+    private static string CreateOversizedRecord(
+        int level,
+        string source,
+        DateTimeOffset timestamp)
     {
         string[] fields =
         [
@@ -187,12 +227,15 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             string.Empty,
             "WorkerSystemLogOmitted",
             source,
-            "\"\"",
-            "\"Worker system log exceeded the maximum encoded record size.\"",
+            LinuxEventFormatting.NormalizeString(string.Empty),
+            LinuxEventFormatting.NormalizeString(
+                "Worker system log exceeded the maximum encoded record size."),
             string.Empty,
-            timestamp.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
+            timestamp.UtcDateTime.ToString(
+                LinuxEventFormatting.EventTimestampFormat,
+                CultureInfo.InvariantCulture),
             string.Empty,
-            "\"\"",
+            LinuxEventFormatting.NormalizeString(string.Empty),
             string.Empty,
             string.Empty,
             string.Empty,
@@ -207,37 +250,17 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         return $"{EventStreamName} {string.Join(',', fields)}";
     }
 
-    private static int MapEventLevel(LogLevel level)
-    {
-        EventLevel eventLevel = level switch
-        {
-            LogLevel.Critical => EventLevel.Critical,
-            LogLevel.Error => EventLevel.Error,
-            LogLevel.Warning => EventLevel.Warning,
-            LogLevel.Information => EventLevel.Informational,
-            _ => EventLevel.Verbose
-        };
-
-        return (int)eventLevel;
-    }
-
-    private static LogLevel MapLogLevel(RpcLog.Types.Level level)
-    {
-        return level switch
-        {
-            RpcLog.Types.Level.Warning => LogLevel.Warning,
-            RpcLog.Types.Level.Error => LogLevel.Error,
-            RpcLog.Types.Level.Critical => LogLevel.Critical,
-            _ => LogLevel.Information
-        };
-    }
-
-    private static string SanitizeAndTruncate(string value, int maximumBytes)
+    private static string SanitizeWorkerField(string value, int maximumBytes)
     {
         if (value.Length > MaximumSanitizationInputBytes
             || Encoding.UTF8.GetByteCount(value) > MaximumSanitizationInputBytes)
         {
             return OversizedFieldReplacement;
+        }
+
+        if (ExceedsSanitizationWorkLimit(value))
+        {
+            return SanitizationWorkLimitReplacement;
         }
 
         return TruncateUtf8(Sanitizer.Sanitize(value), maximumBytes);
@@ -257,8 +280,12 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
 
         while (!remaining.IsEmpty)
         {
-            OperationStatus status = Rune.DecodeFromUtf16(remaining, out Rune rune, out int charsConsumed);
-            if (status != OperationStatus.Done || bytesUsed + rune.Utf8SequenceLength > contentBudget)
+            OperationStatus status = Rune.DecodeFromUtf16(
+                remaining,
+                out Rune rune,
+                out int charsConsumed);
+            if (status != OperationStatus.Done
+                || bytesUsed + rune.Utf8SequenceLength > contentBudget)
             {
                 break;
             }
@@ -271,29 +298,84 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         return string.Concat(value.AsSpan(0, charsUsed), TruncationSuffix);
     }
 
-    private static string Quote(string value) => $"\"{SanitizeQuoted(value)}\"";
-
-    private static string SanitizeQuoted(string value)
+    private static bool ExceedsSanitizationWorkLimit(string value)
     {
-        return value
-            .Replace('\r', ' ')
-            .Replace('\n', ' ')
-            .Replace('"', '\'');
+        int matches = 0;
+        foreach (string token in Sanitizer.CredentialTokens)
+        {
+            int startIndex = 0;
+            while ((startIndex = value.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase)) >= 0)
+            {
+                matches++;
+                if (matches > MaximumCredentialTokenMatches)
+                {
+                    return true;
+                }
+
+                startIndex += token.Length;
+            }
+        }
+
+        return false;
     }
 
-    private static string SanitizeUnquoted(string value) =>
-        SanitizeQuoted(value).Replace(',', ' ');
-
-    private string CreateDroppedSummary(long dropped)
+    private static RpcLog CreateWorkerLogSnapshot(RpcLog log)
     {
-        WorkerSystemLogRecord summary = CreateProxyRecord(
-            LogLevel.Warning,
-            "WorkerSystemLogsDropped",
-            $"WorkerProxy dropped {dropped} system log records because the console queue was unavailable.",
-            _timeProvider.GetUtcNow());
+        RpcLog snapshot = new()
+        {
+            Level = log.Level,
+            Message = log.Message
+        };
 
-        return Format(summary);
+        if (log.Exception is { } exception)
+        {
+            snapshot.Exception = new RpcException
+            {
+                Message = exception.Message,
+                StackTrace = exception.StackTrace
+            };
+        }
+
+        snapshot.EventId = log.EventId;
+        snapshot.InvocationId = log.InvocationId;
+
+        return snapshot;
     }
+
+    private async Task ProcessWorkerLogsAsync()
+    {
+        await foreach (PendingWorkerLog pendingLog in _workerLogQueue.Reader.ReadAllAsync())
+        {
+            WriteDroppedWorkerLogSummary();
+            Write(CreateWorkerRecord(pendingLog.Log, pendingLog.Timestamp));
+        }
+
+        WriteDroppedWorkerLogSummary();
+    }
+
+    private void WriteDroppedWorkerLogSummary()
+    {
+        long dropped = Interlocked.Exchange(ref _pendingDroppedWorkerLogs, 0);
+        if (dropped <= 0)
+        {
+            return;
+        }
+
+        Write(
+            CreateProxyRecord(
+                LogLevel.Warning,
+                "WorkerSystemLogsDropped",
+                $"WorkerProxy dropped {dropped} worker system log records because the worker log queue was unavailable.",
+                _timeProvider.GetUtcNow()));
+    }
+
+    private void RecordWorkerLogDrop()
+    {
+        Interlocked.Increment(ref _pendingDroppedWorkerLogs);
+        Interlocked.Increment(ref _totalDroppedWorkerLogs);
+    }
+
+    private readonly record struct PendingWorkerLog(RpcLog Log, DateTimeOffset Timestamp);
 
     internal readonly record struct WorkerSystemLogRecord(
         int Level,
@@ -303,5 +385,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         string Summary,
         DateTimeOffset Timestamp,
         string ExceptionType,
-        string ExceptionMessage);
+        string ExceptionMessage,
+        string InvocationId);
 }

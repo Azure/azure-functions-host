@@ -2,31 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
-using Azure.Functions.WorkerProxy.State;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Azure.Functions.WorkerProxy.Logging;
 
 internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eventGenerator) : ILoggerProvider
 {
-    private const int DestinationResolutionFailedEventId = 0;
-    private const int DestinationNotReadyEventId = 2;
-    private const int RelaySessionFaultedEventId = 0;
-    private const int FunctionGroupNotAdvertisedEventId = 3;
-    private const int RelayAttachmentRejectedEventId = 5;
-    private const int WorkerStartStreamRejectedEventId = 7;
-    private const int RequestFinishedEventId = 2;
-    internal const string AspNetCoreHostingCategory = "Microsoft.AspNetCore.Hosting.Diagnostics";
-    internal const string AspNetCoreCategoryPrefix = "Microsoft.AspNetCore";
-    internal const string GrpcCategoryPrefix = "Grpc";
-    internal const string YarpCategoryPrefix = "Yarp.ReverseProxy";
-    private const string WorkerAssignmentPath = "/admin/worker/assignment";
+    internal static readonly string ApplicationCategory =
+        typeof(WorkerProxyApplication).FullName!;
+
+    internal static readonly string AssignmentCategory =
+        typeof(WorkerAssignmentLoggingMiddleware).FullName!;
 
     internal static readonly string ReadinessProbeCategory =
         typeof(WorkerEndpointReadinessProbe).FullName!;
@@ -37,60 +26,16 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
     private readonly IWorkerSystemEventGenerator _eventGenerator =
         eventGenerator ?? throw new ArgumentNullException(nameof(eventGenerator));
 
-    private enum LoggerKind
-    {
-        AspNetCoreHosting,
-        Grpc,
-        Http,
-        Readiness,
-        Relay
-    }
-
     public ILogger CreateLogger(string categoryName)
     {
-        if (string.Equals(categoryName, AspNetCoreHostingCategory, StringComparison.Ordinal))
-        {
-            return new SystemLogger(_eventGenerator, LoggerKind.AspNetCoreHosting);
-        }
-
-        if (string.Equals(categoryName, ReadinessProbeCategory, StringComparison.Ordinal))
-        {
-            return new SystemLogger(_eventGenerator, LoggerKind.Readiness);
-        }
-
-        if (string.Equals(categoryName, RelayCategory, StringComparison.Ordinal))
-        {
-            return new SystemLogger(_eventGenerator, LoggerKind.Relay);
-        }
-
-        if (IsCategory(categoryName, GrpcCategoryPrefix))
-        {
-            return new SystemLogger(_eventGenerator, LoggerKind.Grpc, categoryName);
-        }
-
-        if (IsCategory(categoryName, AspNetCoreCategoryPrefix)
-            || IsCategory(categoryName, YarpCategoryPrefix))
-        {
-            return new SystemLogger(_eventGenerator, LoggerKind.Http, categoryName);
-        }
-
-        return NullLogger.Instance;
+        return new SystemLogger(_eventGenerator);
     }
 
     public void Dispose()
     {
     }
 
-    private static bool IsCategory(string categoryName, string categoryPrefix)
-    {
-        return string.Equals(categoryName, categoryPrefix, StringComparison.Ordinal)
-            || categoryName.StartsWith($"{categoryPrefix}.", StringComparison.Ordinal);
-    }
-
-    private sealed class SystemLogger(
-        IWorkerSystemEventGenerator eventGenerator,
-        LoggerKind kind,
-        string? categoryName = null) : ILogger
+    private sealed class SystemLogger(IWorkerSystemEventGenerator eventGenerator) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull =>
@@ -105,250 +50,16 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
             Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            switch (kind)
-            {
-                case LoggerKind.AspNetCoreHosting:
-                    ConsumeAspNetCoreHostingLog(eventId, state);
-                    break;
-                case LoggerKind.Grpc:
-                    ConsumeFrameworkLog(
-                        logLevel,
-                        eventId,
-                        state,
-                        exception,
-                        formatter,
-                        "GrpcFrameworkLog");
-                    break;
-                case LoggerKind.Http:
-                    ConsumeFrameworkLog(
-                        logLevel,
-                        eventId,
-                        state,
-                        exception,
-                        formatter,
-                        "HttpFrameworkLog");
-                    break;
-                case LoggerKind.Readiness:
-                    ConsumeReadinessLog(eventId, state, exception);
-                    break;
-                case LoggerKind.Relay:
-                    ConsumeRelayLog(eventId, state);
-                    break;
-            }
-        }
-
-        private void ConsumeFrameworkLog<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter,
-            string eventName)
-        {
-            string eventIdentifier = eventId.Name is { Length: > 0 }
-                ? $"{eventId.Id}:{eventId.Name}"
-                : eventId.Id.ToString();
-            string message = $"{categoryName} [{eventIdentifier}] {formatter(state, exception)}";
-            if (exception is not null)
-            {
-                message = $"{message} ExceptionType: {exception.GetType().FullName}";
-            }
-
-            eventGenerator.LogProxyEvent(logLevel, eventName, message);
-        }
-
-        private void ConsumeAspNetCoreHostingLog<TState>(EventId eventId, TState state)
-        {
-            if (eventId.Id != RequestFinishedEventId
-                || !string.Equals(
-                    GetStateStringValue(state, "Path"),
-                    WorkerAssignmentPath,
-                    StringComparison.Ordinal)
-                || !string.Equals(
-                    GetStateStringValue(state, "Method"),
-                    "PUT",
-                    StringComparison.Ordinal))
+            string message = formatter(state, exception);
+            if (string.IsNullOrEmpty(message))
             {
                 return;
             }
 
-            int statusCode = GetStateValue(state, "StatusCode", 0);
-            if (statusCode is not (
-                StatusCodes.Status201Created
-                or StatusCodes.Status204NoContent
-                or StatusCodes.Status400BadRequest
-                or StatusCodes.Status409Conflict
-                or StatusCodes.Status415UnsupportedMediaType
-                or StatusCodes.Status503ServiceUnavailable))
-            {
-                return;
-            }
-
-            bool succeeded = statusCode is >= 200 and < 400;
             eventGenerator.LogProxyEvent(
-                succeeded ? LogLevel.Information : LogLevel.Warning,
-                succeeded ? "WorkerAssignmentRequestCompleted" : "WorkerAssignmentRequestRejected",
-                $"Worker assignment request completed with HTTP status {statusCode}.");
-        }
-
-        private void ConsumeReadinessLog<TState>(
-            EventId eventId,
-            TState state,
-            Exception? exception)
-        {
-            WorkerEndpointReadinessResult? result = eventId.Id switch
-            {
-                DestinationResolutionFailedEventId => WorkerEndpointReadinessResult.NameResolutionFailed,
-                DestinationNotReadyEventId => ClassifyReadinessFailure(exception),
-                _ => null
-            };
-            if (result is not { } readinessResult)
-            {
-                return;
-            }
-
-            int attempts = GetAttempts(state);
-            eventGenerator.LogProxyEvent(
-                LogLevel.Warning,
-                "WorkerHttpReadinessFailed",
-                $"Worker HTTP readiness completed with {readinessResult} after {attempts} attempts.");
-        }
-
-        private void ConsumeRelayLog<TState>(EventId eventId, TState state)
-        {
-            long sessionId = GetStateValue(state, "SessionId", 0L);
-            if (eventId.Id == FunctionGroupNotAdvertisedEventId)
-            {
-                WorkerAssignmentState assignmentState = GetStateValue(
-                    state,
-                    "AssignmentState",
-                    WorkerAssignmentState.Unassigned);
-                eventGenerator.LogProxyEvent(
-                    LogLevel.Warning,
-                    "WorkerFunctionGroupNotAdvertised",
-                    $"FunctionRpc session {sessionId} did not advertise FunctionGroupName because the worker assignment state was {assignmentState}.");
-                return;
-            }
-
-            if (eventId.Id == RelayAttachmentRejectedEventId)
-            {
-                FunctionRpcRelaySide attachmentSide = GetStateValue(
-                    state,
-                    "Side",
-                    FunctionRpcRelaySide.Worker);
-                FunctionRpcRelayAttachmentFailure attachmentReason = GetStateValue(
-                    state,
-                    "Reason",
-                    FunctionRpcRelayAttachmentFailure.Shutdown);
-                eventGenerator.LogProxyEvent(
-                    LogLevel.Warning,
-                    "RelayAttachmentRejected",
-                    $"FunctionRpc session {sessionId} rejected the {attachmentSide} attachment because {attachmentReason}.");
-
-                return;
-            }
-
-            if (eventId.Id == WorkerStartStreamRejectedEventId)
-            {
-                eventGenerator.LogProxyEvent(
-                    LogLevel.Warning,
-                    "WorkerStartStreamRejected",
-                    $"FunctionRpc session {sessionId} rejected worker StartStream because InvalidMessage.");
-                return;
-            }
-
-            if (eventId.Id != RelaySessionFaultedEventId)
-            {
-                return;
-            }
-
-            FunctionRpcRelaySide? side =
-                GetNullableStateValue<TState, FunctionRpcRelaySide>(state, "Side");
-            string terminatingSide = side?.ToString() ?? "Proxy";
-            eventGenerator.LogProxyEvent(
-                LogLevel.Warning,
-                "RelaySessionFailed",
-                $"FunctionRpc session {sessionId} was terminated by {terminatingSide} because Faulted.");
-        }
-
-        private static int GetAttempts<TState>(TState state)
-        {
-            return GetStateValue(state, "Attempts", 0);
-        }
-
-        private static WorkerEndpointReadinessResult ClassifyReadinessFailure(Exception? exception)
-        {
-            return exception switch
-            {
-                SocketException { SocketErrorCode: SocketError.ConnectionRefused } =>
-                    WorkerEndpointReadinessResult.ConnectionRefused,
-                SocketException { SocketErrorCode: SocketError.TimedOut } =>
-                    WorkerEndpointReadinessResult.Timeout,
-                SocketException => WorkerEndpointReadinessResult.ConnectionFailed,
-                _ => WorkerEndpointReadinessResult.Timeout
-            };
-        }
-
-        private static TValue GetStateValue<TState, TValue>(
-            TState state,
-            string key,
-            TValue defaultValue)
-        {
-            if (state is not IReadOnlyList<KeyValuePair<string, object?>> values)
-            {
-                return defaultValue;
-            }
-
-            foreach (KeyValuePair<string, object?> value in values)
-            {
-                if (string.Equals(value.Key, key, StringComparison.Ordinal)
-                    && value.Value is TValue result)
-                {
-                    return result;
-                }
-            }
-
-            return defaultValue;
-        }
-
-        private static string? GetStateStringValue<TState>(TState state, string key)
-        {
-            if (state is not IReadOnlyList<KeyValuePair<string, object?>> values)
-            {
-                return null;
-            }
-
-            foreach (KeyValuePair<string, object?> value in values)
-            {
-                if (string.Equals(value.Key, key, StringComparison.Ordinal))
-                {
-                    return value.Value?.ToString();
-                }
-            }
-
-            return null;
-        }
-
-        private static TValue? GetNullableStateValue<TState, TValue>(
-            TState state,
-            string key)
-            where TValue : struct
-        {
-            if (state is not IReadOnlyList<KeyValuePair<string, object?>> values)
-            {
-                return null;
-            }
-
-            foreach (KeyValuePair<string, object?> value in values)
-            {
-                if (string.Equals(value.Key, key, StringComparison.Ordinal)
-                    && value.Value is TValue result)
-                {
-                    return result;
-                }
-            }
-
-            return null;
+                logLevel,
+                eventId.Name ?? string.Empty,
+                message);
         }
     }
 }

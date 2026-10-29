@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -31,13 +32,13 @@ public class WorkerSystemLoggingTests
         new(2026, 10, 26, 12, 34, 56, TimeSpan.Zero);
 
     [Theory]
-    [InlineData(RpcLog.Types.Level.Trace, 4, false)]
-    [InlineData(RpcLog.Types.Level.Debug, 4, false)]
+    [InlineData(RpcLog.Types.Level.Trace, 5, false)]
+    [InlineData(RpcLog.Types.Level.Debug, 5, false)]
     [InlineData(RpcLog.Types.Level.Information, 4, false)]
     [InlineData(RpcLog.Types.Level.Warning, 3, false)]
     [InlineData(RpcLog.Types.Level.Error, 2, true)]
     [InlineData(RpcLog.Types.Level.Critical, 1, true)]
-    [InlineData(RpcLog.Types.Level.None, 4, false)]
+    [InlineData(RpcLog.Types.Level.None, 0, false)]
     public void CreateWorkerRecord_MatchesHostSystemLogPayload(
         RpcLog.Types.Level rpcLevel,
         int expectedLevel,
@@ -75,6 +76,26 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
+    public void CreateWorkerRecord_SanitizesWorkerFields()
+    {
+        const string secret = "SuperSecret123";
+        string credential = $"https://worker:{secret}@example.com:443 ";
+        string value = $"worker failure {credential}";
+        using WorkerPodEventGenerator generator = CreateEventGenerator();
+        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Error);
+        log.Message = value;
+        log.Exception.Message = value;
+        log.Exception.StackTrace = value;
+
+        WorkerPodEventGenerator.WorkerSystemLogRecord record =
+            generator.CreateWorkerRecord(log, Timestamp);
+        string formatted = generator.Format(record);
+
+        Assert.DoesNotContain(secret, formatted, StringComparison.Ordinal);
+        Assert.Contains(Sanitizer.SecretReplacement, formatted, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CreateWorkerRecord_SanitizesBeforeUtf8Truncation()
     {
         const string secret = "SuperSecret123";
@@ -88,13 +109,12 @@ public class WorkerSystemLoggingTests
         log.Exception.Message = value;
         log.Exception.StackTrace = value;
 
-        WorkerPodEventGenerator.WorkerSystemLogRecord record =
-            generator.CreateWorkerRecord(log, Timestamp);
-        string formatted = generator.Format(record);
+        string formatted = generator.Format(generator.CreateWorkerRecord(log, Timestamp));
 
         Assert.DoesNotContain(secret, formatted, StringComparison.Ordinal);
         Assert.Contains(Sanitizer.SecretReplacement, formatted, StringComparison.Ordinal);
         Assert.DoesNotContain('\uFFFD', formatted);
+        Assert.Contains("...[truncated]", formatted, StringComparison.Ordinal);
         Assert.True(
             Encoding.UTF8.GetByteCount(formatted) <= WorkerPodEventGenerator.MaximumRecordBytes);
     }
@@ -106,14 +126,81 @@ public class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = CreateEventGenerator();
         RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Information);
         log.Category = sentinel;
-        log.EventId = sentinel;
-        log.InvocationId = sentinel;
         log.Properties = sentinel;
         log.PropertiesMap["secret"] = new TypedData { String = sentinel };
 
         string formatted = generator.Format(generator.CreateWorkerRecord(log, Timestamp));
 
         Assert.DoesNotContain(sentinel, formatted, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateWorkerRecord_PreservesHostCorrelationFields()
+    {
+        using WorkerPodEventGenerator generator = CreateEventGenerator();
+        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Warning);
+        log.EventId = "WorkerFailure";
+        log.InvocationId = "invocation-id";
+
+        WorkerPodEventGenerator.WorkerSystemLogRecord record =
+            generator.CreateWorkerRecord(log, Timestamp);
+        string formatted = generator.Format(record);
+
+        Assert.Equal("WorkerFailure", record.EventName);
+        Assert.Equal("invocation-id", record.InvocationId);
+        Assert.Contains(
+            ",WorkerFailure,Worker.LanguageWorker,",
+            formatted,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ",\"\",invocation-id,,,,,,,,",
+            formatted,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateWorkerRecord_OmitsFieldsThatExceedSanitizationWorkLimit()
+    {
+        string value = string.Concat(Enumerable.Repeat("key='", 65));
+        using WorkerPodEventGenerator generator = CreateEventGenerator();
+        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Error);
+        log.Message = value;
+        log.Exception.Message = value;
+        log.Exception.StackTrace = value;
+
+        string formatted = generator.Format(generator.CreateWorkerRecord(log, Timestamp));
+
+        Assert.DoesNotContain(value, formatted, StringComparison.Ordinal);
+        Assert.Contains(
+            "sanitization work exceeded the limit",
+            formatted,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task LogWorkerEvent_DoesNotSanitizeOnCallingThread()
+    {
+        string value = string.Concat(
+            Enumerable.Repeat(
+                "key='",
+                6_000));
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Error);
+        log.Message = value;
+        log.Exception.Message = value;
+        log.Exception.StackTrace = value;
+
+        long started = Stopwatch.GetTimestamp();
+        generator.LogWorkerEvent(log);
+        TimeSpan elapsed = Stopwatch.GetElapsedTime(started);
+
+        Assert.True(elapsed < TimeSpan.FromSeconds(1), $"Worker logging took {elapsed}.");
+        await generator.CompleteAsync();
+        Assert.Contains(
+            "sanitization work exceeded the limit",
+            output.ToString(),
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -137,6 +224,21 @@ public class WorkerSystemLoggingTests
         Assert.Contains(Timestamp.UtcDateTime.ToString("O"), formatted, StringComparison.Ordinal);
         Assert.True(
             Encoding.UTF8.GetByteCount(formatted) <= WorkerPodEventGenerator.MaximumRecordBytes);
+    }
+
+    [Fact]
+    public void Format_UsesHostStringNormalization()
+    {
+        using WorkerPodEventGenerator generator = CreateEventGenerator();
+
+        string formatted = generator.Format(
+            generator.CreateProxyRecord(
+                LogLevel.Warning,
+                "TestEvent",
+                "first \"value\"\r\nsecond value",
+                Timestamp));
+
+        Assert.Contains("\"first 'value' second value\"", formatted, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -168,7 +270,10 @@ public class WorkerSystemLoggingTests
             LogLevel.Information,
             "WorkerProxyStarted",
             "WorkerProxy started.");
-        eventGenerator.LogWorkerEvent(CreateWorkerLog(RpcLog.Types.Level.Warning));
+        RpcLog workerLog = CreateWorkerLog(RpcLog.Types.Level.Warning);
+        workerLog.EventId = "WorkerFailure";
+        workerLog.InvocationId = "invocation-id";
+        eventGenerator.LogWorkerEvent(workerLog);
         await eventGenerator.CompleteAsync();
 
         string[] lines = output.ToString().Split(
@@ -184,115 +289,13 @@ public class WorkerSystemLoggingTests
         Assert.Contains(lines, line => line.Contains("WorkerProxyStarted", StringComparison.Ordinal));
         Assert.Contains(lines, line => line.Contains("Worker.Proxy", StringComparison.Ordinal));
         Assert.Contains(lines, line => line.Contains("Worker.LanguageWorker", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("WorkerFailure", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("invocation-id", StringComparison.Ordinal));
         Assert.Contains(lines, line => line.Contains("worker-system-message", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task FrameworkLogs_SanitizeMessagesAndExcludeRawExceptionDetails()
-    {
-        const string secret = "framework-secret-value";
-        const string email = "customer@contoso.com";
-        StringWriter output = new();
-        using WorkerPodEventGenerator eventGenerator = new(output, TimeProvider.System);
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
-        ILogger logger = provider.CreateLogger("Grpc.AspNetCore.Server.ServerCallHandler");
-        InvalidOperationException exception =
-            new($"AccountKey={secret}<end> exception for {email}");
-
-        logger.LogWarning(
-            new EventId(11, "GrpcWarning"),
-            exception,
-            "Framework request failed for {Email} with AccountKey={AccountKey}<end>.",
-            email,
-            secret);
-        await eventGenerator.CompleteAsync();
-
-        string formatted = output.ToString();
-        Assert.DoesNotContain(secret, formatted, StringComparison.Ordinal);
-        Assert.DoesNotContain(email, formatted, StringComparison.Ordinal);
-        Assert.Contains(Sanitizer.SecretReplacement, formatted, StringComparison.Ordinal);
-        Assert.Contains(Sanitizer.EmailReplacement, formatted, StringComparison.Ordinal);
-        Assert.Contains(typeof(InvalidOperationException).FullName!, formatted, StringComparison.Ordinal);
-        Assert.DoesNotContain(exception.Message, formatted, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Writer_FullQueue_DropsWithoutBlockingCaller()
-    {
-        BlockingTextWriter output = new();
-        using WorkerPodEventGenerator writer = new(output, TimeProvider.System);
-        WorkerPodEventGenerator.WorkerSystemLogRecord record = writer.CreateProxyRecord(
-            LogLevel.Information,
-            "TestEvent",
-            "test",
-            Timestamp);
-
-        Assert.True(writer.TryEnqueue(record));
-        await output.WriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        for (int i = 0; i < WorkerPodEventGenerator.QueueCapacity; i++)
-        {
-            Assert.True(writer.TryEnqueue(record));
-        }
-
-        Assert.False(writer.TryEnqueue(record));
-        Assert.Equal(1, writer.TotalDroppedRecords);
-
-        output.Release();
-        await writer.CompleteAsync();
-
-        Assert.Contains("WorkerSystemLogsDropped", output.ToString(), StringComparison.Ordinal);
-        Assert.Contains("dropped 1 system log records", output.ToString(), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Writer_OutputFailure_DropsQueuedRecordsAndRejectsNewRecords()
-    {
-        FailingTextWriter output = new();
-        using WorkerPodEventGenerator writer = new(output, TimeProvider.System);
-        WorkerPodEventGenerator.WorkerSystemLogRecord record = writer.CreateProxyRecord(
-            LogLevel.Information,
-            "TestEvent",
-            "test",
-            Timestamp);
-
-        Assert.True(writer.TryEnqueue(record));
-        await output.WriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(writer.TryEnqueue(record));
-        Assert.True(writer.TryEnqueue(record));
-
-        output.Release();
-        await writer.CompleteAsync().WaitAsync(TimeSpan.FromSeconds(5));
-
-        Assert.Equal(3, writer.TotalDroppedRecords);
-        Assert.False(writer.TryEnqueue(record));
-        Assert.Equal(4, writer.TotalDroppedRecords);
-    }
-
-    [Fact]
-    public async Task Writer_BatchedOutputFailure_CountsEveryDequeuedRecord()
-    {
-        FailingBatchTextWriter output = new();
-        using WorkerPodEventGenerator writer = new(output, TimeProvider.System);
-        WorkerPodEventGenerator.WorkerSystemLogRecord record = writer.CreateProxyRecord(
-            LogLevel.Information,
-            "TestEvent",
-            "test",
-            Timestamp);
-
-        Assert.True(writer.TryEnqueue(record));
-        await output.WriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(writer.TryEnqueue(record));
-        Assert.True(writer.TryEnqueue(record));
-        Assert.True(writer.TryEnqueue(record));
-
-        output.Release();
-        await writer.CompleteAsync().WaitAsync(TimeSpan.FromSeconds(5));
-
-        Assert.Equal(3, writer.TotalDroppedRecords);
-    }
-
-    [Fact]
-    public void LoggerProvider_ConsumesReadinessLogWithoutDestinationOrExceptionDetails()
+    public void LoggerProvider_PassesSafeReadinessLogWithoutExceptionDetails()
     {
         const string sentinel = "customer-secret-sentinel";
         CapturingEventGenerator eventGenerator = new();
@@ -302,10 +305,10 @@ public class WorkerSystemLoggingTests
         SocketException exception = new((int)SocketError.ConnectionRefused);
 
         logger.LogWarning(
-            new EventId(2, "DestinationNotReady"),
+            new EventId(2, "WorkerHttpReadinessFailed"),
             exception,
-            "Worker HTTP destination {Destination} was not ready after {ElapsedMilliseconds} ms and {Attempts} attempts.",
-            new Uri($"http://{sentinel}:8080"),
+            "Worker HTTP readiness completed with {Result} after {ElapsedMilliseconds} ms and {Attempts} attempts.",
+            WorkerEndpointReadinessResult.ConnectionRefused,
             100,
             4);
 
@@ -313,7 +316,7 @@ public class WorkerSystemLoggingTests
         Assert.Equal(LogLevel.Warning, record.Level);
         Assert.Equal("WorkerHttpReadinessFailed", record.EventName);
         Assert.Equal(
-            "Worker HTTP readiness completed with ConnectionRefused after 4 attempts.",
+            "Worker HTTP readiness completed with ConnectionRefused after 100 ms and 4 attempts.",
             record.Message);
         Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(exception.Message, record.Message, StringComparison.Ordinal);
@@ -333,61 +336,29 @@ public class WorkerSystemLoggingTests
             WorkerAssignmentState.Failed);
 
         CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords);
-        Assert.Equal("WorkerFunctionGroupNotAdvertised", record.EventName);
+        Assert.Equal("FunctionGroupNotAdvertised", record.EventName);
         Assert.Equal(
-            "FunctionRpc session 42 did not advertise FunctionGroupName because the worker assignment state was Failed.",
+            "FunctionRpc relay session 42 omitted FunctionGroupName for assignment state Failed.",
             record.Message);
     }
 
     [Fact]
-    public void LoggerProvider_ConsumesAssignmentAndStartStreamRejectionLogs()
+    public void LoggerProvider_PassesWorkerOwnedLogWithoutTranslation()
     {
         CapturingEventGenerator eventGenerator = new();
         using WorkerSystemLoggerProvider provider = new(eventGenerator);
-        ILogger aspNetCoreLogger =
-            provider.CreateLogger("Microsoft.AspNetCore.Hosting.Diagnostics");
         ILogger relayLogger = provider.CreateLogger(typeof(FunctionRpcRelay).FullName!);
 
-        aspNetCoreLogger.LogInformation(
-            new EventId(2, "RequestFinished"),
-            "Request finished {Method} {Path} - {StatusCode}",
-            "PUT",
-            "/admin/worker/assignment",
-            StatusCodes.Status409Conflict);
-        aspNetCoreLogger.LogInformation(
-            new EventId(2, "RequestFinished"),
-            "Request finished {Method} {Path} - {StatusCode}",
-            "GET",
-            "/admin/worker/assignment",
-            StatusCodes.Status409Conflict);
-        aspNetCoreLogger.LogInformation(
-            new EventId(2, "RequestFinished"),
-            "Request finished {Method} {Path} - {StatusCode}",
-            "PUT",
-            "/admin/worker/assignment",
-            StatusCodes.Status404NotFound);
         relayLogger.LogWarning(
             new EventId(7, "WorkerStartStreamRejected"),
             "FunctionRpc relay session {SessionId} rejected worker StartStream because InvalidMessage.",
             42L);
 
-        CapturedProxyLog[] records = eventGenerator.ProxyRecords.ToArray();
-        Assert.Collection(
-            records,
-            record =>
-            {
-                Assert.Equal("WorkerAssignmentRequestRejected", record.EventName);
-                Assert.Equal(
-                    "Worker assignment request completed with HTTP status 409.",
-                    record.Message);
-            },
-            record =>
-            {
-                Assert.Equal("WorkerStartStreamRejected", record.EventName);
-                Assert.Equal(
-                    "FunctionRpc session 42 rejected worker StartStream because InvalidMessage.",
-                    record.Message);
-            });
+        CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords);
+        Assert.Equal("WorkerStartStreamRejected", record.EventName);
+        Assert.Equal(
+            "FunctionRpc relay session 42 rejected worker StartStream because InvalidMessage.",
+            record.Message);
     }
 
     [Fact]
@@ -441,16 +412,15 @@ public class WorkerSystemLoggingTests
             "Worker destination was ready after {Attempts} attempts.",
             1);
         readinessLogger.LogWarning(
-            new EventId(2),
-            "Worker destination was not ready after {Attempts} attempts.",
-            2);
+            new EventId(2, "WorkerHttpReadinessFailed"),
+            "Worker HTTP readiness completed with Timeout after 100 ms and 2 attempts.");
         relayLogger.LogInformation(
             new EventId(4),
             "FunctionRpc session {SessionId} accepted the {Side} attachment.",
             42L,
             FunctionRpcRelaySide.Worker);
         relayLogger.LogWarning(
-            new EventId(5),
+            new EventId(5, "AttachmentRejected"),
             "FunctionRpc session {SessionId} rejected the {Side} attachment because {Reason}.",
             42L,
             FunctionRpcRelaySide.Worker,
@@ -465,18 +435,14 @@ public class WorkerSystemLoggingTests
             record => record.Message.Contains("Ignored", StringComparison.Ordinal));
         Assert.Contains(
             eventGenerator.ProxyRecords,
-            record => record.EventName == "WorkerHttpReadinessFailed");
+            record => record.EventName == "WorkerHttpReadinessFailed"
+                && record.Message == "Worker HTTP readiness completed with Timeout after 100 ms and 2 attempts.");
         Assert.Contains(
             eventGenerator.ProxyRecords,
-            record => record.EventName == "RelayAttachmentRejected");
-        Assert.Contains(
+            record => record.EventName == "AttachmentRejected");
+        Assert.DoesNotContain(
             eventGenerator.ProxyRecords,
-            record => record.EventName == "GrpcFrameworkLog"
-                && record.Message == "Grpc.AspNetCore.Server.ServerCallHandler [11:GrpcWarning] Captured gRPC warning.");
-        Assert.Contains(
-            eventGenerator.ProxyRecords,
-            record => record.EventName == "HttpFrameworkLog"
-                && record.Message == "Yarp.ReverseProxy.Forwarder.HttpForwarder [21:HttpError] Captured HTTP error.");
+            record => record.EventName is "GrpcWarning" or "HttpError");
     }
 
     [Fact]
@@ -544,77 +510,4 @@ public class WorkerSystemLoggingTests
     }
 
     private sealed record CapturedProxyLog(LogLevel Level, string EventName, string Message);
-
-    private sealed class BlockingTextWriter : StringWriter
-    {
-        private readonly TaskCompletionSource _release =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public TaskCompletionSource WriteStarted { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public override async Task WriteLineAsync(string? value)
-        {
-            WriteStarted.TrySetResult();
-            await _release.Task;
-            await base.WriteLineAsync(value);
-        }
-
-        public override async Task WriteAsync(string? value)
-        {
-            WriteStarted.TrySetResult();
-            await _release.Task;
-            await base.WriteAsync(value);
-        }
-
-        public void Release() => _release.TrySetResult();
-    }
-
-    private sealed class FailingTextWriter : StringWriter
-    {
-        private readonly TaskCompletionSource _release =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public TaskCompletionSource WriteStarted { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public override async Task WriteLineAsync(string? value)
-        {
-            WriteStarted.TrySetResult();
-            await _release.Task;
-            throw new IOException("Console output failed.");
-        }
-
-        public override async Task WriteAsync(string? value)
-        {
-            WriteStarted.TrySetResult();
-            await _release.Task;
-            throw new IOException("Console output failed.");
-        }
-
-        public void Release() => _release.TrySetResult();
-    }
-
-    private sealed class FailingBatchTextWriter : StringWriter
-    {
-        private readonly TaskCompletionSource _release =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public TaskCompletionSource WriteStarted { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public override async Task WriteLineAsync(string? value)
-        {
-            WriteStarted.TrySetResult();
-            await _release.Task;
-            await base.WriteLineAsync(value);
-        }
-
-        public override Task WriteAsync(string? value)
-        {
-            throw new IOException("Batched console output failed.");
-        }
-
-        public void Release() => _release.TrySetResult();
-    }
 }

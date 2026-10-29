@@ -270,7 +270,11 @@ internal sealed partial class FunctionRpcRelay
                 }
             }
 
-            if (message.RpcLog is { LogCategory: RpcLog.Types.RpcLogCategory.System } workerLog)
+            if (message.RpcLog is { LogCategory: RpcLog.Types.RpcLogCategory.System } workerLog
+                && workerLog.Level is RpcLog.Types.Level.Information
+                    or RpcLog.Types.Level.Warning
+                    or RpcLog.Types.Level.Error
+                    or RpcLog.Types.Level.Critical)
             {
                 systemEventGenerator?.LogWorkerEvent(workerLog);
             }

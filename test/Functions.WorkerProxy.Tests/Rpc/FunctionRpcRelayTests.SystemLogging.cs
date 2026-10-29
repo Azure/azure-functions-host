@@ -4,9 +4,14 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,15 +27,16 @@ public partial class FunctionRpcRelayTests
     private const string WorkerOpenTelemetryEnabled = nameof(WorkerOpenTelemetryEnabled);
 
     [Theory]
-    [InlineData(RpcLog.Types.Level.Trace)]
-    [InlineData(RpcLog.Types.Level.Debug)]
-    [InlineData(RpcLog.Types.Level.Information)]
-    [InlineData(RpcLog.Types.Level.Warning)]
-    [InlineData(RpcLog.Types.Level.Error)]
-    [InlineData(RpcLog.Types.Level.Critical)]
-    [InlineData(RpcLog.Types.Level.None)]
-    public async Task Relay_SystemLogs_AreCopiedToConsolePipelineAndForwarded(
-        RpcLog.Types.Level level)
+    [InlineData(RpcLog.Types.Level.Trace, false)]
+    [InlineData(RpcLog.Types.Level.Debug, false)]
+    [InlineData(RpcLog.Types.Level.Information, true)]
+    [InlineData(RpcLog.Types.Level.Warning, true)]
+    [InlineData(RpcLog.Types.Level.Error, true)]
+    [InlineData(RpcLog.Types.Level.Critical, true)]
+    [InlineData(RpcLog.Types.Level.None, false)]
+    public async Task Relay_SystemLogs_AreFilteredAndForwarded(
+        RpcLog.Types.Level level,
+        bool expectedInConsolePipeline)
     {
         CapturingEventGenerator eventGenerator = new();
         await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(eventGenerator);
@@ -45,7 +51,72 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(log, timeout.Token);
 
         Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
-        Assert.Equal(log.RpcLog, Assert.Single(eventGenerator.WorkerLogs));
+        if (expectedInConsolePipeline)
+        {
+            Assert.Equal(log.RpcLog, Assert.Single(eventGenerator.WorkerLogs));
+        }
+        else
+        {
+            Assert.Empty(eventGenerator.WorkerLogs);
+        }
+    }
+
+    [Fact]
+    public async Task Relay_AssignmentLoggingConfiguration_DoesNotChangeFixedSystemLogFilter()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"worker-proxy-log-filter-e2e-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        const string hostJson =
+            """
+            {
+              "version": "2.0",
+              "logging": {
+                "logLevel": {
+                  "Worker.LanguageWorkerChannel": "Debug"
+                }
+              }
+            }
+            """;
+        await File.WriteAllTextAsync(Path.Combine(directory, "host.json"), hostJson);
+
+        try
+        {
+            CapturingEventGenerator eventGenerator = new();
+            await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(eventGenerator);
+            using CancellationTokenSource timeout = new(TestTimeout);
+            await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+            await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+            await worker.WriteAsync(CreateStartStream("telemetry-worker"), timeout.Token);
+            Assert.NotNull(await runtime.ReadAsync(timeout.Token));
+
+            WorkerAssignRequest assignment = new()
+            {
+                StartupMode = "Preconfigured",
+                FunctionAppName = "test-app",
+                FunctionGroupName = "test-group",
+                IsAlwaysReady = false,
+                Environment = new()
+                {
+                    ["AzureFunctionsJobHost__logging__logLevel__Worker"] = "Debug"
+                },
+                FunctionAppDirectory = directory
+            };
+            using HttpClient managementClient = factory.CreateWorkerProxyClient();
+            using HttpResponseMessage assignmentResponse =
+                await managementClient.PutAsJsonAsync("/admin/worker/assignment", assignment, timeout.Token);
+            Assert.Equal(HttpStatusCode.Created, assignmentResponse.StatusCode);
+
+            StreamingMessage debug =
+                CreateWorkerLog(RpcLog.Types.RpcLogCategory.System, "worker-debug-log", RpcLog.Types.Level.Debug);
+            await worker.WriteAsync(debug, timeout.Token);
+
+            Assert.Equal(debug, await runtime.ReadAsync(timeout.Token));
+            Assert.Empty(eventGenerator.WorkerLogs);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Theory]

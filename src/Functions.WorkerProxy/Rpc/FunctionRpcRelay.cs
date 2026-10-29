@@ -146,7 +146,11 @@ internal sealed partial class FunctionRpcRelay(
                 }
 
                 session = _currentSession ??= new FunctionRpcRelaySession(
-                    Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, _systemEventGenerator);
+                    Interlocked.Increment(ref _nextSessionId),
+                    logger,
+                    _capabilityFinalizer,
+                    _stateManager,
+                    _systemEventGenerator);
 
                 FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
                 if (attachResult != FunctionRpcRelayAttachResult.Attached)
