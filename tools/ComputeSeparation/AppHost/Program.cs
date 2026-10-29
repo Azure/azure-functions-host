@@ -35,7 +35,9 @@ string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, 
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
 EndpointReference? platformEndpoint = null;
+EndpointReference workerManagementEndpoint;
 ReferenceExpression workerGrpcEndpoint;
+ReferenceExpression workerHttpEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -56,13 +58,14 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
-    builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
+    IResourceBuilder<ExecutableResource> workerPod = builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
             "compose", "--file", topology.WorkerPod.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:ManagementPort"),
             name: ManagementEndpointName, env: "WORKER_PROXY_MANAGEMENT_PORT")
         .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
         .WithEnvironment("WORKER_PROXY_ALIAS", topology.ProxyAlias)
+        .WithEnvironment("WORKER_POD_NAME", podName)
         .WithEnvironment("WORKER_ID", workerId)
         .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
@@ -74,7 +77,9 @@ if (topology is not null)
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
+    workerManagementEndpoint = workerPod.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
+    workerHttpEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:28080");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
@@ -122,7 +127,9 @@ else
     platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
+    workerManagementEndpoint = proxyProject.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
+    workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
     dependencies = ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
 
     IResourceBuilder<ProjectResource> AddProjectWorker(bool secondWorker)
@@ -154,7 +161,6 @@ else
                 proxy.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
             context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
                 proxy.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxy.GetEndpoint(HttpEndpointName);
             context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
         });
 
@@ -170,6 +176,7 @@ else
         fakePlatform
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__Name", proxyName)
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__ManagementUri", proxy.GetEndpoint(ManagementEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__HttpProxyEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
 
@@ -183,6 +190,8 @@ if (autoLink)
         hostEndpoint,
         workerGrpcEndpoint,
         platformEndpoint,
+        workerManagementEndpoint,
+        workerHttpEndpoint,
         workerId,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),

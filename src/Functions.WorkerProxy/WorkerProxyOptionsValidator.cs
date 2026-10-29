@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using Azure.Functions.WorkerProxy.Http;
 using Microsoft.Extensions.Options;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Validates WorkerProxy pod identity, listener ports, and the advertised HTTP origin.
+/// Validates WorkerProxy pod identity and listener ports.
 /// </summary>
 internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxyOptions>
 {
@@ -36,20 +37,35 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         AddDistinctPort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.HttpPort, nameof(options.HttpPort), configuredPorts, failures);
 
-        if (!string.IsNullOrWhiteSpace(options.HttpProxyEndpoint))
+        return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    internal static Uri? ResolveHttpProxyOrigin(string? value, string scheme = "http")
+    {
+        if (string.IsNullOrWhiteSpace(value))
         {
-            Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, options.HttpProxyEndpoint);
-            if (endpoint is null
-                || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
-                || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
-                    && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
-            {
-                failures.Add($"{nameof(options.HttpProxyEndpoint)} must be an absolute HTTP or HTTPS origin with a concrete host, "
-                    + "a nonzero port, and no credentials, path prefix, query, or fragment.");
-            }
+            return null;
         }
 
-        return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+        int portSeparator = value.LastIndexOf(':');
+        if (portSeparator <= 0
+            || !int.TryParse(value.AsSpan(portSeparator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
+            || port is < 1 or > MaximumPort)
+        {
+            return null;
+        }
+
+        Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, $"{scheme}://{value}");
+        if (endpoint is null
+            || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
+            || endpoint.HostNameType is UriHostNameType.Unknown
+            || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
+                && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
+        {
+            return null;
+        }
+
+        return endpoint;
     }
 
     private static void AddDistinctPort(int port, string propertyName, HashSet<int> configuredPorts, List<string> failures)

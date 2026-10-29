@@ -49,12 +49,22 @@ internal static class WorkerAssignRequestValidator
 
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
 
+        if (string.IsNullOrWhiteSpace(request.HttpProxyEndpoint))
+        {
+            errors.Add(new(WorkerApiErrorCodes.Required, "httpProxyEndpoint"));
+        }
+        else if (WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(request.HttpProxyEndpoint) is null)
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
+        }
+
         if (errors.Count > 0
             || startupMode is not { } selectedStartupMode
             || request.FunctionAppName is not { } functionAppName
             || request.FunctionGroupName is not { } functionGroupName
             || request.FunctionAppDirectory is not { } functionAppDirectory
-            || request.IsAlwaysReady is not { } isAlwaysReady)
+            || request.IsAlwaysReady is not { } isAlwaysReady
+            || request.HttpProxyEndpoint is not { } httpProxyEndpoint)
         {
             return false;
         }
@@ -65,7 +75,8 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory);
+            functionAppDirectory,
+            httpProxyEndpoint);
 
         return true;
     }

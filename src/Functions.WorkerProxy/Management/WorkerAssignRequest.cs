@@ -10,7 +10,7 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 /// <remarks>
 /// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// for SpecializationRequired. Environment and directory are currently retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -34,4 +34,7 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
+
+    // Platform-mapped host:port, without a scheme.
+    public string? HttpProxyEndpoint { get; init; }
 }

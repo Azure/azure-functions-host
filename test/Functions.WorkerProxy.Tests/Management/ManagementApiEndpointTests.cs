@@ -26,10 +26,48 @@ public class ManagementApiEndpointTests
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot","httpProxyEndpoint":"mapped.example:49187"}
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
+
+    [Theory]
+    [InlineData("mapped.example:49187", "mapped.example:49188")]
+    [InlineData("100.86.0.4:49123", "100.86.0.4:49124")]
+    [InlineData("mapped.example:49187", "MAPPED.example:49187")]
+    [InlineData("[::1]:49187", "[::1]:49188")]
+    public async Task HttpProxyEndpointParticipatesInAssignmentRetryIdentity(string endpoint, string changedEndpoint)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["httpProxyEndpoint"] = endpoint;
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(response, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        WorkerAssignment accepted = Assert.IsType<WorkerAssignment>(manager.GetAssignment(1));
+        Assert.Equal(endpoint, accepted.HttpProxyEndpoint);
+        Assert.Null(manager.GetAssignment(2));
+
+        using StringContent retryContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage retry = await client.PutAsync(AssignPath, retryContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(retry, HttpStatusCode.NoContent, timeout.Token);
+
+        body["httpProxyEndpoint"] = changedEndpoint;
+        using StringContent conflictContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+        Assert.Same(accepted, manager.GetAssignment(1));
+
+        manager.OnSessionTerminated(1);
+        Assert.Null(manager.GetAssignment(1));
+    }
 
     [Fact]
     public async Task OmittedRevisionReturnsRevisionZeroImmediately()
@@ -127,6 +165,24 @@ public class ManagementApiEndpointTests
     [InlineData("environment", "{\"\":\"private-value\"}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":null}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":123}", null, "Preconfigured")]
+    [InlineData("httpProxyEndpoint", null, "Required")]
+    [InlineData("httpProxyEndpoint", "null", "Required")]
+    [InlineData("httpProxyEndpoint", "\"\"", "Required")]
+    [InlineData("httpProxyEndpoint", "\" \"", "Required")]
+    [InlineData("httpProxyEndpoint", "\"ftp://mapped.example:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:0\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:65536\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:1234/path\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"user@mapped.example:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:1234?query\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example:1234#fragment\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"0.0.0.0:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[::]:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"*:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"+:1234\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"http://mapped.example:49187\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"https://mapped.example:49187\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"mapped.example\"", "InvalidValue")]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
         string field, string? value, string? code, string startupMode = "SpecializationRequired")
     {
@@ -208,7 +264,8 @@ public class ManagementApiEndpointTests
             ("Required", "functionGroupName"),
             ("Required", "isAlwaysReady"),
             ("Required", "functionAppDirectory"),
-            (environmentError, "environment"));
+            (environmentError, "environment"),
+            ("Required", "httpProxyEndpoint"));
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain("PRIVATE_SETTING", json);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
