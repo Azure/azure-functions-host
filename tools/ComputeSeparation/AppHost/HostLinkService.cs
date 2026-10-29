@@ -19,9 +19,12 @@ internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
     ReferenceExpression proxyEndpoint,
     ReferenceExpression managementEndpoint,
+    ReferenceExpression httpEndpoint,
     EndpointReference? platformEndpoint,
     string workerId,
     string runtimeAccessKey,
+    string runtimeContainerKey,
+    string runtimePodName,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
@@ -35,6 +38,7 @@ internal sealed partial class HostLinkService(
         try
         {
             await Task.WhenAll(dependencies.Select(name => notifications.WaitForResourceHealthyAsync(name, startup.Token)));
+            await WaitForManagementAsync(startup.Token);
 
             string hostAddress = await hostEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The Host HTTP endpoint was not allocated.");
@@ -69,16 +73,22 @@ internal sealed partial class HostLinkService(
         string managementOrigin = await managementEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
         using HttpClient management = new() { BaseAddress = new Uri(managementOrigin), Timeout = Timeout.InfiniteTimeSpan };
-        await AssignWorkerAsync(() => management.PutAsJsonAsync("/admin/worker/assignment", new
+        management.DefaultRequestHeaders.Add("x-ms-site-token", ManagementToken.Create(runtimeAccessKey, workerId));
+        string httpOrigin = await httpEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy HTTPS endpoint was not allocated.");
+        using HttpResponseMessage assignment = await management.PutAsJsonAsync("/admin/worker/assignment", new
         {
             startupMode = "Preconfigured",
             functionAppName = "aspire-sample-app",
             functionGroupName = "http",
             isAlwaysReady = false,
             functionAppDirectory = string.Empty,
-            environment = new Dictionary<string, string>()
-        }, cancellationToken), cancellationToken);
+            environment = new Dictionary<string, string>(),
+            httpProxyEndpoint = new Uri(httpOrigin).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)
+        }, cancellationToken);
+        await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assignment, cancellationToken);
         using HttpClient client = new() { BaseAddress = new Uri(hostAddress), Timeout = Timeout.InfiniteTimeSpan };
+        client.DefaultRequestHeaders.Add("x-ms-site-token", ManagementToken.Create(runtimeContainerKey, runtimePodName));
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerPodName = workerId,
@@ -95,7 +105,8 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
-        await AssignWorkerAsync(() => client.PostAsync("/simulate/worker/assign", null, cancellationToken), cancellationToken);
+        using HttpResponseMessage assignment = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
+        await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assignment, cancellationToken);
 
         Log.WorkerAssigned(logger, workerId);
 
@@ -103,20 +114,29 @@ internal sealed partial class HostLinkService(
         await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }
 
-    private async Task AssignWorkerAsync(Func<Task<HttpResponseMessage>> send, CancellationToken cancellationToken)
+    private async Task WaitForManagementAsync(CancellationToken cancellationToken)
     {
-        // WorkerProxy answers 503 until the local worker has connected, which can trail the worker's start.
-        HttpResponseMessage assign = await send();
-        while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
+        string address = await managementEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
+        using HttpClient client = new() { BaseAddress = new Uri(address) };
+        while (true)
         {
-            assign.Dispose();
-            await Task.Delay(AssignRetryDelay, cancellationToken);
-            assign = await send();
-        }
+            cancellationToken.ThrowIfCancellationRequested();
+            using HttpRequestMessage request = new(HttpMethod.Post, "/admin/infra/instanceState");
+            request.Headers.Add("x-ms-site-token", ManagementToken.Create(runtimeAccessKey, workerId));
+            request.Headers.Add("x-ms-functions-pod-name", workerId);
+            try
+            {
+                using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
+                await EnsureSuccessAsync("The WorkerProxy rejected management polling for", response, cancellationToken);
 
-        using (assign)
-        {
-            await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
+                return;
+            }
+            catch (HttpRequestException exception) when (exception.StatusCode is null)
+            {
+                logger.LogDebug(exception, "Waiting for the local WorkerProxy management listener.");
+                await Task.Delay(AssignRetryDelay, cancellationToken);
+            }
         }
     }
 
@@ -125,7 +145,8 @@ internal sealed partial class HostLinkService(
         if (!response.IsSuccessStatusCode)
         {
             string body = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException($"{failure} worker {workerId}: {(int)response.StatusCode} {body}");
+            throw new HttpRequestException($"{failure} worker {workerId}: {(int)response.StatusCode} {body}",
+                inner: null, response.StatusCode);
         }
     }
 

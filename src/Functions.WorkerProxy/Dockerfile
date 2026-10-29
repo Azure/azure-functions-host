@@ -9,7 +9,7 @@ WORKDIR /app
 COPY Azure.Functions.WorkerProxy ./
 
 # Provision the serving PEM certificate/key before starting this executable (see README.md).
-# HTTP-capable workers require an actual HTTPS WORKERPROXY__HTTPPROXYENDPOINT.
+# HTTP-capable workers require an allocated HTTPS origin through assignment or trusted configuration.
 ENV WORKERPROXY__MANAGEMENTPORT=80 \
     WORKERPROXY__HTTPPORT=28080 \
     WORKERPROXY__RUNTIMEGRPCPORT=50053 \

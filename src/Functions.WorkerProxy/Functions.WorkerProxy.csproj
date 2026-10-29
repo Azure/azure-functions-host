@@ -29,6 +29,7 @@
     <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <Compile Include="..\Functions.Rpc.Client\Security\RuntimeWorkerAuthentication.cs" Link="Authentication\RuntimeWorkerAuthentication.cs" />
+    <Compile Include="..\Functions.Host\Authentication\ContainerManagementAuthenticationHandler.cs" Link="Authentication\ContainerManagementAuthenticationHandler.cs" />
   </ItemGroup>
 
   <ItemGroup>

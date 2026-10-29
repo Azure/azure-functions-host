@@ -45,6 +45,7 @@ public class WorkerLinkControllerTests
 
     [Theory]
     [InlineData("100.86.1.2:48800", "https://100.86.1.2:48800/")]
+    [InlineData("https://100.64.1.12:50053", "https://100.64.1.12:50053/")]
     [InlineData("worker-proxy:48800", "https://worker-proxy:48800/")]
     [InlineData("WORKER.EXAMPLE:443", "https://worker.example/")]
     [InlineData("[::1]:48800", "https://[::1]:48800/")]
@@ -437,7 +438,6 @@ public class WorkerLinkControllerTests
     [InlineData("::1:48800")]
     [InlineData("ftp://100.64.1.12:50053")]
     [InlineData("http://100.64.1.12:50053")]
-    [InlineData("https://100.64.1.12:50053")]
     [InlineData("http://user:password@100.64.1.12:50053")]
     [InlineData("https://100.64.1.12:50053/path")]
     [InlineData("https://100.64.1.12:50053?query=value")]

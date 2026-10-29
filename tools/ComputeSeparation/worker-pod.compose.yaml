@@ -4,7 +4,6 @@ services:
       context: ../..
       dockerfile: tools/ComputeSeparation/WorkerProxy/Dockerfile
     environment:
-      WORKERPROXY__HTTPPROXYENDPOINT: https://${WORKER_PROXY_ALIAS:?Aspire must supply a unique Proxy alias}:28080
       WEBSITE_POD_NAME: ${WORKER_POD_NAME:?Aspire must supply the pod identity}
       CONTAINER_ENCRYPTION_KEY: ${WORKER_RUNTIME_ACCESS_KEY:?Aspire must supply the WorkerProxy container key}
       WEBSITE_AUTH_ENCRYPTION_KEY: ${WORKER_APP_AUTH_KEY:?Aspire must supply the synthetic app key}

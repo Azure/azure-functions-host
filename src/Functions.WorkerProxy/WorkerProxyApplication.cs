@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
@@ -25,8 +26,6 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal static class WorkerProxyApplication
 {
-    private const string ReadyPath = "/admin/instance/ready";
-
     /// <summary>
     /// Creates the configured WorkerProxy application.
     /// </summary>
@@ -49,6 +48,7 @@ internal static class WorkerProxyApplication
         builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        ContainerManagementAuthenticationHandler.AddServices(builder.Services);
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
         builder.Services.AddSingleton<RuntimeRequestAuthenticator>();
@@ -80,9 +80,10 @@ internal static class WorkerProxyApplication
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
     {
         app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.UseEndpoints(static endpoints =>
         {
-            endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
             ManagementApiEndpoints.Map(endpoints);
         });
     }

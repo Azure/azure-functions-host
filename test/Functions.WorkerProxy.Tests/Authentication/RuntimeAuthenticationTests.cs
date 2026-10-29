@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
@@ -202,7 +203,10 @@ public partial class FunctionRpcRelayTests
         }
         Assert.Equal("customer-supplied-proof", reply.WorkerInitResponse.Capabilities[RuntimeWorkerAuthentication.AppProofCapability]);
         using HttpClient management = factory.CreateWorkerProxyClient();
-        string state = await management.GetStringAsync("/admin/worker/state", timeout.Token);
+        using StringContent stateBody = new("null", Encoding.UTF8, "application/json");
+        using HttpResponseMessage stateResponse = await management.PostAsync("/admin/infra/instanceState", stateBody, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+        string state = await stateResponse.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain(proof!, state, StringComparison.Ordinal);
         Assert.DoesNotContain(RuntimeAuthenticationTestData.EncodedAppKey, state, StringComparison.Ordinal);
     }

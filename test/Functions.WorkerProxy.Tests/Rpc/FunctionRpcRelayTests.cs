@@ -469,7 +469,7 @@ public partial class FunctionRpcRelayTests
 
     private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
     {
-        return new(Options.Create(options ?? new()), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options ?? new()), NullLogger<WorkerHttpCapabilityProvider>.Instance, CreatePodStateManager());
     }
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)

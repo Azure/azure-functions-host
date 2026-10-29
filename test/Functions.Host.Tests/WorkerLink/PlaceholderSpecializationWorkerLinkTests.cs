@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script;
@@ -37,6 +38,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using EnvironmentVariableScope placeholderMode = new(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
         using EnvironmentVariableScope containerReady = new(EnvironmentSettingNames.AzureWebsiteContainerReady, null);
+        using EnvironmentVariableScope containerKey = new("CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.RuntimeKey);
+        using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", ManagementTokenTestData.RuntimePodName);
+        using EnvironmentVariableScope appKey = new("WEBSITE_AUTH_ENCRYPTION_KEY", WorkerLinkTestData.RuntimeAccessKey);
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
@@ -99,6 +103,8 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                 $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}""",
                 Encoding.UTF8, "application/json"),
         };
+        request.Headers.Add(ManagementTokenTestData.HeaderName,
+            ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName));
 
         return await client.SendAsync(request, cancellationToken);
     }

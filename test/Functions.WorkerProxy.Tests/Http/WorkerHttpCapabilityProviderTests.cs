@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -126,8 +127,28 @@ public class WorkerHttpCapabilityProviderTests
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
     }
 
+    [Fact]
+    public void FinalizeCapabilities_UsesAcceptedMappedOriginForInitializationAndReloadInsteadOfStaticOrCustomerOrigin()
+    {
+        WorkerPodStateManager manager = new(
+            Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }), TimeProvider.System);
+        manager.Assign(new(WorkerStartupMode.Preconfigured, "test-app", "group", false, new Dictionary<string, string>(), string.Empty,
+            new Uri("https://127.0.0.1:48801/")));
+        WorkerHttpCapabilityProvider provider = new(
+            Options.Create(new WorkerProxyOptions { HttpProxyEndpoint = "https://old-config:28080/" }),
+            NullLogger<WorkerHttpCapabilityProvider>.Instance, manager);
+        Dictionary<string, string> first = new() { ["HttpUri"] = "http://localhost:1234/customer/" };
+        Dictionary<string, string> reload = new() { ["HttpUri"] = "http://localhost:5678/changed/" };
+
+        Assert.Equal(new Uri("http://localhost:1234/customer/"), provider.FinalizeCapabilities(first));
+        Assert.Equal(new Uri("http://localhost:5678/changed/"), provider.FinalizeCapabilities(reload));
+        Assert.Equal("https://127.0.0.1:48801/", first["HttpUri"]);
+        Assert.Equal("https://127.0.0.1:48801/", reload["HttpUri"]);
+    }
+
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance,
+            new WorkerPodStateManager(Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }), TimeProvider.System));
     }
 }

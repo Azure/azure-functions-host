@@ -59,6 +59,8 @@ public class WorkerLinkContractTests
         Assert.NotNull(httpPut);
         Assert.NotNull(route);
         Assert.Equal("admin/workers/{workerId}", route!.Template);
+        Assert.Equal("ContainerManagement",
+            link.GetCustomAttribute<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()?.Policy);
         ParameterInfo workerId = Assert.Single(link.GetParameters().Where(parameter =>
             string.Equals(parameter.Name, "workerId", StringComparison.Ordinal)));
         Assert.NotNull(workerId.GetCustomAttribute<Microsoft.AspNetCore.Mvc.FromRouteAttribute>());

@@ -10,16 +10,16 @@
 
 @platform = http://localhost:7060
 @host = http://127.0.0.1:7071
-@workerProxy = http://localhost:7081
 
 ### Expected flow, in order.
 
 ### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
-### 503 WorkerNotReady means the sample worker has not connected yet; retry.
+### Assignment does not require the customer worker to have started or connected.
 POST {{platform}}/simulate/worker/assign
 
-### Optional: the WorkerProxy pod state is now ReadyForRequest.
-GET {{workerProxy}}/admin/worker/state
+### Optional: the fake platform authenticates a POST state poll. Before assignment expect 204; afterward a flat
+### Starting/Unlinked snapshot does not claim that Host accepted Link or that platform serving convergence completed.
+POST {{platform}}/simulate/worker/state
 
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
 ### repeated. The Host finishes specializing only after step 3 links the worker.

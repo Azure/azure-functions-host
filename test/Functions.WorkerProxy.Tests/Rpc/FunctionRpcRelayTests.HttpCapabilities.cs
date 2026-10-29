@@ -245,7 +245,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_BlockedCapabilityLogging_DoesNotBlockShutdown()
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
-        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
+        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger, CreatePodStateManager());
         await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
@@ -415,9 +415,19 @@ public partial class FunctionRpcRelayTests
     [InlineData(true, true)]
     public async Task Relay_ReloadNeverAdvertisesCustomerDestinationOrCustomerAuthenticationProof(bool replace, bool failed)
     {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        await using WorkerProxyWebApplicationFactory factory = new(
+            new Dictionary<string, string?> { ["WorkerProxy:HttpProxyEndpoint"] = null });
         using HttpClient http = factory.CreateHttpForwardingClient();
         using CancellationTokenSource timeout = new(TestTimeout);
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        string assignmentJson = $$"""
+            {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,
+             "environment":{},"functionAppDirectory":"",
+             "httpProxyEndpoint":"{{http.BaseAddress!.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}"}
+            """;
+        using StringContent assignmentContent = new(assignmentJson, Encoding.UTF8, "application/json");
+        using HttpResponseMessage assignment = await management.PutAsync("/admin/worker/assignment", assignmentContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);

@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -24,13 +25,14 @@ public class WorkerProxyJsonContextTests
             FunctionGroupName = "group",
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
-            Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
+            Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" },
+            HttpProxyEndpoint = "127.0.0.1:48801"
         };
 
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment");
+        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment", "httpProxyEndpoint");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
@@ -42,6 +44,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.FunctionAppName, copy.FunctionAppName);
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
+        Assert.Equal(request.HttpProxyEndpoint, copy.HttpProxyEndpoint);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
     }
@@ -137,20 +140,31 @@ public class WorkerProxyJsonContextTests
     }
 
     [Fact]
-    public void InitialState_ContainsOnlyPublicShapeAndOmitsUnknownIdentity()
+    public void OriginState_UsesLiteralFlatDiscriminatorFirstShapeWithoutFabricatingPlatformMetadata()
     {
-        WorkerInstanceState response = WorkerInstanceState.FromState(WorkerPodState.CreateUnassigned("pod"));
+        DateTimeOffset startup = DateTimeOffset.Parse("2026-10-29T23:00:00+00:00", System.Globalization.CultureInfo.InvariantCulture);
+        WorkerPodState assigned = WorkerPodState.CreateUnassigned("private-pod") with
+        {
+            Revision = 1,
+            AssignmentState = WorkerAssignmentState.Ready,
+            FunctionAppName = "private-app",
+            FunctionGroupName = "http",
+            IsAlwaysReady = false
+        };
+        WorkerInstanceState response = WorkerInstanceState.FromState(assigned, startup);
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerInstanceState);
+        const string expected = """
+            {"functionsContainerType":"FunctionsSplitWorkerProxy","isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":"http","startupTime":"2026-10-29T23:00:00+00:00","revisionId":1,"status":"Starting","link":{"state":"Unlinked","runtime":null},"isUnhealthy":false}
+            """;
+        Assert.Equal(expected, json);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-
-        AssertProperties(root, "podName", "revisionId", "workerPodState", "functionsContainerType");
-        Assert.Equal("pod", root.GetProperty("podName").GetString());
-        Assert.Equal(0, root.GetProperty("revisionId").GetInt64());
-        Assert.Equal("FunctionsWorkerPod", root.GetProperty("functionsContainerType").GetString());
-        AssertProperties(root.GetProperty("workerPodState"), "podStatus");
-        Assert.Equal("None", root.GetProperty("workerPodState").GetProperty("podStatus").GetString());
+        Assert.Equal("functionsContainerType", root.EnumerateObject().First().Name);
+        Assert.False(root.TryGetProperty("self", out _));
+        Assert.False(root.TryGetProperty("configLastModifiedTime", out _));
+        Assert.False(root.TryGetProperty("contentLastModifiedTime", out _));
+        Assert.DoesNotContain("private-", json, StringComparison.Ordinal);
         Assert.Equal(response, JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerInstanceState));
     }
 
@@ -159,12 +173,12 @@ public class WorkerProxyJsonContextTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void AssignedState_ExposesOnlyPublicIdentityAndPreservesLongRevision(bool isAlwaysReady, bool specializationRequired)
+    public void AssignedState_UsesProducerRevisionRangeAndDoesNotClaimAcceptedLink(bool isAlwaysReady, bool specializationRequired)
     {
         WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
         WorkerPodState state = new(
             PodName: "pod",
-            Revision: long.MaxValue,
+            Revision: int.MaxValue,
             SessionId: 123,
             IsWorkerAttached: true,
             WorkerId: "private-worker",
@@ -173,23 +187,18 @@ public class WorkerProxyJsonContextTests
             FunctionAppName: "private-app",
             FunctionGroupName: "group",
             IsAlwaysReady: isAlwaysReady);
-        WorkerInstanceState response = WorkerInstanceState.FromState(state);
+        WorkerInstanceState response = WorkerInstanceState.FromState(state, DateTimeOffset.UtcNow);
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerInstanceState);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        JsonElement podState = root.GetProperty("workerPodState");
-
-        AssertProperties(root, "podName", "revisionId", "workerPodState", "functionsContainerType");
-        Assert.Equal("pod", root.GetProperty("podName").GetString());
-        Assert.Equal("FunctionsWorkerPod", root.GetProperty("functionsContainerType").GetString());
+        Assert.Equal("FunctionsSplitWorkerProxy", root.GetProperty("functionsContainerType").GetString());
         Assert.Equal(JsonValueKind.Number, root.GetProperty("revisionId").ValueKind);
-        Assert.Equal(long.MaxValue, root.GetProperty("revisionId").GetInt64());
-        AssertProperties(podState, "podStatus", "startupMode", "functionGroupName", "isAlwaysReady");
-        Assert.Equal(startupMode.ToString(), podState.GetProperty("startupMode").GetString());
-        Assert.Equal("ReadyForRequest", podState.GetProperty("podStatus").GetString());
-        Assert.Equal("group", podState.GetProperty("functionGroupName").GetString());
-        Assert.Equal(isAlwaysReady, podState.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(int.MaxValue, root.GetProperty("revisionId").GetInt32());
+        Assert.Equal("Starting", root.GetProperty("status").GetString());
+        Assert.Equal("Unlinked", root.GetProperty("link").GetProperty("state").GetString());
+        Assert.Equal("group", root.GetProperty("functionGroup").GetString());
+        Assert.Equal(isAlwaysReady, root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.DoesNotContain("private-worker", json);
         Assert.DoesNotContain("private-app", json);
         Assert.Equal(response, JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerInstanceState));
@@ -199,7 +208,8 @@ public class WorkerProxyJsonContextTests
     public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced()
     {
         WorkerPodState ready = new("pod", 3, 1, true, "worker", WorkerAssignmentState.Ready, WorkerStartupMode.Preconfigured, "app", "group", false);
-        WorkerInstanceState retained = WorkerInstanceState.FromState(ready);
+        DateTimeOffset startup = DateTimeOffset.UtcNow;
+        WorkerInstanceState retained = WorkerInstanceState.FromState(ready, startup);
         WorkerPodState terminated = ready with
         {
             Revision = 4,
@@ -209,18 +219,16 @@ public class WorkerProxyJsonContextTests
 
         string retainedJson = JsonSerializer.Serialize(retained, WorkerProxyJsonContext.Default.WorkerInstanceState);
         string terminatedJson = JsonSerializer.Serialize(
-            WorkerInstanceState.FromState(terminated), WorkerProxyJsonContext.Default.WorkerInstanceState);
+            WorkerInstanceState.FromState(terminated, startup), WorkerProxyJsonContext.Default.WorkerInstanceState);
         using JsonDocument retainedDocument = JsonDocument.Parse(retainedJson);
         using JsonDocument terminatedDocument = JsonDocument.Parse(terminatedJson);
 
         Assert.Equal(3, retainedDocument.RootElement.GetProperty("revisionId").GetInt64());
-        Assert.Equal("ReadyForRequest", retainedDocument.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
+        Assert.False(retainedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
         Assert.Equal(4, terminatedDocument.RootElement.GetProperty("revisionId").GetInt64());
-        JsonElement terminatedPodState = terminatedDocument.RootElement.GetProperty("workerPodState");
-        Assert.Equal("None", terminatedPodState.GetProperty("podStatus").GetString());
-        Assert.Equal("Preconfigured", terminatedPodState.GetProperty("startupMode").GetString());
-        Assert.Equal("group", terminatedPodState.GetProperty("functionGroupName").GetString());
-        Assert.False(terminatedPodState.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.True(terminatedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
+        Assert.Equal("Starting", terminatedDocument.RootElement.GetProperty("status").GetString());
+        Assert.Equal("group", terminatedDocument.RootElement.GetProperty("functionGroup").GetString());
     }
 
     [Theory]
@@ -228,13 +236,13 @@ public class WorkerProxyJsonContextTests
     [InlineData("The request is invalid.")]
     public void ErrorEnvelope_RoundTripsAndOmitsNullDetail(string? detail)
     {
-        WorkerApiErrorResponse response = new(new WorkerApiError("WorkerNotReady", detail));
+        WorkerApiErrorResponse response = new(new WorkerApiError("AssignmentConflict", detail));
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerApiErrorResponse);
         using JsonDocument document = JsonDocument.Parse(json);
         AssertProperties(document.RootElement, "error");
         JsonElement error = document.RootElement.GetProperty("error");
-        Assert.Equal("WorkerNotReady", error.GetProperty("code").GetString());
+        Assert.Equal("AssignmentConflict", error.GetProperty("code").GetString());
         if (detail is null)
         {
             AssertProperties(error, "code");
@@ -279,18 +287,16 @@ public class WorkerProxyJsonContextTests
     [Fact]
     public void Context_RecursivelyGeneratesMetadataForNestedResponseTypes()
     {
-        WorkerPodStateResponse state = new(WorkerPodStatus.ReadyForRequest, WorkerStartupMode.Preconfigured, "group", false);
-        WorkerApiError error = new("WorkerNotReady");
+        WorkerLinkState state = new("Unlinked");
+        WorkerApiError error = new("AssignmentConflict");
 
-        string stateJson = JsonSerializer.Serialize(state, WorkerProxyJsonContext.Default.WorkerPodStateResponse);
+        string stateJson = JsonSerializer.Serialize(state, WorkerProxyJsonContext.Default.WorkerLinkState);
         string errorJson = JsonSerializer.Serialize(error, WorkerProxyJsonContext.Default.WorkerApiError);
 
-        Assert.Equal(state, JsonSerializer.Deserialize(stateJson, WorkerProxyJsonContext.Default.WorkerPodStateResponse));
+        Assert.Equal(state, JsonSerializer.Deserialize(stateJson, WorkerProxyJsonContext.Default.WorkerLinkState));
         Assert.Equal(error, JsonSerializer.Deserialize(errorJson, WorkerProxyJsonContext.Default.WorkerApiError));
         using JsonDocument stateDocument = JsonDocument.Parse(stateJson);
-        Assert.Equal("ReadyForRequest", stateDocument.RootElement.GetProperty("podStatus").GetString());
-        Assert.Equal("Preconfigured", stateDocument.RootElement.GetProperty("startupMode").GetString());
-        Assert.False(stateDocument.RootElement.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal("""{"state":"Unlinked","runtime":null}""", stateJson);
     }
 
     private static void AssertProperties(JsonElement element, params string[] names) =>

@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Moq;
 using Xunit;
 
@@ -17,7 +18,7 @@ namespace Azure.Functions.Host.Tests;
 
 /// <summary>
 /// Exercises the legacy MVC/Newtonsoft worker-link contract against the public registry interface.
-/// Fixture authorization is permissive and does not test production authentication.
+/// The fixture uses the production container-management scheme and an independent synthetic platform token.
 /// </summary>
 public sealed class WorkerLinkEndpointIntegrationTests
 {
@@ -140,8 +141,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
     [Theory]
     [InlineData("worker-proxy")]
     [InlineData("http://worker-proxy:50053")]
-    [InlineData("https://worker-proxy:50053")]
-    public async Task Put_MissingPortOrCallerScheme_ReturnsEndpointErrorWithoutCallingRegistry(string endpoint)
+    public async Task Put_MissingPortOrPlaintextScheme_ReturnsEndpointErrorWithoutCallingRegistry(string endpoint)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
@@ -155,6 +155,56 @@ public sealed class WorkerLinkEndpointIntegrationTests
         Assert.Equal("InvalidEndpoint", error.GetProperty("code").GetString());
         Assert.Equal("workerGrpcEndpoint", error.GetProperty("target").GetString());
         _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("valid", true)]
+    [InlineData("missing", false)]
+    [InlineData("worker-key", false)]
+    [InlineData("app-key", false)]
+    [InlineData("wrong-pod", false)]
+    [InlineData("wrong-issuer", false)]
+    [InlineData("expired", false)]
+    [InlineData("future", false)]
+    [InlineData("duplicate", false)]
+    public async Task Put_AfterSpecialization_RequiresRuntimeOwnContainerToken(string scenario, bool accepted)
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        if (accepted)
+        {
+            SetupLink();
+        }
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object, authenticate: false);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        string token = scenario switch
+        {
+            "worker-key" => ManagementTokenTestData.Create(WorkerLinkTestData.RuntimeAccessKey, ManagementTokenTestData.RuntimePodName),
+            "app-key" => ManagementTokenTestData.Create(ManagementTokenTestData.AppKey, ManagementTokenTestData.RuntimePodName),
+            "wrong-pod" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, WorkerId),
+            "wrong-issuer" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName,
+                issuer: "https://appservice.core.azurewebsites.net"),
+            "expired" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName,
+                notBefore: now.AddMinutes(-20), expires: now.AddMinutes(-6)),
+            "future" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName,
+                notBefore: now.AddMinutes(6), expires: now.AddMinutes(10)),
+            _ => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName)
+        };
+        if (!string.Equals(scenario, "missing", StringComparison.Ordinal))
+        {
+            host.Client.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
+                string.Equals(scenario, "duplicate", StringComparison.Ordinal) ? [token, token] : [token]);
+        }
+        using HttpResponseMessage response = await host.PutAsync(LinkJson(), timeout.Token);
+
+        Assert.Equal(accepted ? HttpStatusCode.Created : HttpStatusCode.Unauthorized, response.StatusCode);
+        if (accepted)
+        {
+            VerifyLink();
+        }
+        else
+        {
+            _registry.VerifyNoOtherCalls();
+        }
     }
 
     [Fact]

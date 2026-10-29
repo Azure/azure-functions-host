@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Azure.Functions.ComputeSeparation;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").Get<FakePlatformOptions>()
@@ -29,11 +30,23 @@ RouteGroupBuilder simulate = app.MapGroup("/simulate");
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
-    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
-        .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty,
+        options.WorkerHttpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped));
+    using HttpRequestMessage request = new(HttpMethod.Put, "/admin/worker/assignment") { Content = JsonContent.Create(assignment) };
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(options.RuntimeAccessKey, options.WorkerId));
+    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient).SendAsync(request, cancellationToken);
 
     return await ToResultAsync("worker assign", response, cancellationToken);
+});
+
+simulate.MapPost("/worker/state", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+{
+    using HttpRequestMessage request = new(HttpMethod.Post, "/admin/infra/instanceState");
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(options.RuntimeAccessKey, options.WorkerId));
+    request.Headers.Add("x-ms-functions-pod-name", options.WorkerId);
+    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient).SendAsync(request, cancellationToken);
+
+    return await ToResultAsync("worker state", response, cancellationToken);
 });
 
 // Called by a developer in the `project-placeholder-manual` profile, before the link, to assign the placeholder Host to
@@ -67,8 +80,12 @@ simulate.MapPost("/worker/link", async (IHttpClientFactory clients, Cancellation
         workerGrpcEndpoint = options.WorkerGrpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
         runtimeAccessKey = options.RuntimeAccessKey
     };
-    using HttpResponseMessage response = await clients.CreateClient(HostClient)
-        .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}", link, cancellationToken);
+    using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}")
+    {
+        Content = JsonContent.Create(link)
+    };
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(options.RuntimeContainerKey, options.RuntimePodName));
+    using HttpResponseMessage response = await clients.CreateClient(HostClient).SendAsync(request, cancellationToken);
 
     return await ToResultAsync("worker link", response, cancellationToken);
 });
@@ -126,11 +143,17 @@ internal partial class Program
 
         public required Uri WorkerGrpcEndpoint { get; init; }
 
+        public required Uri WorkerHttpEndpoint { get; init; }
+
         public required string RuntimeAccessKey { get; init; }
 
         public required string AppAuthKey { get; init; }
 
         public required string WorkerId { get; init; }
+
+        public required string RuntimeContainerKey { get; init; }
+
+        public required string RuntimePodName { get; init; }
 
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
         public string? EncryptionKey { get; init; }
@@ -141,5 +164,5 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, string HttpProxyEndpoint);
 }

@@ -10,7 +10,6 @@ internal enum WorkerAssignmentResult
 {
     Created,
     AlreadyAssigned,
-    WorkerNotReady,
     AssignmentConflict,
     WorkerTerminated
 }

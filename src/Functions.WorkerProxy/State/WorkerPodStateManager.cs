@@ -42,8 +42,11 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
+        StartupTime = timeProvider.GetUtcNow();
         _state = WorkerPodState.CreateUnassigned(podName);
     }
+
+    public DateTimeOffset StartupTime { get; }
 
     /// <summary>
     /// Gets the current immutable state without incrementing its revision.
@@ -227,7 +230,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records or replays assignment atomically with worker readiness and terminal state.
+    /// Records or replays assignment independently of customer startup, atomically with terminal state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)
     {
@@ -248,12 +251,7 @@ internal sealed class WorkerPodStateManager
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            if (!_state.IsWorkerReady)
-            {
-                return WorkerAssignmentResult.WorkerNotReady;
-            }
-
-            // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
+            // Ready means configuration accepted, not that a customer worker has connected or initialized.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
@@ -261,10 +259,11 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                HttpProxyEndpoint = assignment.HttpProxyEndpoint
             };
 
-            // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
+            // Claim identity and publish configuration under the same lifecycle lock.
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");

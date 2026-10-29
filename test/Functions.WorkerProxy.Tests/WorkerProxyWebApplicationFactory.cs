@@ -71,9 +71,23 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         });
     }
 
-    public HttpClient CreateWorkerProxyClient()
+    public HttpClient CreateWorkerProxyClient(bool authenticate = true)
     {
-        return new HttpClient { BaseAddress = NormalizeAddress(GetEndpoints().GetManagementAddress()) };
+        HttpClient client = new() { BaseAddress = NormalizeAddress(GetEndpoints().GetManagementAddress()) };
+        if (authenticate)
+        {
+            string podName = _configurationValues["WEBSITE_POD_NAME"]
+                ?? _configurationValues.GetValueOrDefault("CONTAINER_NAME") ?? string.Empty;
+            string key = _configurationValues[RuntimeWorkerAuthentication.WorkerKeySetting]
+                ?? RuntimeAuthenticationTestData.EncodedWorkerKey;
+            if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(key, out _))
+            {
+                key = RuntimeAuthenticationTestData.EncodedWorkerKey;
+            }
+            client.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName, ManagementTokenTestData.Create(key, podName));
+        }
+
+        return client;
     }
 
     public Uri GetFunctionRpcAddress(FunctionRpcRelaySide side)

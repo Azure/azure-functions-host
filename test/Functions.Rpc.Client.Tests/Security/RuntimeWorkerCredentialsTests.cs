@@ -111,4 +111,46 @@ public class RuntimeWorkerCredentialsTests
         Assert.False(RuntimeWorkerAuthentication.ValidateToken(token, Convert.FromHexString(RuntimeWorkerTestData.AppKey),
             audience, RuntimeWorkerAuthentication.WorkerPurpose, now));
     }
+
+    [Fact]
+    public void AppAudience_CanonicalizesTrustedAppNamesWithoutRelaxingSignedClaimsOrWorkerIdentity()
+    {
+        byte[] key = Convert.FromHexString(RuntimeWorkerTestData.AppKey);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        string proof = RuntimeWorkerAuthentication.CreateAppProof(key, "test-app", "Worker-1", now);
+
+        Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(proof, key, "TeSt-App", "Worker-1", now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(proof, key, "different-app", "Worker-1", now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(proof, key, "test-app", "worker-1", now));
+        string noncanonicalClaim = RuntimeWorkerAuthentication.CreateToken(key, "azure-functions-app:TEST-APP",
+            RuntimeWorkerAuthentication.AppPurpose, now, "Worker-1");
+        Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(noncanonicalClaim, key, "TEST-APP", "Worker-1", now));
+        string wrongPurpose = RuntimeWorkerAuthentication.CreateToken(key, RuntimeWorkerAuthentication.AppAudience("TEST-APP"),
+            RuntimeWorkerAuthentication.WorkerPurpose, now, "Worker-1");
+        Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(wrongPurpose, key, "test-app", "Worker-1", now));
+    }
+
+    [Fact]
+    public void ManagementToken_UsesPlatformIssuerPodAudienceAndLifetimeWithoutDataProofClaims()
+    {
+        byte[] key = Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        JwtSecurityTokenHandler handler = new();
+        JwtSecurityToken jwt = new(
+            issuer: "https://legion.core.azurewebsites.net",
+            audience: "runtime-pod",
+            notBefore: now.AddMinutes(-1).UtcDateTime,
+            expires: now.AddMinutes(10).UtcDateTime,
+            signingCredentials: new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256));
+        string token = handler.WriteToken(jwt);
+
+        Assert.False(jwt.Payload.ContainsKey("iat"));
+        Assert.False(jwt.Payload.ContainsKey("purpose"));
+        Assert.Equal(TokenValidationParameters.DefaultClockSkew, RuntimeWorkerAuthentication.ManagementClockSkew);
+        Assert.True(RuntimeWorkerAuthentication.ValidateManagementToken(token, key, "runtime-pod", now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateManagementToken(token, key, "worker-pod", now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(token, key, "runtime-pod", "worker-pod", now));
+        Assert.False(RuntimeWorkerAuthentication.ValidateToken(token, key,
+            RuntimeWorkerAuthentication.WorkerAudience("runtime-pod"), RuntimeWorkerAuthentication.WorkerPurpose, now));
+    }
 }

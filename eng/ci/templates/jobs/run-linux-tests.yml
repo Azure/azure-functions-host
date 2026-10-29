@@ -76,23 +76,42 @@ jobs:
         -subj /CN=ci-worker-proxy -days 1 \
         -out "$certificateDirectory/server.crt" -keyout "$certificateDirectory/server.key"
       chmod 644 "$certificateDirectory/server.crt"
+      containerKey="$(openssl rand -hex 32)"
       echo "Starting WorkerProxy image: $(localImage)"
       containerId="$(docker run --detach \
         --publish 127.0.0.1::80 \
         --mount "type=bind,source=$certificateDirectory,target=/etc/ssl/workerproxy,readonly" \
         --env WEBSITE_POD_NAME=ci-worker-pod \
+        --env "CONTAINER_ENCRYPTION_KEY=$containerKey" \
         $(localImage))"
       echo "Started WorkerProxy container: $containerId"
 
       managementPort="$(docker port "$containerId" 80/tcp | head -n 1 | sed 's/.*://')"
       test -n "$managementPort"
       echo "WorkerProxy management port: $managementPort"
-      echo "Probing http://127.0.0.1:$managementPort/admin/instance/ready"
+      base64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+      header="$(printf '%s' '{"alg":"HS256","typ":"JWT"}' | base64url)"
+      now="$(date +%s)"
+      payload="$(printf '{"iss":"https://legion.core.azurewebsites.net","aud":"ci-worker-pod","nbf":%s,"exp":%s}' \
+        "$((now - 60))" "$((now + 600))" | base64url)"
+      signature="$(printf '%s' "$header.$payload" | openssl dgst -sha256 -mac HMAC \
+        -macopt "hexkey:$containerKey" -binary | base64url)"
+      siteToken="$header.$payload.$signature"
+      echo "Probing authenticated WorkerProxy instance-state availability"
       httpStatus="$(curl --fail --silent --show-error \
         --output /dev/null --write-out '%{http_code}' \
         --retry 60 --retry-delay 1 --retry-connrefused --retry-all-errors \
-        "http://127.0.0.1:$managementPort/admin/instance/ready")"
-      echo "WorkerProxy readiness probe succeeded with HTTP $httpStatus."
+        --request POST --header "x-ms-site-token: $siteToken" --header 'x-ms-functions-pod-name: ci-worker-pod' \
+        "http://127.0.0.1:$managementPort/admin/infra/instanceState")"
+      test "$httpStatus" = 204
+      unauthenticatedStatus="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+        --request POST --header 'x-ms-functions-pod-name: ci-worker-pod' \
+        "http://127.0.0.1:$managementPort/admin/infra/instanceState")"
+      test "$unauthenticatedStatus" = 401
+      removedReadyStatus="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+        --header "x-ms-site-token: $siteToken" "http://127.0.0.1:$managementPort/admin/instance/ready")"
+      test "$removedReadyStatus" = 404
+      echo "WorkerProxy authenticated state availability succeeded; anonymous polling and removed readiness route rejected."
       echo "WorkerProxy container logs:"
       docker logs "$containerId"
     displayName: Smoke WorkerProxy container

@@ -4,10 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
@@ -17,6 +14,7 @@ using Azure.Functions.Authentication;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -78,7 +76,7 @@ public sealed partial class WorkerLinkController : Controller
     /// </remarks>
     [HttpPut]
     [Route("admin/workers/{workerId}")]
-    // [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+    [Authorize(Policy = ContainerManagementAuthenticationHandler.SchemeName)]
     public async Task<IActionResult> LinkWorker([FromRoute] string workerId, [FromBody] WorkerLinkRequest? request,
         CancellationToken cancellationToken = default)
     {
@@ -115,7 +113,7 @@ public sealed partial class WorkerLinkController : Controller
             return errors;
         }
 
-        if (!TryParseEndpoint(request.WorkerGrpcEndpoint, out grpcEndpoint))
+        if (!RuntimeWorkerAuthentication.TryCreateHttpsOrigin(request.WorkerGrpcEndpoint, out grpcEndpoint))
         {
             errors.Add(string.IsNullOrWhiteSpace(request.WorkerGrpcEndpoint)
                 ? new(ErrorCodes.Required, "workerGrpcEndpoint")
@@ -192,30 +190,6 @@ public sealed partial class WorkerLinkController : Controller
         Log.LinkRejected(_logger, exception, workerId, code, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
-    }
-
-    // Legion supplies the mapped host:port; the runtime owns the gRPC transport scheme.
-    private static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
-    {
-        endpoint = null;
-        if (string.IsNullOrEmpty(value)
-            || value.Any(character => char.IsWhiteSpace(character) || char.IsControl(character))
-            || value.AsSpan().IndexOfAny("/\\@?#%".AsSpan()) >= 0)
-        {
-            return false;
-        }
-
-        int separator = value.LastIndexOf(':');
-        if (separator <= 0
-            || !int.TryParse(value.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)
-            || port is < 1 or > ushort.MaxValue)
-        {
-            return false;
-        }
-
-        return Uri.TryCreate($"{Uri.UriSchemeHttps}://{value}", UriKind.Absolute, out endpoint)
-            && !string.IsNullOrWhiteSpace(endpoint.Host)
-            && endpoint.Port == port;
     }
 
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.

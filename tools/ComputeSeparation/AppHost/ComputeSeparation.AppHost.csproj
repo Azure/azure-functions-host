@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\ManagementToken.cs" Link="ManagementToken.cs" />
     <ProjectReference Include="..\..\..\src\Functions.Host\Functions.Host.csproj" />
     <ProjectReference Include="..\..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" />
     <ProjectReference Include="..\FakePlatform\FakePlatform.csproj" />

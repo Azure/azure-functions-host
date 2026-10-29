@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
@@ -98,12 +99,13 @@ public class WorkerProxyApplicationTests
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
 
-        using HttpResponseMessage readyResponse = await client.GetAsync("/admin/instance/ready", timeout.Token);
-        Assert.Equal(HttpStatusCode.OK, readyResponse.StatusCode);
+        using StringContent initialState = new("null", Encoding.UTF8, "application/json");
+        using HttpResponseMessage readyResponse = await client.PostAsync("/admin/infra/instanceState", initialState, timeout.Token);
+        Assert.Equal(HttpStatusCode.NoContent, readyResponse.StatusCode);
         Assert.Empty(await readyResponse.Content.ReadAsByteArrayAsync(timeout.Token));
 
         using HttpResponseMessage unsupportedMethodResponse = await client.PostAsync("/admin/instance/ready", content: null, timeout.Token);
-        Assert.Equal(HttpStatusCode.MethodNotAllowed, unsupportedMethodResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unsupportedMethodResponse.StatusCode);
 
         using HttpResponseMessage unrelatedRouteResponse = await client.GetAsync("/admin/worker/unknown", timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, unrelatedRouteResponse.StatusCode);
