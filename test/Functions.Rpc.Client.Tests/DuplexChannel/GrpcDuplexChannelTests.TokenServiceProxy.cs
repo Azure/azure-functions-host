@@ -6,8 +6,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -17,13 +17,13 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public partial class GrpcDuplexChannelTests
 {
     [Fact]
-    public async Task HttpProxy_PeerReceivesTerminalBeforeWriteCompletes_NextRequestDoesNotFaultTransport()
+    public async Task TokenServiceProxy_PeerReceivesTerminalBeforeWriteCompletes_NextRequestDoesNotFaultTransport()
     {
         MockDuplexStream<StreamingMessage> streams = new(blockWrites: true);
-        HttpProxyOptions options = new() { Enabled = true, MaxPendingRequests = 2 };
+        TokenServiceProxyOptions options = new() { Enabled = true, MaxPendingRequests = 2 };
         TaskCompletionSource secondEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         int calls = 0;
-        Mock<IHttpProxyRequestHandler> handler = new();
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
@@ -34,8 +34,8 @@ public partial class GrpcDuplexChannelTests
 
                 return Task.FromResult(new HttpProxyResponse { StatusCode = 200 });
             });
-        await using HttpProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
-            TimeProvider.System, new HttpProxyAdmission(32, options.MaxHostBufferedBytes), NullLogger.Instance);
+        await using TokenServiceProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
+            TimeProvider.System, new TokenServiceProxyAdmission(32, options.MaxHostBufferedBytes), NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         StreamingMessage hello = await streams.WriteAttempts.ReadAsync(timeout.Token);
         string sessionId = hello.HttpProxy.SessionId;
@@ -46,7 +46,7 @@ public partial class GrpcDuplexChannelTests
             HttpProxy = new()
             {
                 SessionId = sessionId,
-                Ready = new() { Version = HttpProxyProtocol.Version, Limits = peerLimits }
+                Ready = new() { Version = TokenServiceProxyProtocol.Version, Limits = peerLimits }
             }
         });
         streams.AllowWrite();
@@ -83,15 +83,15 @@ public partial class GrpcDuplexChannelTests
     }
 
     [Fact]
-    public async Task HttpProxy_TransportByteBudgetRejectsExcessWork_AndRecoversAfterCompletion()
+    public async Task TokenServiceProxy_TransportByteBudgetRejectsExcessWork_AndRecoversAfterCompletion()
     {
         MockDuplexStream<StreamingMessage> streams = new();
-        HttpProxyOptions options = new() { Enabled = true };
+        TokenServiceProxyOptions options = new() { Enabled = true };
         options.MaxBufferedBytes = options.ReservationBytes;
-        HttpProxyAdmission global = new(32, options.MaxHostBufferedBytes);
+        TokenServiceProxyAdmission global = new(32, options.MaxHostBufferedBytes);
         TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Mock<IHttpProxyRequestHandler> handler = new();
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .Returns(async (HttpProxyRequest request, HttpProxyLimits _, CancellationToken token) =>
             {
@@ -103,10 +103,10 @@ public partial class GrpcDuplexChannelTests
 
                 return new HttpProxyResponse { StatusCode = 200 };
             });
-        await using HttpProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
+        await using TokenServiceProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
             TimeProvider.System, global, NullLogger.Instance);
         MockDuplexStream<StreamingMessage> otherStreams = new();
-        await using HttpProxyDuplexChannel other = new(otherStreams.Call.AsChannel(), handler.Object, options,
+        await using TokenServiceProxyDuplexChannel other = new(otherStreams.Call.AsChannel(), handler.Object, options,
             TimeProvider.System, global, NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         string sessionId = await InitializeHttpProxyAsync(streams, options, timeout.Token);
@@ -134,15 +134,15 @@ public partial class GrpcDuplexChannelTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HttpProxy_GlobalBudgetIsSharedAcrossTransports(bool limitBytes)
+    public async Task TokenServiceProxy_GlobalBudgetIsSharedAcrossTransports(bool limitBytes)
     {
-        HttpProxyOptions options = new() { Enabled = true };
-        HttpProxyAdmission global = new(limitBytes ? 32 : 1, limitBytes ? options.ReservationBytes : options.MaxHostBufferedBytes);
+        TokenServiceProxyOptions options = new() { Enabled = true };
+        TokenServiceProxyAdmission global = new(limitBytes ? 32 : 1, limitBytes ? options.ReservationBytes : options.MaxHostBufferedBytes);
         MockDuplexStream<StreamingMessage> firstStreams = new();
         MockDuplexStream<StreamingMessage> secondStreams = new();
         TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Mock<IHttpProxyRequestHandler> handler = new();
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .Returns(async (HttpProxyRequest _, HttpProxyLimits _, CancellationToken token) =>
             {
@@ -150,9 +150,9 @@ public partial class GrpcDuplexChannelTests
                 await release.Task.WaitAsync(token);
                 return new HttpProxyResponse { StatusCode = 200 };
             });
-        await using HttpProxyDuplexChannel first = new(firstStreams.Call.AsChannel(), handler.Object, options,
+        await using TokenServiceProxyDuplexChannel first = new(firstStreams.Call.AsChannel(), handler.Object, options,
             TimeProvider.System, global, NullLogger.Instance);
-        await using HttpProxyDuplexChannel second = new(secondStreams.Call.AsChannel(), handler.Object, options,
+        await using TokenServiceProxyDuplexChannel second = new(secondStreams.Call.AsChannel(), handler.Object, options,
             TimeProvider.System, global, NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         string firstSession = await InitializeHttpProxyAsync(firstStreams, options, timeout.Token);
@@ -175,20 +175,20 @@ public partial class GrpcDuplexChannelTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HttpProxy_TransportBudgetRemainsReservedUntilTerminalWriteCompletes(bool limitBytes)
+    public async Task TokenServiceProxy_TransportBudgetRemainsReservedUntilTerminalWriteCompletes(bool limitBytes)
     {
         MockDuplexStream<StreamingMessage> streams = new(blockWrites: true);
-        HttpProxyOptions options = new() { Enabled = true, MaxPendingRequests = limitBytes ? 32 : 1 };
+        TokenServiceProxyOptions options = new() { Enabled = true, MaxPendingRequests = limitBytes ? 32 : 1 };
         if (limitBytes)
         {
             options.MaxBufferedBytes = options.ReservationBytes;
         }
 
-        Mock<IHttpProxyRequestHandler> handler = new();
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .Returns(() => Task.FromResult(new HttpProxyResponse { StatusCode = 200 }));
-        await using HttpProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
-            TimeProvider.System, new HttpProxyAdmission(32, options.MaxHostBufferedBytes), NullLogger.Instance);
+        await using TokenServiceProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
+            TimeProvider.System, new TokenServiceProxyAdmission(32, options.MaxHostBufferedBytes), NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         string sessionId = await InitializeHttpProxyAsync(streams, options, timeout.Token);
         streams.AllowWrite();
@@ -213,14 +213,14 @@ public partial class GrpcDuplexChannelTests
     }
 
     [Fact]
-    public async Task HttpProxy_CancelledRequestReleasesBothBudgetsAfterItsTerminalOutcome()
+    public async Task TokenServiceProxy_CancelledRequestReleasesBothBudgetsAfterItsTerminalOutcome()
     {
         MockDuplexStream<StreamingMessage> streams = new();
-        HttpProxyOptions options = new() { Enabled = true };
+        TokenServiceProxyOptions options = new() { Enabled = true };
         options.MaxBufferedBytes = options.ReservationBytes;
-        HttpProxyAdmission global = new(1, options.ReservationBytes);
+        TokenServiceProxyAdmission global = new(1, options.ReservationBytes);
         TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Mock<IHttpProxyRequestHandler> handler = new();
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .Returns(async (HttpProxyRequest request, HttpProxyLimits _, CancellationToken token) =>
             {
@@ -232,7 +232,7 @@ public partial class GrpcDuplexChannelTests
 
                 return new HttpProxyResponse { StatusCode = 200 };
             });
-        await using HttpProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
+        await using TokenServiceProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
             TimeProvider.System, global, NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         string sessionId = await InitializeHttpProxyAsync(streams, options, timeout.Token);
@@ -255,17 +255,17 @@ public partial class GrpcDuplexChannelTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HttpProxy_QueuedTerminalResponsesHoldBudgetsUntilWriteOrDiscard(bool failWrite)
+    public async Task TokenServiceProxy_QueuedTerminalResponsesHoldBudgetsUntilWriteOrDiscard(bool failWrite)
     {
         MockDuplexStream<StreamingMessage> streams = new(blockWrites: true);
-        HttpProxyOptions options = new() { Enabled = true };
+        TokenServiceProxyOptions options = new() { Enabled = true };
         options.MaxBufferedBytes = 2 * options.ReservationBytes;
-        HttpProxyAdmission global = new(2, 2 * options.ReservationBytes);
+        TokenServiceProxyAdmission global = new(2, 2 * options.ReservationBytes);
         GrpcDuplexChannel<StreamingMessage> inner = streams.Call.AsChannel();
-        Mock<IHttpProxyRequestHandler> handler = new();
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .Returns(() => Task.FromResult(new HttpProxyResponse { StatusCode = 200, Body = ByteString.CopyFrom(new byte[128]) }));
-        await using HttpProxyDuplexChannel transport = new(inner, handler.Object, options, TimeProvider.System, global, NullLogger.Instance);
+        await using TokenServiceProxyDuplexChannel transport = new(inner, handler.Object, options, TimeProvider.System, global, NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         string sessionId = await InitializeHttpProxyAsync(streams, options, timeout.Token);
         streams.AllowWrite();
@@ -289,8 +289,8 @@ public partial class GrpcDuplexChannelTests
 
         await transport.WaitForPendingOperationsAsync().WaitAsync(timeout.Token);
         Assert.False(inner.HasQueuedWrites);
-        using HttpProxyAdmission.Lease firstRecovered = global.TryAcquire(options.ReservationBytes);
-        using HttpProxyAdmission.Lease secondRecovered = global.TryAcquire(options.ReservationBytes);
+        using TokenServiceProxyAdmission.Lease firstRecovered = global.TryAcquire(options.ReservationBytes);
+        using TokenServiceProxyAdmission.Lease secondRecovered = global.TryAcquire(options.ReservationBytes);
         Assert.NotNull(firstRecovered);
         Assert.NotNull(secondRecovered);
     }
@@ -299,15 +299,15 @@ public partial class GrpcDuplexChannelTests
     [InlineData(199, 0)]
     [InlineData(600, 0)]
     [InlineData(200, -1)]
-    public async Task HttpProxy_InvalidHandlerResponse_ProducesTerminalFailureWithoutClosingWorkerTraffic(int status, long length)
+    public async Task TokenServiceProxy_InvalidHandlerResponse_ProducesTerminalFailureWithoutClosingWorkerTraffic(int status, long length)
     {
         MockDuplexStream<StreamingMessage> streams = new();
-        HttpProxyOptions options = new() { Enabled = true };
-        Mock<IHttpProxyRequestHandler> handler = new();
+        TokenServiceProxyOptions options = new() { Enabled = true };
+        Mock<ITokenServiceProxyRequestHandler> handler = new();
         handler.Setup(value => value.SendAsync(It.IsAny<HttpProxyRequest>(), It.IsAny<HttpProxyLimits>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new HttpProxyResponse { StatusCode = (uint)status, ContentLength = length });
-        await using HttpProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
-            TimeProvider.System, new HttpProxyAdmission(32, options.MaxHostBufferedBytes), NullLogger.Instance);
+        await using TokenServiceProxyDuplexChannel transport = new(streams.Call.AsChannel(), handler.Object, options,
+            TimeProvider.System, new TokenServiceProxyAdmission(32, options.MaxHostBufferedBytes), NullLogger.Instance);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         StreamingMessage hello = await streams.WriteAttempts.ReadAsync(timeout.Token);
         string sessionId = hello.HttpProxy.SessionId;
@@ -316,7 +316,7 @@ public partial class GrpcDuplexChannelTests
             HttpProxy = new()
             {
                 SessionId = sessionId,
-                Ready = new() { Version = HttpProxyProtocol.Version, Limits = options.ToLimits() }
+                Ready = new() { Version = TokenServiceProxyProtocol.Version, Limits = options.ToLimits() }
             }
         });
         string requestId = Guid.NewGuid().ToString("N");
@@ -340,7 +340,7 @@ public partial class GrpcDuplexChannelTests
     }
 
     private static async Task<string> InitializeHttpProxyAsync(MockDuplexStream<StreamingMessage> streams,
-        HttpProxyOptions options, CancellationToken cancellationToken)
+        TokenServiceProxyOptions options, CancellationToken cancellationToken)
     {
         StreamingMessage hello = await streams.WriteAttempts.ReadAsync(cancellationToken);
         string sessionId = hello.HttpProxy.SessionId;
@@ -349,7 +349,7 @@ public partial class GrpcDuplexChannelTests
             HttpProxy = new()
             {
                 SessionId = sessionId,
-                Ready = new() { Version = HttpProxyProtocol.Version, Limits = options.ToLimits() }
+                Ready = new() { Version = TokenServiceProxyProtocol.Version, Limits = options.ToLimits() }
             }
         });
 

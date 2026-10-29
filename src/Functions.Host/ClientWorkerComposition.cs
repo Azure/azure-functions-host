@@ -9,7 +9,7 @@ using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.Identity;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script.Composition;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,8 +45,8 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         });
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
-        services.AddOptions<HttpProxyOptions>().BindConfiguration(HttpProxyOptions.HostSectionName);
-        services.AddSingleton<IHttpProxyRequestHandler, HostTokenServiceForwarder>();
+        services.AddOptions<TokenServiceProxyOptions>().BindConfiguration(TokenServiceProxyOptions.HostSectionName);
+        services.AddSingleton<ITokenServiceProxyRequestHandler, HostTokenServiceForwarder>();
         // Root-owned forwarding works before ScriptHost startup. The RPC request owns the deadline, and the HTTP
         // client must neither log identity queries nor introduce ambient credentials, redirects, or trace headers.
         services.AddHttpClient(HostTokenServiceForwarder.ClientName, static client => client.Timeout = Timeout.InfiniteTimeSpan)

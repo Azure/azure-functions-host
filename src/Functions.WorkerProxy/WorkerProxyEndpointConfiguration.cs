@@ -14,20 +14,20 @@ namespace Azure.Functions.WorkerProxy;
 /// Configures the WorkerProxy Kestrel listeners and resolves requests to their listener roles.
 /// </summary>
 internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> workerProxyOptions,
-    IOptions<IdentityProxyOptions> identityProxyOptions) : IConfigureOptions<KestrelServerOptions>
+    IOptions<TokenServiceProxyWorkerOptions> tokenServiceProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
     private ListenOptions? _http;
-    private ListenOptions? _identity;
+    private ListenOptions? _tokenServiceProxy;
 
     /// <inheritdoc />
     public void Configure(KestrelServerOptions options)
     {
         WorkerProxyOptions configuredOptions = workerProxyOptions.Value;
 
-        if (_management is not null || _runtime is not null || _worker is not null || _http is not null)
+        if (_management is not null || _runtime is not null || _worker is not null || _http is not null || _tokenServiceProxy is not null)
         {
             throw new InvalidOperationException("WorkerProxy Kestrel endpoints have already been configured.");
         }
@@ -52,20 +52,21 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
             listener.Protocols = HttpProtocols.Http1;
             _http = listener;
         });
-        IdentityProxyOptions identity = identityProxyOptions.Value;
-        if (identity.Enabled)
+        TokenServiceProxyWorkerOptions tokenServiceProxy = tokenServiceProxyOptions.Value;
+        if (tokenServiceProxy.Enabled)
         {
-            if (identity.Port != 0 && (identity.Port == configuredOptions.ManagementPort || identity.Port == configuredOptions.RuntimeGrpcPort
-                || identity.Port == configuredOptions.WorkerGrpcPort || identity.Port == configuredOptions.HttpPort))
+            if (tokenServiceProxy.Port != 0 && (tokenServiceProxy.Port == configuredOptions.ManagementPort
+                || tokenServiceProxy.Port == configuredOptions.RuntimeGrpcPort || tokenServiceProxy.Port == configuredOptions.WorkerGrpcPort
+                || tokenServiceProxy.Port == configuredOptions.HttpPort))
             {
-                throw new OptionsValidationException(IdentityProxyOptions.SectionName, typeof(IdentityProxyOptions),
-                    ["The identity listener must use a distinct local port."]);
+                throw new OptionsValidationException(TokenServiceProxyWorkerOptions.SectionName, typeof(TokenServiceProxyWorkerOptions),
+                    ["The Token Service listener must use a distinct local port."]);
             }
 
-            options.Listen(IPAddress.Loopback, identity.Port, listener =>
+            options.Listen(IPAddress.Loopback, tokenServiceProxy.Port, listener =>
             {
                 listener.Protocols = HttpProtocols.Http1;
-                _identity = listener;
+                _tokenServiceProxy = listener;
             });
         }
     }
@@ -90,9 +91,9 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
         return GetPort(_http) == localPort;
     }
 
-    internal bool IsIdentityPort(int localPort) => GetPort(_identity) == localPort;
+    internal bool IsTokenServiceProxyPort(int localPort) => GetPort(_tokenServiceProxy) == localPort;
 
-    internal Uri GetIdentityAddress() => GetAddress(_identity, "identity");
+    internal Uri GetTokenServiceProxyAddress() => GetAddress(_tokenServiceProxy, "Token Service proxy");
 
     /// <summary>
     /// Resolves a local listener port to its FunctionRpc relay side.

@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -50,14 +50,14 @@ internal static class WorkerProxyApplication
         builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
-        builder.Services.AddSingleton<IValidateOptions<IdentityProxyOptions>, HttpProxyOptionsValidator<IdentityProxyOptions>>();
-        builder.Services.AddSingleton<IValidateOptions<IdentityProxyOptions>, IdentityProxyOptionsValidator>();
-        builder.Services.AddOptions<IdentityProxyOptions>()
-            .BindConfiguration(IdentityProxyOptions.SectionName)
+        builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
+        builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();
+        builder.Services.AddOptions<TokenServiceProxyWorkerOptions>()
+            .BindConfiguration(TokenServiceProxyWorkerOptions.SectionName)
             .ValidateOnStart();
-        builder.Services.AddSingleton<IPostConfigureOptions<LoggerFilterOptions>, IdentityProxyLoggingOptionsSetup>();
-        builder.Services.AddSingleton<IdentityProxyService>();
-        builder.Services.AddSingleton<IdentityProxyMiddleware>();
+        builder.Services.AddSingleton<IPostConfigureOptions<LoggerFilterOptions>, TokenServiceProxyLoggingOptionsSetup>();
+        builder.Services.AddSingleton<TokenServiceProxyService>();
+        builder.Services.AddSingleton<TokenServiceProxyMiddleware>();
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
@@ -78,8 +78,8 @@ internal static class WorkerProxyApplication
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
         app.MapWhen(context => endpoints.IsHttpPort(context.Connection.LocalPort), ConfigureHttpPipeline);
-        app.MapWhen(context => endpoints.IsIdentityPort(context.Connection.LocalPort), static pipeline =>
-            pipeline.Run(context => context.RequestServices.GetRequiredService<IdentityProxyMiddleware>().InvokeAsync(context)));
+        app.MapWhen(context => endpoints.IsTokenServiceProxyPort(context.Connection.LocalPort), static pipeline =>
+            pipeline.Run(context => context.RequestServices.GetRequiredService<TokenServiceProxyMiddleware>().InvokeAsync(context)));
         app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;

@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,18 +17,18 @@ namespace Azure.Functions.WorkerProxy.Identity;
 /// Lets pod-local HTTP requests wait for the existing Host transport, independently of customer worker initialization.
 /// </summary>
 /// <remarks>Unsent waiters are pod-owned; forwarded requests belong only to the transport session that received them.</remarks>
-internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> options, TimeProvider timeProvider,
-    ILogger<IdentityProxyService> logger)
+internal sealed class TokenServiceProxyService(IOptions<TokenServiceProxyWorkerOptions> options, TimeProvider timeProvider,
+    ILogger<TokenServiceProxyService> logger)
 {
     private readonly Lock _lock = new();
-    private readonly IdentityProxyOptions _options = options.Value;
+    private readonly TokenServiceProxyWorkerOptions _options = options.Value;
     private readonly TimeProvider _timeProvider = timeProvider;
     private readonly ILogger _logger = logger;
     private TaskCompletionSource<Connection> _available = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Connection? _connection;
     private bool _disconnected;
 
-    internal HttpProxyAdmission Admission { get; } = new(options.Value.MaxPendingRequests, options.Value.MaxBufferedBytes);
+    internal TokenServiceProxyAdmission Admission { get; } = new(options.Value.MaxPendingRequests, options.Value.MaxBufferedBytes);
 
     internal bool Enabled => _options.Enabled;
 
@@ -41,7 +41,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
         {
             if (_connection is not null)
             {
-                throw new InvalidOperationException("An identity proxy transport is already attached.");
+                throw new InvalidOperationException("A Token Service proxy transport is already attached.");
             }
 
             Connection connection = new(this, send, cancellationToken);
@@ -55,7 +55,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
     /// <summary>
     /// Waits for proxy negotiation within the caller's budget, then retains admission for transport-owned cleanup.
     /// </summary>
-    internal async Task<HttpProxyMessage> SendAsync(HttpProxyRequest request, HttpProxyAdmission.Lease ownership,
+    internal async Task<HttpProxyMessage> SendAsync(HttpProxyRequest request, TokenServiceProxyAdmission.Lease ownership,
         long started, CancellationToken cancellationToken)
     {
         Task<Connection> available;
@@ -63,7 +63,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
         {
             if (_disconnected)
             {
-                throw new HttpProxyException(HttpProxyFailure.Types.Code.Unavailable);
+                throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.Unavailable);
             }
 
             available = _available.Task;
@@ -73,11 +73,11 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
         HttpProxyLimits limits = await connection.Ready.WaitAsync(cancellationToken);
         if (request.Body.Length > limits.MaxRequestBodyBytes)
         {
-            throw new HttpProxyException(HttpProxyFailure.Types.Code.RequestTooLarge);
+            throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.RequestTooLarge);
         }
 
-        HttpProxyProtocol.ValidateTarget(request.Target, _options.TokenPath, limits);
-        List<HttpProxyHeader> headers = HttpProxyProtocol.FilterHeaders(request.Headers, limits);
+        TokenServiceProxyProtocol.ValidateTarget(request.Target, _options.TokenPath, limits);
+        List<HttpProxyHeader> headers = TokenServiceProxyProtocol.FilterHeaders(request.Headers, limits);
         request.Headers.Clear();
         request.Headers.Add(headers);
 
@@ -90,7 +90,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
     /// </summary>
     internal sealed class Connection : IDisposable
     {
-        private readonly IdentityProxyService _owner;
+        private readonly TokenServiceProxyService _owner;
         private readonly Func<StreamingMessage, CancellationToken, Func<bool>?, Task<bool>> _send;
         private readonly CancellationToken _transport;
         private readonly Lock _lock = new();
@@ -100,7 +100,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
         private HttpProxyLimits? _limits;
         private bool _closed;
 
-        internal Connection(IdentityProxyService owner,
+        internal Connection(TokenServiceProxyService owner,
             Func<StreamingMessage, CancellationToken, Func<bool>?, Task<bool>> send, CancellationToken transport)
         {
             _owner = owner;
@@ -128,7 +128,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
 
             if (message.Hello is { } hello && _sessionId is null)
             {
-                if (hello.Version != HttpProxyProtocol.Version || !Guid.TryParseExact(message.SessionId, "N", out _)
+                if (hello.Version != TokenServiceProxyProtocol.Version || !Guid.TryParseExact(message.SessionId, "N", out _)
                     || !string.IsNullOrEmpty(message.RequestId))
                 {
                     throw new InvalidDataException("Unsupported HTTP proxy bootstrap.");
@@ -142,7 +142,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
                     HttpProxy = new()
                     {
                         SessionId = _sessionId,
-                        Ready = new() { Version = HttpProxyProtocol.Version, Limits = limits }
+                        Ready = new() { Version = TokenServiceProxyProtocol.Version, Limits = limits }
                     }
                 }, _transport, null);
                 _ready.TrySetResult(limits);
@@ -174,7 +174,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
                     throw new InvalidDataException("Invalid HTTP proxy response bounds.");
                 }
 
-                List<HttpProxyHeader> headers = HttpProxyProtocol.FilterHeaders(response.Headers, _limits);
+                List<HttpProxyHeader> headers = TokenServiceProxyProtocol.FilterHeaders(response.Headers, _limits);
                 response.Headers.Clear();
                 response.Headers.Add(headers);
             }
@@ -248,7 +248,7 @@ internal sealed class IdentityProxyService(IOptions<IdentityProxyOptions> option
                 catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException or IOException
                     or System.Threading.Channels.ChannelClosedException or Grpc.Core.RpcException)
                 {
-                    _owner._logger.LogDebug("Identity proxy request ended with its transport ({ErrorType}).", exception.GetType().Name);
+                    _owner._logger.LogDebug("Token Service proxy request ended with its transport ({ErrorType}).", exception.GetType().Name);
                     return Failure(HttpProxyFailure.Types.Code.Unavailable);
                 }
                 finally

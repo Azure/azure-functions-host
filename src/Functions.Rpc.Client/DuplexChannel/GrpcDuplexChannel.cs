@@ -8,7 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.Transport;
 
 namespace Azure.Functions.Rpc.Client;
 

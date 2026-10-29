@@ -26,7 +26,7 @@ internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
     WorkerPodStateManager stateManager,
-    IdentityProxyService? identityProxy = null)
+    TokenServiceProxyService? tokenServiceProxy = null)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
@@ -141,7 +141,7 @@ internal sealed partial class FunctionRpcRelay(
             }
 
             session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, identityProxy);
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, tokenServiceProxy);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)

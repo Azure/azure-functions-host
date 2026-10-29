@@ -7,10 +7,14 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+namespace Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 
-internal sealed class HttpProxyOptionsValidator<TOptions> : IValidateOptions<TOptions>
-    where TOptions : HttpProxyOptions
+/// <summary>
+/// Validates request limits, buffer capacity, and timeouts when the Token Service proxy is enabled.
+/// </summary>
+/// <typeparam name="TOptions">The Token Service proxy options type.</typeparam>
+public sealed class TokenServiceProxyOptionsValidator<TOptions> : IValidateOptions<TOptions>
+    where TOptions : TokenServiceProxyOptions
 {
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, TOptions options)

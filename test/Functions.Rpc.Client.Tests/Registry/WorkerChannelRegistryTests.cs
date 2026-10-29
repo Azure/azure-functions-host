@@ -458,7 +458,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_IdentityProxy_OriginalCancellationEndsOnlyCallerWait()
+    public async Task LinkAsync_TokenServiceProxy_OriginalCancellationEndsOnlyCallerWait()
     {
         RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
         ChannelControl channel = new("worker", blockStart: true);
@@ -481,7 +481,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task UnlinkAsync_IdentityProxy_CancelsPendingAttemptWithoutWaitingForStartupDeadline()
+    public async Task UnlinkAsync_TokenServiceProxy_CancelsPendingAttemptWithoutWaitingForStartupDeadline()
     {
         RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
         ChannelControl channel = new("worker", blockStart: true);
@@ -499,7 +499,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_IdentityProxy_DeadlineUsesInjectedClock_AndDoesNotPublishPendingChannel()
+    public async Task LinkAsync_TokenServiceProxy_DeadlineUsesInjectedClock_AndDoesNotPublishPendingChannel()
     {
         TimerCallback expire = null;
         object timerState = null;

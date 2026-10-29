@@ -11,7 +11,7 @@ namespace Azure.Functions.Rpc.Client;
 /// Handles bounded HTTP requests received from a WorkerProxy over an authorized runtime-owned transport.
 /// </summary>
 /// <remarks>The implementation owns destination selection and credentials, not the customer request.</remarks>
-public interface IHttpProxyRequestHandler
+public interface ITokenServiceProxyRequestHandler
 {
     /// <summary>
     /// Sends an opaque request to the configured upstream service.

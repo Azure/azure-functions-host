@@ -15,12 +15,12 @@ using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests.Identity;
 
-public sealed class IdentityProxyConfigurationTests
+public sealed class TokenServiceProxyConfigurationTests
 {
     [Fact]
     public void Options_UseStableDefaults()
     {
-        IdentityProxyOptions options = new();
+        TokenServiceProxyWorkerOptions options = new();
 
         Assert.Equal(8081, options.Port);
         Assert.Equal("/msi/token", options.TokenPath);
@@ -31,16 +31,16 @@ public sealed class IdentityProxyConfigurationTests
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Port"] = "-1",
-            ["WorkerProxy:IdentityProxy:TokenPath"] = "not-a-path",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "-1",
+            ["WorkerProxy:TokenServiceProxy:TokenPath"] = "not-a-path",
             ["IDENTITY_HEADER"] = null
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
-        IdentityProxyOptions options = factory.Services.GetRequiredService<IOptions<IdentityProxyOptions>>().Value;
+        TokenServiceProxyWorkerOptions options = factory.Services.GetRequiredService<IOptions<TokenServiceProxyWorkerOptions>>().Value;
         WorkerProxyEndpointConfiguration endpoints = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
 
         Assert.False(options.Enabled);
-        Assert.Throws<InvalidOperationException>(() => endpoints.GetIdentityAddress());
+        Assert.Throws<InvalidOperationException>(() => endpoints.GetTokenServiceProxyAddress());
     }
 
     [Theory]
@@ -50,19 +50,19 @@ public sealed class IdentityProxyConfigurationTests
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Enabled"] = "true",
-            ["WorkerProxy:IdentityProxy:Port"] = "0",
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
             ["IDENTITY_HEADER"] = "per-pod-secret",
             ["IDENTITY_ENDPOINT"] = endpoint
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         WorkerProxyEndpointConfiguration endpoints = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
-        Uri address = endpoints.GetIdentityAddress();
+        Uri address = endpoints.GetTokenServiceProxyAddress();
 
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(address.Host)));
         Assert.Equal(Uri.UriSchemeHttp, address.Scheme);
         Assert.NotEqual(54321, address.Port);
-        Assert.True(endpoints.IsIdentityPort(address.Port));
+        Assert.True(endpoints.IsTokenServiceProxyPort(address.Port));
         Assert.Equal(endpoint, factory.Services.GetRequiredService<IConfiguration>()["IDENTITY_ENDPOINT"]);
 
         using HttpClient client = new() { BaseAddress = address };
@@ -80,8 +80,8 @@ public sealed class IdentityProxyConfigurationTests
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Enabled"] = "true",
-            ["WorkerProxy:IdentityProxy:Port"] = "0",
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
             ["IDENTITY_HEADER"] = secret
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
@@ -92,19 +92,19 @@ public sealed class IdentityProxyConfigurationTests
     }
 
     [Theory]
-    [InlineData("Port", "-1", "The identity proxy Port must be between 0 and 65535.")]
-    [InlineData("Port", "65536", "The identity proxy Port must be between 0 and 65535.")]
-    [InlineData("TokenPath", "relative", "The identity proxy TokenPath must specify a valid token-acquisition path.")]
-    [InlineData("TokenPath", "/admin/worker", "The identity proxy TokenPath must specify a valid token-acquisition path.")]
-    [InlineData("TokenPath", "/api/specialize", "The identity proxy TokenPath must specify a valid token-acquisition path.")]
+    [InlineData("Port", "-1", "The Token Service proxy Port must be between 0 and 65535.")]
+    [InlineData("Port", "65536", "The Token Service proxy Port must be between 0 and 65535.")]
+    [InlineData("TokenPath", "relative", "The Token Service proxy TokenPath must specify a valid token-acquisition path.")]
+    [InlineData("TokenPath", "/admin/worker", "The Token Service proxy TokenPath must specify a valid token-acquisition path.")]
+    [InlineData("TokenPath", "/api/specialize", "The Token Service proxy TokenPath must specify a valid token-acquisition path.")]
     public async Task Options_ReportsInvalidListenerConfiguration(string propertyName, string value, string expectedFailure)
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Enabled"] = "true",
-            ["WorkerProxy:IdentityProxy:Port"] = "0",
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
             ["IDENTITY_HEADER"] = "per-pod-secret",
-            [$"WorkerProxy:IdentityProxy:{propertyName}"] = value
+            [$"WorkerProxy:TokenServiceProxy:{propertyName}"] = value
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
 
@@ -118,9 +118,9 @@ public sealed class IdentityProxyConfigurationTests
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Enabled"] = "true",
-            ["WorkerProxy:IdentityProxy:Port"] = "-1",
-            ["WorkerProxy:IdentityProxy:TokenPath"] = "not-a-path",
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "-1",
+            ["WorkerProxy:TokenServiceProxy:TokenPath"] = "not-a-path",
             ["IDENTITY_HEADER"] = null
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
@@ -129,9 +129,9 @@ public sealed class IdentityProxyConfigurationTests
 
         Assert.Equal(
         [
-            "The identity proxy Port must be between 0 and 65535.",
-            "The identity proxy TokenPath must specify a valid token-acquisition path.",
-            "The enabled identity proxy requires the platform-injected IDENTITY_HEADER."
+            "The Token Service proxy Port must be between 0 and 65535.",
+            "The Token Service proxy TokenPath must specify a valid token-acquisition path.",
+            "The enabled Token Service proxy requires the platform-injected IDENTITY_HEADER."
         ], error.Failures);
     }
 
@@ -153,10 +153,10 @@ public sealed class IdentityProxyConfigurationTests
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Enabled"] = "true",
-            ["WorkerProxy:IdentityProxy:Port"] = "0",
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
             ["IDENTITY_HEADER"] = "per-pod-secret",
-            [$"WorkerProxy:IdentityProxy:{propertyName}"] = value
+            [$"WorkerProxy:TokenServiceProxy:{propertyName}"] = value
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
 

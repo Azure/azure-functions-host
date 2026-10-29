@@ -6,12 +6,14 @@
 using System;
 using System.Threading;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+namespace Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 
 /// <summary>
 /// Reserves request slots and conservative buffer bytes atomically, without introducing a capacity wait queue.
 /// </summary>
-internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
+/// <param name="maximumRequests">The maximum number of concurrent reservations.</param>
+/// <param name="maximumBytes">The maximum total buffer capacity reserved in bytes.</param>
+public sealed class TokenServiceProxyAdmission(int maximumRequests, long maximumBytes)
 {
     private readonly Lock _lock = new();
     private int _requests;
@@ -20,7 +22,9 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
     /// <summary>
     /// Reserves one request and its buffer allowance immediately, or returns null when either limit is exhausted.
     /// </summary>
-    internal Lease? TryAcquire(long bytes)
+    /// <param name="bytes">The buffer capacity to reserve for this request in bytes.</param>
+    /// <returns>A lease that releases capacity when disposed, or <see langword="null"/> when capacity is unavailable.</returns>
+    public Lease? TryAcquire(long bytes)
     {
         lock (_lock)
         {
@@ -38,7 +42,7 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
     /// <summary>
     /// Shares one reservation between callers and transport cleanup; only the last owner releases capacity.
     /// </summary>
-    internal sealed class Lease : IDisposable
+    public sealed class Lease : IDisposable
     {
         private Reservation? _reservation;
 
@@ -47,7 +51,7 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
             _reservation = reservation;
         }
 
-        internal static Lease Create(HttpProxyAdmission owner, long bytes) => new(new Reservation(owner, bytes));
+        internal static Lease Create(TokenServiceProxyAdmission owner, long bytes) => new(new Reservation(owner, bytes));
 
         /// <summary>
         /// Keeps the reservation alive when queued or in-flight transport work outlives its HTTP caller.
@@ -65,7 +69,7 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
             if (Interlocked.Exchange(ref _reservation, null) is { } reservation
                 && reservation.Release())
             {
-                HttpProxyAdmission admission = reservation.Owner;
+                TokenServiceProxyAdmission admission = reservation.Owner;
                 lock (admission._lock)
                 {
                     admission._requests--;
@@ -75,11 +79,11 @@ internal sealed class HttpProxyAdmission(int maximumRequests, long maximumBytes)
         }
     }
 
-    private sealed class Reservation(HttpProxyAdmission owner, long bytes)
+    private sealed class Reservation(TokenServiceProxyAdmission owner, long bytes)
     {
         private int _references = 1;
 
-        internal HttpProxyAdmission Owner { get; } = owner;
+        internal TokenServiceProxyAdmission Owner { get; } = owner;
 
         internal long Bytes { get; } = bytes;
 
