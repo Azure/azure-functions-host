@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Data.Common;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -16,8 +15,7 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 /// Verifies a real queue input and Host-managed output binding, then stops this acceptance run.
 /// </summary>
 internal sealed partial class QueueTriggerVerificationService(
-    IResourceWithConnectionString queues,
-    IResourceWithConnectionString blobs,
+    ReferenceExpression storageConnection,
     string inputQueue,
     string outputQueue,
     ContainerTopology topology,
@@ -34,7 +32,8 @@ internal sealed partial class QueueTriggerVerificationService(
         try
         {
             await link.Linked.WaitAsync(deadline.Token);
-            string connectionString = await GetStorageConnectionAsync(queues, blobs, deadline.Token);
+            string connectionString = await storageConnection.GetValueAsync(deadline.Token)
+                ?? throw new InvalidOperationException("The emulator storage connection was not allocated.");
             QueueClientOptions options = new() { MessageEncoding = QueueMessageEncoding.Base64 };
             QueueClient input = new(connectionString, inputQueue, options);
             QueueClient output = new(connectionString, outputQueue, options);
@@ -196,21 +195,6 @@ internal sealed partial class QueueTriggerVerificationService(
         }
 
         return text;
-    }
-
-    internal static async Task<string> GetStorageConnectionAsync(
-        IResourceWithConnectionString queues, IResourceWithConnectionString blobs, CancellationToken cancellationToken)
-    {
-        string queueConnection = await queues.GetConnectionStringAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Aspire did not provide the queue emulator connection.");
-        string blobConnection = await blobs.GetConnectionStringAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Aspire did not provide the blob emulator connection.");
-        DbConnectionStringBuilder queue = new() { ConnectionString = queueConnection };
-        DbConnectionStringBuilder blob = new() { ConnectionString = blobConnection };
-
-        // Storage setting names are case-sensitive; database connection-string serialization can change their spelling.
-        return $"DefaultEndpointsProtocol={queue["DefaultEndpointsProtocol"]};AccountName={queue["AccountName"]};AccountKey={queue["AccountKey"]};" +
-            $"QueueEndpoint={queue["QueueEndpoint"]};BlobEndpoint={blob["BlobEndpoint"]}";
     }
 
     private static partial class Log

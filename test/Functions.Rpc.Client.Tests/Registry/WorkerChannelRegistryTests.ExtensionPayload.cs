@@ -7,11 +7,13 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -105,7 +107,8 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task WaitForFirstInitializedAsync_NonAdvertisingWorkerUsesTheExistingSourceWithoutATransfer()
     {
-        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
+        PayloadClock clock = new();
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance, clock.Provider);
         RegistryHarness harness = new(null, payloads);
         await using WorkerChannelRegistry registry = harness.Registry;
         Task<WorkerChannel> initialized = registry.WaitForFirstInitializedAsync();
@@ -119,6 +122,111 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Null(payloads.DirectoryPath);
         Assert.False(worker.Transport.Requests.TryRead(out _));
+        Assert.False(clock.Deadlines.Reader.TryRead(out _));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExtensionPayload_TimeoutRejectsTheSupplierAndAnotherCandidateUnblocksStartup(bool sendChunk)
+    {
+        PayloadClock clock = new();
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance, clock.Provider);
+        RegistryHarness harness = new(null, payloads);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerChannel> initialized = registry.WaitForFirstInitializedAsync();
+        ChannelControl stalled = new("stalled") { ExtensionPayloadCapability = "1" };
+        ChannelControl replacement = new("replacement") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(stalled);
+        harness.Enqueue(replacement);
+        await registry.LinkAsync(stalled.Id, CreateEndpoint(stalled.Id)).WaitAsync(TestTimeout);
+        StreamingMessage request = await stalled.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        (Action expire, Mock<ITimer> timer) = await clock.Deadlines.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        if (sendChunk)
+        {
+            await stalled.Transport.SendResponseAsync(new()
+            {
+                RequestId = request.RequestId,
+                ExtensionPayloadResponse = new() { Chunk = ByteString.CopyFrom(CreatePayload("incomplete")) },
+            });
+        }
+
+        await registry.LinkAsync(replacement.Id, CreateEndpoint(replacement.Id)).WaitAsync(TestTimeout);
+        Assert.False(initialized.IsCompleted);
+        Assert.False(replacement.Transport.Requests.TryRead(out _));
+
+        expire();
+        await stalled.DisposeStarted.WaitAsync(TestTimeout);
+        await SupplyPayloadAsync(replacement, "replacement");
+
+        Assert.Same(replacement.Channel, await initialized.WaitAsync(TestTimeout));
+        Assert.False(registry.TryGetInitializedChannel(stalled.Id, out _));
+        Assert.Equal(1, stalled.DisposeCount);
+        Assert.Equal("replacement", await File.ReadAllTextAsync(Path.Combine(payloads.DirectoryPath, ".azurefunctions", "binding.dll")));
+        Assert.Equal(payloads.DirectoryPath, Assert.Single(Directory.GetFileSystemEntries(Path.GetDirectoryName(payloads.DirectoryPath))));
+        Assert.False(stalled.Transport.Requests.TryRead(out _));
+        timer.Verify(value => value.Dispose(), Times.AtLeastOnce());
+    }
+
+    [Fact]
+    public async Task ExtensionPayload_DeadlineStartsAfterAcquisitionAndReportsTimeout()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(5), WorkerExtensionPayloadManager.AcquisitionTimeout);
+        PayloadClock clock = new();
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance, clock.Provider);
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl first = new("first") { ExtensionPayloadCapability = "1" };
+        ChannelControl second = new("second") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(first);
+        harness.Enqueue(second);
+        await registry.LinkAsync(first.Id, CreateEndpoint(first.Id)).WaitAsync(TestTimeout);
+        await registry.LinkAsync(second.Id, CreateEndpoint(second.Id)).WaitAsync(TestTimeout);
+
+        Task firstPreparation = payloads.PrepareAsync(first.Channel, CancellationToken.None);
+        await first.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        (Action expire, Mock<ITimer> firstTimer) = await clock.Deadlines.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Task secondPreparation = payloads.PrepareAsync(second.Channel, CancellationToken.None);
+        Assert.False(clock.Deadlines.Reader.TryRead(out _));
+        Assert.False(secondPreparation.IsCompleted);
+
+        expire();
+        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => firstPreparation.WaitAsync(TestTimeout));
+        Assert.IsAssignableFrom<OperationCanceledException>(exception.InnerException);
+        Assert.Contains(first.Id, exception.Message, StringComparison.Ordinal);
+        Assert.Null(payloads.DirectoryPath);
+        var (_, secondTimer) = await clock.Deadlines.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        await SupplyPayloadAsync(second, "replacement");
+        await secondPreparation.WaitAsync(TestTimeout);
+
+        Assert.Equal("replacement", await File.ReadAllTextAsync(Path.Combine(payloads.DirectoryPath, ".azurefunctions", "binding.dll")));
+        firstTimer.Verify(value => value.Dispose(), Times.AtLeastOnce());
+        secondTimer.Verify(value => value.Dispose(), Times.AtLeastOnce());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExtensionPayload_CallerCancellationIsNotReportedAsTimeout(bool deadlineAlsoExpires)
+    {
+        PayloadClock clock = new();
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance, clock.Provider);
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl worker = new("worker") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(worker);
+        await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
+        using CancellationTokenSource cancellation = new();
+        Task preparation = payloads.PrepareAsync(worker.Channel, cancellation.Token);
+        await worker.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        (Action expire, Mock<ITimer> timer) = await clock.Deadlines.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        using CancellationTokenRegistration registration = deadlineAlsoExpires ? cancellation.Token.Register(expire) : default;
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => preparation.WaitAsync(TestTimeout));
+
+        Assert.Null(payloads.DirectoryPath);
+        timer.Verify(value => value.Dispose(), Times.AtLeastOnce());
     }
 
     [Fact]
@@ -201,7 +309,8 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task ExtensionPayload_SubsequentWorkerUsesSelectedSourceWithoutATransfer()
     {
-        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
+        PayloadClock clock = new();
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance, clock.Provider);
         RegistryHarness harness = new(null, payloads);
         await using WorkerChannelRegistry registry = harness.Registry;
         ChannelControl first = new("first") { ExtensionPayloadCapability = "1" };
@@ -209,6 +318,7 @@ public sealed partial class WorkerChannelRegistryTests
         await registry.LinkAsync(first.Id, CreateEndpoint(first.Id)).WaitAsync(TestTimeout);
         await SupplyPayloadAsync(first, "assembly");
         await registry.WaitForFirstInitializedAsync().WaitAsync(TestTimeout);
+        var (_, timer) = await clock.Deadlines.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
         string source = payloads.DirectoryPath;
 
         ChannelControl second = new("second") { ExtensionPayloadCapability = "1" };
@@ -229,6 +339,8 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(source, payloads.DirectoryPath);
         Assert.Same(second.Channel, await registry.WaitForFirstInitializedAsync().WaitAsync(TestTimeout));
         Assert.False(second.Transport.Requests.TryRead(out _));
+        Assert.False(clock.Deadlines.Reader.TryRead(out _));
+        timer.Verify(value => value.Dispose(), Times.AtLeastOnce());
     }
 
     [Fact]
@@ -381,5 +493,26 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         return bytes.ToArray();
+    }
+
+    private sealed class PayloadClock
+    {
+        public PayloadClock()
+        {
+            Mock<TimeProvider> provider = new(MockBehavior.Strict);
+            provider.Setup(clock => clock.CreateTimer(
+                It.IsAny<TimerCallback>(), It.IsAny<object>(), WorkerExtensionPayloadManager.AcquisitionTimeout, Timeout.InfiniteTimeSpan))
+                .Returns((TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period) =>
+                {
+                    Mock<ITimer> timer = new();
+                    Deadlines.Writer.TryWrite((() => callback(state), timer));
+                    return timer.Object;
+                });
+            Provider = provider.Object;
+        }
+
+        public TimeProvider Provider { get; }
+
+        public Channel<(Action Expire, Mock<ITimer> Timer)> Deadlines { get; } = Channel.CreateUnbounded<(Action, Mock<ITimer>)>();
     }
 }
