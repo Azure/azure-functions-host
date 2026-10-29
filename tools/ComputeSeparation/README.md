@@ -7,7 +7,7 @@ The tool supplies no Host-side `host.json` and sets the Host's existing read-onl
 ## Prerequisites
 
 - The repository's .NET SDK.
-- A running Linux x64 Docker engine for Aspire's Azurite container in every launch profile; container mode also requires Docker Compose.
+- A running Linux x64 Docker engine for Azurite in every launch profile; container mode also requires Docker Compose.
 
 The first build downloads the matching Aspire toolchain into the worktree's build output. A global Aspire installation and Azure Functions Core Tools are not required.
 
@@ -67,6 +67,19 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 ```
 
 Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
+
+### Storage networking
+
+Every profile starts one Azurite emulator. Project profiles use Aspire's storage resource and pass its loopback endpoints
+to the Host and workers. Container mode starts Azurite inside the runtime Compose group, on the same private `compute`
+network as the Host and WorkerProxy. The worker shares the Proxy's network namespace. These containers use
+`azurite:10000` for blobs and `azurite:10001` for queues, without `host.docker.internal` or host-gateway mappings.
+
+The runtime resource exposes `blob` and `queue` endpoints in the Aspire dashboard. Their dynamically allocated host
+ports are published on loopback only; local tools and the acceptance verifier use these endpoints with the
+`/devstoreaccount1` path and [Azurite's public development account](https://learn.microsoft.com/azure/storage/common/storage-use-azurite#well-known-storage-account-and-key).
+Both address forms reach the same emulator. Functions Host starts after the emulator is healthy. Emulator data is
+temporary, and the worker pod is removed before the runtime group and its network.
 
 Container cleanup reuses the run's actual container keys, pod/worker/request identities, network/alias and PEM paths when
 invoking `docker compose stop` or `down`; Compose requires all interpolated settings even for cleanup. Cleanup-only port
@@ -148,11 +161,12 @@ are excluded.
 
 The same sample always includes `QueueEcho`. AppHost supplies the Azurite connection to the Host and every worker and selects
 `sample-input` / `sample-output` queues for normal runs. Connect Azure Storage Explorer using the Aspire `queues` resource's connection
-details, create `sample-input` if needed, and enqueue a Base64-encoded message; `sample-output` receives the returned text.
+details in project mode, or the runtime's published storage endpoints in container mode as described above. Create
+`sample-input` if needed and enqueue a Base64-encoded message; `sample-output` receives the returned text.
 
 ## Streamed-extension QueueTrigger acceptance
 
-This local-only scenario uses the same `SampleIsolatedApp` and Aspire storage resources as normal launches.
+This local-only scenario uses the same `SampleIsolatedApp` and Compose-managed Azurite as normal container launches.
 The Host and Proxy containers have no customer deployment mount. The worker advertises its extension ZIP;
 the Host requests it over EventStream, extracts it, and loads the queue extension before starting listeners.
 `WaitForFirstInitializedAsync` covers the worker handshake and extension-source preparation: advertised assemblies must be
@@ -171,8 +185,11 @@ The .NET worker removes its SDK-owned metadata bootstrap startup and DLL/PDB onl
 the deployed manifest and files stay unchanged. The Host loads the resulting manifest without SDK-specific filtering.
 The capability advertises worker support only. The Host explicitly requests the first accepted extension source,
 serializing concurrent candidates and trying another after failure. Later links reuse that source without transferring
-or comparing another archive. Closing the link or shutting down cancels any in-flight transfer; there is no separate
-payload-cancellation message.
+or comparing another archive. An advertising candidate has five minutes to receive and extract its source, starting
+after it acquires the preparation gate; queued candidates do not spend their deadline while waiting. Expiration cancels
+and drains receipt, removes partial files, and rejects the supplying link so another candidate can proceed. It does not
+silently select Host-local extensions. Closing the link or shutting down also cancels any in-flight transfer; there is no
+separate payload-cancellation message.
 Payload request/response coordination lives in `RpcClientWorkerChannel.cs`, with ordered writes and draining handled by
 `ExtensionPayloadReceiver`. The root-owned payload manager retains the extracted source after the supplying worker disconnects.
 Extension consumers resolve metadata/probing paths through `IExtensionPathProvider`. Client composition replaces the

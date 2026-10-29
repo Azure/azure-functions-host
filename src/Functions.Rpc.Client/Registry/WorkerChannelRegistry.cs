@@ -1063,7 +1063,15 @@ internal sealed partial class WorkerChannelRegistry :
             }
         }
 
-        await Task.WhenAll(monitorTasks);
+        try
+        {
+            await Task.WhenAll(monitorTasks);
+        }
+        finally
+        {
+            _extensionPreparationGate.Dispose();
+        }
+
         await Task.WhenAll(drainAndUnlinkTasks);
 
         if (disposalException is not null)

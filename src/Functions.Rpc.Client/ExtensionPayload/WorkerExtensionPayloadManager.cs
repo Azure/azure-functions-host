@@ -15,7 +15,8 @@ namespace Azure.Functions.Rpc.Client;
 /// <summary>
 /// Receives and retains one extracted extension source until the root Host and its channels have stopped.
 /// </summary>
-internal sealed partial class WorkerExtensionPayloadManager(ILogger<WorkerExtensionPayloadManager> logger) : IAsyncDisposable
+internal sealed partial class WorkerExtensionPayloadManager(
+    ILogger<WorkerExtensionPayloadManager> logger, TimeProvider timeProvider = null) : IAsyncDisposable
 {
     internal const string CapabilityName = "ExtensionPayload";
     internal const string CapabilityVersion = "1";
@@ -26,10 +27,13 @@ internal sealed partial class WorkerExtensionPayloadManager(ILogger<WorkerExtens
     internal const int MaxEntries = 10_000;
     internal const int MaxPathDepth = 32;
 
+    internal static readonly TimeSpan AcquisitionTimeout = TimeSpan.FromMinutes(5);
+
     private readonly ILogger<WorkerExtensionPayloadManager> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly Lock _stateLock = new();
     private readonly Lock _disposeLock = new();
     private readonly SemaphoreSlim _preparationGate = new(1, 1);
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "azure-functions", "extension-payloads", Guid.NewGuid().ToString("N"));
     private string _directoryPath;
     private bool _selected;
@@ -73,6 +77,9 @@ internal sealed partial class WorkerExtensionPayloadManager(ILogger<WorkerExtens
             throw new InvalidDataException("The worker advertised an unsupported extension payload version.");
         }
 
+        // Waiting candidates do not spend their acquisition budget until they own the source preparation gate.
+        using CancellationTokenSource deadline = new(AcquisitionTimeout, _timeProvider);
+        using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         string attempt = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         string staging = Path.Combine(attempt, "content");
         Exception failure = null;
@@ -82,23 +89,25 @@ internal sealed partial class WorkerExtensionPayloadManager(ILogger<WorkerExtens
             string zipPath = Path.Combine(attempt, "payload.zip");
             await using (FileStream zip = new(zipPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 64 * 1024, useAsync: true))
             {
-                await channel.ReceiveExtensionPayloadAsync(zip, cancellationToken);
-                await zip.FlushAsync(cancellationToken);
+                await channel.ReceiveExtensionPayloadAsync(zip, operation.Token);
+                await zip.FlushAsync(operation.Token);
             }
 
-            await ExtractAsync(zipPath, staging, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
+            await ExtractAsync(zipPath, staging, operation.Token);
+            operation.Token.ThrowIfCancellationRequested();
             if (channel.IsTerminated)
             {
                 throw new IOException("The worker disconnected before its extension payload was accepted.");
             }
 
-            SelectSource(staging, cancellationToken);
+            SelectSource(staging, operation.Token);
             Log.PayloadPrepared(_logger, channel.Id);
         }
         catch (Exception exception)
         {
-            failure = exception;
+            failure = exception is OperationCanceledException && !cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested
+                ? new TimeoutException($"The extension payload acquisition deadline expired for worker '{channel.Id}'.", exception)
+                : exception;
         }
 
         try
