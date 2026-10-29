@@ -11,8 +11,9 @@ using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.Transport;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.WorkerProxy.Rpc;
@@ -27,7 +28,7 @@ internal sealed partial class FunctionRpcRelay
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
         WorkerPodStateManager stateManager,
-        IdentityProxyService? identityProxy)
+        TokenServiceProxyService? tokenServiceProxy)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
@@ -139,7 +140,7 @@ internal sealed partial class FunctionRpcRelay
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             using CancellationTokenSource linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_terminationSource.Token, cancellationToken);
-            using IdentityProxyService.Connection? proxyConnection = AttachIdentityProxy(side, linkedSource.Token);
+            using TokenServiceProxyService.Connection? proxyConnection = AttachTokenServiceProxy(side, linkedSource.Token);
 
             ChannelWriter<StreamingMessage> destination = side switch
             {
@@ -216,14 +217,14 @@ internal sealed partial class FunctionRpcRelay
         /// <summary>
         /// Makes only the Host-facing stream available to the identity bridge, before the customer stream attaches.
         /// </summary>
-        private IdentityProxyService.Connection? AttachIdentityProxy(FunctionRpcRelaySide side, CancellationToken cancellationToken)
+        private TokenServiceProxyService.Connection? AttachTokenServiceProxy(FunctionRpcRelaySide side, CancellationToken cancellationToken)
         {
-            if (side is not FunctionRpcRelaySide.Runtime || identityProxy is not { Enabled: true })
+            if (side is not FunctionRpcRelaySide.Runtime || tokenServiceProxy is not { Enabled: true })
             {
                 return null;
             }
 
-            return identityProxy.Attach(WriteToRuntimeAsync, cancellationToken);
+            return tokenServiceProxy.Attach(WriteToRuntimeAsync, cancellationToken);
         }
 
         /// <summary>
@@ -235,7 +236,7 @@ internal sealed partial class FunctionRpcRelay
         }
 
         private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-            ChannelWriter<StreamingMessage> destination, IdentityProxyService.Connection? proxyConnection, CancellationToken cancellationToken)
+            ChannelWriter<StreamingMessage> destination, TokenServiceProxyService.Connection? proxyConnection, CancellationToken cancellationToken)
         {
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))

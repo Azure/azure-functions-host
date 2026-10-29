@@ -25,7 +25,7 @@
         "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://localhost:16888",
         "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
         "ComputeSeparation__Mode": "project",
-        "ComputeSeparation__IdentityProxy": "true"
+        "ComputeSeparation__TokenServiceProxy": "true"
       }
     },
     "project-placeholder-manual": {

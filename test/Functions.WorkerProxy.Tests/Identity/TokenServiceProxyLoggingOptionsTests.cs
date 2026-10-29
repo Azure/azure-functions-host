@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests.Identity;
 
-public sealed class IdentityProxyLoggingOptionsTests
+public sealed class TokenServiceProxyLoggingOptionsTests
 {
     [Theory]
     [InlineData("Logging:Console:LogLevel:Default", "Information", "Microsoft.AspNetCore.Hosting.Diagnostics")]
@@ -35,8 +35,8 @@ public sealed class IdentityProxyLoggingOptionsTests
     public void FullyQualifiedProviderRule_CannotEnableRequestUriLogs()
     {
         using ServiceProvider provider = CreateProvider([], configure: logging =>
-            logging.AddFilter<TestConsoleLoggerProvider>(IdentityProxyLoggingOptionsSetup.RequestCategory, LogLevel.Trace));
-        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(IdentityProxyLoggingOptionsSetup.RequestCategory);
+            logging.AddFilter<TestConsoleLoggerProvider>(TokenServiceProxyLoggingOptionsSetup.RequestCategory, LogLevel.Trace));
+        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(TokenServiceProxyLoggingOptionsSetup.RequestCategory);
 
         Assert.False(logger.IsEnabled(LogLevel.Information));
         Assert.True(logger.IsEnabled(LogLevel.Warning));
@@ -51,7 +51,7 @@ public sealed class IdentityProxyLoggingOptionsTests
         {
             ["Logging:Console:LogLevel:Microsoft.AspNetCore.Hosting.Diagnostics"] = level
         });
-        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(IdentityProxyLoggingOptionsSetup.RequestCategory);
+        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(TokenServiceProxyLoggingOptionsSetup.RequestCategory);
 
         Assert.False(logger.IsEnabled(LogLevel.Warning));
         Assert.Equal(errorEnabled, logger.IsEnabled(LogLevel.Error));
@@ -62,7 +62,7 @@ public sealed class IdentityProxyLoggingOptionsTests
     {
         using ServiceProvider provider = CreateProvider([], configure: logging =>
             logging.AddFilter<TestConsoleLoggerProvider>(static (_, level) => level >= LogLevel.Error));
-        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(IdentityProxyLoggingOptionsSetup.RequestCategory);
+        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(TokenServiceProxyLoggingOptionsSetup.RequestCategory);
 
         Assert.False(logger.IsEnabled(LogLevel.Information));
         Assert.False(logger.IsEnabled(LogLevel.Warning));
@@ -73,20 +73,20 @@ public sealed class IdentityProxyLoggingOptionsTests
     public void NoMatchingRule_PreservesTheOriginalMinimumLevel()
     {
         using ServiceProvider provider = CreateProvider([], configure: static logging => logging.SetMinimumLevel(LogLevel.Error));
-        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(IdentityProxyLoggingOptionsSetup.RequestCategory);
+        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(TokenServiceProxyLoggingOptionsSetup.RequestCategory);
 
         Assert.False(logger.IsEnabled(LogLevel.Warning));
         Assert.True(logger.IsEnabled(LogLevel.Error));
     }
 
     [Fact]
-    public void DisabledIdentityProxy_DoesNotChangeProviderConfiguration()
+    public void DisabledTokenServiceProxy_DoesNotChangeProviderConfiguration()
     {
         using ServiceProvider provider = CreateProvider(new Dictionary<string, string?>
         {
             ["Logging:Console:LogLevel:Default"] = "Information"
         }, enabled: false);
-        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(IdentityProxyLoggingOptionsSetup.RequestCategory);
+        ILogger logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(TokenServiceProxyLoggingOptionsSetup.RequestCategory);
 
         Assert.True(logger.IsEnabled(LogLevel.Information));
     }
@@ -101,7 +101,7 @@ public sealed class IdentityProxyLoggingOptionsTests
         });
         using ServiceProvider provider = CreateProviderCore(configuration, enabled: true, configure: null);
         ILoggerFactory factory = provider.GetRequiredService<ILoggerFactory>();
-        ILogger requests = factory.CreateLogger(IdentityProxyLoggingOptionsSetup.RequestCategory);
+        ILogger requests = factory.CreateLogger(TokenServiceProxyLoggingOptionsSetup.RequestCategory);
         Assert.False(factory.CreateLogger("OtherCategory").IsEnabled(LogLevel.Information));
         configuration["Logging:Console:LogLevel:Default"] = "Trace";
 
@@ -123,8 +123,8 @@ public sealed class IdentityProxyLoggingOptionsTests
     private static ServiceProvider CreateProviderCore(IConfiguration configuration, bool enabled, Action<ILoggingBuilder>? configure)
     {
         ServiceCollection services = new();
-        services.Configure<IdentityProxyOptions>(options => options.Enabled = enabled);
-        services.AddSingleton<IPostConfigureOptions<LoggerFilterOptions>, IdentityProxyLoggingOptionsSetup>();
+        services.Configure<TokenServiceProxyWorkerOptions>(options => options.Enabled = enabled);
+        services.AddSingleton<IPostConfigureOptions<LoggerFilterOptions>, TokenServiceProxyLoggingOptionsSetup>();
         services.AddLogging(logging =>
         {
             logging.ClearProviders();

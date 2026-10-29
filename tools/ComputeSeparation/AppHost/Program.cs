@@ -12,7 +12,7 @@ const string ManagementEndpointName = "management";
 const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
-const string IdentityEndpointName = "identity";
+const string TokenServiceProxyEndpointName = "token-service-proxy";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -24,8 +24,8 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 
 bool multipleWorkers = builder.Configuration.GetValue("ComputeSeparation:MultipleWorkers", false);
 bool autoLink = builder.Configuration.GetValue("ComputeSeparation:AutoLink", true);
-bool identityScenario = builder.Configuration.GetValue("ComputeSeparation:IdentityProxy", false);
-if (identityScenario && useContainers)
+bool tokenServiceProxyScenario = builder.Configuration.GetValue("ComputeSeparation:TokenServiceProxy", false);
+if (tokenServiceProxyScenario && useContainers)
 {
     throw new InvalidOperationException("The identity debugging scenario currently requires project mode.");
 }
@@ -104,7 +104,7 @@ else
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
         ReferenceExpression.Create($"http://127.0.0.1:{functionsHost.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
 
-    if (identityScenario)
+    if (tokenServiceProxyScenario)
     {
         string hostSecretValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         IResourceBuilder<ParameterResource> hostSecret = builder.AddParameter("mock-token-service-secret",
@@ -116,7 +116,7 @@ else
         tokenService.WithEnvironment("ASPNETCORE_URLS",
             ReferenceExpression.Create($"http://127.0.0.1:{tokenService.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
         functionsHost
-            .WithEnvironment("Functions__IdentityProxy__Enabled", "true")
+            .WithEnvironment("Functions__TokenServiceProxy__Enabled", "true")
             .WithEnvironment("MSI_ENDPOINT", ReferenceExpression.Create($"{tokenService.GetEndpoint(HttpEndpointName)}/token"))
             .WithEnvironment("MSI_SECRET", hostSecret)
             .WaitFor(tokenService);
@@ -148,7 +148,7 @@ else
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
-    dependencies = identityScenario
+    dependencies = tokenServiceProxyScenario
         ? ["functions-host", "worker-proxy-1", "fake-platform", "mock-token-service"]
         : ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
 
@@ -193,19 +193,19 @@ else
                 "--functions-grpc-max-message-length", "134217728")
             .WaitFor(proxy);
 
-        if (identityScenario)
+        if (tokenServiceProxyScenario)
         {
             string localSecretValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-            IResourceBuilder<ParameterResource> localSecret = builder.AddParameter($"worker-identity-secret{suffix}",
+            IResourceBuilder<ParameterResource> localSecret = builder.AddParameter($"worker-token-service-secret{suffix}",
                 () => localSecretValue, secret: true);
-            proxy.WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:IdentityPort"),
-                    name: IdentityEndpointName)
-                .WithEnvironment("WorkerProxy__IdentityProxy__Enabled", "true")
-                .WithEnvironment("WorkerProxy__IdentityProxy__Port",
-                    proxy.GetEndpoint(IdentityEndpointName).Property(EndpointProperty.TargetPort))
+            proxy.WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:TokenServiceProxyPort"),
+                    name: TokenServiceProxyEndpointName)
+                .WithEnvironment("WorkerProxy__TokenServiceProxy__Enabled", "true")
+                .WithEnvironment("WorkerProxy__TokenServiceProxy__Port",
+                    proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort))
                 .WithEnvironment("IDENTITY_HEADER", localSecret);
             worker.WithEnvironment("IDENTITY_ENDPOINT",
-                    ReferenceExpression.Create($"http://127.0.0.1:{proxy.GetEndpoint(IdentityEndpointName).Property(EndpointProperty.TargetPort)}/msi/token"))
+                    ReferenceExpression.Create($"http://127.0.0.1:{proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort)}/msi/token"))
                 .WithEnvironment("IDENTITY_HEADER", localSecret)
                 .WithEnvironment("ComputeSeparation__AcquireIdentityBeforeStart", "true");
         }
@@ -231,7 +231,7 @@ if (autoLink)
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
         services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>(),
-        linkBeforeAssignment: identityScenario));
+        linkBeforeAssignment: tokenServiceProxyScenario));
 }
 
 await builder.Build().RunAsync();

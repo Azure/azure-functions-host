@@ -9,8 +9,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
@@ -19,15 +19,15 @@ namespace Azure.Functions.Rpc.Client;
 /// Services reverse HTTP controls on the root-owned transport before the customer worker or ScriptHost initializes.
 /// </summary>
 /// <remarks>Ordinary worker messages retain their existing channel semantics and share the same sole gRPC writer.</remarks>
-internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
+internal sealed class TokenServiceProxyDuplexChannel : DuplexChannel<StreamingMessage>
 {
     private readonly Lock _requestStateLock = new();
     private readonly GrpcDuplexChannel<StreamingMessage> _inner;
-    private readonly IHttpProxyRequestHandler _handler;
-    private readonly HttpProxyOptions _options;
+    private readonly ITokenServiceProxyRequestHandler _handler;
+    private readonly TokenServiceProxyOptions _options;
     private readonly TimeProvider _timeProvider;
-    private readonly HttpProxyAdmission _hostAdmission;
-    private readonly HttpProxyAdmission _transportAdmission;
+    private readonly TokenServiceProxyAdmission _hostAdmission;
+    private readonly TokenServiceProxyAdmission _transportAdmission;
     private readonly ILogger _logger;
     private readonly Channel<StreamingMessage> _inbound = Channel.CreateUnbounded<StreamingMessage>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = true, AllowSynchronousContinuations = false });
@@ -41,8 +41,8 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
     private readonly Task _helloTask;
     private HttpProxyLimits _limits;
 
-    internal HttpProxyDuplexChannel(GrpcDuplexChannel<StreamingMessage> inner, IHttpProxyRequestHandler handler,
-        HttpProxyOptions options, TimeProvider timeProvider, HttpProxyAdmission hostAdmission, ILogger logger)
+    internal TokenServiceProxyDuplexChannel(GrpcDuplexChannel<StreamingMessage> inner, ITokenServiceProxyRequestHandler handler,
+        TokenServiceProxyOptions options, TimeProvider timeProvider, TokenServiceProxyAdmission hostAdmission, ILogger logger)
     {
         _inner = inner;
         _handler = handler;
@@ -69,7 +69,7 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
                 HttpProxy = new()
                 {
                     SessionId = _sessionId,
-                    Hello = new() { Version = HttpProxyProtocol.Version, Limits = _options.ToLimits() }
+                    Hello = new() { Version = TokenServiceProxyProtocol.Version, Limits = _options.ToLimits() }
                 }
             }, _shutdown.Token);
         }
@@ -128,7 +128,7 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
 
         if (message.Ready is { } ready && _limits is null && string.IsNullOrEmpty(message.RequestId))
         {
-            if (ready.Version != HttpProxyProtocol.Version)
+            if (ready.Version != TokenServiceProxyProtocol.Version)
             {
                 throw new InvalidDataException("Unsupported HTTP proxy protocol version.");
             }
@@ -193,27 +193,27 @@ internal sealed class HttpProxyDuplexChannel : DuplexChannel<StreamingMessage>
             {
                 if (transportAdmission is null || hostAdmission is null)
                 {
-                    throw new HttpProxyException(HttpProxyFailure.Types.Code.TooManyRequests);
+                    throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.TooManyRequests);
                 }
 
                 if (request.TimeoutMs == 0 || request.Body.Length > _limits.MaxRequestBodyBytes
-                    || request.Target.Length > _limits.MaxTargetBytes || !HttpProxyProtocol.IsToken(request.Method))
+                    || request.Target.Length > _limits.MaxTargetBytes || !TokenServiceProxyProtocol.IsToken(request.Method))
                 {
-                    throw new HttpProxyException(HttpProxyFailure.Types.Code.InvalidRequest);
+                    throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.InvalidRequest);
                 }
 
                 terminal.Response = await _handler.SendAsync(request, _limits, operation.Token);
                 if (terminal.Response.StatusCode is < 200 or > 599 || terminal.Response.Body.Length > _limits.MaxResponseBodyBytes
                     || (terminal.Response.HasContentLength && terminal.Response.ContentLength < 0))
                 {
-                    throw new HttpProxyException(HttpProxyFailure.Types.Code.BadGateway);
+                    throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.BadGateway);
                 }
 
-                List<HttpProxyHeader> headers = HttpProxyProtocol.FilterHeaders(terminal.Response.Headers, _limits);
+                List<HttpProxyHeader> headers = TokenServiceProxyProtocol.FilterHeaders(terminal.Response.Headers, _limits);
                 terminal.Response.Headers.Clear();
                 terminal.Response.Headers.Add(headers);
             }
-            catch (HttpProxyException exception)
+            catch (TokenServiceProxyException exception)
             {
                 terminal.Failure = new() { Code = exception.Code };
             }

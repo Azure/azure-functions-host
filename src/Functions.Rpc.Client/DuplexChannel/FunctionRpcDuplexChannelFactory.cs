@@ -5,8 +5,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -19,10 +19,10 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 {
     private readonly IRpcClientFactory _clientFactory;
     private readonly ILogger<FunctionRpcDuplexChannelFactory> _logger;
-    private readonly IHttpProxyRequestHandler _proxyHandler;
-    private readonly HttpProxyOptions _proxyOptions;
+    private readonly ITokenServiceProxyRequestHandler _proxyHandler;
+    private readonly TokenServiceProxyOptions _proxyOptions;
     private readonly TimeProvider _timeProvider;
-    private readonly HttpProxyAdmission _proxyAdmission;
+    private readonly TokenServiceProxyAdmission _proxyAdmission;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FunctionRpcDuplexChannelFactory"/> class.
@@ -30,8 +30,8 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     /// <param name="clientFactory">The factory that owns reusable endpoint channels.</param>
     /// <param name="logger">The logger used for partial connection cleanup failures.</param>
     public FunctionRpcDuplexChannelFactory(IRpcClientFactory clientFactory, ILogger<FunctionRpcDuplexChannelFactory> logger,
-        IOptions<HttpProxyOptions> proxyOptions = null, IHttpProxyRequestHandler proxyHandler = null,
-        TimeProvider timeProvider = null, HttpProxyAdmission proxyAdmission = null)
+        IOptions<TokenServiceProxyOptions> proxyOptions = null, ITokenServiceProxyRequestHandler proxyHandler = null,
+        TimeProvider timeProvider = null, TokenServiceProxyAdmission proxyAdmission = null)
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -46,7 +46,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     {
         if (_proxyOptions.Enabled && _proxyHandler is null)
         {
-            throw new InvalidOperationException("An enabled identity proxy requires a root-owned HTTP request handler.");
+            throw new InvalidOperationException("An enabled Token Service proxy requires a root-owned HTTP request handler.");
         }
 
         FunctionRpc.FunctionRpcClient client = await _clientFactory.CreateAsync(endpoint, cancellationToken);
@@ -58,7 +58,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();
             return _proxyOptions.Enabled
-                ? new HttpProxyDuplexChannel(channel, _proxyHandler, _proxyOptions, _timeProvider, _proxyAdmission, _logger)
+                ? new TokenServiceProxyDuplexChannel(channel, _proxyHandler, _proxyOptions, _timeProvider, _proxyAdmission, _logger)
                 : channel;
         }
         catch

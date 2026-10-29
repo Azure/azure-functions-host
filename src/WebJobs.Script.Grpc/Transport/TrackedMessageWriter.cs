@@ -9,13 +9,14 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+namespace Microsoft.Azure.WebJobs.Script.Grpc.Transport;
 
 /// <summary>
 /// Tracks queued messages until physical write/discard, rather than queue admission or HTTP caller departure.
 /// </summary>
+/// <typeparam name="T">The message type, tracked by reference identity.</typeparam>
 /// <remarks>The queue owner must serialize writes and discard abandoned payloads before completing this tracker.</remarks>
-internal sealed class TrackedMessageWriter<T> where T : class
+public sealed class TrackedMessageWriter<T> where T : class
 {
     private readonly Lock _lock = new();
     private readonly Dictionary<T, PendingWrite> _pending = new(ReferenceEqualityComparer.Instance);
@@ -24,8 +25,12 @@ internal sealed class TrackedMessageWriter<T> where T : class
     /// <summary>
     /// Enqueues a message and waits for the writer's outcome; cancellation can discard only a not-yet-started write.
     /// </summary>
+    /// <param name="writer">The destination queue writer.</param>
+    /// <param name="message">The message to enqueue and track.</param>
+    /// <param name="cancellationToken">Cancels queue admission or discards the message before its physical write begins.</param>
+    /// <param name="prepare">An optional send-time callback that returns whether the physical write should proceed.</param>
     /// <returns>True after local write completion, or false if the message is discarded before writing.</returns>
-    internal async Task<bool> WriteAsync(ChannelWriter<T> writer, T message, CancellationToken cancellationToken,
+    public async Task<bool> WriteAsync(ChannelWriter<T> writer, T message, CancellationToken cancellationToken,
         Func<bool>? prepare = null)
     {
         PendingWrite pending = new(cancellationToken, prepare);
@@ -56,7 +61,9 @@ internal sealed class TrackedMessageWriter<T> where T : class
     /// <summary>
     /// Lets the sole queue reader discard expired messages or update send-time state before starting a physical write.
     /// </summary>
-    internal bool Prepare(T message)
+    /// <param name="message">The dequeued message.</param>
+    /// <returns><see langword="true"/> to write the message, or <see langword="false"/> to discard it.</returns>
+    public bool Prepare(T message)
     {
         PendingWrite? pending;
         lock (_lock)
@@ -87,7 +94,8 @@ internal sealed class TrackedMessageWriter<T> where T : class
     /// <summary>
     /// Signals successful local write completion, not peer processing or an HTTP terminal acknowledgment.
     /// </summary>
-    internal void Written(T message)
+    /// <param name="message">The message whose physical write completed.</param>
+    public void Written(T message)
     {
         lock (_lock)
         {
@@ -101,7 +109,8 @@ internal sealed class TrackedMessageWriter<T> where T : class
     /// <summary>
     /// Faults outstanding sends after the queue owner stops admission and discards all abandoned queued payloads.
     /// </summary>
-    internal void Complete(Exception error)
+    /// <param name="error">The terminal failure reported to outstanding and future sends.</param>
+    public void Complete(Exception error)
     {
         lock (_lock)
         {

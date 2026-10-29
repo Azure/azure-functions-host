@@ -24,8 +24,8 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -38,13 +38,13 @@ using Moq;
 using Xunit;
 using ProxyApplication = WorkerProxy::Azure.Functions.WorkerProxy.WorkerProxyApplication;
 using ProxyEndpoints = WorkerProxy::Azure.Functions.WorkerProxy.WorkerProxyEndpointConfiguration;
-using ProxyIdentityService = WorkerProxy::Azure.Functions.WorkerProxy.Identity.IdentityProxyService;
 using ProxySide = WorkerProxy::Azure.Functions.WorkerProxy.Rpc.FunctionRpcRelaySide;
+using ProxyTokenServiceService = WorkerProxy::Azure.Functions.WorkerProxy.Identity.TokenServiceProxyService;
 
 namespace Azure.Functions.Host.Tests.Identity;
 
 [Collection(nameof(EnvironmentVariableCollection))]
-public sealed class TokenProxyIntegrationTests
+public sealed class TokenServiceProxyIntegrationTests
 {
     private const string LocalSecret = "worker-local-secret";
     private const string HostSecret = "host-only-secret";
@@ -57,7 +57,7 @@ public sealed class TokenProxyIntegrationTests
         {
             Assert.Contains("api-version=2019-08-01", request.RequestUri!.Query, StringComparison.Ordinal);
             Assert.Contains("resource=", request.RequestUri.Query, StringComparison.Ordinal);
-            Assert.Equal(HostSecret, Assert.Single(request.Headers.GetValues(HttpProxyProtocol.IdentityHeader)));
+            Assert.Equal(HostSecret, Assert.Single(request.Headers.GetValues(TokenServiceProxyProtocol.IdentityHeader)));
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent($$"""
@@ -88,7 +88,7 @@ public sealed class TokenProxyIntegrationTests
         await using Harness harness = await Harness.CreateAsync(async (request, cancellationToken) =>
         {
             upstreamTarget = request.RequestUri!.OriginalString;
-            upstreamSecret = Assert.Single(request.Headers.GetValues(HttpProxyProtocol.IdentityHeader));
+            upstreamSecret = Assert.Single(request.Headers.GetValues(TokenServiceProxyProtocol.IdentityHeader));
             Assert.False(request.Headers.Contains("Authorization"));
             Assert.Equal(new byte[] { 0, 255, 1 }, await request.Content!.ReadAsByteArrayAsync(cancellationToken));
             HttpResponseMessage response = new(HttpStatusCode.TooManyRequests)
@@ -97,7 +97,7 @@ public sealed class TokenProxyIntegrationTests
             };
             response.Headers.TryAddWithoutValidation("Retry-After", "7");
             response.Headers.TryAddWithoutValidation("X-Repeated", new[] { "first", "second" });
-            response.Headers.TryAddWithoutValidation(HttpProxyProtocol.IdentityHeader, HostSecret);
+            response.Headers.TryAddWithoutValidation(TokenServiceProxyProtocol.IdentityHeader, HostSecret);
             return response;
         });
         using HttpRequestMessage local = harness.Request(HttpMethod.Post, "/MSI/token?a=%2f&a=2&resource=https%3A%2F%2Fvault.azure.net");
@@ -113,18 +113,62 @@ public sealed class TokenProxyIntegrationTests
         Assert.Equal("opaque upstream error", await result.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal("7", Assert.Single(result.Headers.GetValues("Retry-After")));
         Assert.Equal(new[] { "first", "second" }, result.Headers.GetValues("X-Repeated"));
-        Assert.False(result.Headers.Contains(HttpProxyProtocol.IdentityHeader));
+        Assert.False(result.Headers.Contains(TokenServiceProxyProtocol.IdentityHeader));
         Assert.Equal("http://token.test/MSI/token?a=%2f&a=2&resource=https%3A%2F%2Fvault.azure.net", upstreamTarget);
         Assert.Equal(HostSecret, upstreamSecret);
         Assert.Empty(harness.Registry.GetInitializedChannels());
     }
 
     [Theory]
-    [InlineData(null, "/MSI/token", HttpStatusCode.Forbidden)]
-    [InlineData("wrong", "/MSI/token", HttpStatusCode.Forbidden)]
-    [InlineData(LocalSecret, "/api/specialize", HttpStatusCode.NotFound)]
-    [InlineData(LocalSecret, "/admin/worker/assignment", HttpStatusCode.NotFound)]
-    public async Task InvalidLocalRequest_DoesNotReachTokenService(string? secret, string path, HttpStatusCode expected)
+    [InlineData(TokenServiceProxyProtocol.IdentityHeader)]
+    [InlineData(TokenServiceProxyProtocol.LegacyIdentityHeader)]
+    public async Task Request_AcceptsModernAndLegacyLocalCredentials(string credentialHeader)
+    {
+        await using Harness harness = await Harness.CreateAsync((request, _) =>
+        {
+            Assert.Equal(HostSecret, Assert.Single(request.Headers.GetValues(TokenServiceProxyProtocol.IdentityHeader)));
+            Assert.False(request.Headers.Contains(TokenServiceProxyProtocol.LegacyIdentityHeader));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("opaque-token") });
+        });
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await harness.ConnectAsync(timeout.Token);
+        using HttpRequestMessage request = harness.Request(HttpMethod.Get, "/msi/token?api-version=2019-08-01", credentialHeader);
+
+        using HttpResponseMessage response = await harness.LocalClient.SendAsync(request, timeout.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("opaque-token", await response.Content.ReadAsStringAsync(timeout.Token));
+    }
+
+    [Fact]
+    public async Task Request_WithBothLocalCredentialHeadersIsRejected()
+    {
+        int requests = 0;
+        await using Harness harness = await Harness.CreateAsync((_, _) =>
+        {
+            Interlocked.Increment(ref requests);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        });
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await harness.ConnectAsync(timeout.Token);
+        using HttpRequestMessage request = new(HttpMethod.Get, "/msi/token");
+        request.Headers.Add(TokenServiceProxyProtocol.IdentityHeader, LocalSecret);
+        request.Headers.Add(TokenServiceProxyProtocol.LegacyIdentityHeader, LocalSecret);
+
+        using HttpResponseMessage response = await harness.LocalClient.SendAsync(request, timeout.Token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, requests);
+    }
+
+    [Theory]
+    [InlineData(null, "/MSI/token", TokenServiceProxyProtocol.IdentityHeader, HttpStatusCode.Forbidden)]
+    [InlineData("wrong", "/MSI/token", TokenServiceProxyProtocol.IdentityHeader, HttpStatusCode.Forbidden)]
+    [InlineData("wrong", "/MSI/token", TokenServiceProxyProtocol.LegacyIdentityHeader, HttpStatusCode.Forbidden)]
+    [InlineData(LocalSecret, "/api/specialize", TokenServiceProxyProtocol.IdentityHeader, HttpStatusCode.NotFound)]
+    [InlineData(LocalSecret, "/admin/worker/assignment", TokenServiceProxyProtocol.IdentityHeader, HttpStatusCode.NotFound)]
+    public async Task InvalidLocalRequest_DoesNotReachTokenService(string? secret, string path, string credentialHeader,
+        HttpStatusCode expected)
     {
         int requests = 0;
         await using Harness harness = await Harness.CreateAsync((_, _) =>
@@ -137,7 +181,7 @@ public sealed class TokenProxyIntegrationTests
         using HttpRequestMessage request = new(HttpMethod.Get, path);
         if (secret is not null)
         {
-            request.Headers.Add(HttpProxyProtocol.IdentityHeader, secret);
+            request.Headers.Add(credentialHeader, secret);
         }
 
         using HttpResponseMessage response = await harness.LocalClient.SendAsync(request, timeout.Token);
@@ -177,7 +221,7 @@ public sealed class TokenProxyIntegrationTests
         {
             Assert.Equal("http://token.test/?a=%2f&a=2", request.RequestUri!.OriginalString);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token") });
-        }, "--WorkerProxy:IdentityProxy:TokenPath", "/");
+        }, "--WorkerProxy:TokenServiceProxy:TokenPath", "/");
         harness.Configuration["MSI_ENDPOINT"] = "http://token.test";
         using CancellationTokenSource timeout = new(TestTimeout);
         await harness.ConnectAsync(timeout.Token);
@@ -207,7 +251,7 @@ public sealed class TokenProxyIntegrationTests
         {
             Interlocked.Increment(ref requests);
             Assert.Equal(expected, request.RequestUri!.OriginalString);
-            Assert.Equal(HostSecret, Assert.Single(request.Headers.GetValues(HttpProxyProtocol.IdentityHeader)));
+            Assert.Equal(HostSecret, Assert.Single(request.Headers.GetValues(TokenServiceProxyProtocol.IdentityHeader)));
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token") });
         });
         harness.Configuration["MSI_ENDPOINT"] = endpoint;
@@ -293,7 +337,7 @@ public sealed class TokenProxyIntegrationTests
     {
         await using Harness harness = await Harness.CreateAsync((_, _) =>
             throw new InvalidOperationException("No upstream request is expected."),
-            "--WorkerProxy:IdentityProxy:RequestTimeout", "00:00:00.100");
+            "--WorkerProxy:TokenServiceProxy:RequestTimeout", "00:00:00.100");
         using CancellationTokenSource timeout = new(TestTimeout);
         using HttpResponseMessage response = await harness.SendAsync(timeout.Token);
         Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
@@ -309,7 +353,7 @@ public sealed class TokenProxyIntegrationTests
         {
             lock (credentials)
             {
-                credentials.Add(Assert.Single(request.Headers.GetValues(HttpProxyProtocol.IdentityHeader)));
+                credentials.Add(Assert.Single(request.Headers.GetValues(TokenServiceProxyProtocol.IdentityHeader)));
             }
 
             entered.TrySetResult();
@@ -382,7 +426,7 @@ public sealed class TokenProxyIntegrationTests
             entered.TrySetResult();
             await release.Task.WaitAsync(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token") };
-        }, "--WorkerProxy:IdentityProxy:MaxPendingRequests", "1");
+        }, "--WorkerProxy:TokenServiceProxy:MaxPendingRequests", "1");
         using CancellationTokenSource timeout = new(TestTimeout);
         await harness.ConnectAsync(timeout.Token);
         Task<HttpResponseMessage> first = harness.SendAsync(timeout.Token);
@@ -427,7 +471,7 @@ public sealed class TokenProxyIntegrationTests
             }
 
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token") };
-        }, "--WorkerProxy:IdentityProxy:MaxPendingRequests", "1");
+        }, "--WorkerProxy:TokenServiceProxy:MaxPendingRequests", "1");
         using CancellationTokenSource timeout = new(TestTimeout);
         await harness.ConnectAsync(timeout.Token);
         for (int attempt = 0; attempt < 3; attempt++)
@@ -484,7 +528,7 @@ public sealed class TokenProxyIntegrationTests
             _applicationOptions.SetupGet(options => options.CurrentValue)
                 .Returns(new ScriptApplicationHostOptions { ScriptPath = AppContext.BaseDirectory });
             _environment.SetupGet(environment => environment.DelayCompletionTask).Returns(Task.CompletedTask);
-            LocalClient = new() { BaseAddress = proxy.Services.GetRequiredService<ProxyEndpoints>().GetIdentityAddress() };
+            LocalClient = new() { BaseAddress = proxy.Services.GetRequiredService<ProxyEndpoints>().GetTokenServiceProxyAddress() };
             Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["MSI_ENDPOINT"] = "http://token.test/MSI/token",
@@ -494,8 +538,8 @@ public sealed class TokenProxyIntegrationTests
             services.AddLogging();
             services.AddSingleton<IConfiguration>(Configuration);
             services.AddRpcClientServices();
-            services.Configure<HttpProxyOptions>(static options => options.Enabled = true);
-            services.AddSingleton<IHttpProxyRequestHandler>(new HostTokenServiceForwarder(Configuration, _clients.Object,
+            services.Configure<TokenServiceProxyOptions>(static options => options.Enabled = true);
+            services.AddSingleton<ITokenServiceProxyRequestHandler>(new HostTokenServiceForwarder(Configuration, _clients.Object,
                 _applicationOptions.Object, _environment.Object, NullLogger<HostTokenServiceForwarder>.Instance));
             Mock<IScriptHostManager> manager = new();
             manager.As<IServiceProvider>().Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
@@ -535,8 +579,8 @@ public sealed class TokenProxyIntegrationTests
                 "--WorkerProxy:RuntimeGrpcPort", "0",
                 "--WorkerProxy:WorkerGrpcPort", "0",
                 "--WorkerProxy:HttpPort", "0",
-                "--WorkerProxy:IdentityProxy:Enabled", "true",
-                "--WorkerProxy:IdentityProxy:Port", "0",
+                "--WorkerProxy:TokenServiceProxy:Enabled", "true",
+                "--WorkerProxy:TokenServiceProxy:Port", "0",
                 "--IDENTITY_HEADER", LocalSecret,
                 "--Logging:LogLevel:Default", "Warning",
                 .. overrides
@@ -555,10 +599,11 @@ public sealed class TokenProxyIntegrationTests
             return Task.CompletedTask;
         }
 
-        internal HttpRequestMessage Request(HttpMethod method, string target = "/msi/token?api-version=2019-08-01")
+        internal HttpRequestMessage Request(HttpMethod method, string target = "/msi/token?api-version=2019-08-01",
+            string credentialHeader = TokenServiceProxyProtocol.IdentityHeader)
         {
             HttpRequestMessage request = new(method, target);
-            request.Headers.Add(HttpProxyProtocol.IdentityHeader, LocalSecret);
+            request.Headers.Add(credentialHeader, LocalSecret);
             return request;
         }
 
@@ -570,7 +615,7 @@ public sealed class TokenProxyIntegrationTests
 
         internal async Task WaitForSingleSlotAsync(CancellationToken cancellationToken)
         {
-            ProxyIdentityService service = _proxy.Services.GetRequiredService<ProxyIdentityService>();
+            ProxyTokenServiceService service = _proxy.Services.GetRequiredService<ProxyTokenServiceService>();
             while (true)
             {
                 using var probe = service.Admission.TryAcquire(1);

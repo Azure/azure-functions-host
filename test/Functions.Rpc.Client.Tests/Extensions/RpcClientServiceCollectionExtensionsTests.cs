@@ -6,8 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -49,7 +49,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
     {
         ServiceCollection services = new();
         services.AddRpcClientServices();
-        services.Configure<HttpProxyOptions>(options =>
+        services.Configure<TokenServiceProxyOptions>(options =>
         {
             options.Enabled = true;
             options.MaxRequestBodyBytes = 0;
@@ -58,12 +58,12 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         using ServiceProvider provider = services.BuildServiceProvider();
 
         OptionsValidationException error = Assert.Throws<OptionsValidationException>(() =>
-            provider.GetRequiredService<IOptions<HttpProxyOptions>>().Value);
+            provider.GetRequiredService<IOptions<TokenServiceProxyOptions>>().Value);
 
         Assert.Equal(
         [
-            $"{nameof(HttpProxyOptions.MaxRequestBodyBytes)} must be greater than zero.",
-            $"{nameof(HttpProxyOptions.MaxHostRequests)} must be greater than zero."
+            $"{nameof(TokenServiceProxyOptions.MaxRequestBodyBytes)} must be greater than zero.",
+            $"{nameof(TokenServiceProxyOptions.MaxHostRequests)} must be greater than zero."
         ], error.Failures);
     }
 
@@ -72,14 +72,14 @@ public sealed class RpcClientServiceCollectionExtensionsTests
     {
         ServiceCollection services = new();
         services.AddRpcClientServices();
-        services.Configure<HttpProxyOptions>(options =>
+        services.Configure<TokenServiceProxyOptions>(options =>
         {
             options.MaxRequestBodyBytes = 0;
             options.RequestTimeout = TimeSpan.Zero;
         });
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        HttpProxyOptions options = provider.GetRequiredService<IOptions<HttpProxyOptions>>().Value;
+        TokenServiceProxyOptions options = provider.GetRequiredService<IOptions<TokenServiceProxyOptions>>().Value;
 
         Assert.False(options.Enabled);
         Assert.Equal(0, options.MaxRequestBodyBytes);

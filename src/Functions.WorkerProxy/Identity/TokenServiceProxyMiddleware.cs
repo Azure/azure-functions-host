@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Management;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,10 +22,10 @@ namespace Azure.Functions.WorkerProxy.Identity;
 /// <summary>
 /// Authenticates the pod-local identity endpoint and bridges bounded HTTP data without interpreting token requests.
 /// </summary>
-internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> options, IdentityProxyService proxy,
-    TimeProvider timeProvider, ILogger<IdentityProxyMiddleware> logger, IConfiguration configuration)
+internal sealed class TokenServiceProxyMiddleware(IOptions<TokenServiceProxyWorkerOptions> options, TokenServiceProxyService proxy,
+    TimeProvider timeProvider, ILogger<TokenServiceProxyMiddleware> logger, IConfiguration configuration)
 {
-    private readonly IdentityProxyOptions _options = options.Value;
+    private readonly TokenServiceProxyWorkerOptions _options = options.Value;
     private readonly byte[] _secretHash = HashInjectedSecret(configuration);
 
     /// <summary>
@@ -38,7 +38,10 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
         using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, context.RequestAborted);
         try
         {
-            if (!context.Request.Headers.TryGetValue(HttpProxyProtocol.IdentityHeader, out StringValues header)
+            bool hasIdentityHeader = context.Request.Headers.TryGetValue(TokenServiceProxyProtocol.IdentityHeader, out StringValues identityHeader);
+            bool hasLegacyHeader = context.Request.Headers.TryGetValue(TokenServiceProxyProtocol.LegacyIdentityHeader, out StringValues legacyHeader);
+            StringValues header = hasIdentityHeader ? identityHeader : legacyHeader;
+            if (hasIdentityHeader == hasLegacyHeader
                 || header is not [string secret] || string.IsNullOrEmpty(secret)
                 || Encoding.UTF8.GetByteCount(secret) > _options.MaxHeaderBytes
                 || !CryptographicOperations.FixedTimeEquals(_secretHash, SHA256.HashData(Encoding.UTF8.GetBytes(secret))))
@@ -57,36 +60,36 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
             }
 
             HttpProxyLimits limits = _options.ToLimits();
-            HttpProxyProtocol.ValidateTarget(target, _options.TokenPath, limits);
-            if (!HttpProxyProtocol.IsToken(context.Request.Method)
+            TokenServiceProxyProtocol.ValidateTarget(target, _options.TokenPath, limits);
+            if (!TokenServiceProxyProtocol.IsToken(context.Request.Method)
                 || string.Equals(context.Request.Method, "CONNECT", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(context.Request.Method, "TRACE", StringComparison.OrdinalIgnoreCase)
                 || context.Request.Headers.ContainsKey("Upgrade"))
             {
-                throw new HttpProxyException(HttpProxyFailure.Types.Code.InvalidRequest);
+                throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.InvalidRequest);
             }
 
-            using HttpProxyAdmission.Lease? admission = proxy.Admission.TryAcquire(_options.ReservationBytes);
+            using TokenServiceProxyAdmission.Lease? admission = proxy.Admission.TryAcquire(_options.ReservationBytes);
             if (admission is null)
             {
-                throw new HttpProxyException(HttpProxyFailure.Types.Code.TooManyRequests);
+                throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.TooManyRequests);
             }
 
             HttpProxyRequest request = new() { Method = context.Request.Method, Target = target };
-            request.Headers.Add(HttpProxyProtocol.FilterHeaders(
-                context.Request.Headers.Select(static entry => HttpProxyProtocol.Header(entry.Key, entry.Value.Select(static value => value ?? string.Empty))),
+            request.Headers.Add(TokenServiceProxyProtocol.FilterHeaders(
+                context.Request.Headers.Select(static entry => TokenServiceProxyProtocol.Header(entry.Key, entry.Value.Select(static value => value ?? string.Empty))),
                 limits));
             if (context.Request.ContentLength > _options.MaxRequestBodyBytes)
             {
-                throw new HttpProxyException(HttpProxyFailure.Types.Code.RequestTooLarge);
+                throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.RequestTooLarge);
             }
 
-            request.Body = await HttpProxyProtocol.ReadBodyAsync(context.Request.Body, _options.MaxRequestBodyBytes,
+            request.Body = await TokenServiceProxyProtocol.ReadBodyAsync(context.Request.Body, _options.MaxRequestBodyBytes,
                 response: false, operation.Token);
             HttpProxyMessage terminal = await proxy.SendAsync(request, admission, started, operation.Token);
             if (terminal.Failure is { } failure)
             {
-                throw new HttpProxyException(failure.Code);
+                throw new TokenServiceProxyException(failure.Code);
             }
 
             HttpProxyResponse response = terminal.Response;
@@ -106,7 +109,7 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
                 context.Response.ContentLength = response.ContentLength;
             }
         }
-        catch (HttpProxyException exception)
+        catch (TokenServiceProxyException exception)
         {
             int status = exception.Code switch
             {
@@ -123,7 +126,7 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
-            logger.LogDebug("Identity proxy HTTP caller disconnected.");
+            logger.LogDebug("Token Service proxy HTTP caller disconnected.");
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested)
         {
@@ -137,7 +140,7 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
 
     private static byte[] HashInjectedSecret(IConfiguration configuration)
     {
-        string? secret = configuration[IdentityProxyOptions.SecretSettingName];
+        string? secret = configuration[TokenServiceProxyWorkerOptions.SecretSettingName];
         ArgumentException.ThrowIfNullOrWhiteSpace(secret);
 
         return SHA256.HashData(Encoding.UTF8.GetBytes(secret));
@@ -148,7 +151,7 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
     /// </summary>
     private async Task ErrorAsync(HttpContext context, int status, string code)
     {
-        logger.LogWarning("Identity proxy request failed: {Reason}.", code);
+        logger.LogWarning("Token Service proxy request failed: {Reason}.", code);
         if (context.Response.HasStarted)
         {
             context.Abort();
@@ -162,7 +165,7 @@ internal sealed class IdentityProxyMiddleware(IOptions<IdentityProxyOptions> opt
             context.Response.Headers.RetryAfter = "1";
         }
 
-        await TypedResults.Json(new WorkerApiErrorResponse(new(code, "The identity proxy request could not be completed.")),
+        await TypedResults.Json(new WorkerApiErrorResponse(new(code, "The Token Service proxy request could not be completed.")),
             WorkerProxyJsonContext.Default.WorkerApiErrorResponse, statusCode: status).ExecuteAsync(context);
     }
 }

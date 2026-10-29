@@ -150,7 +150,7 @@ Stop AppHost to stop the local run; normal shutdown removes worker pods before t
 
 This tool uses local-development transport and authentication settings. Do not expose its endpoints outside your development machine.
 
-## Opt-in identity proxy
+## Opt-in Token Service proxy
 
 The Host and WorkerProxy can forward managed-identity HTTP requests over the existing Host-initiated FunctionRpc stream. The Token Service stays in the Host environment; no Token Service sidecar or new cross-pod identity port is needed.
 
@@ -162,7 +162,7 @@ Host linking can proceed independently of WorkerProxy assignment; the manual har
 
 Run the `project-identity` profile or select it in Visual Studio. It is project-mode only; no Azure subscription, production credentials, or Docker is required.
 
-The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential; only WorkerProxy and its customer receive the per-pod credential. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated identity port to loopback.
+The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential; only WorkerProxy and its customer receive the per-pod credential. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated Token Service proxy port to loopback.
 
 The full token path is:
 
@@ -172,7 +172,7 @@ Mock Token Service <-- HTTP --> Host <-- existing gRPC --> WorkerProxy <-- HTTP 
 
 Host's mock upstream is `/token`, while the worker uses `/msi/token`, exercising independent endpoint mapping. Before `builder.Build().RunAsync()`, the sample calls `ManagedIdentityCredential` and prints `Managed identity token acquired through WorkerProxy before worker startup.` without printing the token or either secret. Normal worker initialization follows; invoke `/api/hello` on the Host to confirm the application subsequently executes.
 
-Set breakpoints in the sample's startup credential call, `IdentityProxyMiddleware`, `HttpProxyDuplexChannel`, `HostTokenServiceForwarder`, and the mock's `/token` handler to inspect each hop. The normal 30-second token and two-minute early-link deadlines still apply while stopped in a debugger.
+Set breakpoints in the sample's startup credential call, `TokenServiceProxyMiddleware`, `TokenServiceProxyDuplexChannel`, `HostTokenServiceForwarder`, and the mock's `/token` handler to inspect each hop. The normal 30-second token and two-minute early-link deadlines still apply while stopped in a debugger.
 
 Open the mock's `http` endpoint from the dashboard to use these development-only controls:
 

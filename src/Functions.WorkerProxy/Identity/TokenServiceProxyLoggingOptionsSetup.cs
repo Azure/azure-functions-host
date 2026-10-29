@@ -10,7 +10,7 @@ namespace Azure.Functions.WorkerProxy.Identity;
 /// <summary>
 /// Prevents framework request-URI logs from exposing identity queries, including through provider-specific overrides.
 /// </summary>
-internal sealed class IdentityProxyLoggingOptionsSetup(IOptions<IdentityProxyOptions> identityOptions)
+internal sealed class TokenServiceProxyLoggingOptionsSetup(IOptions<TokenServiceProxyWorkerOptions> tokenServiceProxyOptions)
     : IPostConfigureOptions<LoggerFilterOptions>
 {
     internal const string RequestCategory = "Microsoft.AspNetCore.Hosting.Diagnostics";
@@ -18,7 +18,7 @@ internal sealed class IdentityProxyLoggingOptionsSetup(IOptions<IdentityProxyOpt
     /// <inheritdoc />
     public void PostConfigure(string? name, LoggerFilterOptions options)
     {
-        if (!identityOptions.Value.Enabled)
+        if (!tokenServiceProxyOptions.Value.Enabled)
         {
             return;
         }

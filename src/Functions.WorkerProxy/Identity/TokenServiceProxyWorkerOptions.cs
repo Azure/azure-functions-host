@@ -1,16 +1,16 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 
 namespace Azure.Functions.WorkerProxy.Identity;
 
 /// <summary>
-/// Configures the loopback identity listener separately from the Host-selected upstream endpoint and credential.
+/// Configures the loopback Token Service listener separately from the Host-selected upstream endpoint and credential.
 /// </summary>
-internal sealed class IdentityProxyOptions : HttpProxyOptions
+internal sealed class TokenServiceProxyWorkerOptions : TokenServiceProxyOptions
 {
-    public const string SectionName = "WorkerProxy:IdentityProxy";
+    public const string SectionName = "WorkerProxy:TokenServiceProxy";
 
     public const string SecretSettingName = "IDENTITY_HEADER";
 

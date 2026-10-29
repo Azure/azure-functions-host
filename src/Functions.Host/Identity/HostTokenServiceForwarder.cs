@@ -9,8 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -24,7 +24,7 @@ namespace Azure.Functions.Host.Identity;
 /// <remarks>The Host supplies the upstream credential; the worker's local route never selects the destination.</remarks>
 internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IHttpClientFactory clients,
     IOptionsMonitor<ScriptApplicationHostOptions> applicationOptions, IScriptWebHostEnvironment environment,
-    ILogger<HostTokenServiceForwarder> logger) : IHttpProxyRequestHandler
+    ILogger<HostTokenServiceForwarder> logger) : ITokenServiceProxyRequestHandler
 {
     internal const string ClientName = nameof(HostTokenServiceForwarder);
 
@@ -40,20 +40,20 @@ internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IH
             || !(string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             || !string.IsNullOrEmpty(endpoint.UserInfo)
-            || !string.IsNullOrEmpty(endpoint.Fragment) || !HttpProxyProtocol.IsTokenPath(endpoint.AbsolutePath)
+            || !string.IsNullOrEmpty(endpoint.Fragment) || !TokenServiceProxyProtocol.IsTokenPath(endpoint.AbsolutePath)
             || string.IsNullOrWhiteSpace(secret) || secret.Any(static character => character is '\r' or '\n' or '\0'))
         {
-            logger.LogWarning("Identity proxy upstream configuration is unavailable or invalid.");
-            throw new HttpProxyException(HttpProxyFailure.Types.Code.Unavailable);
+            logger.LogWarning("Token Service proxy upstream configuration is unavailable or invalid.");
+            throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.Unavailable);
         }
 
-        string incomingQuery = HttpProxyProtocol.ParseTarget(request.Target, limits).Query;
-        if (!HttpProxyProtocol.IsToken(request.Method)
+        string incomingQuery = TokenServiceProxyProtocol.ParseTarget(request.Target, limits).Query;
+        if (!TokenServiceProxyProtocol.IsToken(request.Method)
             || string.Equals(request.Method, "CONNECT", StringComparison.OrdinalIgnoreCase)
             || string.Equals(request.Method, "TRACE", StringComparison.OrdinalIgnoreCase)
             || request.Body.Length > limits.MaxRequestBodyBytes)
         {
-            throw new HttpProxyException(HttpProxyFailure.Types.Code.InvalidRequest);
+            throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.InvalidRequest);
         }
 
         string query = endpoint.Query;
@@ -69,7 +69,7 @@ internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IH
         {
             Content = new ByteArrayContent(request.Body.ToByteArray())
         };
-        foreach (HttpProxyHeader header in HttpProxyProtocol.FilterHeaders(request.Headers, limits))
+        foreach (HttpProxyHeader header in TokenServiceProxyProtocol.FilterHeaders(request.Headers, limits))
         {
             if (!outbound.Headers.TryAddWithoutValidation(header.Name, header.Values))
             {
@@ -77,7 +77,7 @@ internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IH
             }
         }
 
-        outbound.Headers.Add(HttpProxyProtocol.IdentityHeader, secret);
+        outbound.Headers.Add(TokenServiceProxyProtocol.IdentityHeader, secret);
         try
         {
             using HttpResponseMessage response = await clients.CreateClient(ClientName)
@@ -92,24 +92,24 @@ internal sealed class HostTokenServiceForwarder(IConfiguration configuration, IH
             List<HttpProxyHeader> headers;
             try
             {
-                headers = HttpProxyProtocol.FilterHeaders(response.Headers.Concat(response.Content.Headers)
-                    .Select(static header => HttpProxyProtocol.Header(header.Key, header.Value)), limits);
+                headers = TokenServiceProxyProtocol.FilterHeaders(response.Headers.Concat(response.Content.Headers)
+                    .Select(static header => TokenServiceProxyProtocol.Header(header.Key, header.Value)), limits);
             }
-            catch (HttpProxyException)
+            catch (TokenServiceProxyException)
             {
-                throw new HttpProxyException(HttpProxyFailure.Types.Code.BadGateway);
+                throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.BadGateway);
             }
 
             result.Headers.Add(headers);
-            result.Body = await HttpProxyProtocol.ReadBodyAsync(await response.Content.ReadAsStreamAsync(cancellationToken),
+            result.Body = await TokenServiceProxyProtocol.ReadBodyAsync(await response.Content.ReadAsStreamAsync(cancellationToken),
                 (int)limits.MaxResponseBodyBytes, response: true, cancellationToken);
             return result;
         }
         catch (HttpRequestException)
         {
             // HttpRequestException can contain the request URI; do not put customer query parameters in logs.
-            logger.LogWarning("Identity proxy could not reach its configured Token Service.");
-            throw new HttpProxyException(HttpProxyFailure.Types.Code.BadGateway);
+            logger.LogWarning("Token Service proxy could not reach its configured Token Service.");
+            throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.BadGateway);
         }
     }
 

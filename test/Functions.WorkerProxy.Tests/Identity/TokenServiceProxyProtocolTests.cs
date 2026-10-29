@@ -8,25 +8,26 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Google.Protobuf;
-using Microsoft.Azure.WebJobs.Script.Grpc.HttpProxy;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests.Identity;
 
-public sealed class HttpProxyProtocolTests
+public sealed class TokenServiceProxyProtocolTests
 {
     [Theory]
     [InlineData("Logging:Console:LogLevel:Default")]
     [InlineData("Logging:Console:LogLevel:Microsoft.AspNetCore.Hosting.Diagnostics")]
-    public async Task EnabledIdentityProxy_DoesNotEmitFrameworkRequestUriLogs(string providerOverride)
+    public async Task EnabledTokenServiceProxy_DoesNotEmitFrameworkRequestUriLogs(string providerOverride)
     {
         Dictionary<string, string?> configuration = new()
         {
-            ["WorkerProxy:IdentityProxy:Enabled"] = "true",
-            ["WorkerProxy:IdentityProxy:Port"] = "0",
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
             ["IDENTITY_HEADER"] = "local-test-secret",
             [providerOverride] = "Information"
         };
@@ -49,14 +50,14 @@ public sealed class HttpProxyProtocolTests
     [InlineData("/msi/tokenized", false)]
     public void Target_RequiresConfiguredPathIgnoringCase(string target, bool valid)
     {
-        HttpProxyLimits limits = new HttpProxyOptions().ToLimits();
+        HttpProxyLimits limits = new TokenServiceProxyOptions().ToLimits();
         if (valid)
         {
-            HttpProxyProtocol.ValidateTarget(target, "/msi/token", limits);
+            TokenServiceProxyProtocol.ValidateTarget(target, "/msi/token", limits);
         }
         else
         {
-            Assert.Throws<HttpProxyException>(() => HttpProxyProtocol.ValidateTarget(target, "/msi/token", limits));
+            Assert.Throws<TokenServiceProxyException>(() => TokenServiceProxyProtocol.ValidateTarget(target, "/msi/token", limits));
         }
     }
 
@@ -66,7 +67,7 @@ public sealed class HttpProxyProtocolTests
     [InlineData("/local/token?future=%2f&future=%2F&resource=a%20b", "/local/token", "?future=%2f&future=%2F&resource=a%20b")]
     public void Target_SeparatesPathAndQueryWithoutInterpretingParameters(string target, string expectedPath, string expectedQuery)
     {
-        var (path, query) = HttpProxyProtocol.ParseTarget(target, new HttpProxyOptions().ToLimits());
+        var (path, query) = TokenServiceProxyProtocol.ParseTarget(target, new TokenServiceProxyOptions().ToLimits());
 
         Assert.Equal(expectedPath, path);
         Assert.Equal(expectedQuery, query);
@@ -80,30 +81,31 @@ public sealed class HttpProxyProtocolTests
     [InlineData("/local/../admin?resource=a")]
     public void Target_RejectsNonOriginOrAmbiguousTargets(string target)
     {
-        Assert.Throws<HttpProxyException>(() => HttpProxyProtocol.ParseTarget(target, new HttpProxyOptions().ToLimits()));
+        Assert.Throws<TokenServiceProxyException>(() => TokenServiceProxyProtocol.ParseTarget(target, new TokenServiceProxyOptions().ToLimits()));
     }
 
     [Fact]
     public void ConfiguredRootTokenPath_DoesNotPermitOtherServicePaths()
     {
-        HttpProxyLimits limits = new HttpProxyOptions().ToLimits();
-        Assert.True(HttpProxyProtocol.IsTokenPath("/"));
-        HttpProxyProtocol.ValidateTarget("/?api-version=2019-08-01", "/", limits);
-        Assert.Throws<HttpProxyException>(() => HttpProxyProtocol.ValidateTarget("/api/specialize", "/", limits));
+        HttpProxyLimits limits = new TokenServiceProxyOptions().ToLimits();
+        Assert.True(TokenServiceProxyProtocol.IsTokenPath("/"));
+        TokenServiceProxyProtocol.ValidateTarget("/?api-version=2019-08-01", "/", limits);
+        Assert.Throws<TokenServiceProxyException>(() => TokenServiceProxyProtocol.ValidateTarget("/api/specialize", "/", limits));
     }
 
     [Fact]
     public void Headers_RemoveHopByHopAndCredentials_PreserveRepeatedValues()
     {
-        HttpProxyLimits limits = new HttpProxyOptions().ToLimits();
-        var filtered = HttpProxyProtocol.FilterHeaders(
+        HttpProxyLimits limits = new TokenServiceProxyOptions().ToLimits();
+        var filtered = TokenServiceProxyProtocol.FilterHeaders(
         [
-            HttpProxyProtocol.Header("Connection", ["X-Hop"]),
-            HttpProxyProtocol.Header("X-Hop", ["remove"]),
-            HttpProxyProtocol.Header("Authorization", ["remove"]),
-            HttpProxyProtocol.Header("X-IDENTITY-HEADER", ["remove"]),
-            HttpProxyProtocol.Header("Content-Length", ["5"]),
-            HttpProxyProtocol.Header("X-Repeated", ["one", "two"])
+            TokenServiceProxyProtocol.Header("Connection", ["X-Hop"]),
+            TokenServiceProxyProtocol.Header("X-Hop", ["remove"]),
+            TokenServiceProxyProtocol.Header("Authorization", ["remove"]),
+            TokenServiceProxyProtocol.Header("X-IDENTITY-HEADER", ["remove"]),
+            TokenServiceProxyProtocol.Header("Secret", ["remove"]),
+            TokenServiceProxyProtocol.Header("Content-Length", ["5"]),
+            TokenServiceProxyProtocol.Header("X-Repeated", ["one", "two"])
         ], limits);
 
         HttpProxyHeader retained = Assert.Single(filtered);
@@ -114,13 +116,15 @@ public sealed class HttpProxyProtocolTests
     [Fact]
     public void Headers_RejectProtectedConnectionNomination_AndCountLimit()
     {
-        HttpProxyLimits limits = new HttpProxyOptions().ToLimits();
-        Assert.Throws<HttpProxyException>(() => HttpProxyProtocol.FilterHeaders(
-            [HttpProxyProtocol.Header("Connection", ["X-IDENTITY-HEADER"])], limits));
+        HttpProxyLimits limits = new TokenServiceProxyOptions().ToLimits();
+        Assert.Throws<TokenServiceProxyException>(() => TokenServiceProxyProtocol.FilterHeaders(
+            [TokenServiceProxyProtocol.Header("Connection", ["X-IDENTITY-HEADER"])], limits));
+        Assert.Throws<TokenServiceProxyException>(() => TokenServiceProxyProtocol.FilterHeaders(
+            [TokenServiceProxyProtocol.Header("Connection", ["Secret"])], limits));
         limits.MaxHeaderCount = 1;
-        Assert.Single(HttpProxyProtocol.FilterHeaders([HttpProxyProtocol.Header("X-One", ["a"])], limits));
-        HttpProxyException error = Assert.Throws<HttpProxyException>(() => HttpProxyProtocol.FilterHeaders(
-            [HttpProxyProtocol.Header("X-One", ["a", "b"])], limits));
+        Assert.Single(TokenServiceProxyProtocol.FilterHeaders([TokenServiceProxyProtocol.Header("X-One", ["a"])], limits));
+        TokenServiceProxyException error = Assert.Throws<TokenServiceProxyException>(() => TokenServiceProxyProtocol.FilterHeaders(
+            [TokenServiceProxyProtocol.Header("X-One", ["a", "b"])], limits));
         Assert.Equal(HttpProxyFailure.Types.Code.HeadersTooLarge, error.Code);
     }
 
@@ -132,24 +136,24 @@ public sealed class HttpProxyProtocolTests
     {
         byte[] bytes = new byte[length];
         using MemoryStream stream = new(bytes);
-        Assert.Equal(ByteString.CopyFrom(bytes), await HttpProxyProtocol.ReadBodyAsync(stream, 1024, false, CancellationToken.None));
+        Assert.Equal(ByteString.CopyFrom(bytes), await TokenServiceProxyProtocol.ReadBodyAsync(stream, 1024, false, CancellationToken.None));
         using MemoryStream oversized = new(new byte[1025]);
-        HttpProxyException error = await Assert.ThrowsAsync<HttpProxyException>(() =>
-            HttpProxyProtocol.ReadBodyAsync(oversized, 1024, false, CancellationToken.None));
+        TokenServiceProxyException error = await Assert.ThrowsAsync<TokenServiceProxyException>(() =>
+            TokenServiceProxyProtocol.ReadBodyAsync(oversized, 1024, false, CancellationToken.None));
         Assert.Equal(HttpProxyFailure.Types.Code.RequestTooLarge, error.Code);
     }
 
     [Fact]
     public void Admission_RetainedTransportLeaseOutlivesHttpCaller()
     {
-        HttpProxyAdmission admission = new(1, 10);
-        HttpProxyAdmission.Lease caller = Assert.IsType<HttpProxyAdmission.Lease>(admission.TryAcquire(10));
-        HttpProxyAdmission.Lease transport = caller.Retain();
+        TokenServiceProxyAdmission admission = new(1, 10);
+        TokenServiceProxyAdmission.Lease caller = Assert.IsType<TokenServiceProxyAdmission.Lease>(admission.TryAcquire(10));
+        TokenServiceProxyAdmission.Lease transport = caller.Retain();
         caller.Dispose();
         caller.Dispose();
         Assert.Null(admission.TryAcquire(1));
         transport.Dispose();
-        using HttpProxyAdmission.Lease? next = admission.TryAcquire(10);
+        using TokenServiceProxyAdmission.Lease? next = admission.TryAcquire(10);
         Assert.NotNull(next);
     }
 
