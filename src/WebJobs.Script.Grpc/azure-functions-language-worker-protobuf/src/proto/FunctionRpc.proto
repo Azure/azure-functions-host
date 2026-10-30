@@ -117,6 +117,8 @@ message WorkerInitRequest {
   string host_version = 1;
 
   // A map of host supported features/capabilities
+  // Compute/BYOC hosts always set capabilities["HostConfiguration"] = "1".
+  // Regular hosts use file-based loading and omit this capability.
   map<string, string> capabilities = 2;
 
   // inform worker of supported categories and their levels
@@ -149,6 +151,46 @@ message WorkerInitResponse {
   // A map of application-level capabilities
   // These features/capabilities are queried from admin endpoints in the host by third parties
   map<string, string> app_capabilities = 5;
+
+  // Supporting workers capture and attach only for HostConfiguration = "1".
+  // Otherwise omit this field without obtaining or preparing configuration.
+  // Absence means unsupported/not delivered, not a Missing outcome.
+  // The compute host uses file-based loading if the first admitted worker omits this.
+  HostConfiguration host_configuration = 6;
+}
+
+// Immutable Host Configuration JSON snapshot; the worker may generate it in memory.
+// Capture once per process/app generation on the first HostConfiguration = "1" request;
+// replay on same-generation requested retries.
+// Configuration acceptance is separate from WorkerInitResponse.result.
+// The host validates delivery before startup; the first successfully admitted worker
+// fixes snapshot/defaults or file-based loading across later links and child-host restarts.
+// Rejected/canceled candidates select nothing; later envelopes are validated, not adopted.
+// Cross-worker comparison is outside this delivery contract.
+message HostConfiguration {
+  enum Status {
+    Unspecified = 0;
+    Available = 1;
+    // Delivery is supported, but no configuration is available; allows existing defaults.
+    Missing = 2;
+    // The worker could not obtain, generate, or convert the configuration.
+    Error = 3;
+    TooLarge = 4;
+  }
+
+  // Unspecified and unrecognized values are not valid delivery outcomes.
+  // Error, TooLarge, and invalid deliveries fail acceptance, never trigger fallback.
+  Status status = 1;
+
+  // Strict UTF-8 JSON without a BOM; at most 65,536 transmitted bytes after worker conversion.
+  // Non-Available outcomes must have empty content; empty Available content is invalid JSON.
+  // Workers bound acquisition/conversion and measure the final transmitted UTF-8 payload.
+  // The host independently validates UTF-8, JSON, and this payload cap.
+  // Delivered settings require no file-schema version header.
+  // This payload cap is separate from gRPC message-size and process-memory budgets.
+  // Proxies forward opaquely; the host owns settings validation.
+  // Never put content, arbitrary configuration values, or path-bearing errors in telemetry.
+  bytes content = 2;
 }
 
 message WorkerMetadata {

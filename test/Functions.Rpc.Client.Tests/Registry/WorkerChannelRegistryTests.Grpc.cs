@@ -7,7 +7,11 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
 
@@ -275,9 +279,13 @@ public sealed partial class WorkerChannelRegistryTests
     {
         FunctionRpcDuplexChannelFactory duplexFactory = new(clientFactory, NullLogger<FunctionRpcDuplexChannelFactory>.Instance);
         RpcClientWorkerChannelFactory channelFactory = CreateRealChannelFactory();
+        WorkerHostConfigurationParser workerHostConfigurationParser = new(
+            new ConfigurationBuilder().Build(), NullLogger<WorkerHostConfigurationParser>.Instance);
 
         return linkTimeout.HasValue
-            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, linkTimeout.Value)
-            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System);
+            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance,
+                RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, linkTimeout.Value, workerHostConfigurationParser)
+            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance,
+                RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, workerHostConfigurationParser);
     }
 }

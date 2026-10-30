@@ -4,12 +4,14 @@
 #nullable enable
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -22,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -34,6 +37,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using RpcHostConfiguration = Microsoft.Azure.WebJobs.Script.Grpc.Messages.HostConfiguration;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
@@ -103,10 +107,12 @@ public class RpcClientScriptHostStartupIntegrationTests
         {
             await testHost.Host.StartAsync(timeout.Token);
             IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+            IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
             RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
             IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
             Assert.Null(manager.Services);
+            Assert.Throws<InvalidOperationException>(() => sourceProvider.GetConfigurationSource());
             Assert.Equal(ScriptHostState.Default, manager.State);
             Assert.False(coordinator.ActivationTask!.IsCompleted);
             Assert.Equal("host.json", Path.GetFileName(Assert.Single(Directory.GetFiles(testHost.ScriptPath))));
@@ -118,6 +124,8 @@ public class RpcClientScriptHostStartupIntegrationTests
             await firstWorker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
 
             Assert.Equal(ScriptHostState.Running, manager.State);
+            Assert.Null(sourceProvider.GetConfigurationSource());
+            Assert.Equal("1", firstWorker.Service.InitRequest!.Capabilities["HostConfiguration"]);
             IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
             ScriptHost scriptHost = scriptServices.GetRequiredService<ScriptHost>();
             FunctionDescriptor function = Assert.Single(scriptHost.Functions);
@@ -155,6 +163,8 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.Same(firstChannel, firstReplay.Channel);
             Assert.Same(secondLink.Channel, secondReplay.Channel);
 
+            Assert.Equal("1", secondWorker.Service.InitRequest!.Capabilities["HostConfiguration"]);
+            Assert.Equal("1", thirdWorker.Service.InitRequest!.Capabilities["HostConfiguration"]);
             Assert.Same(scriptServices, manager.Services);
             Assert.Same(scriptHost, scriptServices.GetRequiredService<ScriptHost>());
             Assert.Same(function, Assert.Single(scriptHost.Functions));
@@ -183,6 +193,9 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.Equal(0, thirdWorker.Service.MetadataRequests);
             Assert.Same(scriptServices, manager.Services);
             Assert.Same(scriptHost, scriptServices.GetRequiredService<ScriptHost>());
+            Assert.Null(sourceProvider.GetConfigurationSource());
+            Assert.DoesNotContain(testHost.Logs, log =>
+                string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
 
             await coordinator.StopAsync(timeout.Token);
 
@@ -265,6 +278,223 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.True(registry.TryGetInitializedChannel("worker", out _));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FirstLink_UsesWorkerConfiguration_AndRetainsItAcrossDifferentWorkersAndChildRestart(bool laterSuppliesConfiguration)
+    {
+        RpcHostConfiguration firstConfiguration = CreateHostConfiguration("""
+            {
+                "functionTimeout": "00:03:00",
+                "extensions": { "custom": { "setting": "first", "values": [1, true] } },
+                "logging": { "applicationInsights": { "customRedactionSentinel": "customer-secret" } }
+            }
+            """);
+        await using TestWorker first = await TestWorker.StartAsync("first", hostConfiguration: firstConfiguration);
+        RpcHostConfiguration? laterConfiguration = laterSuppliesConfiguration ? CreateHostConfiguration(
+            """{"version":"2.0","functionTimeout":"00:07:00","extensions":{"custom":{"setting":"different"}}}""") : null;
+        await using TestWorker later = await TestWorker.StartAsync("later", hostConfiguration: laterConfiguration);
+        await using ClientTestHost testHost = new(emptyHostRoot: true);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+        Assert.Null(manager.Services);
+        Assert.Empty(Directory.EnumerateFiles(testHost.ScriptPath));
+
+        await registry.LinkAsync("first", first.Endpoint, timeout.Token);
+        await coordinator.ActivationTask!.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        await first.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        IConfiguration configuration = scriptServices.GetRequiredService<IConfiguration>();
+        ScriptHost scriptHost = scriptServices.GetRequiredService<ScriptHost>();
+        IConfigurationSource snapshot = sourceProvider.GetConfigurationSource()!;
+        Assert.Equal("1", first.Service.InitRequest!.Capabilities["HostConfiguration"]);
+        Assert.Equal(TimeSpan.FromMinutes(3), scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.FunctionTimeout);
+        Assert.Equal("first", configuration["AzureFunctionsJobHost:extensions:custom:setting"]);
+        Assert.Equal("True", configuration["AzureFunctionsJobHost:extensions:custom:values:1"]);
+        Assert.Single(scriptHost.Functions);
+        Assert.False(File.Exists(Path.Combine(testHost.ScriptPath, "host.json")));
+
+        await registry.LinkAsync("later", later.Endpoint, timeout.Token);
+
+        Assert.Equal("1", later.Service.InitRequest!.Capabilities["HostConfiguration"]);
+        Assert.Same(scriptServices, manager.Services);
+        Assert.Same(scriptHost, manager.Services!.GetRequiredService<ScriptHost>());
+        Assert.Same(snapshot, sourceProvider.GetConfigurationSource());
+        Assert.Equal("first", configuration["AzureFunctionsJobHost:extensions:custom:setting"]);
+        Assert.True(await registry.UnlinkAsync("first", timeout.Token));
+        Assert.Same(snapshot, sourceProvider.GetConfigurationSource());
+
+        await manager.RestartHostAsync("Test retained Host configuration.", timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+
+        IServiceProvider restartedServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        Assert.NotSame(scriptServices, restartedServices);
+        Assert.Same(snapshot, sourceProvider.GetConfigurationSource());
+        Assert.Equal(TimeSpan.FromMinutes(3), restartedServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.FunctionTimeout);
+        Assert.Equal("first", restartedServices.GetRequiredService<IConfiguration>()["AzureFunctionsJobHost:extensions:custom:setting"]);
+        Assert.False(File.Exists(Path.Combine(testHost.ScriptPath, "host.json")));
+        Assert.DoesNotContain(testHost.Logs, log =>
+            log.Message?.Contains("customer-secret", StringComparison.Ordinal) is true ||
+            log.Exception?.ToString().Contains("customer-secret", StringComparison.Ordinal) is true);
+        Assert.DoesNotContain(testHost.Logs, log =>
+            string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task FirstLink_AbsentEnvelopeRetainsFileBasedLoadingAcrossWorkerDeliveryAndChildRestart()
+    {
+        await using TestWorker first = await TestWorker.StartAsync("first");
+        await using TestWorker later = await TestWorker.StartAsync("later", hostConfiguration: CreateHostConfiguration(
+            """{"version":"2.0","functionTimeout":"00:07:00","extensions":{"custom":{"setting":"worker"}}}"""));
+        await using ClientTestHost testHost = new();
+        File.WriteAllText(Path.Combine(testHost.ScriptPath, "host.json"),
+            """{"version":"2.0","functionTimeout":"00:09:00","extensions":{"custom":{"setting":"local"}}}""");
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+
+        await registry.LinkAsync("first", first.Endpoint, timeout.Token);
+        await coordinator.ActivationTask!.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        await first.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        ScriptHost scriptHost = scriptServices.GetRequiredService<ScriptHost>();
+        Assert.Null(sourceProvider.GetConfigurationSource());
+        Assert.Equal("local", scriptServices.GetRequiredService<IConfiguration>()["AzureFunctionsJobHost:extensions:custom:setting"]);
+
+        await registry.LinkAsync("later", later.Endpoint, timeout.Token);
+
+        Assert.Null(sourceProvider.GetConfigurationSource());
+        Assert.Same(scriptServices, manager.Services);
+        Assert.Same(scriptHost, manager.Services!.GetRequiredService<ScriptHost>());
+        Assert.True(await registry.UnlinkAsync("first", timeout.Token));
+        Assert.Null(sourceProvider.GetConfigurationSource());
+        await manager.RestartHostAsync("Test retained file-based host.json loading.", timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+
+        IServiceProvider restartedServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        Assert.NotSame(scriptServices, restartedServices);
+        Assert.Null(sourceProvider.GetConfigurationSource());
+        Assert.Equal(TimeSpan.FromMinutes(9), restartedServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.FunctionTimeout);
+        Assert.Equal("local", restartedServices.GetRequiredService<IConfiguration>()["AzureFunctionsJobHost:extensions:custom:setting"]);
+        Assert.DoesNotContain(testHost.Logs, log =>
+            string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(false, """{"version":"2.0","configurationProfile":"customer-secret"}""")]
+    [InlineData(true, """{"version":"2.0","configurationProfile":"customer-secret"}""")]
+    [InlineData(false, """{"functionTimeout":undefined,"custom":"customer-secret"}""")]
+    [InlineData(true, """{"functionTimeout":undefined,"custom":"customer-secret"}""")]
+    public async Task FirstLink_InvalidConfigurationDoesNotStartScriptHost_AndValidRetryCanStart(
+        bool replacementSuppliesConfiguration, string content)
+    {
+        await using TestWorker invalid = await TestWorker.StartAsync("worker",
+            hostConfiguration: CreateHostConfiguration(content));
+        await using TestWorker valid = await TestWorker.StartAsync("worker",
+            hostConfiguration: replacementSuppliesConfiguration ? CreateHostConfiguration("""{"version":"2.0"}""") : null);
+        await using ClientTestHost testHost = new(emptyHostRoot: true);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() =>
+            registry.LinkAsync("worker", invalid.Endpoint, timeout.Token));
+
+        Assert.Null(exception.InnerException);
+        Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
+        Assert.Null(manager.Services);
+        Assert.False(coordinator.ActivationTask!.IsCompleted);
+        Assert.Empty(registry.GetInitializedChannels());
+        IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
+        Assert.Throws<InvalidOperationException>(() => sourceProvider.GetConfigurationSource());
+        Assert.Equal(0, invalid.Service.MetadataRequests);
+        var diagnostic = Assert.Single(testHost.Logs, log =>
+            string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Warning, diagnostic.Level);
+        Assert.Equal("Host configuration was rejected. " +
+            "The Host configuration must be a JSON object with a supported configuration profile.",
+            diagnostic.Message);
+        Assert.Null(diagnostic.Exception);
+        Assert.DoesNotContain(testHost.Logs, log =>
+            log.Message?.Contains("customer-secret", StringComparison.Ordinal) is true ||
+            log.Exception?.ToString().Contains("customer-secret", StringComparison.Ordinal) is true);
+        await registry.LinkAsync("worker", valid.Endpoint, timeout.Token);
+        await coordinator.ActivationTask.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        Assert.Single(manager.Services!.GetRequiredService<ScriptHost>().Functions);
+        Assert.Equal(replacementSuppliesConfiguration, sourceProvider.GetConfigurationSource() is not null);
+    }
+
+    [Fact]
+    public async Task FirstLink_ExplicitMissingUsesEmptyConfigurationWithoutFileBootstrapDefaults()
+    {
+        await using TestWorker worker = await TestWorker.StartAsync("worker",
+            hostConfiguration: new() { Status = RpcHostConfiguration.Types.Status.Missing });
+        await using ClientTestHost testHost = new(emptyHostRoot: true);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+
+        await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        Assert.False(scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.IsDefaultHostConfig);
+        IConfiguration configuration = scriptServices.GetRequiredService<IConfiguration>();
+        Assert.Null(configuration["AzureFunctionsJobHost:version"]);
+        Assert.Null(configuration["AzureFunctionsJobHost:extensionBundle:id"]);
+        Assert.Null(configuration["AzureFunctionsJobHost:managedDependency:Enabled"]);
+        Assert.False(File.Exists(Path.Combine(testHost.ScriptPath, "host.json")));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FirstLink_ExplicitMissingOverridesLocalFileButAbsenceUsesIt(bool explicitMissing)
+    {
+        await using TestWorker worker = await TestWorker.StartAsync("worker",
+            hostConfiguration: explicitMissing ? new() { Status = RpcHostConfiguration.Types.Status.Missing } : null);
+        await using ClientTestHost testHost = new(emptyHostRoot: true);
+        const string localJson = """{"version":"2.0","functionTimeout":"00:09:00","extensions":{"custom":{"setting":"local"}}}""";
+        string localPath = Path.Combine(testHost.ScriptPath, "host.json");
+        File.WriteAllText(localPath, localJson);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+
+        await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+
+        IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
+        Assert.Equal(explicitMissing, sourceProvider.GetConfigurationSource() is not null);
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        IConfiguration configuration = scriptServices.GetRequiredService<IConfiguration>();
+        Assert.Equal(explicitMissing ? null : "local", configuration["AzureFunctionsJobHost:extensions:custom:setting"]);
+        Assert.False(scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.IsDefaultHostConfig);
+        Assert.Equal(localJson, File.ReadAllText(localPath));
+        Assert.DoesNotContain(testHost.Logs, log =>
+            string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
+    }
+
+    private static RpcHostConfiguration CreateHostConfiguration(string content) => new()
+    {
+        Status = RpcHostConfiguration.Types.Status.Available,
+        Content = ByteString.CopyFromUtf8(content),
+    };
+
     private static async Task<string> InvokeHttpFunctionAsync(ScriptHost scriptHost, CancellationToken cancellationToken)
     {
         DefaultHttpContext context = new();
@@ -293,11 +523,15 @@ public class RpcClientScriptHostStartupIntegrationTests
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"ClientHost-{Guid.NewGuid():N}");
 
-        public ClientTestHost(Action<IServiceCollection>? configureServices = null)
+        public ClientTestHost(Action<IServiceCollection>? configureServices = null, bool emptyHostRoot = false)
         {
             ScriptPath = Path.Combine(_directory, "app");
             Directory.CreateDirectory(ScriptPath);
-            File.WriteAllText(Path.Combine(ScriptPath, "host.json"), HostConfiguration);
+            if (!emptyHostRoot)
+            {
+                File.WriteAllText(Path.Combine(ScriptPath, "host.json"), HostConfiguration);
+            }
+
             Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [EnvironmentSettingNames.FunctionWorkerRuntime] = "dotnet-isolated",
@@ -308,10 +542,22 @@ public class RpcClientScriptHostStartupIntegrationTests
                 ["AzureFunctionsWebHost:LogPath"] = Path.Combine(_directory, "logs"),
                 ["AzureFunctionsWebHost:SecretsPath"] = Path.Combine(_directory, "secrets"),
                 ["AzureFunctionsWebHost:IsSelfHost"] = "true",
+                ["AzureFunctionsWebHost:IsFileSystemReadOnly"] = emptyHostRoot.ToString(),
             }).Build();
             var environment = new Mock<IEnvironment>();
             environment.Setup(value => value.GetEnvironmentVariable(It.IsAny<string>())).Returns((string name) => Configuration[name]!);
             Logger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            Logger.Setup(logger => logger.Log(
+                It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+                .Callback(new InvocationAction(call =>
+                {
+                    // Capture pooled log state before the generated logger clears it.
+                    Delegate formatter = Assert.IsAssignableFrom<Delegate>(call.Arguments[4]);
+                    Logs.Enqueue(((LogLevel)call.Arguments[0], (EventId)call.Arguments[1],
+                        (string?)formatter.DynamicInvoke(call.Arguments[2], call.Arguments[3]),
+                        (Exception?)call.Arguments[3]));
+                }));
             var loggerProvider = new Mock<ILoggerProvider>();
             loggerProvider.Setup(provider => provider.CreateLogger(It.IsAny<string>())).Returns(Logger.Object);
             var composition = new Mock<IWorkerComposition>();
@@ -327,6 +573,7 @@ public class RpcClientScriptHostStartupIntegrationTests
             Host = new HostBuilder().ConfigureWebHostDefaults(webBuilder =>
             {
                 webBuilder.UseUrls("http://127.0.0.1:0");
+                webBuilder.ConfigureLogging(builder => builder.AddProvider(loggerProvider.Object));
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddSingleton(Configuration);
@@ -346,6 +593,8 @@ public class RpcClientScriptHostStartupIntegrationTests
         public IHost Host { get; }
 
         public Mock<ILogger> Logger { get; } = new();
+
+        public ConcurrentQueue<(LogLevel Level, EventId EventId, string? Message, Exception? Exception)> Logs { get; } = new();
 
         public async ValueTask DisposeAsync()
         {
@@ -372,12 +621,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TestWorkerService Service { get; } = service;
 
-        public static async Task<TestWorker> StartAsync(string workerId, string language = "dotnet-isolated")
+        public static async Task<TestWorker> StartAsync(
+            string workerId, string language = "dotnet-isolated", RpcHostConfiguration? hostConfiguration = null)
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             RuntimeWorkerTestData.ConfigureTlsListener(builder);
-            TestWorkerService service = new(workerId, language);
+            TestWorkerService service = new(workerId, language, hostConfiguration);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -396,7 +646,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId, string language) : FunctionRpc.FunctionRpcBase
+    public sealed class TestWorkerService(string workerId, string language, RpcHostConfiguration? hostConfiguration = null) : FunctionRpc.FunctionRpcBase
     {
         private int _functionLoadRequests;
         private int _metadataRequests;
@@ -407,6 +657,8 @@ public class RpcClientScriptHostStartupIntegrationTests
         public int MetadataRequests => Interlocked.CompareExchange(ref _metadataRequests, 0, 0);
 
         public int Invocations => Interlocked.CompareExchange(ref _invocations, 0, 0);
+
+        public WorkerInitRequest? InitRequest { get; private set; }
 
         public TaskCompletionSource FunctionLoaded { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -425,7 +677,9 @@ public class RpcClientScriptHostStartupIntegrationTests
                     switch (request.ContentCase)
                     {
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
-                            response.WorkerInitResponse = RuntimeWorkerTestData.Authenticate(new() { Result = Success() }, workerId);
+                            InitRequest = request.WorkerInitRequest;
+                            response.WorkerInitResponse = RuntimeWorkerTestData.Authenticate(
+                                new() { Result = Success(), HostConfiguration = hostConfiguration }, workerId);
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionsMetadataRequest:
                             Interlocked.Increment(ref _metadataRequests);

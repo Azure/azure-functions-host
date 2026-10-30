@@ -27,7 +27,7 @@ public sealed partial class WorkerChannelRegistryTests
     {
         await using WorkerChannelRegistry registry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
             Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
-            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System,
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(),
             proxyOptions: Options.Create(new TokenServiceProxyOptions { Enabled = enabled }));
 
         Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), registry.LinkTimeout);
@@ -54,7 +54,7 @@ public sealed partial class WorkerChannelRegistryTests
         WorkerProcessCountOptions expected = options.Get(RpcClientWorkerChannelFactory.WorkerOptionsName);
         await using WorkerChannelRegistry registry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
             Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
-            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, options);
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options);
         await using RpcClientWorkerChannel channel = CreateRealChannelFactory(processOptions: options)
             .Create("worker", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("worker"));
 
@@ -86,7 +86,8 @@ public sealed partial class WorkerChannelRegistryTests
             .Returns((Uri _, RuntimeWorkerCredentials _, CancellationToken token) =>
                 new TaskCompletionSource<DuplexChannel<StreamingMessage>>().Task.WaitAsync(token));
         await using WorkerChannelRegistry registry = new(transport.Object, Mock.Of<IRpcClientWorkerChannelFactory>(),
-            NullLogger<WorkerChannelRegistry>.Instance, RuntimeWorkerTestData.CreateConfiguration(), time.Object);
+            NullLogger<WorkerChannelRegistry>.Instance, RuntimeWorkerTestData.CreateConfiguration(), time.Object,
+            Mock.Of<IWorkerHostConfigurationParser>());
 
         Task<WorkerLinkResult> first = registry.LinkAsync("worker", CreateEndpoint("worker"));
         (await expire.Task.WaitAsync(TestTimeout))();

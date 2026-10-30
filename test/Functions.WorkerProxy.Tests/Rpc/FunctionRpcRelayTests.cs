@@ -57,9 +57,11 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_ConnectsEitherSideFirstAndForwardsBothDirections(bool runtimeConnectsFirst)
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task Relay_ConnectsEitherSideFirstAndForwardsBothDirections(bool runtimeConnectsFirst, bool includeHostConfiguration)
     {
         FunctionRpcRelaySide firstSide = runtimeConnectsFirst ? FunctionRpcRelaySide.Runtime : FunctionRpcRelaySide.Worker;
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -68,8 +70,17 @@ public partial class FunctionRpcRelayTests
         StreamingMessage runtimeMessage = new()
         {
             RequestId = "runtime-first",
-            WorkerInitRequest = new WorkerInitRequest { HostVersion = "test-host" }
+            WorkerInitRequest = new()
+            {
+                HostVersion = "test-host",
+                Capabilities = { ["MultiStream"] = "10" },
+            }
         };
+        if (includeHostConfiguration)
+        {
+            runtimeMessage.WorkerInitRequest.Capabilities["HostConfiguration"] = "1";
+        }
+
         StreamingMessage workerMessage = new()
         {
             RequestId = "worker-first",

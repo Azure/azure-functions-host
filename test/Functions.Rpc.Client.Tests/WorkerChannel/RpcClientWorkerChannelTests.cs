@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -33,11 +34,17 @@ public sealed class RpcClientWorkerChannelTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
+    private readonly Mock<IEnvironment> _environment = new();
     private readonly RpcClientWorkerChannelFactory _factory;
     private readonly IMetricsLogger _metricsLogger = Mock.Of<IMetricsLogger>();
     private readonly ConcurrentQueue<string> _logs = new();
 
     public RpcClientWorkerChannelTests()
+    {
+        _factory = CreateFactory();
+    }
+
+    private RpcClientWorkerChannelFactory CreateFactory()
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -59,10 +66,10 @@ public sealed class RpcClientWorkerChannelTests
         Mock<ILoggerFactory> loggers = new();
         loggers.Setup(value => value.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
 
-        _factory = new(
+        return new(
             new ScriptEventManager(),
             hostManager.Object,
-            Mock.Of<IEnvironment>(),
+            _environment.Object,
             loggers.Object,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),
@@ -217,6 +224,53 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Contains("worker initialization failed", exception.Message, StringComparison.Ordinal);
 
         await channel.DisposeAsync();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartAsync_AdvertisesHostConfigurationAndCapturesOptionalDelivery(bool delivered, bool v2CompatibilityMode)
+    {
+        _environment.Setup(environment => environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey))
+            .Returns(v2CompatibilityMode ? "true" : "false");
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
+        Task start = channel.StartAsync(CancellationToken.None);
+        StreamingMessage request = await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        if (delivered)
+        {
+            response.HostConfiguration = new()
+            {
+                Status = HostConfiguration.Types.Status.Available,
+                Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
+            };
+        }
+
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = response });
+        await start.WaitAsync(TestTimeout);
+
+        Assert.Equal("1", request.WorkerInitRequest.Capabilities["HostConfiguration"]);
+        Assert.Equal("10", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.MultiStream]);
+        Assert.Equal(v2CompatibilityMode, request.WorkerInitRequest.Capabilities.ContainsKey(RpcWorkerConstants.V2Compatable));
+        if (v2CompatibilityMode)
+        {
+            Assert.Equal("true", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.V2Compatable]);
+        }
+
+        if (delivered)
+        {
+            Assert.Equal(response.HostConfiguration, channel.HostConfiguration);
+            Assert.NotSame(response.HostConfiguration, channel.HostConfiguration);
+            response.HostConfiguration.Content = ByteString.CopyFromUtf8("changed");
+            Assert.Equal("""{"version":"2.0"}""", channel.HostConfiguration.Content.ToStringUtf8());
+        }
+        else
+        {
+            Assert.Null(channel.HostConfiguration);
+        }
     }
 
     [Fact]

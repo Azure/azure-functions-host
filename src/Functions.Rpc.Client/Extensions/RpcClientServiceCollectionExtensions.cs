@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
@@ -41,6 +42,7 @@ public static class RpcClientServiceCollectionExtensions
             .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),
                 "RpcClient worker startup, initialization and reload timeouts must be positive and have a bounded total.")
             .ValidateOnStart();
+        services.AddSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>();
         services.AddOptions<TokenServiceProxyOptions>().ValidateOnStart();
         services.AddSingleton<IValidateOptions<TokenServiceProxyOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyOptions>>();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
@@ -52,7 +54,9 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
-        services.AddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
+        services.AddSingleton<WorkerChannelRegistry>();
+        services.AddSingleton<IWorkerChannelRegistry>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
+        services.AddSingleton<IHostConfigurationSourceProvider>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
         services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
 
