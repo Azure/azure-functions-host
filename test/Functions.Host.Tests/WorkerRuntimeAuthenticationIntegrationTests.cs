@@ -33,16 +33,19 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 using ProxyApplication = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyApplication;
 using ProxyEndpoints = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyEndpointConfiguration;
 using ProxyRelaySide = workerproxy::Azure.Functions.WorkerProxy.Rpc.FunctionRpcRelaySide;
@@ -50,7 +53,7 @@ using ProxyStateManager = workerproxy::Azure.Functions.WorkerProxy.State.WorkerP
 
 namespace Azure.Functions.Host.Tests;
 
-public class WorkerRuntimeAuthenticationIntegrationTests
+public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper output)
 {
     private const string WorkerTokenHeader = "x-ms-functions-worker-token";
     private const string AppTokenHeader = "x-ms-functions-app-token";
@@ -77,6 +80,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             || string.Equals(scenario, "cancelled-init", StringComparison.Ordinal);
         bool malformedResult = scenario is "unknown-init-status" or "null-init-result";
         ConcurrentQueue<(string Message, Exception? Error)> diagnostics = new();
+        ConcurrentQueue<Uri> forwardedOrigins = new();
+        ConcurrentQueue<string> customerPaths = new();
         string appKey = Convert.ToHexString(SHA256.HashData("integration-test-app-key"u8));
         bool native = string.Equals(scenario, "valid", StringComparison.Ordinal)
             && Environment.GetEnvironmentVariable("FUNCTIONS_WORKERPROXY_NATIVE_MANAGEMENT_URI") is not null;
@@ -91,6 +96,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             Assert.False(context.Request.Headers.ContainsKey(WorkerTokenHeader));
             Assert.False(context.Request.Headers.ContainsKey(AppTokenHeader));
             Assert.False(context.Request.Headers.ContainsKey(ManagementTokenTestData.HeaderName));
+            customerPaths.Enqueue(context.Request.Path.ToString());
             string body = await new StreamReader(context.Request.Body).ReadToEndAsync(context.RequestAborted);
             await context.Response.WriteAsync($"received:{body}", context.RequestAborted);
         });
@@ -122,10 +128,21 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         }
 
         ProxyEndpoints? endpoints = proxy?.Services.GetRequiredService<ProxyEndpoints>();
-        Uri grpcEndpoint = endpoints is null ? NativeAddress("GRPC") : Loopback(endpoints.GetRelayAddress(ProxyRelaySide.Runtime));
-        Uri httpEndpoint = endpoints is null ? NativeAddress("HTTP") : Loopback(endpoints.GetHttpAddress());
+        await using TcpPortMapping? grpcMapping = endpoints is null ? null : new(Loopback(endpoints.GetRelayAddress(ProxyRelaySide.Runtime)));
+        await using TcpPortMapping? httpMapping = endpoints is null ? null : new(Loopback(endpoints.GetHttpAddress()));
+        Uri grpcEndpoint = grpcMapping?.Endpoint ?? NativeAddress("GRPC");
+        Uri httpEndpoint = httpMapping?.Endpoint ?? NativeAddress("HTTP");
+        int grpcListenerPort = endpoints?.GetRelayAddress(ProxyRelaySide.Runtime).Port ?? NativeAddress("GRPC_LISTENER").Port;
+        int httpListenerPort = endpoints?.GetHttpAddress().Port ?? NativeAddress("HTTP_LISTENER").Port;
         Assert.Equal(Uri.UriSchemeHttps, grpcEndpoint.Scheme);
         Assert.Equal(Uri.UriSchemeHttps, httpEndpoint.Scheme);
+        Assert.NotEqual(grpcListenerPort, grpcEndpoint.Port);
+        Assert.NotEqual(httpListenerPort, httpEndpoint.Port);
+        output.WriteLine($"Actual mapped HTTPS gRPC port {grpcEndpoint.Port} -> listener {grpcListenerPort}; HTTP port {httpEndpoint.Port} -> listener {httpListenerPort}.");
+        if (proxy is not null)
+        {
+            Assert.Null(proxy.Configuration["WorkerProxy:HttpProxyEndpoint"]);
+        }
 
         using HttpClient management = new()
         {
@@ -175,7 +192,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
 
         await using ServiceProvider runtime = CreateRuntime(appName, appKey,
             includeAppKey: scenario is not ("missing-runtime-key" or "failed-init-missing-runtime-key"),
-            diagnostics);
+            diagnostics, forwardedOrigins);
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(
             timeout.Token, registry, useKestrel: true);
@@ -215,7 +232,11 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             WorkerInitResponse = new()
             {
                 Result = initializationResult,
-                Capabilities = { ["HttpUri"] = malformedResult ? httpEndpoint.AbsoluteUri : customerAddress }
+                Capabilities =
+                {
+                    ["HttpUri"] = malformedResult ? httpEndpoint.AbsoluteUri : new Uri(new Uri(customerAddress), "/before/").AbsoluteUri,
+                    ["WorkerProxyAppToken"] = "customer-init-proof-must-not-escape"
+                }
             }
         }, timeout.Token);
         using HttpResponseMessage linkResponse = await linking;
@@ -245,8 +266,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
 
         FunctionMetadata function = new() { Name = "Http", Language = "external" };
         function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
-        channel.SetupFunctionInvocationBuffers([function]);
-        channel.SendFunctionLoadRequests(new ManagedDependencyOptions(), null);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), null, timeout.Token);
         StreamingMessage load = await ReadAsync(workerCall, timeout.Token);
         Assert.NotNull(load.FunctionLoadRequest);
         await workerCall.RequestStream.WriteAsync(new StreamingMessage
@@ -254,44 +274,36 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             RequestId = load.RequestId,
             FunctionLoadResponse = new() { FunctionId = function.GetFunctionId(), Result = Success() }
         }, timeout.Token);
+        Assert.Same(channel, Assert.Single(await registry.GetReadyChannelsAsync().AsTask().WaitAsync(timeout.Token)));
+        await InvokeAsync(channel, function, workerCall, "before-reload", timeout.Token);
+        Assert.Equal(httpEndpoint, Assert.Single(forwardedOrigins));
+        Assert.Equal(["/before/invoke"], customerPaths.ToArray());
 
-        DefaultHttpContext httpContext = new();
-        using MemoryStream requestBody = new(Encoding.UTF8.GetBytes("payload"));
-        using MemoryStream responseBody = new();
-        httpContext.Request.Method = "POST";
-        httpContext.Request.Scheme = Uri.UriSchemeHttps;
-        httpContext.Request.Host = new("customer.example");
-        httpContext.Request.Path = "/invoke";
-        httpContext.Request.Body = requestBody;
-        httpContext.Request.ContentLength = requestBody.Length;
-        httpContext.Request.Headers.Authorization = "Bearer customer-token";
-        httpContext.Request.Headers[WorkerTokenHeader] = "caller-supplied-worker-token";
-        httpContext.Request.Headers[AppTokenHeader] = "caller-supplied-app-token";
-        httpContext.Request.Headers[ManagementTokenTestData.HeaderName] = "caller-supplied-site-token";
-        httpContext.Response.Body = responseBody;
-        httpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
-        ScriptInvocationContext invocation = new()
-        {
-            FunctionMetadata = function,
-            ExecutionContext = new() { FunctionName = function.Name, InvocationId = Guid.NewGuid() },
-            BindingData = [],
-            Inputs = [("req", DataType.String, httpContext.Request)],
-            ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
-            AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
-            Logger = NullLogger.Instance
-        };
-        Assert.True(await channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation, timeout.Token));
-        StreamingMessage invoked = await ReadAsync(workerCall, timeout.Token);
-        Assert.Equal(new RpcHttp(), Assert.Single(invoked.InvocationRequest.InputData).Data.Http);
+        Task<bool> reload = channel.SendFunctionEnvironmentReloadRequest();
+        StreamingMessage reloadRequest = await ReadAsync(workerCall, timeout.Token);
+        Assert.NotNull(reloadRequest.FunctionEnvironmentReloadRequest);
         await workerCall.RequestStream.WriteAsync(new StreamingMessage
         {
-            RequestId = invoked.RequestId,
-            InvocationResponse = new() { InvocationId = invoked.InvocationRequest.InvocationId, Result = Success() }
+            RequestId = reloadRequest.RequestId,
+            FunctionEnvironmentReloadResponse = new()
+            {
+                Result = Success(),
+                CapabilitiesUpdateStrategy = FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace,
+                Capabilities =
+                {
+                    ["HttpUri"] = new Uri(new Uri(customerAddress), "/after/").AbsoluteUri,
+                    ["WorkerProxyAppToken"] = "customer-reload-proof-must-not-escape"
+                }
+            }
         }, timeout.Token);
+        Assert.True(await reload.WaitAsync(timeout.Token));
+        await InvokeAsync(channel, function, workerCall, "after-reload", timeout.Token);
+        Assert.Equal([httpEndpoint, httpEndpoint], forwardedOrigins.ToArray());
+        Assert.Equal(["/before/invoke", "/after/invoke"], customerPaths.ToArray());
+        Assert.DoesNotContain(diagnostics, entry => entry.Message.Contains("customer-init-proof-must-not-escape", StringComparison.Ordinal)
+            || entry.Message.Contains("customer-reload-proof-must-not-escape", StringComparison.Ordinal));
+        output.WriteLine($"Init and real reload retained assigned origin {httpEndpoint}; both HTTP invocations succeeded through the mapping.");
 
-        await invocation.ResultSource.Task.WaitAsync(timeout.Token);
-        Assert.Equal("received:payload", Encoding.UTF8.GetString(responseBody.ToArray()));
-        Assert.Equal(StatusCodes.Status200OK, httpContext.Response.StatusCode);
         using StringContent stateBody = new("null", Encoding.UTF8, "application/json");
         using HttpResponseMessage stateResponse = await management.PostAsync("/admin/infra/instanceState", stateBody, timeout.Token);
         Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
@@ -315,8 +327,51 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         Assert.Equal(state, await replayResponse.Content.ReadAsStringAsync(timeout.Token));
     }
 
+    private static async Task InvokeAsync(WorkerChannel channel, FunctionMetadata function,
+        AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> workerCall, string payload, CancellationToken cancellationToken)
+    {
+        DefaultHttpContext httpContext = new();
+        using MemoryStream requestBody = new(Encoding.UTF8.GetBytes(payload));
+        using MemoryStream responseBody = new();
+        httpContext.Request.Method = "POST";
+        httpContext.Request.Scheme = Uri.UriSchemeHttps;
+        httpContext.Request.Host = new("customer.example");
+        httpContext.Request.Path = "/invoke";
+        httpContext.Request.Body = requestBody;
+        httpContext.Request.ContentLength = requestBody.Length;
+        httpContext.Request.Headers.Authorization = "Bearer customer-token";
+        httpContext.Request.Headers[WorkerTokenHeader] = "caller-supplied-worker-token";
+        httpContext.Request.Headers[AppTokenHeader] = "caller-supplied-app-token";
+        httpContext.Request.Headers[ManagementTokenTestData.HeaderName] = "caller-supplied-site-token";
+        httpContext.Response.Body = responseBody;
+        httpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
+        ScriptInvocationContext invocation = new()
+        {
+            FunctionMetadata = function,
+            ExecutionContext = new() { FunctionName = function.Name, InvocationId = Guid.NewGuid() },
+            BindingData = [],
+            Inputs = [("req", DataType.String, httpContext.Request)],
+            ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            Logger = NullLogger.Instance
+        };
+        Assert.True(await channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation, cancellationToken));
+        StreamingMessage invoked = await ReadAsync(workerCall, cancellationToken);
+        Assert.Equal(new RpcHttp(), Assert.Single(invoked.InvocationRequest.InputData).Data.Http);
+        await workerCall.RequestStream.WriteAsync(new StreamingMessage
+        {
+            RequestId = invoked.RequestId,
+            InvocationResponse = new() { InvocationId = invoked.InvocationRequest.InvocationId, Result = Success() }
+        }, cancellationToken);
+
+        await invocation.ResultSource.Task.WaitAsync(cancellationToken);
+        Assert.Equal($"received:{payload}", Encoding.UTF8.GetString(responseBody.ToArray()));
+        Assert.Equal(StatusCodes.Status200OK, httpContext.Response.StatusCode);
+    }
+
     private static ServiceProvider CreateRuntime(
-        string appName, string appKey, bool includeAppKey, ConcurrentQueue<(string Message, Exception? Error)> diagnostics)
+        string appName, string appKey, bool includeAppKey, ConcurrentQueue<(string Message, Exception? Error)> diagnostics,
+        ConcurrentQueue<Uri> forwardedOrigins)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>().Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
@@ -352,6 +407,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         services.AddSingleton(capabilities.Object);
         services.AddSingleton(Mock.Of<IMetricsLogger>());
         services.AddRpcClientServices();
+        ServiceDescriptor forwarding = services.Single(service => service.ServiceType == typeof(IHttpProxyService));
+        services.Replace(ServiceDescriptor.Singleton<IHttpProxyService>(provider =>
+            new RecordingHttpProxyService((IHttpProxyService)forwarding.ImplementationFactory!(provider), forwardedOrigins)));
 
         return services.BuildServiceProvider();
     }
@@ -371,4 +429,23 @@ public class WorkerRuntimeAuthenticationIntegrationTests
     private static Uri NativeAddress(string role)
         => new(Environment.GetEnvironmentVariable($"FUNCTIONS_WORKERPROXY_NATIVE_{role}_URI")
             ?? throw new InvalidOperationException($"The native {role} test endpoint is required."));
+
+    private sealed class RecordingHttpProxyService(IHttpProxyService inner, ConcurrentQueue<Uri> origins) : IHttpProxyService, IDisposable
+    {
+        public void StartForwarding(ScriptInvocationContext context, Uri httpUri)
+        {
+            origins.Enqueue(httpUri);
+            inner.StartForwarding(context, httpUri);
+        }
+
+        public Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context) => inner.EnsureSuccessfulForwardingAsync(context);
+
+        public void Dispose()
+        {
+            if (inner is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+    }
 }

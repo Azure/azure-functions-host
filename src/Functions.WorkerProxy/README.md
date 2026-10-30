@@ -57,6 +57,8 @@ HTTP support and routing remain negotiated through `HttpUri`. WorkerProxy valida
 
 Capability reloads are rewritten to the same configured proxy origin. Raw customer origins and customer-supplied authentication proofs are not forwarded as runtime destinations. Host rejects a changed initialized proxy origin before it can receive caller credentials.
 
+The checked-in combined Host/WorkerProxy integration fixture leaves the startup proxy-origin option absent, assigns a live scheme-less mapping, and uses distinct external/listener ports for both HTTPS and gRPC. Its local TCP mappings preserve TLS rather than replacing it. The fixture initializes through the real MVC Link and registry-owned worker setup, invokes once, performs a real environment reload with a changed customer-local path, and invokes again. Both forwarding calls must use the assigned HTTPS origin and mapped port, while customer authorization is preserved and platform headers/proof entries remain stripped. The same fixture can target a freshly published native WorkerProxy with explicitly supplied mapped and listener addresses.
+
 ## Startup-provisioned TLS certificate
 
 The image startup script must generate a fresh self-signed PEM certificate and unencrypted PEM private key before starting WorkerProxy. The serving identity must not be baked into an image.
