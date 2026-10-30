@@ -10,6 +10,8 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Logging;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -45,3 +47,9 @@ internal sealed class WorkerProxyHttpProxyService(
         inner.StartForwarding(context, httpUri);
     }
 }
+
+/// <summary>
+/// Owns the root-lifetime forwarding transport used only by linked WorkerProxy channels.
+/// </summary>
+internal sealed class WorkerProxyHttpTransport(IHttpForwarder forwarder, ILogger<DefaultHttpProxyService> logger)
+    : DefaultHttpProxyService(forwarder, logger, RpcClientFactory.CreateHttpHandler());

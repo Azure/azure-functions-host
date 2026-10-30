@@ -586,7 +586,7 @@ public sealed class TokenServiceProxyIntegrationTests
                 proxy = ProxyApplication.Build(
                 [
                     "--WEBSITE_POD_NAME", WorkerPodName,
-                    "--CONTAINER_ENCRYPTION_KEY", WorkerLinkTestData.RuntimeAccessKey,
+                    "--CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey,
                     "--WEBSITE_AUTH_ENCRYPTION_KEY", ManagementTokenTestData.AppKey,
                     .. certificates.Arguments,
                     "--WorkerProxy:ManagementPort", "0",
@@ -608,7 +608,7 @@ public sealed class TokenServiceProxyIntegrationTests
                     }.Uri
                 };
                 management.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
-                    ManagementTokenTestData.Create(WorkerLinkTestData.RuntimeAccessKey, WorkerPodName));
+                    ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, WorkerPodName));
                 using StringContent assignment = new("""
                     {"startupMode":"Preconfigured","functionAppName":"token-proxy-app","functionGroupName":"http","isAlwaysReady":false,
                      "environment":{},"functionAppDirectory":"","configLastModifiedTime":1761868800,
@@ -637,7 +637,7 @@ public sealed class TokenServiceProxyIntegrationTests
             {
                 Host = IPAddress.Loopback.ToString()
             };
-            _link = Registry.LinkAsync(WorkerPodName, endpoint.Uri, WorkerLinkTestData.RuntimeAccessKey, cancellationToken);
+            _link = Registry.LinkAsync(WorkerPodName, endpoint.Uri, ManagementTokenTestData.WorkerKey, cancellationToken);
             return Task.CompletedTask;
         }
 

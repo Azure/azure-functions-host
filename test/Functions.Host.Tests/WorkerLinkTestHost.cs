@@ -50,9 +50,11 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
 
     internal HttpClient Client { get; }
 
+    internal IServiceProvider Services => _host.Services;
+
     internal static async Task<WorkerLinkTestHost> StartAsync(CancellationToken cancellationToken,
         IWorkerChannelRegistry registry, bool includeCompute = true, bool useKestrel = false, bool authenticate = true,
-        IConfiguration? managementConfiguration = null)
+        IConfiguration? managementConfiguration = null, ILoggerProvider? loggerProvider = null)
     {
         IHost host = new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -67,7 +69,14 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                     webBuilder.UseTestServer();
                 }
 
-                webBuilder.ConfigureLogging(logging => logging.ClearProviders())
+                webBuilder.ConfigureLogging(logging =>
+                    {
+                        logging.ClearProviders();
+                        if (loggerProvider is not null)
+                        {
+                            logging.AddProvider(loggerProvider);
+                        }
+                    })
                     .ConfigureServices(services =>
                     {
                         IMvcBuilder mvcBuilder = services.AddMvc(options =>

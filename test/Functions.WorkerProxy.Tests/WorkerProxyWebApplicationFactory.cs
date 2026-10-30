@@ -5,11 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.Tests;
 using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Rpc;
+using Grpc.Core;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -142,5 +144,29 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         }
 
         return normalizedAddress.Uri;
+    }
+}
+
+internal static class RuntimeAuthenticationTestData
+{
+    public const string WorkerId = "test-worker-pod";
+    public const string AppName = "test-app";
+    public static readonly byte[] WorkerKey = Convert.FromBase64String(ManagementTokenTestData.WorkerKey);
+    public static readonly byte[] AppKey = SHA256.HashData("test-app-key"u8);
+    public static readonly string EncodedWorkerKey = ManagementTokenTestData.WorkerKey;
+    public static readonly string EncodedAppKey = Convert.ToHexString(AppKey);
+
+    public static RuntimeAuthenticationKeys Keys => new(WorkerId, AppName, WorkerKey, AppKey);
+
+    public static string CreateCallerToken(DateTimeOffset? now = null)
+        => RuntimeWorkerAuthentication.CreateToken(WorkerKey, RuntimeWorkerAuthentication.WorkerAudience(WorkerId),
+            RuntimeWorkerAuthentication.WorkerPurpose, now ?? DateTimeOffset.UtcNow);
+
+    public static Metadata CreateHeaders()
+    {
+        return new()
+        {
+            { RuntimeWorkerAuthentication.WorkerTokenHeader, CreateCallerToken() }
+        };
     }
 }

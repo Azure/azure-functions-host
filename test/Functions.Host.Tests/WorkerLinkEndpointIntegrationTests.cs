@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -11,6 +13,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
 using Azure.Functions.Tests;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -26,6 +32,49 @@ public sealed class WorkerLinkEndpointIntegrationTests
     private static readonly Uri Endpoint = new("https://worker-proxy:50053");
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
+
+    [Theory]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", null, "MissingKey")]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", "private-invalid-key", "InvalidKey")]
+    [InlineData("WEBSITE_POD_NAME", null, "MissingIdentity")]
+    public async Task Startup_ValidatesManagementOptionsWithoutHostedServiceOrFatalConfigurationFailure(
+        string setting, string? value, string reason)
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        ConcurrentQueue<string> entries = new();
+        Mock<ILogger> logger = new();
+        logger.Setup(item => item.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        logger.Setup(item => item.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+            .Callback(new InvocationAction(call => entries.Enqueue(
+                (string)((Delegate)call.Arguments[4]).DynamicInvoke(call.Arguments[2], call.Arguments[3])!)));
+        Mock<ILoggerProvider> provider = new();
+        provider.Setup(item => item.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
+        Dictionary<string, string?> values = new()
+        {
+            ["CONTAINER_ENCRYPTION_KEY"] = ManagementTokenTestData.RuntimeKey,
+            ["WEBSITE_POD_NAME"] = ManagementTokenTestData.RuntimePodName,
+            [setting] = value
+        };
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object,
+            authenticate: false, managementConfiguration: new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+            loggerProvider: provider.Object);
+
+        Assert.Contains(entries, message => message.Contains("configuration is unavailable", StringComparison.Ordinal)
+            && message.Contains(reason, StringComparison.Ordinal));
+        Assert.DoesNotContain(host.Services.GetServices<IHostedService>(), service =>
+            service.GetType().FullName?.StartsWith("Azure.Functions.Authentication.", StringComparison.Ordinal) is true);
+        Assert.DoesNotContain(entries, message => message.Contains("private-invalid-key", StringComparison.Ordinal)
+            || message.Contains(ManagementTokenTestData.RuntimeKey, StringComparison.Ordinal));
+        using HttpResponseMessage unrelated = await host.Client.GetAsync("/unrelated", timeout.Token);
+        Assert.Equal(HttpStatusCode.NotFound, unrelated.StatusCode);
+        Assert.DoesNotContain(entries, message => message.Contains("authentication failed:", StringComparison.Ordinal));
+
+        using HttpResponseMessage protectedResponse = await host.PutAsync(LinkJson(), timeout.Token);
+        Assert.Equal(HttpStatusCode.Unauthorized, protectedResponse.StatusCode);
+        Assert.Contains(entries, message => message.Contains("MissingToken", StringComparison.Ordinal));
+        _registry.VerifyNoOtherCalls();
+    }
 
     [Theory]
     [InlineData(true, HttpStatusCode.Created)]
@@ -50,7 +99,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var timeout = new CancellationTokenSource(TestTimeout);
         TaskCompletionSource invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .Returns((string _, Uri _, string _, CancellationToken token) =>
             {
                 invoked.TrySetResult();
@@ -75,7 +124,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
         TaskCompletionSource<CancellationToken> invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .Returns((string _, Uri _, string _, CancellationToken token) =>
             {
                 invoked.TrySetResult(token);
@@ -108,7 +157,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         string json = JsonSerializer.Serialize(new
         {
             workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
-            runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey,
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey,
             ignoredHttpEndpoint = httpEndpoint
         });
 
@@ -146,7 +195,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var timeout = new CancellationTokenSource(TestTimeout);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = $$"""
-            {"workerPodName":"worker-pod-abc123","workerGrpcEndpoint":"{{endpoint}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            {"workerPodName":"worker-pod-abc123","workerGrpcEndpoint":"{{endpoint}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
             """;
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
@@ -178,7 +227,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         DateTimeOffset now = DateTimeOffset.UtcNow;
         string token = scenario switch
         {
-            "worker-key" => ManagementTokenTestData.Create(WorkerLinkTestData.RuntimeAccessKey, ManagementTokenTestData.RuntimePodName),
+            "worker-key" => ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, ManagementTokenTestData.RuntimePodName),
             "app-key" => ManagementTokenTestData.Create(ManagementTokenTestData.AppKey, ManagementTokenTestData.RuntimePodName),
             "wrong-pod" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, WorkerId),
             "wrong-issuer" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName,
@@ -280,7 +329,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         SetupLink();
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = $$"""
-            {"workerGrpcEndpoint":"{{Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}","{{propertyName}}":{{identityJson}}}
+            {"workerGrpcEndpoint":"{{Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}","{{propertyName}}":{{identityJson}}}
             """;
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
@@ -293,14 +342,14 @@ public sealed class WorkerLinkEndpointIntegrationTests
     public async Task Put_BodyWorkerId_DoesNotBypassEndpointConflict()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new WorkerLinkException(WorkerLinkFailureReason.Conflict, "Endpoint conflict."));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = JsonSerializer.Serialize(new
         {
             workerId = "another-worker",
             workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
-            runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey,
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey,
         });
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
@@ -423,7 +472,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         const string privateDiagnostic = "private-worker-detail-do-not-return";
         using var timeout = new CancellationTokenSource(TestTimeout);
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new WorkerLinkException(reason, privateDiagnostic, new Exception(privateDiagnostic)));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
@@ -440,7 +489,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         const string privateDiagnostic = "private-timeout-detail-do-not-return";
         using var timeout = new CancellationTokenSource(TestTimeout);
         CancellationToken registryToken = default;
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .Callback<string, Uri, string, CancellationToken>((_, _, _, token) => registryToken = token)
             .ThrowsAsync(new TimeoutException(privateDiagnostic));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
@@ -457,7 +506,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         => JsonSerializer.Serialize(new
         {
             workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
-            runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey
         });
 
     [Fact]
@@ -465,7 +514,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         using CancellationTokenSource timeout = new(TestTimeout);
         Uri httpEndpoint = new("https://worker-proxy:48801");
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey,
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey,
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, true));
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
@@ -473,24 +522,24 @@ public sealed class WorkerLinkEndpointIntegrationTests
         {
             workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
             workerHttpEndpoint = httpEndpoint.AbsoluteUri,
-            runtimeAccessKey = WorkerLinkTestData.RuntimeAccessKey
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey
         });
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
 
         await AssertLinkResponseAsync(response, HttpStatusCode.Created, timeout.Token);
-        _registry.Verify(value => value.LinkAsync(WorkerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey,
+        _registry.Verify(value => value.LinkAsync(WorkerId, Endpoint, ManagementTokenTestData.WorkerKey,
             It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 
     private void SetupLink(string workerId = WorkerId, bool isNewLink = true)
-        => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, isNewLink));
 
     private void VerifyLink(string workerId = WorkerId)
     {
-        _registry.Verify(value => value.LinkAsync(workerId, Endpoint, WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()), Times.Once);
+        _registry.Verify(value => value.LinkAsync(workerId, Endpoint, ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 

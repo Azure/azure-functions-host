@@ -40,11 +40,11 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         using EnvironmentVariableScope containerReady = new(EnvironmentSettingNames.AzureWebsiteContainerReady, null);
         using EnvironmentVariableScope containerKey = new("CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.RuntimeKey);
         using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", ManagementTokenTestData.RuntimePodName);
-        using EnvironmentVariableScope appKey = new("WEBSITE_AUTH_ENCRYPTION_KEY", WorkerLinkTestData.RuntimeAccessKey);
+        using EnvironmentVariableScope appKey = new("WEBSITE_AUTH_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey);
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
-        registry.Setup(value => value.LinkAsync(WorkerId, new Uri("https://100.86.1.2:48800/"), WorkerLinkTestData.RuntimeAccessKey, It.IsAny<CancellationToken>()))
+        registry.Setup(value => value.LinkAsync(WorkerId, new Uri("https://100.86.1.2:48800/"), ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 linkedWithStandbyConfiguration = hostOptions!.CurrentValue.IsStandbyConfiguration;
@@ -100,7 +100,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
             Content = new StringContent(
-                $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}""",
+                $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}""",
                 Encoding.UTF8, "application/json"),
         };
         request.Headers.Add(ManagementTokenTestData.HeaderName,

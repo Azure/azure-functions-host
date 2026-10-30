@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using Azure.Functions.Authentication;
+using Azure.Functions.Host.Tests;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +15,7 @@ using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-[Collection(nameof(RuntimeEnvironmentCollection))]
+[Collection(nameof(EnvironmentVariableCollection))]
 public class WorkerRuntimeConfigurationTests
 {
     [Fact]
@@ -39,22 +40,4 @@ public class WorkerRuntimeConfigurationTests
             RuntimeWorkerAuthentication.WorkerAudience("worker-pod"), RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
         credentials.ValidateAppProof(RuntimeWorkerAuthentication.CreateAppProof(appKey, "specialized-app", "worker-pod", DateTimeOffset.UtcNow));
     }
-
-    private sealed class EnvironmentVariableScope : IDisposable
-    {
-        private readonly string _name;
-        private readonly string? _previous;
-
-        public EnvironmentVariableScope(string name, string? value)
-        {
-            _name = name;
-            _previous = Environment.GetEnvironmentVariable(name);
-            Environment.SetEnvironmentVariable(name, value);
-        }
-
-        public void Dispose() => Environment.SetEnvironmentVariable(_name, _previous);
-    }
 }
-
-[CollectionDefinition(nameof(RuntimeEnvironmentCollection), DisableParallelization = true)]
-public sealed class RuntimeEnvironmentCollection;

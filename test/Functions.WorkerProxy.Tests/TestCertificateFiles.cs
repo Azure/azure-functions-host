@@ -20,10 +20,25 @@ internal sealed class TestCertificateFiles : IDisposable
         using ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         CertificateRequest request = new("CN=test-worker-proxy", key, HashAlgorithmName.SHA256);
         DateTimeOffset end = expires ?? DateTimeOffset.UtcNow.AddDays(1);
-        using X509Certificate2 certificate = request.CreateSelfSigned(end.AddDays(-2), end);
-        File.WriteAllText(CertificatePath, certificate.ExportCertificatePem());
+        Certificate = request.CreateSelfSigned(end.AddDays(-2), end);
+        File.WriteAllText(CertificatePath, Certificate.ExportCertificatePem());
         File.WriteAllText(KeyPath, key.ExportPkcs8PrivateKeyPem());
+        if (OperatingSystem.IsWindows())
+        {
+            using X509Certificate2 ephemeral = Certificate;
+            byte[] pkcs12 = ephemeral.Export(X509ContentType.Pkcs12);
+            try
+            {
+                Certificate = X509CertificateLoader.LoadPkcs12(pkcs12, password: null);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(pkcs12);
+            }
+        }
     }
+
+    public X509Certificate2 Certificate { get; }
 
     public string CertificatePath { get; }
 
@@ -34,6 +49,7 @@ internal sealed class TestCertificateFiles : IDisposable
 
     public void Dispose()
     {
+        Certificate.Dispose();
         if (Directory.Exists(_directory))
         {
             Directory.Delete(_directory, recursive: true);

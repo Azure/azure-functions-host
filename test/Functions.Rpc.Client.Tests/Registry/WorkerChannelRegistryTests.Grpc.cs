@@ -5,8 +5,10 @@
 
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -273,6 +275,98 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(replay.IsNewLink);
         Assert.Same(linked.Channel, replay.Channel);
         Assert.Equal(2, server.StreamCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkAsync_DifferentCredentialOrGrpcOriginConflictsWithoutReinitialization(bool changeKey)
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Uri grpcEndpoint = CreateEndpoint("worker");
+        string differentKey = Convert.ToBase64String(SHA256.HashData("different-worker-key"u8));
+        Task<WorkerLinkResult> first = registry.LinkAsync("worker", grpcEndpoint, RuntimeWorkerTestData.WorkerKey);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        foreach (bool ready in new[] { false, true })
+        {
+            if (ready)
+            {
+                channel.AllowStart();
+                await first.WaitAsync(TestTimeout);
+            }
+
+            WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(() =>
+                registry.LinkAsync("worker", changeKey ? grpcEndpoint : new Uri("https://different-proxy:48802"),
+                    changeKey ? differentKey : RuntimeWorkerTestData.WorkerKey));
+            Assert.Equal(WorkerLinkFailureReason.Conflict, failure.Reason);
+            Assert.DoesNotContain(differentKey, failure.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(RuntimeWorkerTestData.WorkerKey, failure.Message, StringComparison.Ordinal);
+        }
+
+        Assert.Single(harness.Transports);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("empty")]
+    [InlineData("malformed")]
+    [InlineData("tampered")]
+    [InlineData("expired")]
+    [InlineData("future")]
+    [InlineData("wrong-key")]
+    [InlineData("wrong-app")]
+    [InlineData("wrong-worker")]
+    [InlineData("worker-case")]
+    [InlineData("missing-worker")]
+    [InlineData("wrong-purpose")]
+    [InlineData("caller-token")]
+    public async Task LinkAsync_InvalidReverseProofNeverPublishesAndCleansTransport(string failure)
+    {
+        using CancellationTokenSource timeout = new(GrpcTestTimeout);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(GrpcWorkerId);
+        await using RpcClientFactory clients = new(NullLogger<RpcClientFactory>.Instance);
+        await using WorkerChannelRegistry registry = CreateGrpcRegistry(clients);
+        Task<WorkerLinkResult> link = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        await worker.InitializationStarted.WaitAsync(timeout.Token);
+        worker.CompleteInitialization(appProof: InvalidAppProof(failure),
+            includeProof: !string.Equals(failure, "missing", StringComparison.Ordinal));
+
+        WorkerLinkException error = await Assert.ThrowsAsync<WorkerLinkException>(() => link.WaitAsync(timeout.Token));
+
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, error.Reason);
+        Assert.Empty(registry.GetInitializedChannels());
+        await worker.Disconnected.WaitAsync(timeout.Token);
+        Assert.DoesNotContain(RuntimeWorkerTestData.AppKey, error.Message, StringComparison.Ordinal);
+    }
+
+    private static string InvalidAppProof(string failure)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        byte[] key = Convert.FromHexString(RuntimeWorkerTestData.AppKey);
+        string audience = RuntimeWorkerAuthentication.AppAudience("test-app");
+        string purpose = RuntimeWorkerAuthentication.AppPurpose;
+
+        return failure switch
+        {
+            "empty" => string.Empty,
+            "malformed" => "invalid-proof",
+            "tampered" => RuntimeWorkerTestData.CreateAppProof(GrpcWorkerId) + "A",
+            "expired" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now.AddMinutes(-6), GrpcWorkerId),
+            "future" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now.AddMinutes(1), GrpcWorkerId),
+            "wrong-key" => RuntimeWorkerAuthentication.CreateToken(new byte[32], audience, purpose, now, GrpcWorkerId),
+            "wrong-app" => RuntimeWorkerAuthentication.CreateToken(key, audience + "-other-app", purpose, now, GrpcWorkerId),
+            "wrong-worker" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now, "different-worker"),
+            "worker-case" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now, GrpcWorkerId.ToUpperInvariant()),
+            "missing-worker" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now),
+            "wrong-purpose" => RuntimeWorkerAuthentication.CreateToken(key, audience, "wrong-purpose", now, GrpcWorkerId),
+            "caller-token" => RuntimeWorkerTestData.CreateCredentials(GrpcWorkerId).CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader],
+            _ => RuntimeWorkerTestData.CreateAppProof(GrpcWorkerId)
+        };
     }
 
     private static WorkerChannelRegistry CreateGrpcRegistry(RpcClientFactory clientFactory, TimeSpan? linkTimeout = null)

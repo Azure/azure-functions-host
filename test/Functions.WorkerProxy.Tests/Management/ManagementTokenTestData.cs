@@ -14,6 +14,7 @@ internal static class ManagementTokenTestData
     public const string HeaderName = "x-ms-site-token";
     public const string Issuer = "https://legion.core.azurewebsites.net";
     public const string RuntimePodName = "test-runtime-pod";
+    public static readonly string WorkerKey = Convert.ToBase64String(SHA256.HashData("test-worker-key"u8));
     public static readonly string RuntimeKey = Convert.ToBase64String(SHA256.HashData("runtime-management-key"u8));
     public static readonly string AppKey = Convert.ToHexString(SHA256.HashData("management-test-app-key"u8));
 

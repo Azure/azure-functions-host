@@ -23,6 +23,7 @@ public class ManagementApiHandlersTests
     [Fact]
     public void AssignWorker_DoesNotRequireAWorkerAndDoesNotMakeItReady()
     {
+        Assert.Equal("WorkerNotReady", WorkerApiErrorCodes.WorkerNotReady);
         WorkerPodStateManager manager = CreateManager();
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         Assert.False(manager.State.IsWorkerReady);

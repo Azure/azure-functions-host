@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -21,7 +21,7 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 internal static class RuntimeWorkerTestData
 {
-    public static readonly string WorkerKey = Convert.ToBase64String(SHA256.HashData("test-worker-key"u8));
+    public static readonly string WorkerKey = ManagementTokenTestData.WorkerKey;
     public static readonly string AppKey = Convert.ToHexString(SHA256.HashData("test-app-key"u8));
 
     public static IConfiguration CreateConfiguration() => new ConfigurationBuilder().AddInMemoryCollection(
@@ -58,39 +58,11 @@ internal static class RuntimeWorkerTestData
     public static void ConfigureTlsListener(WebApplicationBuilder builder, DateTimeOffset? expires = null)
     {
         builder.WebHost.UseKestrelHttpsConfiguration();
-        builder.Services.AddSingleton(_ => new TestCertificate(expires));
+        builder.Services.AddSingleton(_ => new TestCertificateFiles(expires));
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
-            listener.UseHttps(options.ApplicationServices.GetRequiredService<TestCertificate>().Certificate);
+            listener.UseHttps(options.ApplicationServices.GetRequiredService<TestCertificateFiles>().Certificate);
         }));
-    }
-
-    private sealed class TestCertificate : IDisposable
-    {
-        public TestCertificate(DateTimeOffset? expires)
-        {
-            using ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            CertificateRequest request = new("CN=test-worker", key, HashAlgorithmName.SHA256);
-            DateTimeOffset end = expires ?? DateTimeOffset.UtcNow.AddDays(1);
-            Certificate = request.CreateSelfSigned(end.AddDays(-2), end);
-            if (OperatingSystem.IsWindows())
-            {
-                using X509Certificate2 ephemeral = Certificate;
-                byte[] pkcs12 = ephemeral.Export(X509ContentType.Pkcs12);
-                try
-                {
-                    Certificate = X509CertificateLoader.LoadPkcs12(pkcs12, password: null);
-                }
-                finally
-                {
-                    CryptographicOperations.ZeroMemory(pkcs12);
-                }
-            }
-        }
-
-        public X509Certificate2 Certificate { get; }
-
-        public void Dispose() => Certificate.Dispose();
     }
 }

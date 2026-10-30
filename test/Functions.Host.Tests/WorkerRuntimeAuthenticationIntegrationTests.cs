@@ -104,7 +104,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost receiver = await WorkerLinkTestHost.StartAsync(timeout.Token, registry, useKestrel: true);
         string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
             """;
 
         using HttpResponseMessage response = await receiver.PutAsync(json, timeout.Token, "test-worker-pod");
@@ -179,7 +179,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost receiver = await WorkerLinkTestHost.StartAsync(timeout.Token, registry, useKestrel: true);
         string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
             """;
 
         using HttpResponseMessage response = await receiver.PutAsync(json, timeout.Token, "test-worker-pod");
@@ -239,7 +239,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         await using WebApplication? proxy = native ? null : ProxyApplication.Build(
         [
             "--WEBSITE_POD_NAME", workerId,
-            "--CONTAINER_ENCRYPTION_KEY", WorkerLinkTestData.RuntimeAccessKey,
+            "--CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey,
             "--WEBSITE_AUTH_ENCRYPTION_KEY", scenario switch
             {
                 "missing-proxy-key" or "failed-init-missing-proxy-key" => string.Empty,
@@ -281,7 +281,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             BaseAddress = endpoints is null ? NativeAddress("MANAGEMENT") : Loopback(endpoints.GetManagementAddress())
         };
         management.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
-            ManagementTokenTestData.Create(WorkerLinkTestData.RuntimeAccessKey, workerId));
+            ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, workerId));
         using (HttpRequestMessage initialPoll = new(HttpMethod.Post, "/admin/infra/instanceState"))
         {
             initialPoll.Headers.Add("x-ms-functions-pod-name", workerId);
@@ -329,7 +329,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(
             timeout.Token, registry, useKestrel: true);
         string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
             """;
         using StringContent content = new(json, Encoding.UTF8, "application/json");
         Task<HttpResponseMessage>? linking = preInitRetry ? null : managementReceiver.Client.PutAsync(
@@ -354,7 +354,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             });
             Metadata headers = new();
             foreach ((string name, string token) in ProxyAuthentication.CreateHeaders(
-                Convert.FromBase64String(WorkerLinkTestData.RuntimeAccessKey), workerId, DateTimeOffset.UtcNow))
+                Convert.FromBase64String(ManagementTokenTestData.WorkerKey), workerId, DateTimeOffset.UtcNow))
             {
                 headers.Add(name, token);
             }
@@ -476,7 +476,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.DoesNotContain("contentLastModifiedTime", state, StringComparison.Ordinal);
         Assert.DoesNotContain("maxHttpConcurrency", state, StringComparison.Ordinal);
         Assert.DoesNotContain(appKey, state, StringComparison.Ordinal);
-        Assert.DoesNotContain(WorkerLinkTestData.RuntimeAccessKey, state, StringComparison.Ordinal);
+        Assert.DoesNotContain(ManagementTokenTestData.WorkerKey, state, StringComparison.Ordinal);
         JsonObject replay = JsonNode.Parse(state)!.AsObject();
         replay["revisionId"] = 0;
         replay["configLastModifiedTime"] = 0;
@@ -620,7 +620,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             CallerAuthenticated = ProxyAuthentication.ValidateHeaders(
-                name => context.RequestHeaders.GetValue(name), Convert.FromBase64String(WorkerLinkTestData.RuntimeAccessKey),
+                name => context.RequestHeaders.GetValue(name), Convert.FromBase64String(ManagementTokenTestData.WorkerKey),
                 "test-worker-pod", DateTimeOffset.UtcNow);
             if (!CallerAuthenticated)
             {

@@ -6,13 +6,11 @@
 using System;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -23,21 +21,22 @@ namespace Azure.Functions.Authentication;
 /// This source is also compiled into WorkerProxy, independently of worker assignment and app authentication.
 /// </summary>
 internal sealed partial class ContainerManagementAuthenticationHandler(
-    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    IOptionsMonitor<ContainerManagementAuthenticationHandler.Credentials> options,
     ILoggerFactory loggerFactory,
     UrlEncoder encoder,
-    ContainerManagementAuthenticationHandler.Credentials credentials,
-    TimeProvider timeProvider) : AuthenticationHandler<AuthenticationSchemeOptions>(options, loggerFactory, encoder)
+    TimeProvider timeProvider) : AuthenticationHandler<ContainerManagementAuthenticationHandler.Credentials>(options, loggerFactory, encoder)
 {
     internal const string SchemeName = "ContainerManagement";
 
     internal static void AddServices(IServiceCollection services)
     {
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
-        services.AddSingleton<Credentials>();
-        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<Credentials>());
+        services.AddOptions<Credentials>(SchemeName)
+            .Configure<IConfiguration, ILogger<Credentials>>(static (credentials, configuration, logger) =>
+                credentials.Configure(configuration, logger))
+            .ValidateOnStart();
         services.AddAuthentication()
-            .AddScheme<AuthenticationSchemeOptions, ContainerManagementAuthenticationHandler>(SchemeName, static _ => { });
+            .AddScheme<Credentials, ContainerManagementAuthenticationHandler>(SchemeName, static _ => { });
         services.AddAuthorization(options => options.AddPolicy(SchemeName,
             policy => policy.AddAuthenticationSchemes(SchemeName).RequireAuthenticatedUser()));
     }
@@ -50,7 +49,7 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        AuthenticationFailureReason reason = credentials.Failure;
+        AuthenticationFailureReason reason = Options.Failure;
         if (reason is AuthenticationFailureReason.None
             && (Request.Headers[RuntimeWorkerAuthentication.SiteTokenHeader] is not [string]
                 || Request.Headers[RuntimeWorkerAuthentication.SiteTokenHeader].ToString().Contains(',', StringComparison.Ordinal)))
@@ -59,9 +58,9 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
         }
         if (reason is AuthenticationFailureReason.None
             && RuntimeWorkerAuthentication.ValidateManagementToken(Request.Headers[RuntimeWorkerAuthentication.SiteTokenHeader][0],
-                credentials.Key, credentials.PodName, timeProvider.GetUtcNow(), out reason))
+                Options.Key, Options.PodName, timeProvider.GetUtcNow(), out reason))
         {
-            ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, credentials.PodName)], Scheme.Name);
+            ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, Options.PodName)], Scheme.Name);
 
             return Task.FromResult(AuthenticateResult.Success(new(new ClaimsPrincipal(identity), Scheme.Name)));
         }
@@ -82,9 +81,15 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
         return base.HandleChallengeAsync(properties);
     }
 
-    internal sealed class Credentials : IHostedService
+    internal sealed class Credentials : AuthenticationSchemeOptions
     {
-        public Credentials(IConfiguration configuration, ILogger<Credentials> logger)
+        public string PodName { get; private set; } = string.Empty;
+
+        public byte[] Key { get; private set; } = [];
+
+        public AuthenticationFailureReason Failure { get; private set; }
+
+        internal void Configure(IConfiguration configuration, ILogger<Credentials> logger)
         {
             string? podName = configuration["WEBSITE_POD_NAME"];
             PodName = string.IsNullOrWhiteSpace(podName) ? configuration["CONTAINER_NAME"] ?? string.Empty : podName;
@@ -101,16 +106,6 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
                 Log.ConfigurationUnavailable(logger, "WEBSITE_POD_NAME/CONTAINER_NAME", Failure);
             }
         }
-
-        public string PodName { get; }
-
-        public byte[] Key { get; }
-
-        public AuthenticationFailureReason Failure { get; }
-
-        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private static partial class Log
