@@ -54,4 +54,17 @@ internal sealed class WorkerProxyOptions
     /// <see cref="HttpPort"/>, but its external port may differ because of platform port mapping.
     /// </summary>
     public string? HttpProxyEndpoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to emit the versioned JSON system log contract.
+    /// Enable only after the collector supports MS_FUNCTIONS_WORKER_POD_LOGS_V2.
+    /// The default preserves the existing positional console contract.
+    /// </summary>
+    public bool UseStructuredSystemLogs { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to collect Debug relay and HTTP forwarding diagnostics.
+    /// This enables per-invocation observations and should be used for bounded diagnostic runs.
+    /// </summary>
+    public bool EnableInvocationSystemLogs { get; set; }
 }

@@ -51,6 +51,83 @@ Each worker gets an independently generated GUID-based ID, matching the identity
 Override the first with `ComputeSeparation:WorkerId` and the second with `ComputeSeparation:SecondWorker:WorkerId`;
 neither ID is derived from the other. The proxy names remain `worker-proxy-1` and `worker-proxy-2`.
 
+## System telemetry
+
+WorkerProxy emits only its own platform records, separately from ordinary ASP.NET Core/YARP console output.
+Worker `RpcLog` messages (System, User, and CustomMetric) are forwarded unchanged to the Host without
+being interpreted, filtered, or emitted as proxy telemetry.
+The proxy pipeline is `ILogger` -> OpenTelemetry `LogRecord` -> `WorkerProxyLogExporter` ->
+`WorkerPodEventGenerator` -> the shared `BufferedConsoleWriter` -> stdout. A simple export processor
+avoids adding a second queue in front of the buffered writer. Exporter flush/shutdown drains preceding
+buffered records, and flush honors its timeout without stopping subsequent logging.
+The exporter uses the record's captured timestamp, trace/span IDs, formatted message and approved
+scopes, not ambient activity at export time. It does not serialize arbitrary attributes or resource data.
+This is a local OpenTelemetry **log exporter**, not an OTLP exporter or a new tracing/metrics pipeline.
+The default `MS_FUNCTIONS_WORKER_POD_LOGS` prefix retains the existing positional format.
+Both formats sanitize and bound diagnostic strings. The positional format preserves its 21 columns,
+quotes delimiter-containing fields, removes line breaks, and represents unsafe invocation IDs as
+`sha256:<digest>` in the existing invocation column. It does not carry the full V2 correlation context.
+Startup build/bind failures emit a proxy-owned `WorkerProxyStartupFailed` record through a temporary
+OpenTelemetry pipeline that does not depend on application services, and flush before exit. Only the
+exception type is reported, not invalid configuration values. If the format setting is unavailable
+or invalid during startup, this failure record uses the collector-compatible positional format.
+Configure these settings **on the WorkerProxy process**, not in the assigned app's `host.json`:
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `WorkerProxy:UseStructuredSystemLogs` | `false` | Emit `MS_FUNCTIONS_WORKER_POD_LOGS_V2` followed by one compact JSON object instead of the positional record. |
+| `WorkerProxy:EnableInvocationSystemLogs` | `false` | Include Debug relay and HTTP diagnostics, including per-invocation observations. Use for bounded diagnostic runs. |
+
+Environment variable equivalents are `WorkerProxy__UseStructuredSystemLogs` and
+`WorkerProxy__EnableInvocationSystemLogs`. Restart the proxy after changing them.
+**Do not enable the V2 format in a deployed environment until its collector/parser supports it.**
+The two formats are alternatives, not dual emission; neither setting changes the original RPC messages forwarded to the Host.
+
+The V2 contract uses `SchemaVersion=2` and includes:
+
+| Fields | Meaning |
+| --- | --- |
+| `EventTimestamp`, `Severity`, `EventName`, `Category` | UTC observation time and event identity. Ingestion time is separate. |
+| `EmitterComponent`, `EmitterInstanceId`, `Sequence` | Proxy process identity and locally assigned emission sequence. Sort by sequence within one emitter; neither sequence nor clocks establish cross-process causality. |
+| `OriginComponent` | Always `WorkerProxy`; worker-authored logs are not part of this stream. |
+| `WorkerId`, `LinkId`, `ProxySessionId`, `InvocationId` | Optional correlation fields; unknown values are omitted, not fabricated. |
+| `Operation`, `Stage`, `Outcome`, `ReasonCode`, `DurationMs` | Optional operation context, observed outcome and locally measured duration. |
+| `Attributes` | Typed, allowlisted HTTP/RPC status, peer side and pod-state observations. Not arbitrary logger state or request data. |
+| `TraceId`, `SpanId` | Existing W3C activity context when present. For RPC this may describe the long-lived transport, not an invocation span. No trace exporter or new span is created. |
+| `Message`, `ExceptionType`, `Truncated`, `InvalidLinkId` | Bounded diagnostic text, optional exception type and explicit validation/size flags. Raw exception messages/stacks are not separate V2 fields. |
+
+The Host generates one `LinkId` per connection attempt and sends it as `x-ms-functions-link-id`
+gRPC metadata. Matching repeated link requests reuse the existing connection/ID; a new attempt gets a new ID.
+Only metadata on the runtime-facing listener supplies this ID. Worker-side metadata cannot replace it.
+Host link-start/init/failure logs include WorkerId and LinkId as structured ILogger properties and in their
+messages. The existing Host system-log wire format is unchanged: consumers of that format still need to
+extract these IDs from the message until their Host ingestion mapping is extended.
+
+Before a Host attaches, use `(EmitterInstanceId, ProxySessionId)` to follow a proxy session. Later
+peer/StartStream events associate it with WorkerId and LinkId. The local session counter alone is not unique.
+Join invocation observations using the existing Host InvocationId, also carried on HTTP requests as
+`x-ms-invocation-id`. Scope joins to the trusted app/deployment metadata supplied by the collector.
+
+Proxy lifecycle/assignment/readiness logs are collected at Information.
+Detailed invocation observations require the diagnostic setting. `ProtocolMessageObserved` distinguishes
+request/response receipt from successful forwarding using Operation and Stage; RpcStatus is only a
+worker-reported result. `HttpForwardingCompleted` reports the HTTP leg, **not final function completion**:
+HTTP 200 and an RPC Failure can legitimately occur for the same InvocationId. Only the Host owns final
+execution completion and capacity release; the proxy does not invent a capacity counter.
+
+V2 strings are sanitized using the shared sanitizer, then bounded (Message: 1,024 UTF-16 code units;
+Category/ExceptionType: 256; other diagnostic strings: 128). The fixed shape bounds serialized records
+below 32 KiB including JSON escaping. Truncated text is flagged. Identifiers of at most 128 ASCII
+letters/digits, `-`, `_`, or `.` retain their exact value; other opaque WorkerId/InvocationId values are
+represented by separate lowercase SHA-256 `WorkerIdHash`/`InvocationIdHash` fields over the original UTF-8
+bytes, never by silently truncating an identity. LinkId must be an `N`-format GUID; invalid values are
+omitted and flagged without changing stream admission.
+
+New operation records exclude bodies, function payloads/results, customer exceptions, assignment
+environment and host.json. Worker RPC logs never enter the proxy telemetry pipeline.
+Production rollout still requires collector mappings,
+deployment enrichment, retention/rate policy and real ingestion validation.
+
 ## Fake platform
 
 WorkerProxy uses `WEBSITE_POD_NAME`, falling back to `CONTAINER_NAME`, for pod identity.

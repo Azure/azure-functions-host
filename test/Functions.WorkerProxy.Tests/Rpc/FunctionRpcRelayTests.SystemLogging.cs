@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -27,16 +29,11 @@ public partial class FunctionRpcRelayTests
     private const string WorkerOpenTelemetryEnabled = nameof(WorkerOpenTelemetryEnabled);
 
     [Theory]
-    [InlineData(RpcLog.Types.Level.Trace, false)]
-    [InlineData(RpcLog.Types.Level.Debug, false)]
-    [InlineData(RpcLog.Types.Level.Information, true)]
-    [InlineData(RpcLog.Types.Level.Warning, true)]
-    [InlineData(RpcLog.Types.Level.Error, true)]
-    [InlineData(RpcLog.Types.Level.Critical, true)]
-    [InlineData(RpcLog.Types.Level.None, false)]
-    public async Task Relay_SystemLogs_AreFilteredAndForwarded(
-        RpcLog.Types.Level level,
-        bool expectedInConsolePipeline)
+    [InlineData(RpcLog.Types.RpcLogCategory.System)]
+    [InlineData(RpcLog.Types.RpcLogCategory.User)]
+    [InlineData(RpcLog.Types.RpcLogCategory.CustomMetric)]
+    public async Task Relay_WorkerLogs_AreForwardedWithoutEnteringConsolePipeline(
+        RpcLog.Types.RpcLogCategory category)
     {
         CapturingEventGenerator eventGenerator = new();
         await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(eventGenerator);
@@ -45,28 +42,27 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await worker.WriteAsync(CreateStartStream("telemetry-worker"), timeout.Token);
         Assert.NotNull(await runtime.ReadAsync(timeout.Token));
-        StreamingMessage log =
-            CreateWorkerLog(RpcLog.Types.RpcLogCategory.System, "worker-system-log", level);
+        await WaitForLogAsync(() =>
+            eventGenerator.ProxyRecords.Count(record => string.Equals(record.EventName, "PeerAttached", StringComparison.Ordinal)) == 2
+            && eventGenerator.ProxyRecords.Any(record => string.Equals(record.EventName, "StartStreamValidated", StringComparison.Ordinal)),
+            timeout.Token);
+        int recordCount = eventGenerator.ProxyRecords.Count;
+        const string sentinel = "worker-log-payload-secret";
 
-        await worker.WriteAsync(log, timeout.Token);
+        foreach (RpcLog.Types.Level level in Enum.GetValues<RpcLog.Types.Level>())
+        {
+            StreamingMessage log = CreateWorkerLog(category, sentinel, level);
+            await worker.WriteAsync(log, timeout.Token);
+            Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
+        }
 
-        Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
-        if (expectedInConsolePipeline)
-        {
-            CapturedSystemLog record = Assert.Single(eventGenerator.WorkerLogs);
-            Assert.Equal(level, record.Level);
-            Assert.Equal(log.RpcLog.EventId, record.EventName);
-            Assert.Equal(log.RpcLog.Message, record.Message);
-            Assert.Equal(WorkerSystemLoggerProvider.WorkerCategory, record.Source);
-        }
-        else
-        {
-            Assert.Empty(eventGenerator.WorkerLogs);
-        }
+        Assert.Equal(recordCount, eventGenerator.ProxyRecords.Count);
+        Assert.DoesNotContain(eventGenerator.ProxyRecords,
+            record => record.ToString().Contains(sentinel, StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task Relay_AssignmentLoggingConfiguration_DoesNotChangeFixedSystemLogFilter()
+    public async Task Relay_AssignmentLoggingConfiguration_DoesNotEnableWorkerLogProcessing()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"worker-proxy-log-filter-e2e-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -115,38 +111,13 @@ public partial class FunctionRpcRelayTests
             await worker.WriteAsync(debug, timeout.Token);
 
             Assert.Equal(debug, await runtime.ReadAsync(timeout.Token));
-            Assert.Empty(eventGenerator.WorkerLogs);
+            Assert.DoesNotContain(eventGenerator.ProxyRecords,
+                record => record.ToString().Contains("worker-debug-log", StringComparison.Ordinal));
         }
         finally
         {
             Directory.Delete(directory, recursive: true);
         }
-    }
-
-    [Theory]
-    [InlineData(RpcLog.Types.RpcLogCategory.User)]
-    [InlineData(RpcLog.Types.RpcLogCategory.CustomMetric)]
-    public async Task Relay_CustomerLogs_AreForwardedWithoutEnteringConsolePipeline(
-        RpcLog.Types.RpcLogCategory category)
-    {
-        CapturingEventGenerator eventGenerator = new();
-        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(eventGenerator);
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await worker.WriteAsync(CreateStartStream("telemetry-worker"), timeout.Token);
-        Assert.NotNull(await runtime.ReadAsync(timeout.Token));
-        const string sentinel = "customer-worker-log-secret";
-        StreamingMessage log = CreateWorkerLog(category, sentinel);
-
-        await worker.WriteAsync(log, timeout.Token);
-
-        Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
-        Assert.Empty(eventGenerator.WorkerLogs);
-        Assert.DoesNotContain(
-            eventGenerator.ProxyRecords,
-            record => record.EventName.Contains(sentinel, StringComparison.Ordinal)
-                || record.Message.Contains(sentinel, StringComparison.Ordinal));
     }
 
     [Theory]
@@ -170,9 +141,8 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(log, timeout.Token);
 
         Assert.Equal(log, await runtime.ReadAsync(timeout.Token));
-        CapturedSystemLog record = Assert.Single(eventGenerator.WorkerLogs);
-        Assert.Equal(log.RpcLog.EventId, record.EventName);
-        Assert.Equal(log.RpcLog.Message, record.Message);
+        Assert.DoesNotContain(eventGenerator.ProxyRecords,
+            record => record.ToString().Contains("worker-system-log", StringComparison.Ordinal));
     }
 
     private static async Task InitializeWorkerAsync(
@@ -198,7 +168,9 @@ public partial class FunctionRpcRelayTests
     private static WorkerProxyWebApplicationFactory CreateSystemLoggingFactory(
         CapturingEventGenerator eventGenerator)
     {
-        return new WorkerProxyWebApplicationFactory(configureServices: services =>
+        return new WorkerProxyWebApplicationFactory(
+            new Dictionary<string, string?> { ["WorkerProxy:EnableInvocationSystemLogs"] = bool.TrueString },
+            configureServices: services =>
         {
             services.RemoveAll<IWorkerSystemEventGenerator>();
             services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
@@ -215,6 +187,7 @@ public partial class FunctionRpcRelayTests
             RequestId = value,
             RpcLog = new RpcLog
             {
+                InvocationId = value,
                 Category = value,
                 EventId = value,
                 Exception = new RpcException
@@ -236,8 +209,6 @@ public partial class FunctionRpcRelayTests
 
     private sealed class CapturingEventGenerator : IWorkerSystemEventGenerator
     {
-        public ConcurrentQueue<CapturedSystemLog> WorkerLogs { get; } = [];
-
         public ConcurrentQueue<CapturedProxyLog> ProxyRecords { get; } = [];
 
         public void LogEvent(
@@ -248,38 +219,25 @@ public partial class FunctionRpcRelayTests
             string summary,
             string exceptionType,
             string exceptionMessage,
-            string invocationId)
+            string invocationId,
+            WorkerSystemLogContext? context = null,
+            DateTimeOffset? timestamp = null,
+            ActivityTraceId traceId = default,
+            ActivitySpanId spanId = default)
         {
-            if (string.Equals(
-                source,
-                WorkerSystemLoggerProvider.WorkerCategory,
-                StringComparison.Ordinal))
-            {
-                WorkerLogs.Enqueue(new(
-                    (RpcLog.Types.Level)level,
-                    eventName,
-                    source,
-                    details,
-                    summary,
-                    exceptionType,
-                    exceptionMessage,
-                    invocationId));
-                return;
-            }
-
-            ProxyRecords.Enqueue(new(eventName, summary));
+            ProxyRecords.Enqueue(new(eventName, summary, context, source, details, exceptionType, exceptionMessage, invocationId));
         }
+
+        public bool ForceFlush(int timeoutMilliseconds) => true;
     }
 
-    private sealed record CapturedSystemLog(
-        RpcLog.Types.Level Level,
+    private sealed record CapturedProxyLog(
         string EventName,
+        string Message,
+        WorkerSystemLogContext? Context,
         string Source,
         string Details,
-        string Message,
         string ExceptionType,
         string ExceptionMessage,
         string InvocationId);
-
-    private sealed record CapturedProxyLog(string EventName, string Message);
 }

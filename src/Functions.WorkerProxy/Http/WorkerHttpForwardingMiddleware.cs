@@ -2,9 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -17,50 +21,108 @@ internal sealed class WorkerHttpForwardingMiddleware(
     IOptions<WorkerProxyOptions> options,
     WorkerEndpointReadinessProbe readinessProbe,
     WorkerHttpForwarder forwarder,
-    FunctionRpcRelay relay)
+    FunctionRpcRelay relay,
+    ILogger<WorkerHttpForwardingMiddleware>? logger = null)
 {
     private readonly FunctionRpcRelay _relay = relay ?? throw new ArgumentNullException(nameof(relay));
+    private readonly ILogger _logger = logger ?? NullLogger<WorkerHttpForwardingMiddleware>.Instance;
 
     /// <summary>
     /// Forwards a request to the frozen worker destination or the configured standalone override.
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        Uri? destination = _relay.WorkerHttpDestination
-            ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
-
-        if (destination is null)
+        (Uri? advertisedDestination, WorkerSystemLogContext relayContext) = _relay.GetHttpForwardingContext();
+        WorkerSystemLogContext logContext = relayContext with
         {
-            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
-            return;
+            InvocationId = context.Request.Headers["x-ms-invocation-id"].ToString(),
+            Operation = "HttpForwarding"
+        };
+        using IDisposable? scope = _logger.BeginScope(logContext);
+        long start = Stopwatch.GetTimestamp();
+        string outcome = "Failed";
+        string? reason = null;
+        ForwarderError? forwardingError = null;
+        using (_logger.BeginScope(logContext with { Stage = "Started" }))
+        {
+            _logger.LogDebug(new EventId(0, "HttpForwardingStarted"), "HTTP forwarding started.");
         }
 
-        if (!readinessProbe.IsKnownReady(destination))
+        try
         {
-            WorkerEndpointReadinessResult readinessResult =
-                await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
+            Uri? destination = advertisedDestination
+                ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 
-            if (readinessResult is not WorkerEndpointReadinessResult.Ready)
+            if (destination is null)
             {
                 context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                WorkerHttpForwardingTelemetry.RecordDestinationNotReady(readinessResult);
+                outcome = "Rejected";
+                reason = "DestinationNotConfigured";
+                WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
                 return;
             }
-        }
 
-        ForwarderError error = await forwarder.ForwardAsync(context, destination);
-        if (error is ForwarderError.None || context.RequestAborted.IsCancellationRequested)
+            if (!readinessProbe.IsKnownReady(destination))
+            {
+                WorkerEndpointReadinessResult readinessResult =
+                    await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
+
+                if (readinessResult is not WorkerEndpointReadinessResult.Ready)
+                {
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    outcome = "Rejected";
+                    reason = readinessResult.ToString();
+                    WorkerHttpForwardingTelemetry.RecordDestinationNotReady(readinessResult);
+                    return;
+                }
+            }
+
+            ForwarderError error = await forwarder.ForwardAsync(context, destination);
+            forwardingError = error;
+            if (context.RequestAborted.IsCancellationRequested)
+            {
+                outcome = "Canceled";
+                return;
+            }
+
+            if (error is ForwarderError.None)
+            {
+                outcome = "Succeeded";
+                return;
+            }
+
+            readinessProbe.Invalidate(destination);
+            if (!context.Response.HasStarted)
+            {
+                context.Response.StatusCode = StatusCodes.Status502BadGateway;
+            }
+
+            reason = "ForwarderError";
+            WorkerHttpForwardingTelemetry.RecordForwarderError(error);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
-            return;
+            outcome = "Canceled";
+            throw;
         }
-
-        readinessProbe.Invalidate(destination);
-        if (!context.Response.HasStarted)
+        finally
         {
-            context.Response.StatusCode = StatusCodes.Status502BadGateway;
+            using IDisposable? completedScope = _logger.BeginScope(logContext with
+            {
+                Stage = "Completed",
+                Outcome = outcome,
+                ReasonCode = reason,
+                DurationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds,
+                Attributes = new()
+                {
+                    HttpStatusCode = context.Response.StatusCode,
+                    ForwarderError = forwardingError?.ToString()
+                }
+            });
+            _logger.Log(outcome is "Failed" or "Rejected" ? LogLevel.Warning : LogLevel.Debug,
+                new EventId(1, "HttpForwardingCompleted"),
+                "HTTP forwarding completed with outcome {Outcome} and HTTP status {HttpStatusCode}.",
+                outcome, context.Response.StatusCode);
         }
-
-        WorkerHttpForwardingTelemetry.RecordForwarderError(error);
     }
 }

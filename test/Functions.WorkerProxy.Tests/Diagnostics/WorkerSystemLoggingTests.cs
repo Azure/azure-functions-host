@@ -3,10 +3,14 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,69 +20,34 @@ using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic.FileIO;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests.Diagnostics;
 
-public class WorkerSystemLoggingTests
+public partial class WorkerSystemLoggingTests
 {
     private static readonly DateTimeOffset Timestamp =
         new(2026, 10, 26, 12, 34, 56, TimeSpan.Zero);
 
-    [Theory]
-    [InlineData(RpcLog.Types.Level.Information, LogLevel.Information, false)]
-    [InlineData(RpcLog.Types.Level.Warning, LogLevel.Warning, false)]
-    [InlineData(RpcLog.Types.Level.Error, LogLevel.Error, true)]
-    [InlineData(RpcLog.Types.Level.Critical, LogLevel.Critical, true)]
-    public void WorkerLogger_MatchesHostSystemLogPayload(
-        RpcLog.Types.Level rpcLevel,
-        LogLevel expectedLevel,
-        bool expectedException)
-    {
-        RpcLog log = CreateWorkerLog(rpcLevel);
-
-        CapturedProxyLog record = CaptureWorkerRecord(log);
-
-        Assert.Equal(expectedLevel, record.Level);
-        Assert.Equal("worker-system-message", record.Message);
-        Assert.Equal(WorkerPodEventGenerator.WorkerSource, record.Source);
-        if (expectedException)
-        {
-            const string exceptionMessage =
-                "Result: worker-system-message\n"
-                + "Type: \n"
-                + "Exception: worker-remote-exception\n"
-                + "Stack: worker-remote-stack";
-            Assert.Equal(
-                "Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException",
-                record.ExceptionType);
-            Assert.Equal(exceptionMessage, record.ExceptionMessage);
-            Assert.Contains($"{record.ExceptionType}: {exceptionMessage}", record.Details, StringComparison.Ordinal);
-        }
-        else
-        {
-            Assert.Empty(record.ExceptionType);
-            Assert.Empty(record.ExceptionMessage);
-            Assert.Empty(record.Details);
-        }
-    }
-
     [Fact]
-    public void WorkerLogger_SanitizesExceptionContent()
+    public void LogExporter_SanitizesExceptionContent()
     {
         const string secret = "SuperSecret123";
         string credential = $"https://worker:{secret}@example.com:443 ";
         string value = $"worker failure {credential}";
-        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Error);
-        log.Message = value;
-        log.Exception.Message = value;
-        log.Exception.StackTrace = value;
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
+        logger.LogError(new InvalidOperationException(value), "{Message}", value);
 
-        CapturedProxyLog record = CaptureWorkerRecord(log);
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         string formatted = string.Join(
             ',',
             record.Message,
@@ -92,58 +61,18 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void WorkerLogger_DoesNotApplyCustomFieldLimits()
+    public void LogExporter_PreservesCorrelationFields()
     {
-        string summary = new('a', 5_000);
-        string remoteMessage = new('b', 3_000);
-        string remoteStack = new('c', 7_000);
-        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Error);
-        log.Message = summary;
-        log.Exception.Message = remoteMessage;
-        log.Exception.StackTrace = remoteStack;
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
+        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext { InvocationId = "invocation-id" });
+        logger.LogWarning(new EventId(3, "RelayFailure"), "Relay failed.");
 
-        CapturedProxyLog record = CaptureWorkerRecord(log);
-
-        Assert.Equal(summary, record.Message);
-        Assert.Contains(remoteMessage, record.ExceptionMessage, StringComparison.Ordinal);
-        Assert.Contains(remoteStack, record.ExceptionMessage, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void WorkerLogger_ExcludesUnusedWorkerFields()
-    {
-        const string sentinel = "customer-secret-sentinel";
-        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Information);
-        log.Category = sentinel;
-        log.Properties = sentinel;
-        log.PropertiesMap["secret"] = new TypedData { String = sentinel };
-
-        CapturedProxyLog record = CaptureWorkerRecord(log);
-        string formatted = string.Join(
-            ',',
-            record.EventName,
-            record.Source,
-            record.Details,
-            record.Message,
-            record.ExceptionType,
-            record.ExceptionMessage,
-            record.InvocationId);
-
-        Assert.DoesNotContain(sentinel, formatted, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void WorkerLogger_PreservesHostCorrelationFields()
-    {
-        RpcLog log = CreateWorkerLog(RpcLog.Types.Level.Warning);
-        log.EventId = "WorkerFailure";
-        log.InvocationId = "invocation-id";
-
-        CapturedProxyLog record = CaptureWorkerRecord(log);
-
-        Assert.Equal("WorkerFailure", record.EventName);
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
+        Assert.Equal("RelayFailure", record.EventName);
         Assert.Equal("invocation-id", record.InvocationId);
-        Assert.Equal(WorkerPodEventGenerator.WorkerSource, record.Source);
+        Assert.Equal(WorkerProxyLogExporter.RelayCategory, record.Source);
     }
 
     [Fact]
@@ -153,13 +82,13 @@ public class WorkerSystemLoggingTests
         WorkerPodEventGenerator.WorkerSystemLogRecord record = new(
             4,
             "WorkerProxyStarted",
-            WorkerSystemLoggerProvider.ApplicationCategory,
+            WorkerProxyLogExporter.ApplicationCategory,
             string.Empty,
             "WorkerProxy started.",
             Timestamp,
             string.Empty,
             string.Empty,
-            string.Empty);
+            "invocation-id");
 
         string formatted = generator.Format(record);
 
@@ -168,11 +97,14 @@ public class WorkerSystemLoggingTests
             formatted,
             StringComparison.Ordinal);
         Assert.Contains(
-            $",WorkerProxyStarted,{WorkerSystemLoggerProvider.ApplicationCategory},",
+            $",WorkerProxyStarted,{WorkerProxyLogExporter.ApplicationCategory},",
             formatted,
             StringComparison.Ordinal);
         Assert.Contains("\"WorkerProxy started.\"", formatted, StringComparison.Ordinal);
         Assert.Contains(Timestamp.UtcDateTime.ToString("O"), formatted, StringComparison.Ordinal);
+        string[] fields = Assert.Single(ParseCsvOutput(formatted));
+        Assert.Equal(21, fields.Length);
+        Assert.Equal("invocation-id", fields[12]);
     }
 
     [Fact]
@@ -184,7 +116,7 @@ public class WorkerSystemLoggingTests
             new WorkerPodEventGenerator.WorkerSystemLogRecord(
                 3,
                 "TestEvent",
-                WorkerSystemLoggerProvider.ApplicationCategory,
+                WorkerProxyLogExporter.ApplicationCategory,
                 string.Empty,
                 "first \"value\"\r\nsecond value",
                 Timestamp,
@@ -196,48 +128,130 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void Format_DoesNotApplyCustomFieldLimits()
+    public void Format_BoundsEveryDiagnosticField()
     {
         using WorkerPodEventGenerator generator = CreateEventGenerator();
-        string value = string.Concat(new string('a', 5_000), "customer-secret-sentinel");
+        string value = string.Concat(new string('\u2603', 5_000), "customer-secret-sentinel");
 
         WorkerPodEventGenerator.WorkerSystemLogRecord record = new(
             3,
             value,
-            WorkerSystemLoggerProvider.ApplicationCategory,
-            string.Empty,
+            value,
+            value,
             value,
             Timestamp,
-            string.Empty,
-            string.Empty,
+            value,
+            value,
             string.Empty);
         string formatted = generator.Format(record);
 
-        Assert.Equal(value, record.EventName);
-        Assert.Equal(value, record.Summary);
-        Assert.Contains("customer-secret-sentinel", formatted, StringComparison.Ordinal);
+        string[] fields = Assert.Single(ParseCsvOutput(formatted));
+        Assert.Equal(21, fields.Length);
+        Assert.Equal(128, fields[4].Length);
+        Assert.Equal(256, fields[5].Length);
+        Assert.Equal(1_024, fields[6].Length);
+        Assert.Equal(1_024, fields[7].Length);
+        Assert.Equal(256, fields[10].Length);
+        Assert.Equal(1_024, fields[11].Length);
+        Assert.DoesNotContain("customer-secret-sentinel", formatted, StringComparison.Ordinal);
+        Assert.InRange(Encoding.UTF8.GetByteCount(formatted), 1, 32_768);
+    }
+
+    [Theory]
+    [InlineData("value,extra")]
+    [InlineData("value\nextra")]
+    [InlineData("value\r\nextra")]
+    [InlineData("value\"extra")]
+    [InlineData("oversized")]
+    public async Task PositionalLogging_FingerprintsUnsafeInvocationIds(string invocationId)
+    {
+        if (string.Equals(invocationId, "oversized", StringComparison.Ordinal))
+        {
+            invocationId = new string('x', 4_096);
+        }
+
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.HttpCategory);
+        using (logger.BeginScope(new WorkerSystemLogContext { InvocationId = invocationId }))
+        {
+            logger.LogWarning(new EventId(1, "HttpForwardingCompleted"), "Forwarding rejected.");
+        }
+
+        await generator.CompleteAsync();
+
+        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
+        Assert.Equal(21, fields.Length);
+        Assert.Equal($"sha256:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(invocationId)))}", fields[12]);
+        Assert.DoesNotContain(invocationId, output.ToString(), StringComparison.Ordinal);
+        Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
     [Fact]
-    public async Task PlatformTelemetry_WritesProxyAndWorkerRecordsThroughBackgroundConsolePipeline()
+    public async Task PositionalLogging_SanitizesMessagesWithoutExceptionsAndEncodesColumns()
+    {
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger("Proxy,category");
+        logger.LogWarning(new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" AccountKey=review-sentinel");
+        await generator.CompleteAsync();
+
+        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
+        Assert.Equal(21, fields.Length);
+        Assert.Equal("Event,name", fields[4]);
+        Assert.Equal("Proxy,category", fields[5]);
+        Assert.Equal($"first second third 'quoted' {Sanitizer.SecretReplacement}", fields[7]);
+        Assert.DoesNotContain("review-sentinel", output.ToString(), StringComparison.Ordinal);
+        Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("false")]
+    [InlineData("true")]
+    [InlineData("invalid")]
+    public void StartupFailure_EmitsAndFlushesSafeRecordWithoutApplicationServices(string? format)
+    {
+        IConfiguration? configuration = format is null ? null : new ConfigurationBuilder()
+            .AddInMemoryCollection(new[] { new KeyValuePair<string, string?>("WorkerProxy:UseStructuredSystemLogs", format) })
+            .Build();
+        StringWriter output = new();
+
+        WorkerProxyApplication.LogStartupFailure(configuration, new InvalidOperationException("private-configuration-sentinel"), output);
+
+        Assert.DoesNotContain("private-configuration-sentinel", output.ToString(), StringComparison.Ordinal);
+        if (string.Equals(format, "true", StringComparison.Ordinal))
+        {
+            var record = Assert.Single(ParseStructuredOutput(output));
+            Assert.Equal("WorkerProxyStartupFailed", record.GetProperty("EventName").GetString());
+            Assert.Equal("Startup", record.GetProperty("Operation").GetString());
+            Assert.Equal("Failed", record.GetProperty("Outcome").GetString());
+        }
+        else
+        {
+            string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
+            Assert.Equal(21, fields.Length);
+            Assert.Equal("WorkerProxyStartupFailed", fields[4]);
+        }
+    }
+
+    [Fact]
+    public async Task PlatformTelemetry_ExportsProxyRecordsThroughBackgroundConsolePipeline()
     {
         StringWriter output = new();
         using WorkerPodEventGenerator eventGenerator = new(output, TimeProvider.System);
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
-        ILogger proxyLogger = provider.CreateLogger(WorkerSystemLoggerProvider.ApplicationCategory);
-        ILogger workerLogger = provider.CreateLogger(WorkerSystemLoggerProvider.WorkerCategory);
+        using ILoggerFactory provider = CreateLoggerFactory(eventGenerator);
+        ILogger proxyLogger = provider.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
 
         proxyLogger.LogInformation(new EventId(1, "WorkerProxyStarted"), "WorkerProxy started.");
-        RpcLog workerLog = CreateWorkerLog(RpcLog.Types.Level.Warning);
-        workerLog.EventId = "WorkerFailure";
-        workerLog.InvocationId = "invocation-id";
-        workerLogger.LogWorkerEvent(workerLog);
         await eventGenerator.CompleteAsync();
 
         string[] lines = output.ToString().Split(
             Environment.NewLine,
             StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(2, lines.Length);
+        Assert.Single(lines);
         Assert.All(
             lines,
             line => Assert.StartsWith(
@@ -248,21 +262,17 @@ public class WorkerSystemLoggingTests
         Assert.Contains(
             lines,
             line => line.Contains(
-                WorkerSystemLoggerProvider.ApplicationCategory,
+                WorkerProxyLogExporter.ApplicationCategory,
                 StringComparison.Ordinal));
-        Assert.Contains(lines, line => line.Contains("Worker.LanguageWorker", StringComparison.Ordinal));
-        Assert.Contains(lines, line => line.Contains("WorkerFailure", StringComparison.Ordinal));
-        Assert.Contains(lines, line => line.Contains("invocation-id", StringComparison.Ordinal));
-        Assert.Contains(lines, line => line.Contains("worker-system-message", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void LoggerProvider_PassesReadinessDestinationWithHostExceptionDetails()
+    public void LogExporter_PassesReadinessDestinationWithHostExceptionDetails()
     {
         const string sentinel = "customer-secret-sentinel";
         Uri destination = new("http://worker.internal:4321/functions");
         CapturingEventGenerator eventGenerator = new();
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
+        using ILoggerFactory provider = CreateLoggerFactory(eventGenerator);
         ILogger logger = provider.CreateLogger(
             typeof(WorkerEndpointReadinessProbe).FullName!);
         SocketException exception = new((int)SocketError.ConnectionRefused);
@@ -287,10 +297,10 @@ public class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void LoggerProvider_ConsumesMissingFunctionGroupWarning()
+    public void LogExporter_ConsumesMissingFunctionGroupWarning()
     {
         CapturingEventGenerator eventGenerator = new();
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
+        using ILoggerFactory provider = CreateLoggerFactory(eventGenerator);
         ILogger relayLogger = provider.CreateLogger(typeof(FunctionRpcRelay).FullName!);
 
         relayLogger.LogWarning(
@@ -306,8 +316,12 @@ public class WorkerSystemLoggingTests
             record.Message);
     }
 
-    [Fact]
-    public async Task LoggerProvider_ConsumesActualAspNetCoreAssignmentRequestLog()
+    [Theory]
+    [InlineData("/admin/worker/assignment")]
+    [InlineData("/ADMIN/WORKER/ASSIGNMENT")]
+    [InlineData("/admin/worker/assignment/")]
+    [InlineData("/ADMIN/WORKER/ASSIGNMENT/")]
+    public async Task LogExporter_ConsumesActualAspNetCoreAssignmentRequestLog(string path)
     {
         CapturingEventGenerator eventGenerator = new();
         await using global::Azure.Functions.WorkerProxy.Tests.WorkerProxyWebApplicationFactory factory =
@@ -320,19 +334,19 @@ public class WorkerSystemLoggingTests
         using StringContent content = new("{}", Encoding.UTF8, "application/json");
 
         using HttpResponseMessage response =
-            await client.PutAsync("/admin/worker/assignment", content);
+            await client.PutAsync(path, content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         CapturedProxyLog record = Assert.Single(
             eventGenerator.ProxyRecords,
-            record => record.EventName == "WorkerAssignmentRequestRejected");
+            record => string.Equals(record.EventName, "WorkerAssignmentRequestRejected", StringComparison.Ordinal));
         Assert.Equal(
             "Worker assignment request completed with HTTP status 400.",
             record.Message);
     }
 
     [Fact]
-    public async Task LoggerProvider_FiltersConfiguredCategoryInformationLogs()
+    public async Task LogExporter_FiltersConfiguredCategoryInformationLogs()
     {
         CapturingEventGenerator eventGenerator = new();
         await using global::Azure.Functions.WorkerProxy.Tests.WorkerProxyWebApplicationFactory factory =
@@ -344,9 +358,9 @@ public class WorkerSystemLoggingTests
         using HttpClient client = factory.CreateWorkerProxyClient();
         ILoggerFactory loggerFactory = factory.Services.GetRequiredService<ILoggerFactory>();
         ILogger readinessLogger =
-            loggerFactory.CreateLogger(WorkerSystemLoggerProvider.ReadinessProbeCategory);
+            loggerFactory.CreateLogger(WorkerProxyLogExporter.ReadinessProbeCategory);
         ILogger relayLogger =
-            loggerFactory.CreateLogger(WorkerSystemLoggerProvider.RelayCategory);
+            loggerFactory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
         ILogger grpcLogger =
             loggerFactory.CreateLogger("Grpc.AspNetCore.Server.ServerCallHandler");
         ILogger httpLogger =
@@ -417,6 +431,21 @@ public class WorkerSystemLoggingTests
         Assert.Contains(
             eventGenerator.ProxyRecords,
             record => record.EventName == "WorkerProxyShutdownStarted");
+        Assert.Contains(
+            eventGenerator.ProxyRecords,
+            record => string.Equals(record.EventName, "WorkerProxyStopped", StringComparison.Ordinal));
+    }
+
+    private static string[][] ParseCsvOutput(string output)
+    {
+        return output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(line =>
+        {
+            string prefix = $"{WorkerPodEventGenerator.EventStreamName} ";
+            Assert.StartsWith(prefix, line, StringComparison.Ordinal);
+            using TextFieldParser parser = new(new StringReader(line[prefix.Length..]));
+            parser.SetDelimiters(",");
+            return parser.ReadFields()!;
+        }).ToArray();
     }
 
     private static WorkerPodEventGenerator CreateEventGenerator()
@@ -424,30 +453,18 @@ public class WorkerSystemLoggingTests
         return new(new StringWriter(), TimeProvider.System);
     }
 
-    private static CapturedProxyLog CaptureWorkerRecord(RpcLog log)
+    private static ILoggerFactory CreateLoggerFactory(IWorkerSystemEventGenerator generator)
     {
-        CapturingEventGenerator eventGenerator = new();
-        using WorkerSystemLoggerProvider provider = new(eventGenerator);
-        ILogger logger = provider.CreateLogger(WorkerSystemLoggerProvider.WorkerCategory);
-
-        logger.LogWorkerEvent(log);
-
-        return Assert.Single(eventGenerator.ProxyRecords);
-    }
-
-    private static RpcLog CreateWorkerLog(RpcLog.Types.Level level)
-    {
-        return new RpcLog
+        return LoggerFactory.Create(builder =>
         {
-            LogCategory = RpcLog.Types.RpcLogCategory.System,
-            Level = level,
-            Message = "worker-system-message",
-            Exception = new RpcException
+            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.AddOpenTelemetry(options =>
             {
-                Message = "worker-remote-exception",
-                StackTrace = "worker-remote-stack"
-            }
-        };
+                options.IncludeFormattedMessage = true;
+                options.IncludeScopes = true;
+                options.AddProcessor(new SimpleLogRecordExportProcessor(new WorkerProxyLogExporter(generator)));
+            });
+        });
     }
 
     private sealed class CapturingEventGenerator : IWorkerSystemEventGenerator
@@ -462,7 +479,11 @@ public class WorkerSystemLoggingTests
             string summary,
             string exceptionType,
             string exceptionMessage,
-            string invocationId)
+            string invocationId,
+            WorkerSystemLogContext? context = null,
+            DateTimeOffset? timestamp = null,
+            ActivityTraceId traceId = default,
+            ActivitySpanId spanId = default)
         {
             ProxyRecords.Enqueue(new(
                 level,
@@ -474,6 +495,8 @@ public class WorkerSystemLoggingTests
                 exceptionMessage,
                 invocationId));
         }
+
+        public bool ForceFlush(int timeoutMilliseconds) => true;
     }
 
     private sealed record CapturedProxyLog(

@@ -20,6 +20,8 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// </remarks>
 internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints) : FunctionRpc.FunctionRpcBase
 {
+    internal const string LinkIdMetadataKey = "x-ms-functions-link-id";
+
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
@@ -33,7 +35,10 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
         FunctionRpcRelayTerminalState terminalState;
         try
         {
-            terminalState = await relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
+            string? linkId = side is FunctionRpcRelaySide.Runtime
+                ? context.RequestHeaders.GetValue(LinkIdMetadataKey)
+                : null;
+            terminalState = await relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken, linkId);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {

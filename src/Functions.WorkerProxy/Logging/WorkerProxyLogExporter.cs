@@ -8,14 +8,15 @@ using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
 
 namespace Azure.Functions.WorkerProxy.Logging;
 
-internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eventGenerator)
-    : ILoggerProvider, ISupportExternalScope
+internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGenerator)
+    : BaseExporter<LogRecord>
 {
     internal const string InvocationIdScopeKey = "InvocationId";
-    internal const string WorkerCategory = WorkerPodEventGenerator.WorkerSource;
 
     internal static readonly string ApplicationCategory =
         typeof(WorkerProxyApplication).FullName!;
@@ -29,54 +30,31 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
     internal static readonly string RelayCategory =
         typeof(FunctionRpcRelay).FullName!;
 
+    internal static readonly string HttpCategory =
+        typeof(WorkerHttpForwardingMiddleware).FullName!;
+
     private readonly IWorkerSystemEventGenerator _eventGenerator =
         eventGenerator ?? throw new ArgumentNullException(nameof(eventGenerator));
 
-    private IExternalScopeProvider _scopeProvider = new LoggerExternalScopeProvider();
-
-    public ILogger CreateLogger(string categoryName)
+    public override ExportResult Export(in Batch<LogRecord> batch)
     {
-        return new SystemLogger(this, categoryName);
-    }
-
-    public void SetScopeProvider(IExternalScopeProvider scopeProvider)
-    {
-        _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
-    }
-
-    public void Dispose()
-    {
-    }
-
-    private sealed class SystemLogger(
-        WorkerSystemLoggerProvider provider,
-        string categoryName) : ILogger
-    {
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull
+        foreach (LogRecord record in batch)
         {
-            return provider._scopeProvider.Push(state);
-        }
+            if (record.LogLevel is LogLevel.None)
+            {
+                continue;
+            }
 
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            string message = formatter(state, exception);
+            string? message = record.FormattedMessage ?? record.Body;
             if (string.IsNullOrEmpty(message))
             {
-                return;
+                continue;
             }
 
             string details = string.Empty;
             string exceptionType = string.Empty;
             string exceptionMessage = string.Empty;
-            if (exception is not null)
+            if (record.Exception is { } exception)
             {
                 Exception baseException = exception.GetBaseException();
                 exceptionType = baseException.GetType().ToString();
@@ -86,10 +64,16 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
             }
 
             InvocationState invocationState = new();
-            provider._scopeProvider.ForEachScope(
+            record.ForEachScope(
                 static (scope, state) =>
                 {
-                    if (scope is not IEnumerable<KeyValuePair<string, object?>> properties)
+                    if (scope.Scope is WorkerSystemLogContext context)
+                    {
+                        state.Context = state.Context.Merge(context);
+                        return;
+                    }
+
+                    if (scope.Scope is not IEnumerable<KeyValuePair<string, object?>> properties)
                     {
                         return;
                     }
@@ -102,26 +86,36 @@ internal sealed class WorkerSystemLoggerProvider(IWorkerSystemEventGenerator eve
                             StringComparison.Ordinal)
                             && property.Value is not null)
                         {
-                            state.InvocationId = property.Value.ToString() ?? string.Empty;
+                            state.Context = state.Context with { InvocationId = property.Value.ToString() };
                         }
                     }
                 },
                 invocationState);
 
-            provider._eventGenerator.LogEvent(
-                logLevel,
-                eventId.Name ?? string.Empty,
-                categoryName,
+            _eventGenerator.LogEvent(
+                record.LogLevel,
+                record.EventId.Name ?? string.Empty,
+                record.CategoryName ?? string.Empty,
                 details,
                 message,
                 exceptionType,
                 exceptionMessage,
-                invocationState.InvocationId);
+                invocationState.Context.InvocationId ?? string.Empty,
+                invocationState.Context,
+                record.Timestamp,
+                record.TraceId,
+                record.SpanId);
         }
+
+        return ExportResult.Success;
     }
+
+    protected override bool OnForceFlush(int timeoutMilliseconds) => _eventGenerator.ForceFlush(timeoutMilliseconds);
+
+    protected override bool OnShutdown(int timeoutMilliseconds) => _eventGenerator.ForceFlush(timeoutMilliseconds);
 
     private sealed class InvocationState
     {
-        public string InvocationId { get; set; } = string.Empty;
+        public WorkerSystemLogContext Context { get; set; } = new();
     }
 }

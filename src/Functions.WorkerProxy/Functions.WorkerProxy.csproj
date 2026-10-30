@@ -22,6 +22,7 @@
     <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
     <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
     <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="Yarp.ReverseProxy" VersionOverride="2.3.0" />
   </ItemGroup>
 
