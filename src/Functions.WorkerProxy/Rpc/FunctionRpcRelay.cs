@@ -123,13 +123,12 @@ internal sealed partial class FunctionRpcRelay(
     /// <param name="requestStream">The messages produced by the attached peer.</param>
     /// <param name="responseStream">The messages relayed from the opposite peer.</param>
     /// <param name="cancellationToken">The gRPC call cancellation token.</param>
-    /// <param name="linkId">The runtime-provided connection correlation ID, if available.</param>
     /// <returns>A task that returns the first terminal state after the session terminates and this attachment releases.</returns>
     /// <exception cref="FunctionRpcRelayAttachmentException">
     /// The side is already attached, the previous session is still tearing down, or shutdown has started.
     /// </exception>
     public Task<FunctionRpcRelayTerminalState> AttachAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken, string? linkId = null)
+        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(requestStream);
         ArgumentNullException.ThrowIfNull(responseStream);
@@ -157,7 +156,7 @@ internal sealed partial class FunctionRpcRelay(
                     _capabilityFinalizer,
                     _stateManager);
 
-                FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, linkId);
+                FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
                 if (attachResult != FunctionRpcRelayAttachResult.Attached)
                 {
                     (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
@@ -177,7 +176,6 @@ internal sealed partial class FunctionRpcRelay(
         {
             using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
             {
-                LinkId = side is FunctionRpcRelaySide.Runtime ? linkId : null,
                 Operation = "Link",
                 Stage = "PeerAttachment",
                 Outcome = "Rejected",

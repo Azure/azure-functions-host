@@ -26,7 +26,7 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
     internal int InvocationCount { get; private set; }
 
     /// <inheritdoc />
-    public Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default, string linkId = null)
+    public Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;

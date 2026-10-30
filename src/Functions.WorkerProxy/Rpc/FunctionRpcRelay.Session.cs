@@ -43,7 +43,6 @@ internal sealed partial class FunctionRpcRelay
         private bool _runtimeAttached;
         private bool _workerAttached;
         private string? _workerId;
-        private string? _linkId;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -87,9 +86,8 @@ internal sealed partial class FunctionRpcRelay
         /// Atomically reserves ownership of one side for an attaching stream.
         /// </summary>
         /// <param name="side">The side to reserve.</param>
-        /// <param name="linkId">The runtime connection correlation ID.</param>
         /// <returns>The result of the reservation attempt.</returns>
-        public FunctionRpcRelayAttachResult TryAttach(FunctionRpcRelaySide side, string? linkId)
+        public FunctionRpcRelayAttachResult TryAttach(FunctionRpcRelaySide side)
         {
             lock (_stateLock)
             {
@@ -104,11 +102,6 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: true);
-                if (side is FunctionRpcRelaySide.Runtime)
-                {
-                    _linkId = linkId;
-                }
-
                 if (side == FunctionRpcRelaySide.Worker)
                 {
                     // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
@@ -126,7 +119,6 @@ internal sealed partial class FunctionRpcRelay
                 return new()
                 {
                     WorkerId = _workerId,
-                    LinkId = _linkId,
                     ProxySessionId = id
                 };
             }

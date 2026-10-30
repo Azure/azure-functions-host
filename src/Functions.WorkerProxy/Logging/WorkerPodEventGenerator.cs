@@ -11,7 +11,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -90,7 +89,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         bool truncated = false;
         string? workerId = NormalizeIdentifier(context.WorkerId, out string? workerIdHash);
         string? invocationId = NormalizeIdentifier(context.InvocationId, out string? invocationIdHash);
-        bool validLinkId = Guid.TryParseExact(context.LinkId, "N", out Guid linkId);
         WorkerSystemLogAttributes? attributes = context.Attributes is { } values
             ? values with
             {
@@ -110,8 +108,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             Sequence = Interlocked.Increment(ref _sequence),
             WorkerId = workerId,
             WorkerIdHash = workerIdHash,
-            LinkId = validLinkId ? linkId.ToString("N") : null,
-            InvalidLinkId = context.LinkId is not null && !validLinkId,
             ProxySessionId = context.ProxySessionId,
             InvocationId = invocationId,
             InvocationIdHash = invocationIdHash,
@@ -137,7 +133,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             return null;
         }
 
-        value = Sanitizer.Sanitize(value);
         if (value.Length <= limit)
         {
             return value;
@@ -238,20 +233,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
     public void Dispose()
     {
         _writer.Dispose();
-    }
-
-    public bool ForceFlush(int timeoutMilliseconds)
-    {
-        using CancellationTokenSource timeout = new(timeoutMilliseconds);
-        try
-        {
-            _writer.FlushAsync(timeout.Token).GetAwaiter().GetResult();
-            return true;
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
-        {
-            return false;
-        }
     }
 
     internal async Task CompleteAsync()

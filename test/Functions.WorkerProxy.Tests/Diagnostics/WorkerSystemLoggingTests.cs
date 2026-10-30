@@ -19,7 +19,6 @@ using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -37,27 +36,20 @@ public partial class WorkerSystemLoggingTests
         new(2026, 10, 26, 12, 34, 56, TimeSpan.Zero);
 
     [Fact]
-    public void LogExporter_SanitizesExceptionContent()
+    public void LogExporter_PreservesProxyExceptionContent()
     {
-        const string secret = "SuperSecret123";
-        string credential = $"https://worker:{secret}@example.com:443 ";
-        string value = $"worker failure {credential}";
+        const string value = "The proxy could not resolve key=worker-ready.";
+        InvalidOperationException exception = new(value);
         CapturingEventGenerator generator = new();
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
-        logger.LogError(new InvalidOperationException(value), "{Message}", value);
+        logger.LogError(exception, "{Message}", value);
 
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
-        string formatted = string.Join(
-            ',',
-            record.Message,
-            record.Details,
-            record.ExceptionMessage);
-
-        Assert.DoesNotContain(secret, formatted, StringComparison.Ordinal);
-        Assert.Contains(Sanitizer.SecretReplacement, record.Message, StringComparison.Ordinal);
-        Assert.Contains(Sanitizer.SecretReplacement, record.Details, StringComparison.Ordinal);
-        Assert.Contains(Sanitizer.SecretReplacement, record.ExceptionMessage, StringComparison.Ordinal);
+        Assert.Equal(value, record.Message);
+        Assert.Equal(exception.ToString(), record.Details);
+        Assert.Equal(value, record.ExceptionMessage);
+        Assert.Equal(typeof(InvalidOperationException).FullName, record.ExceptionType);
     }
 
     [Fact]
@@ -189,21 +181,20 @@ public partial class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public async Task PositionalLogging_SanitizesMessagesWithoutExceptionsAndEncodesColumns()
+    public async Task PositionalLogging_PreservesDiagnosticTextAndEncodesColumns()
     {
         StringWriter output = new();
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger("Proxy,category");
-        logger.LogWarning(new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" AccountKey=review-sentinel");
+        logger.LogWarning(new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" key=worker-ready");
         await generator.CompleteAsync();
 
         string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
         Assert.Equal(21, fields.Length);
         Assert.Equal("Event,name", fields[4]);
         Assert.Equal("Proxy,category", fields[5]);
-        Assert.Equal($"first second third 'quoted' {Sanitizer.SecretReplacement}", fields[7]);
-        Assert.DoesNotContain("review-sentinel", output.ToString(), StringComparison.Ordinal);
+        Assert.Equal("first second third 'quoted' key=worker-ready", fields[7]);
         Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
@@ -495,8 +486,6 @@ public partial class WorkerSystemLoggingTests
                 exceptionMessage,
                 invocationId));
         }
-
-        public bool ForceFlush(int timeoutMilliseconds) => true;
     }
 
     private sealed record CapturedProxyLog(

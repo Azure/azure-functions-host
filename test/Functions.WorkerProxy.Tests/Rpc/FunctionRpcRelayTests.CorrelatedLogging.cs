@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
-using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -39,9 +38,12 @@ public partial class FunctionRpcRelayTests
                 services.AddSingleton<IWorkerSystemEventGenerator>(generator);
             });
         using CancellationTokenSource timeout = new(TestTimeout);
-        string linkId = Guid.NewGuid().ToString("N");
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token,
-            new Metadata { { FunctionRpcRelayService.LinkIdMetadataKey, Guid.NewGuid().ToString("N") } });
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+            string.Equals(record.EventName, "PeerAttached", StringComparison.Ordinal)), timeout.Token);
+        CapturedProxyLog attached = Assert.Single(generator.ProxyRecords, record =>
+            string.Equals(record.EventName, "PeerAttached", StringComparison.Ordinal));
+        Assert.Null(attached.Context!.WorkerId);
         StreamingMessage startStream = CreateStartStream();
         startStream.StartStream.WorkerId = "telemetry-worker";
         await worker.WriteAsync(startStream, timeout.Token);
@@ -49,11 +51,12 @@ public partial class FunctionRpcRelayTests
             string.Equals(record.EventName, "StartStreamValidated", StringComparison.Ordinal)), timeout.Token);
         CapturedProxyLog preLink = Assert.Single(generator.ProxyRecords, record =>
             string.Equals(record.EventName, "StartStreamValidated", StringComparison.Ordinal));
-        Assert.Null(preLink.Context!.LinkId);
+        Assert.Equal("telemetry-worker", preLink.Context!.WorkerId);
+        Assert.Equal(attached.Context.ProxySessionId, preLink.Context.ProxySessionId);
 
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token,
-            new Metadata { { FunctionRpcRelayService.LinkIdMetadataKey, linkId } });
-        await runtime.ReadAsync(timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        StreamingMessage forwardedStart = await runtime.ReadAsync(timeout.Token);
+        Assert.Equal("telemetry-worker", forwardedStart.StartStream.WorkerId);
         StreamingMessage init = new() { WorkerInitRequest = new() };
         await runtime.WriteAsync(init, timeout.Token);
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));
@@ -98,8 +101,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(enableInvocations ? 4 : 0, invocationLogs.Length);
         Assert.All(invocationLogs, record =>
         {
-            Assert.Equal(linkId, record.Context!.LinkId);
-            Assert.Equal(invocationId, record.Context.InvocationId);
+            Assert.Equal(invocationId, record.Context!.InvocationId);
             Assert.Equal("telemetry-worker", record.Context.WorkerId);
             Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
             Assert.Null(record.Context.Outcome);
@@ -120,7 +122,8 @@ public partial class FunctionRpcRelayTests
         CapturedProxyLog httpLog = Assert.Single(generator.ProxyRecords, record =>
             string.Equals(record.EventName, "HttpForwardingCompleted", StringComparison.Ordinal));
         Assert.Equal(invocationId, httpLog.Context!.InvocationId);
-        Assert.Equal(linkId, httpLog.Context.LinkId);
+        Assert.Equal("telemetry-worker", httpLog.Context.WorkerId);
+        Assert.Equal(preLink.Context.ProxySessionId, httpLog.Context.ProxySessionId);
         Assert.Equal("Rejected", httpLog.Context.Outcome);
         Assert.Equal("DestinationNotConfigured", httpLog.Context.ReasonCode);
         Assert.Equal(503, httpLog.Context.Attributes!.HttpStatusCode);
@@ -131,7 +134,7 @@ public partial class FunctionRpcRelayTests
             string.Equals(record.EventName, "PeerReleased", StringComparison.Ordinal)) == 2, timeout.Token);
         Assert.Contains(generator.ProxyRecords, record =>
             string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal)
-            && string.Equals(record.Context?.LinkId, linkId, StringComparison.Ordinal)
+            && string.Equals(record.Context?.WorkerId, "telemetry-worker", StringComparison.Ordinal)
             && record.Context?.Attributes?.WorkerReady is false);
         Assert.DoesNotContain(generator.ProxyRecords, record =>
             record.Message.Contains(sentinel, StringComparison.Ordinal)

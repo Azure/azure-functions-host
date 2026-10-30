@@ -30,8 +30,6 @@ internal sealed record WorkerSystemLogEvent
 
     public string? WorkerIdHash { get; init; }
 
-    public string? LinkId { get; init; }
-
     public long? ProxySessionId { get; init; }
 
     public string? InvocationId { get; init; }
@@ -59,8 +57,6 @@ internal sealed record WorkerSystemLogEvent
     public string? ExceptionType { get; init; }
 
     public bool Truncated { get; init; }
-
-    public bool InvalidLinkId { get; init; }
 }
 
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

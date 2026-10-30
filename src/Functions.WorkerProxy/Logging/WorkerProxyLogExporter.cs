@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
@@ -58,9 +57,8 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
             {
                 Exception baseException = exception.GetBaseException();
                 exceptionType = baseException.GetType().ToString();
-                exceptionMessage = Sanitizer.Sanitize(baseException.Message);
-                details = Sanitizer.Sanitize(exception.ToString());
-                message = Sanitizer.Sanitize(message);
+                exceptionMessage = baseException.Message;
+                details = exception.ToString();
             }
 
             InvocationState invocationState = new();
@@ -110,9 +108,8 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
         return ExportResult.Success;
     }
 
-    protected override bool OnForceFlush(int timeoutMilliseconds) => _eventGenerator.ForceFlush(timeoutMilliseconds);
-
-    protected override bool OnShutdown(int timeoutMilliseconds) => _eventGenerator.ForceFlush(timeoutMilliseconds);
+    // The shared writer drains on generator disposal; it has no non-destructive flush operation.
+    protected override bool OnForceFlush(int timeoutMilliseconds) => false;
 
     private sealed class InvocationState
     {

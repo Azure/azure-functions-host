@@ -10,8 +10,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Moq;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using Xunit;
@@ -27,11 +28,9 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System, useStructuredSystemLogs: true);
         using ILoggerFactory provider = CreateLoggerFactory(generator);
         ILogger proxy = provider.CreateLogger(WorkerProxyLogExporter.RelayCategory);
-        string linkId = Guid.NewGuid().ToString("N");
         using (proxy.BeginScope(new WorkerSystemLogContext
         {
             WorkerId = "worker-id",
-            LinkId = linkId,
             ProxySessionId = 7
         }))
         {
@@ -55,7 +54,6 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(2, records[0].GetProperty("SchemaVersion").GetInt32());
         Assert.Equal("WorkerProxy", records[0].GetProperty("OriginComponent").GetString());
         Assert.Equal("worker-id", records[0].GetProperty("WorkerId").GetString());
-        Assert.Equal(linkId, records[0].GetProperty("LinkId").GetString());
         Assert.Equal(7, records[0].GetProperty("ProxySessionId").GetInt64());
         Assert.Equal("invocation-id", records[0].GetProperty("InvocationId").GetString());
         Assert.Equal("Failure", records[0].GetProperty("Attributes").GetProperty("RpcStatus").GetString());
@@ -94,10 +92,24 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal("invocation-id", record.GetProperty("InvocationId").GetString());
         Assert.Contains("first\nsecond\rthird", record.GetProperty("Message").GetString(), StringComparison.Ordinal);
         Assert.DoesNotContain(sentinel, output.ToString(), StringComparison.Ordinal);
-        Assert.DoesNotContain("Secret123", output.ToString(), StringComparison.Ordinal);
         Assert.False(record.TryGetProperty("Details", out _));
         Assert.False(record.TryGetProperty("ExceptionMessage", out _));
         Assert.Equal(typeof(InvalidOperationException).FullName, record.GetProperty("ExceptionType").GetString());
+    }
+
+    [Fact]
+    public async Task StructuredLogging_PreservesProxyDiagnosticText()
+    {
+        const string message = "The proxy could not resolve key=worker-ready.";
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System, useStructuredSystemLogs: true);
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
+        logger.LogWarning(message);
+        await generator.CompleteAsync();
+
+        JsonElement record = Assert.Single(ParseStructuredOutput(output));
+        Assert.Equal(message, record.GetProperty("Message").GetString());
     }
 
     [Fact]
@@ -110,7 +122,6 @@ public partial class WorkerSystemLoggingTests
             "https://worker:Secret123@example.com", new()
             {
                 WorkerId = "worker\ninjection",
-                LinkId = "invalid\nlink",
                 Operation = oversized,
                 Stage = oversized,
                 Outcome = oversized,
@@ -127,10 +138,8 @@ public partial class WorkerSystemLoggingTests
 
         JsonElement record = Assert.Single(ParseStructuredOutput(output));
         Assert.True(record.GetProperty("Truncated").GetBoolean());
-        Assert.True(record.GetProperty("InvalidLinkId").GetBoolean());
         Assert.False(record.TryGetProperty("WorkerId", out _));
         Assert.False(record.TryGetProperty("InvocationId", out _));
-        Assert.False(record.TryGetProperty("LinkId", out _));
         Assert.Equal(64, record.GetProperty("WorkerIdHash").GetString()!.Length);
         Assert.Equal(64, record.GetProperty("InvocationIdHash").GetString()!.Length);
         Assert.Equal(1_024, record.GetProperty("Message").GetString()!.Length);
@@ -170,10 +179,13 @@ public partial class WorkerSystemLoggingTests
 
         DateTimeOffset after = DateTimeOffset.UtcNow;
         using Activity unrelated = new Activity("export").SetIdFormat(ActivityIdFormat.W3C).Start();
+        logger.LogInformation("Unscoped.");
         Assert.True(processor.ForceFlush(5_000));
-        Assert.True(exporter.ForceFlush(5_000));
+        await generator.CompleteAsync();
 
-        JsonElement record = Assert.Single(ParseStructuredOutput(output));
+        JsonElement[] records = ParseStructuredOutput(output);
+        Assert.Equal(2, records.Length);
+        JsonElement record = records[0];
         Assert.Equal(traceId.ToString(), record.GetProperty("TraceId").GetString());
         Assert.Equal(spanId.ToString(), record.GetProperty("SpanId").GetString());
         Assert.InRange(record.GetProperty("EventTimestamp").GetDateTimeOffset(), before, after);
@@ -182,50 +194,55 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal("Deferred", record.GetProperty("EventName").GetString());
         Assert.Equal("Observed forwarding.", record.GetProperty("Message").GetString());
 
-        logger.LogInformation("Unscoped.");
-        Assert.True(processor.ForceFlush(5_000));
-        Assert.True(exporter.ForceFlush(5_000));
-        Assert.Equal(2, ParseStructuredOutput(output).Length);
+        Assert.Equal("Unscoped.", records[1].GetProperty("Message").GetString());
+        Assert.False(records[1].TryGetProperty("WorkerId", out _));
+        Assert.False(records[1].TryGetProperty("InvocationId", out _));
     }
 
     [Fact]
-    public void LogExporter_FlushTimeoutDoesNotPreventSuccessfulShutdown()
-    {
-        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Mock<TextWriter> output = new();
-        output.Setup(writer => writer.FlushAsync()).Returns(release.Task);
-        using WorkerPodEventGenerator generator = new(output.Object, TimeProvider.System);
-        using WorkerProxyLogExporter exporter = new(generator);
-
-        try
-        {
-            Assert.False(exporter.ForceFlush(10));
-        }
-        finally
-        {
-            release.TrySetResult();
-        }
-
-        Assert.True(exporter.Shutdown(5_000));
-        output.Verify(writer => writer.FlushAsync(), Times.Exactly(2));
-    }
-
-    [Fact]
-    public async Task StructuredLogging_ExporterShutdownDrainsBufferedRecords()
+    public async Task LogExporter_UnsupportedForceFlushDoesNotStopLogging()
     {
         StringWriter output = new();
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System, useStructuredSystemLogs: true);
-        using (ILoggerFactory factory = CreateLoggerFactory(generator))
+        using WorkerProxyLogExporter exporter = new(generator);
+        using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddOpenTelemetry(options =>
+            options.AddProcessor(new SimpleLogRecordExportProcessor(exporter))));
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
+        logger.LogInformation("Before flush.");
+
+        Assert.False(exporter.ForceFlush(5_000));
+        logger.LogInformation("After flush.");
+        await generator.CompleteAsync();
+
+        Assert.Equal(["Before flush.", "After flush."],
+            ParseStructuredOutput(output).Select(record => record.GetProperty("Message").GetString()));
+    }
+
+    [Fact]
+    public async Task StructuredLogging_ApplicationDisposalDrainsBufferedRecords()
+    {
+        StringWriter output = new();
+        await using (WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
         {
-            ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
+            services.RemoveAll<IWorkerSystemEventGenerator>();
+            services.AddSingleton<IWorkerSystemEventGenerator>(_ =>
+                new WorkerPodEventGenerator(output, TimeProvider.System, useStructuredSystemLogs: true));
+        }))
+        {
+            using var client = factory.CreateWorkerProxyClient();
+            ILogger logger = factory.Services.GetRequiredService<ILoggerFactory>()
+                .CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
             for (int index = 0; index < 100; index++)
             {
                 logger.LogInformation(new EventId(1, "Buffered"), "Record {Index}.", index);
             }
         }
 
-        Assert.Equal(100, ParseStructuredOutput(output).Length);
-        await generator.CompleteAsync();
+        JsonElement[] records = ParseStructuredOutput(output);
+        Assert.Equal(100, records.Count(record =>
+            string.Equals(record.GetProperty("EventName").GetString(), "Buffered", StringComparison.Ordinal)));
+        Assert.Contains(records, record =>
+            string.Equals(record.GetProperty("EventName").GetString(), "WorkerProxyStopped", StringComparison.Ordinal));
     }
 
     [Fact]

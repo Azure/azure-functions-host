@@ -7,8 +7,6 @@ internal sealed record WorkerSystemLogContext
 {
     public string? WorkerId { get; init; }
 
-    public string? LinkId { get; init; }
-
     public long? ProxySessionId { get; init; }
 
     public string? InvocationId { get; init; }
@@ -28,7 +26,6 @@ internal sealed record WorkerSystemLogContext
     internal WorkerSystemLogContext Merge(WorkerSystemLogContext inner) => new()
     {
         WorkerId = inner.WorkerId ?? WorkerId,
-        LinkId = inner.LinkId ?? LinkId,
         ProxySessionId = inner.ProxySessionId ?? ProxySessionId,
         InvocationId = inner.InvocationId ?? InvocationId,
         Operation = inner.Operation ?? Operation,

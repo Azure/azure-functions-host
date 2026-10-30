@@ -20,19 +20,6 @@ public class FunctionRpcDuplexChannelIntegrationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task ChannelCarriesLinkIdInTransportMetadata()
-    {
-        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        await using RpcClientFactory clientFactory = CreateClientFactory();
-        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        string linkId = Guid.NewGuid().ToString("N");
-        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, linkId: linkId);
-        await server.Service.Connected.WaitAsync(TestTimeout);
-
-        Assert.Equal(linkId, server.Service.LinkId);
-    }
-
-    [Fact]
     public async Task ChannelExchangesArbitraryMessagesInBothDirections()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();

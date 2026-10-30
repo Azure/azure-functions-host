@@ -22,6 +22,4 @@ internal interface IWorkerSystemEventGenerator
         DateTimeOffset? timestamp = null,
         ActivityTraceId traceId = default,
         ActivitySpanId spanId = default);
-
-    bool ForceFlush(int timeoutMilliseconds);
 }

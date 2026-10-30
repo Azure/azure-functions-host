@@ -8,8 +8,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal sealed class BufferedConsoleWriter : IDisposable
@@ -24,12 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private static readonly TimeSpan DisposeTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan DefaultConsoleBufferTimeout = TimeSpan.FromSeconds(1);
         private readonly ManualResetEvent _writeResetEvent;
-        private readonly Channel<ConsoleBufferItem> _consoleBuffer;
+        private readonly Channel<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout;
         private readonly Action<Exception> _exceptionhandler;
         private readonly int _maxLinesPerWrite;
-        private Task _consoleBufferReadLoop = Task.CompletedTask;
-        private Exception? _bufferFailure;
+        private Task _consoleBufferReadLoop;
         private Action<string> _writeEvent;
         private bool _disposed;
 
@@ -40,17 +37,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal BufferedConsoleWriter(int bufferSize, Action<Exception> exceptionHandler, TimeSpan consoleBufferTimeout, bool autoStart)
         {
-            _consoleBuffer = Channel.CreateBounded<ConsoleBufferItem>(new BoundedChannelOptions(bufferSize) { SingleReader = true, SingleWriter = false });
+            _consoleBuffer = Channel.CreateBounded<string>(new BoundedChannelOptions(bufferSize) { SingleReader = true, SingleWriter = false });
             _writeEvent = WriteToConsoleBuffer;
             _consoleBufferTimeout = consoleBufferTimeout;
             _writeResetEvent = new ManualResetEvent(true);
-            _maxLinesPerWrite = Math.Max(1, bufferSize / SingleWriteBufferDenominator);
-            _exceptionhandler = exceptionHandler;
+            _maxLinesPerWrite = bufferSize / SingleWriteBufferDenominator;
 
             if (autoStart)
             {
                 StartProcessingBuffer();
             }
+
+            _exceptionhandler = exceptionHandler;
         }
 
         public TextWriter Writer { get; init; } = Console.Out;
@@ -62,14 +60,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void WriteToConsoleBuffer(string evt)
         {
-            ConsoleBufferItem item = new(evt, null);
-            if (!_consoleBuffer.Writer.TryWrite(item))
+            if (!_consoleBuffer.Writer.TryWrite(evt))
             {
                 _writeResetEvent.Reset();
                 bool waitFailed = !_writeResetEvent.WaitOne(_consoleBufferTimeout);
 
                 // If the wait failed, write to the console. Otherwise, try the writing again - if that fails, write to the console.
-                if (waitFailed || !_consoleBuffer.Writer.TryWrite(item))
+                if (waitFailed || !_consoleBuffer.Writer.TryWrite(evt))
                 {
                     Writer.WriteLine(evt);
                 }
@@ -80,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         internal void StartProcessingBuffer()
         {
             // intentional no-op if the task is already running
-            if (_consoleBufferReadLoop.IsCompleted)
+            if (_consoleBufferReadLoop == null || _consoleBufferReadLoop.IsCompleted)
             {
                 _consoleBufferReadLoop = ProcessConsoleBufferAsync();
             }
@@ -88,69 +85,44 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private async Task ProcessConsoleBufferAsync()
         {
-            TaskCompletionSource? flush = null;
             try
             {
                 var builder = new StringBuilder();
 
                 while (await _consoleBuffer.Reader.WaitToReadAsync())
                 {
-                    string? firstLine = null;
-                    int lines = 0;
-                    while (lines < _maxLinesPerWrite && _consoleBuffer.Reader.TryRead(out ConsoleBufferItem item))
+                    if (_consoleBuffer.Reader.TryRead(out string line1))
                     {
-                        if (lines == 0)
-                        {
-                            _writeResetEvent.Set();
-                        }
-                        if (item.Completion is not null)
-                        {
-                            flush = item.Completion;
-                            break;
-                        }
+                        _writeResetEvent.Set();
 
-                        if (++lines == 1)
+                        // Can we synchronously read multiple lines?
+                        // If yes, use the string builder to batch them together into a single write
+                        // If no, just write the single line without using the builder;
+                        if (_consoleBuffer.Reader.TryRead(out string line2))
                         {
-                            firstLine = item.Line;
+                            builder.AppendLine(line1);
+                            builder.AppendLine(line2);
+                            int lines = 2;
+
+                            while (lines < _maxLinesPerWrite && _consoleBuffer.Reader.TryRead(out string nextLine))
+                            {
+                                builder.AppendLine(nextLine);
+                                lines++;
+                            }
+
+                            _writeResetEvent.Set();
+                            await Writer.WriteAsync(builder.ToString());
+                            builder.Clear();
                         }
                         else
                         {
-                            if (lines == 2)
-                            {
-                                builder.AppendLine(firstLine);
-                            }
-
-                            builder.AppendLine(item.Line);
+                            await Writer.WriteLineAsync(line1);
                         }
-                    }
-
-                    if (lines > 1 || flush is not null)
-                    {
-                        _writeResetEvent.Set();
-                    }
-
-                    if (lines == 1)
-                    {
-                        await Writer.WriteLineAsync(firstLine);
-                    }
-                    else if (lines > 1)
-                    {
-                        await Writer.WriteAsync(builder.ToString());
-                        builder.Clear();
-                    }
-
-                    if (flush is not null)
-                    {
-                        await Writer.FlushAsync();
-                        flush.TrySetResult();
-                        flush = null;
                     }
                 }
             }
             catch (Exception ex)
             {
-                _bufferFailure = ex;
-                flush?.TrySetException(ex);
                 // Not sure what can fail here, but there is nothing else monitoring this task so just log the exception
                 _exceptionhandler(ex);
             }
@@ -159,49 +131,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // if this has failed for any reason, fall everything back to console
                 _writeEvent = Writer.WriteLine;
                 _consoleBuffer.Writer.TryComplete();
-                while (_consoleBuffer.Reader.TryRead(out ConsoleBufferItem item))
-                {
-                    item.Completion?.TrySetException(
-                        _bufferFailure ?? new ObjectDisposedException(nameof(BufferedConsoleWriter)));
-                }
             }
-        }
-
-        /// <summary>
-        /// Waits for preceding buffered lines to be written and flushes the output without stopping the writer.
-        /// </summary>
-        /// <param name="cancellationToken">Limits the wait for the flush.</param>
-        /// <returns>A task that completes when the output has been flushed.</returns>
-        public async Task FlushAsync(CancellationToken cancellationToken = default)
-        {
-            TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            try
-            {
-                await _consoleBuffer.Writer.WriteAsync(new(string.Empty, completion), cancellationToken);
-            }
-            catch (ChannelClosedException)
-            {
-                await _consoleBufferReadLoop.WaitAsync(cancellationToken);
-                if (_bufferFailure is not null)
-                {
-                    throw new InvalidOperationException("The console buffer failed before it could be flushed.", _bufferFailure);
-                }
-
-                await Writer.FlushAsync(cancellationToken);
-                return;
-            }
-
-            await completion.Task.WaitAsync(cancellationToken);
         }
 
         public void Dispose()
         {
             if (!_disposed)
             {
-                _consoleBuffer.Writer.TryComplete();
-                _consoleBufferReadLoop.Wait(DisposeTimeout);
+                if (_consoleBuffer != null)
+                {
+                    _consoleBuffer.Writer.TryComplete();
+                    _consoleBufferReadLoop.Wait(DisposeTimeout);
+                }
 
-                _writeResetEvent.Dispose();
+                _writeResetEvent?.Dispose();
                 _disposed = true;
             }
 
@@ -220,7 +163,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _consoleBuffer.Writer.TryComplete();
             return _consoleBufferReadLoop;
         }
-
-        private readonly record struct ConsoleBufferItem(string Line, TaskCompletionSource? Completion);
     }
 }
