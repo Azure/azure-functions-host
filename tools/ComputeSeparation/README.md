@@ -59,22 +59,14 @@ The local OpenTelemetry log exporter writes through the unchanged shared `Buffer
 to stdout; there is no OTLP exporter. Disposal uses the writer's existing best-effort drain
 (up to five seconds). Explicit `ForceFlush` is unsupported and returns `false`.
 
-Configure these settings **on the WorkerProxy process**, not in `host.json`:
-
-| Setting | Default | Effect |
-| --- | --- | --- |
-| `WorkerProxy:UseStructuredSystemLogs` | `false` | Use `MS_FUNCTIONS_WORKER_POD_LOGS_V2` JSON instead of the default `MS_FUNCTIONS_WORKER_POD_LOGS` positional format. |
-| `WorkerProxy:EnableInvocationSystemLogs` | `false` | Enable Debug relay/HTTP diagnostics for bounded diagnostic runs. |
-
-Environment variable equivalents are `WorkerProxy__UseStructuredSystemLogs` and
-`WorkerProxy__EnableInvocationSystemLogs`. Restart the proxy after changing them.
-**Enable V2 only after the collector/parser supports it.** Formats are alternatives, not dual emission.
-
-V2 adds operation context and correlation: use `WorkerId` across Host/proxy logs and `InvocationId`
-for executions, scoped to the app/deployment. The platform must use the worker's `StartStream` identity
-for `PUT /admin/workers/{workerId}`. Before `StartStream`, only `(EmitterInstanceId, ProxySessionId)`
-identifies the proxy session. Host system-log consumers still extract WorkerId from the message.
+Records use the existing `MS_FUNCTIONS_WORKER_POD_LOGS` prefix and 21-column positional format.
+Worker/session IDs and operation details are included in the message; InvocationId keeps its existing column.
+The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
+Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
 `HttpForwardingCompleted` describes forwarding, **not final function completion**.
+
+For bounded Debug relay/HTTP diagnostics, set `WorkerProxy__EnableInvocationSystemLogs=true`
+on the proxy process and restart it. This is off by default and is not an app `host.json` setting.
 
 Fields are bounded and encoded; unsafe identities are fingerprinted rather than truncated.
 Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs

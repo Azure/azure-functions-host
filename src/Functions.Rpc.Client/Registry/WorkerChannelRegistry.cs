@@ -133,21 +133,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             Log.LinkInitialized(_logger, workerId);
             linkCompletion.SetResult(channel);
         }
+        catch (OperationCanceledException exception)
+        {
+            linkCompletion.SetCanceled(exception.CancellationToken);
+        }
         catch (Exception exception)
         {
-            var failure = slot.LinkFailure ?? (Stage: LinkStage.ConnectingToProxy,
-                Reason: "UnexpectedFailure", ExceptionType: exception.GetType().FullName);
-            Log.LinkEnded(_logger, workerId,
-                exception is OperationCanceledException ? "Canceled" : "Failed",
-                failure.Stage, failure.Reason, failure.ExceptionType);
-            if (exception is OperationCanceledException canceled)
-            {
-                linkCompletion.SetCanceled(canceled.CancellationToken);
-            }
-            else
-            {
-                linkCompletion.SetException(exception);
-            }
+            linkCompletion.SetException(exception);
         }
     }
 
@@ -157,102 +149,115 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         WorkerSlot slot,
         CancellationToken cancellationToken)
     {
-        using SemaphoreLock gate = new(slot.Gate);
-        bool initialized = false;
+        (LinkStage Stage, string Reason, string ExceptionType)? linkFailure = null;
         try
         {
-            using CancellationTokenSource deadline = new(_linkTimeout);
-            using CancellationTokenSource operationSource =
-                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token, deadline.Token);
-
-            DuplexChannel<StreamingMessage> ownedChannel = null;
-            RpcClientWorkerChannel candidate = null;
-            LinkStage stage = LinkStage.ConnectingToProxy;
-
+            using SemaphoreLock gate = new(slot.Gate);
+            bool initialized = false;
             try
             {
-                operationSource.Token.ThrowIfCancellationRequested();
-                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
-                operationSource.Token.ThrowIfCancellationRequested();
+                using CancellationTokenSource deadline = new(_linkTimeout);
+                using CancellationTokenSource operationSource =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token, deadline.Token);
 
-                stage = LinkStage.CreatingWorkerChannel;
-                candidate = _channelFactory.Create(workerId, ownedChannel)
-                    ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
-                ownedChannel = null;
-
-                if (!string.Equals(candidate.Id, workerId, StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException(
-                        $"The client worker channel factory returned worker '{candidate.Id}' for requested worker '{workerId}'.");
-                }
+                DuplexChannel<StreamingMessage> ownedChannel = null;
+                RpcClientWorkerChannel candidate = null;
+                LinkStage stage = LinkStage.ConnectingToProxy;
 
                 try
                 {
-                    stage = LinkStage.InitializingWorker;
-                    await candidate.StartAsync(operationSource.Token);
-                }
-                catch (InvalidOperationException exception) when (candidate.Completion.IsCompleted)
-                {
-                    throw new IOException("The worker channel closed before initialization completed.", exception);
-                }
+                    operationSource.Token.ThrowIfCancellationRequested();
+                    ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
+                    operationSource.Token.ThrowIfCancellationRequested();
 
-                operationSource.Token.ThrowIfCancellationRequested();
-                stage = LinkStage.RegisteringChannel;
-                RegisterInitializedChannel(workerId, slot, candidate, operationSource.Token);
+                    stage = LinkStage.CreatingWorkerChannel;
+                    candidate = _channelFactory.Create(workerId, ownedChannel)
+                        ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
+                    ownedChannel = null;
 
-                WorkerChannel linkedChannel = candidate;
-                candidate = null;
-                initialized = true;
-
-                return linkedChannel;
-            }
-            catch (Exception exception)
-            {
-                Exception failure = exception switch
-                {
-                    OperationCanceledException when !cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested
-                        => new ObjectDisposedException(GetType().FullName),
-                    OperationCanceledException when !cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested
-                        => new TimeoutException("The worker link initialization deadline expired.", exception),
-                    _ => exception,
-                };
-                string reason = exception switch
-                {
-                    OperationCanceledException when cancellationToken.IsCancellationRequested => "CallerCanceled",
-                    OperationCanceledException when _shutdownSource.IsCancellationRequested => "HostShutdown",
-                    OperationCanceledException when deadline.IsCancellationRequested => "InitializationDeadlineExpired",
-                    OperationCanceledException => "OperationCanceled",
-                    _ => stage switch
+                    if (!string.Equals(candidate.Id, workerId, StringComparison.Ordinal))
                     {
-                        LinkStage.ConnectingToProxy => "ConnectionFailed",
-                        LinkStage.CreatingWorkerChannel => "ChannelCreationFailed",
-                        LinkStage.InitializingWorker => "WorkerInitializationFailed",
-                        _ => "ChannelRegistrationFailed"
+                        throw new InvalidOperationException(
+                            $"The client worker channel factory returned worker '{candidate.Id}' for requested worker '{workerId}'.");
                     }
-                };
-                // Preserve the primary cause before cleanup can aggregate additional exceptions.
-                slot.LinkFailure = (stage, reason, failure.GetType().FullName);
-                failure = await candidate.DisposeAndCaptureExceptionAsync(failure);
-                failure = await ownedChannel.DisposeAndCaptureExceptionAsync(failure);
-                ExceptionDispatchInfo.Capture(failure).Throw();
-                throw;
-            }
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested)
-        {
-            throw new ObjectDisposedException(GetType().FullName);
-        }
-        finally
-        {
-            // Accepted links are cleaned up by monitor/unlink; completing Link must not wait for deferred setup.
-            if (!initialized)
-            {
-                RemoveEmptySlot(workerId, slot);
-                lock (_stateLock)
+
+                    try
+                    {
+                        stage = LinkStage.InitializingWorker;
+                        await candidate.StartAsync(operationSource.Token);
+                    }
+                    catch (InvalidOperationException exception) when (candidate.Completion.IsCompleted)
+                    {
+                        throw new IOException("The worker channel closed before initialization completed.", exception);
+                    }
+
+                    operationSource.Token.ThrowIfCancellationRequested();
+                    stage = LinkStage.RegisteringChannel;
+                    RegisterInitializedChannel(workerId, slot, candidate, operationSource.Token);
+
+                    WorkerChannel linkedChannel = candidate;
+                    candidate = null;
+                    initialized = true;
+
+                    return linkedChannel;
+                }
+                catch (Exception exception)
                 {
-                    _linkAttempts.Remove(workerId);
+                    Exception failure = exception switch
+                    {
+                        OperationCanceledException when !cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested
+                            => new ObjectDisposedException(GetType().FullName),
+                        OperationCanceledException when !cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested
+                            => new TimeoutException("The worker link initialization deadline expired.", exception),
+                        _ => exception,
+                    };
+                    string reason = exception switch
+                    {
+                        OperationCanceledException when cancellationToken.IsCancellationRequested => "CallerCanceled",
+                        OperationCanceledException when _shutdownSource.IsCancellationRequested => "HostShutdown",
+                        OperationCanceledException when deadline.IsCancellationRequested => "InitializationDeadlineExpired",
+                        OperationCanceledException => "OperationCanceled",
+                        _ => stage switch
+                        {
+                            LinkStage.ConnectingToProxy => "ConnectionFailed",
+                            LinkStage.CreatingWorkerChannel => "ChannelCreationFailed",
+                            LinkStage.InitializingWorker => "WorkerInitializationFailed",
+                            _ => "ChannelRegistrationFailed"
+                        }
+                    };
+                    // Preserve the primary cause before cleanup can aggregate additional exceptions.
+                    linkFailure = (stage, reason, failure.GetType().FullName);
+                    failure = await candidate.DisposeAndCaptureExceptionAsync(failure);
+                    failure = await ownedChannel.DisposeAndCaptureExceptionAsync(failure);
+                    ExceptionDispatchInfo.Capture(failure).Throw();
+                    throw;
                 }
             }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+            finally
+            {
+                // Accepted links are cleaned up by monitor/unlink; completing Link must not wait for deferred setup.
+                if (!initialized)
+                {
+                    RemoveEmptySlot(workerId, slot);
+                    lock (_stateLock)
+                    {
+                        _linkAttempts.Remove(workerId);
+                    }
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            var failure = linkFailure ?? (Stage: LinkStage.ConnectingToProxy,
+                Reason: "UnexpectedFailure", ExceptionType: exception.GetType().FullName);
+            Log.LinkEnded(_logger, workerId,
+                exception is OperationCanceledException ? "Canceled" : "Failed",
+                failure.Stage, failure.Reason, failure.ExceptionType);
+            throw;
         }
     }
 
@@ -807,8 +812,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private sealed class WorkerSlot
     {
-        public (LinkStage Stage, string Reason, string ExceptionType)? LinkFailure { get; set; }
-
         // The exact active setup context attempted for this channel.
         public ChannelSetupContext AttemptedSetupContext { get; set; }
 

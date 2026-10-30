@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -15,8 +14,6 @@ namespace Azure.Functions.WorkerProxy.Logging;
 internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGenerator)
     : BaseExporter<LogRecord>
 {
-    internal const string InvocationIdScopeKey = "InvocationId";
-
     internal static readonly string ApplicationCategory =
         typeof(WorkerProxyApplication).FullName!;
 
@@ -68,24 +65,6 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                     if (scope.Scope is WorkerSystemLogContext context)
                     {
                         state.Context = state.Context.Merge(context);
-                        return;
-                    }
-
-                    if (scope.Scope is not IEnumerable<KeyValuePair<string, object?>> properties)
-                    {
-                        return;
-                    }
-
-                    foreach (KeyValuePair<string, object?> property in properties)
-                    {
-                        if (string.Equals(
-                            property.Key,
-                            InvocationIdScopeKey,
-                            StringComparison.Ordinal)
-                            && property.Value is not null)
-                        {
-                            state.Context = state.Context with { InvocationId = property.Value.ToString() };
-                        }
                     }
                 },
                 invocationState);
@@ -100,9 +79,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                 exceptionMessage,
                 invocationState.Context.InvocationId ?? string.Empty,
                 invocationState.Context,
-                record.Timestamp,
-                record.TraceId,
-                record.SpanId);
+                record.Timestamp);
         }
 
         return ExportResult.Success;

@@ -14,6 +14,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -21,6 +22,8 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -499,6 +502,102 @@ public class WorkerHttpForwardingTests
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.False(readinessProbe.IsKnownReady(workerAddress));
+    }
+
+    [Fact]
+    public async Task HttpMiddleware_LogsThrownCancellationAsFailureWhenRequestIsNotCanceled()
+    {
+        await AssertForwardingOutcomeAsync(ForwarderError.None, cancel: false,
+            new OperationCanceledException(), "Failed", LogLevel.Warning, StatusCodes.Status200OK);
+    }
+
+    [Theory]
+    [InlineData(ForwarderError.None, false, false, "Succeeded", LogLevel.Debug, StatusCodes.Status200OK)]
+    [InlineData(ForwarderError.Request, false, false, "Failed", LogLevel.Warning, StatusCodes.Status502BadGateway)]
+    [InlineData(ForwarderError.None, true, false, "Canceled", LogLevel.Debug, StatusCodes.Status200OK)]
+    [InlineData(ForwarderError.Request, true, false, "Canceled", LogLevel.Debug, StatusCodes.Status200OK)]
+    [InlineData(ForwarderError.None, true, true, "Canceled", LogLevel.Debug, StatusCodes.Status200OK)]
+    [InlineData(ForwarderError.None, false, true, "Failed", LogLevel.Warning, StatusCodes.Status200OK)]
+    public async Task HttpMiddleware_LogsCompletionForForwardingOutcome(
+        ForwarderError error, bool cancel, bool throwException, string outcome, LogLevel level, int statusCode)
+    {
+        Exception? exception = throwException
+            ? cancel ? new OperationCanceledException() : new IOException("forwarding failed")
+            : null;
+        await AssertForwardingOutcomeAsync(error, cancel, exception, outcome, level, statusCode);
+    }
+
+    private static async Task AssertForwardingOutcomeAsync(
+        ForwarderError error, bool cancel, Exception? exception, string outcome, LogLevel level, int statusCode)
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        using CancellationTokenSource cancellation = new();
+        DefaultHttpContext context = new() { RequestAborted = cancellation.Token };
+        context.Request.Headers["x-ms-invocation-id"] = "invocation-id";
+        List<WorkerSystemLogContext> scopes = [];
+        Mock<ILogger> logger = new();
+        logger.Setup(value => value.BeginScope(It.IsAny<WorkerSystemLogContext>()))
+            .Callback<WorkerSystemLogContext>(scopes.Add)
+            .Returns(Mock.Of<IDisposable>());
+        Mock<ILoggerFactory> loggerFactory = new();
+        loggerFactory.Setup(value => value.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
+        Mock<IHttpForwarder> forwarder = new();
+        forwarder.Setup(value => value.SendAsync(
+            context, destination.AbsoluteUri, It.IsAny<HttpMessageInvoker>(),
+            It.IsAny<ForwarderRequestConfig>(), It.IsAny<HttpTransformer>()))
+            .Returns(() =>
+            {
+                if (cancel)
+                {
+                    cancellation.Cancel();
+                }
+
+                if (exception is not null)
+                {
+                    throw exception;
+                }
+
+                return ValueTask.FromResult(error);
+            });
+        await using WorkerProxyWebApplicationFactory factory = new(
+            new Dictionary<string, string?>
+            {
+                [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] = destination.AbsoluteUri
+            },
+            services =>
+            {
+                services.AddSingleton<ILogger<WorkerHttpForwardingMiddleware>>(
+                    new Logger<WorkerHttpForwardingMiddleware>(loggerFactory.Object));
+                services.AddSingleton(forwarder.Object);
+            });
+        WorkerHttpForwardingMiddleware middleware = factory.Services.GetRequiredService<WorkerHttpForwardingMiddleware>();
+        if (exception is null)
+        {
+            await middleware.InvokeAsync(context);
+        }
+        else
+        {
+            Exception actual = await Assert.ThrowsAnyAsync<Exception>(() => middleware.InvokeAsync(context));
+            Assert.Same(exception, actual);
+        }
+
+        WorkerSystemLogContext completed = Assert.Single(scopes,
+            scope => string.Equals(scope.Stage, "Completed", StringComparison.Ordinal));
+        Assert.Equal("invocation-id", completed.InvocationId);
+        Assert.Equal(outcome, completed.Outcome);
+        Assert.Equal(statusCode, context.Response.StatusCode);
+        Assert.Equal(statusCode, completed.Attributes!.HttpStatusCode);
+        Assert.Equal(exception is null ? error.ToString() : null, completed.Attributes.ForwarderError);
+        Assert.Equal(exception is null && !cancel && error is not ForwarderError.None ? "ForwarderError" : null,
+            completed.ReasonCode);
+        Assert.True(completed.DurationMs >= 0);
+        logger.Verify(value => value.Log(
+            level, It.Is<EventId>(id => id.Id == 1), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+        Assert.Equal(exception is not null || cancel || error is ForwarderError.None,
+            factory.Services.GetRequiredService<WorkerEndpointReadinessProbe>().IsKnownReady(destination));
     }
 
     [Fact]

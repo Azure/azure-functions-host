@@ -293,6 +293,49 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task LinkAsync_LogsPrimaryFailureAfterCleanupAndGateRelease()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        InvalidOperationException primaryFailure = new("private-failure-sentinel");
+        IOException cleanupFailure = new("cleanup failed");
+        TaskCompletionSource cleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource disposalStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<DuplexChannel<StreamingMessage>> transport = new();
+        Mock<IAsyncDisposable> disposable = transport.As<IAsyncDisposable>();
+        disposable.Setup(channel => channel.DisposeAsync())
+            .Callback(() => disposalStarted.TrySetResult())
+            .Returns(new ValueTask(cleanup.Task));
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transport.Object);
+        harness.ChannelFactory.Setup(factory => factory.Create("worker", transport.Object))
+            .Throws(primaryFailure);
+
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        Task<bool> unlink = null;
+        try
+        {
+            await disposalStarted.Task.WaitAsync(TestTimeout);
+            unlink = registry.UnlinkAsync("worker");
+            Assert.False(unlink.IsCompleted);
+            Assert.False(link.IsCompleted);
+            Assert.Empty(harness.LinkFailures);
+            harness.OnLinkFailure = () => Assert.False(unlink.WaitAsync(TestTimeout).GetAwaiter().GetResult());
+        }
+        finally
+        {
+            cleanup.TrySetException(cleanupFailure);
+        }
+
+        AggregateException failure = await Assert.ThrowsAsync<AggregateException>(() => link.WaitAsync(TestTimeout));
+        Assert.Equal(2, failure.InnerExceptions.Count);
+        Assert.Contains(primaryFailure, failure.InnerExceptions);
+        Assert.Contains(cleanupFailure, failure.InnerExceptions);
+        AssertLinkFailure(harness, "CreatingWorkerChannel", "ChannelCreationFailed", typeof(InvalidOperationException));
+        disposable.Verify(channel => channel.DisposeAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task LinkAsync_CleanCloseDuringHandshakeThrowsIOException()
     {
         RegistryHarness harness = new();
@@ -1863,6 +1906,7 @@ public sealed partial class WorkerChannelRegistryTests
                         LinkFailures.Enqueue(((LogLevel)call.Arguments[0],
                             fields.ToDictionary(pair => pair.Key, pair => pair.Value),
                             (Exception)call.Arguments[3], call.Arguments[2].ToString()));
+                        OnLinkFailure?.Invoke();
                     }
                 }));
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
@@ -1909,6 +1953,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal Mock<ILogger<WorkerChannelRegistry>> Logger { get; } = new();
 
         internal ConcurrentQueue<(LogLevel Level, Dictionary<string, object> Fields, Exception Exception, string Message)> LinkFailures { get; } = [];
+
+        internal Action OnLinkFailure { get; set; }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
 

@@ -34,35 +34,23 @@ internal static partial class WorkerProxyApplication
     private const string ReadyPath = "/admin/instance/ready";
 
     /// <summary>
-    /// Creates the configured WorkerProxy application.
-    /// </summary>
-    /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>
-    /// <returns>The application ready to be started.</returns>
-    public static WebApplication Build(string[] args)
-    {
-        return Build(CreateBuilder(args));
-    }
-
-    /// <summary>
     /// Runs the proxy, recording startup failures before releasing its logging resources.
     /// </summary>
     /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>
     /// <returns>A task that completes when the application stops.</returns>
     public static async Task RunAsync(string[] args)
     {
-        WebApplicationBuilder? builder = null;
         WebApplication? app = null;
         try
         {
             try
             {
-                builder = CreateBuilder(args);
-                app = Build(builder);
+                app = Build(args);
                 await app.StartAsync();
             }
             catch (Exception exception) when (exception is not HostAbortedException)
             {
-                LogStartupFailure(builder?.Configuration, exception, Console.Out);
+                LogStartupFailure(exception, Console.Out);
                 throw;
             }
 
@@ -77,40 +65,26 @@ internal static partial class WorkerProxyApplication
         }
     }
 
-    internal static void LogStartupFailure(IConfiguration? configuration, Exception exception, TextWriter output)
+    internal static void LogStartupFailure(Exception exception, TextWriter output)
     {
-        // Startup can fail before options or the application logger are available. If the format
-        // setting itself is unavailable/invalid, retain the collector-compatible positional format.
-        bool structured = bool.TryParse(
-            configuration?[$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.UseStructuredSystemLogs)}"],
-            out bool enabled) && enabled;
-        using WorkerPodEventGenerator generator = new(output, TimeProvider.System, structured);
-        using ILoggerFactory factory = LoggerFactory.Create(logging =>
-        {
-            logging.Services.AddSingleton<IWorkerSystemEventGenerator>(generator);
-            logging.AddOpenTelemetry(ConfigureOpenTelemetry);
-        });
-        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory);
-        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
-        {
-            Operation = "Startup",
-            Stage = "Failed",
-            Outcome = "Failed",
-            ReasonCode = "StartupFailed"
-        });
-        // Exception messages can contain invalid configuration values; report only the type.
-        Log.WorkerProxyStartupFailed(logger, exception.GetType().FullName!);
+        // Startup may fail before application logging exists. Do not copy invalid configuration values.
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        generator.LogEvent(LogLevel.Critical, "WorkerProxyStartupFailed", WorkerProxyLogExporter.ApplicationCategory,
+            details: string.Empty, summary: $"WorkerProxy failed to start ({exception.GetType().FullName}).",
+            exceptionType: string.Empty, exceptionMessage: string.Empty, invocationId: string.Empty,
+            context: new() { Operation = "Startup", Stage = "Failed", Outcome = "Failed", ReasonCode = "StartupFailed" });
     }
 
-    private static WebApplicationBuilder CreateBuilder(string[] args)
+    /// <summary>
+    /// Creates the configured WorkerProxy application.
+    /// </summary>
+    /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>
+    /// <returns>The application ready to be started.</returns>
+    public static WebApplication Build(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
-    }
-
-    private static WebApplication Build(WebApplicationBuilder builder)
-    {
+        WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
         // WorkerProxy owns all listener bindings and does not use the generic ASP.NET Core URL configuration.
         builder.WebHost.UseSetting(WebHostDefaults.ServerUrlsKey, string.Empty);
         builder.WebHost.UseSetting(WebHostDefaults.HttpPortsKey, string.Empty);
@@ -303,8 +277,5 @@ internal static partial class WorkerProxyApplication
 
         [LoggerMessage(2, LogLevel.Information, "WorkerProxy stopped.", EventName = "WorkerProxyStopped")]
         public static partial void WorkerProxyStopped(ILogger logger);
-
-        [LoggerMessage(3, LogLevel.Critical, "WorkerProxy failed to start ({ExceptionType}).", EventName = "WorkerProxyStartupFailed")]
-        public static partial void WorkerProxyStartupFailed(ILogger logger, string exceptionType);
     }
 }

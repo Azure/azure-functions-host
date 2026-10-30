@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.WorkerProxy.Logging;
@@ -19,7 +18,5 @@ internal interface IWorkerSystemEventGenerator
         string exceptionMessage,
         string invocationId,
         WorkerSystemLogContext? context = null,
-        DateTimeOffset? timestamp = null,
-        ActivityTraceId traceId = default,
-        ActivitySpanId spanId = default);
+        DateTimeOffset? timestamp = null);
 }

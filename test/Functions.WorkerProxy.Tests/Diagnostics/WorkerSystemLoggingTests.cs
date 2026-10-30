@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -19,7 +18,6 @@ using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -198,34 +196,20 @@ public partial class WorkerSystemLoggingTests
         Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("false")]
-    [InlineData("true")]
-    [InlineData("invalid")]
-    public void StartupFailure_EmitsAndFlushesSafeRecordWithoutApplicationServices(string? format)
+    [Fact]
+    public void StartupFailure_EmitsAndDrainsSafeRecordWithoutApplicationServices()
     {
-        IConfiguration? configuration = format is null ? null : new ConfigurationBuilder()
-            .AddInMemoryCollection(new[] { new KeyValuePair<string, string?>("WorkerProxy:UseStructuredSystemLogs", format) })
-            .Build();
         StringWriter output = new();
 
-        WorkerProxyApplication.LogStartupFailure(configuration, new InvalidOperationException("private-configuration-sentinel"), output);
+        WorkerProxyApplication.LogStartupFailure(new InvalidOperationException("private-configuration-sentinel"), output);
 
         Assert.DoesNotContain("private-configuration-sentinel", output.ToString(), StringComparison.Ordinal);
-        if (string.Equals(format, "true", StringComparison.Ordinal))
-        {
-            var record = Assert.Single(ParseStructuredOutput(output));
-            Assert.Equal("WorkerProxyStartupFailed", record.GetProperty("EventName").GetString());
-            Assert.Equal("Startup", record.GetProperty("Operation").GetString());
-            Assert.Equal("Failed", record.GetProperty("Outcome").GetString());
-        }
-        else
-        {
-            string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
-            Assert.Equal(21, fields.Length);
-            Assert.Equal("WorkerProxyStartupFailed", fields[4]);
-        }
+        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
+        Assert.Equal(21, fields.Length);
+        Assert.Equal("WorkerProxyStartupFailed", fields[4]);
+        Assert.Contains("Operation=Startup;", fields[7], StringComparison.Ordinal);
+        Assert.Contains("Outcome=Failed;", fields[7], StringComparison.Ordinal);
+        Assert.Contains(typeof(InvalidOperationException).FullName!, fields[7], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -472,9 +456,7 @@ public partial class WorkerSystemLoggingTests
             string exceptionMessage,
             string invocationId,
             WorkerSystemLogContext? context = null,
-            DateTimeOffset? timestamp = null,
-            ActivityTraceId traceId = default,
-            ActivitySpanId spanId = default)
+            DateTimeOffset? timestamp = null)
         {
             ProxyRecords.Enqueue(new(
                 level,

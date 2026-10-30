@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -221,14 +220,10 @@ public partial class FunctionRpcRelayTests
             string exceptionMessage,
             string invocationId,
             WorkerSystemLogContext? context = null,
-            DateTimeOffset? timestamp = null,
-            ActivityTraceId traceId = default,
-            ActivitySpanId spanId = default)
+            DateTimeOffset? timestamp = null)
         {
             ProxyRecords.Enqueue(new(eventName, summary, context, source, details, exceptionType, exceptionMessage, invocationId));
         }
-
-        public bool ForceFlush(int timeoutMilliseconds) => true;
     }
 
     private sealed record CapturedProxyLog(

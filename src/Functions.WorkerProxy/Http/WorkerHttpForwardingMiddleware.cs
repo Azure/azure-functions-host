@@ -40,9 +40,7 @@ internal sealed class WorkerHttpForwardingMiddleware(
         };
         using IDisposable? scope = _logger.BeginScope(logContext);
         long start = Stopwatch.GetTimestamp();
-        string outcome = "Failed";
-        string? reason = null;
-        ForwarderError? forwardingError = null;
+        (string Outcome, string? Reason, ForwarderError? Error) result = ("Failed", null, null);
         using (_logger.BeginScope(logContext with { Stage = "Started" }))
         {
             _logger.LogDebug(new EventId(0, "HttpForwardingStarted"), "HTTP forwarding started.");
@@ -50,59 +48,11 @@ internal sealed class WorkerHttpForwardingMiddleware(
 
         try
         {
-            Uri? destination = advertisedDestination
-                ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
-
-            if (destination is null)
-            {
-                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                outcome = "Rejected";
-                reason = "DestinationNotConfigured";
-                WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
-                return;
-            }
-
-            if (!readinessProbe.IsKnownReady(destination))
-            {
-                WorkerEndpointReadinessResult readinessResult =
-                    await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
-
-                if (readinessResult is not WorkerEndpointReadinessResult.Ready)
-                {
-                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                    outcome = "Rejected";
-                    reason = readinessResult.ToString();
-                    WorkerHttpForwardingTelemetry.RecordDestinationNotReady(readinessResult);
-                    return;
-                }
-            }
-
-            ForwarderError error = await forwarder.ForwardAsync(context, destination);
-            forwardingError = error;
-            if (context.RequestAborted.IsCancellationRequested)
-            {
-                outcome = "Canceled";
-                return;
-            }
-
-            if (error is ForwarderError.None)
-            {
-                outcome = "Succeeded";
-                return;
-            }
-
-            readinessProbe.Invalidate(destination);
-            if (!context.Response.HasStarted)
-            {
-                context.Response.StatusCode = StatusCodes.Status502BadGateway;
-            }
-
-            reason = "ForwarderError";
-            WorkerHttpForwardingTelemetry.RecordForwarderError(error);
+            result = await ForwardAsync(context, advertisedDestination);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
-            outcome = "Canceled";
+            result.Outcome = "Canceled";
             throw;
         }
         finally
@@ -110,19 +60,67 @@ internal sealed class WorkerHttpForwardingMiddleware(
             using IDisposable? completedScope = _logger.BeginScope(logContext with
             {
                 Stage = "Completed",
-                Outcome = outcome,
-                ReasonCode = reason,
+                Outcome = result.Outcome,
+                ReasonCode = result.Reason,
                 DurationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds,
                 Attributes = new()
                 {
                     HttpStatusCode = context.Response.StatusCode,
-                    ForwarderError = forwardingError?.ToString()
+                    ForwarderError = result.Error?.ToString()
                 }
             });
-            _logger.Log(outcome is "Failed" or "Rejected" ? LogLevel.Warning : LogLevel.Debug,
+            _logger.Log(result.Outcome is "Failed" or "Rejected" ? LogLevel.Warning : LogLevel.Debug,
                 new EventId(1, "HttpForwardingCompleted"),
                 "HTTP forwarding completed with outcome {Outcome} and HTTP status {HttpStatusCode}.",
-                outcome, context.Response.StatusCode);
+                result.Outcome, context.Response.StatusCode);
         }
+    }
+
+    private async Task<(string Outcome, string? Reason, ForwarderError? Error)> ForwardAsync(
+        HttpContext context, Uri? advertisedDestination)
+    {
+        Uri? destination = advertisedDestination
+            ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
+
+        if (destination is null)
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
+            return ("Rejected", "DestinationNotConfigured", null);
+        }
+
+        if (!readinessProbe.IsKnownReady(destination))
+        {
+            WorkerEndpointReadinessResult readinessResult =
+                await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
+
+            if (readinessResult is not WorkerEndpointReadinessResult.Ready)
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                WorkerHttpForwardingTelemetry.RecordDestinationNotReady(readinessResult);
+                return ("Rejected", readinessResult.ToString(), null);
+            }
+        }
+
+        ForwarderError error = await forwarder.ForwardAsync(context, destination);
+        if (context.RequestAborted.IsCancellationRequested)
+        {
+            return ("Canceled", null, error);
+        }
+
+        if (error is ForwarderError.None)
+        {
+            return ("Succeeded", null, error);
+        }
+
+        readinessProbe.Invalidate(destination);
+        if (!context.Response.HasStarted)
+        {
+            context.Response.StatusCode = StatusCodes.Status502BadGateway;
+        }
+
+        WorkerHttpForwardingTelemetry.RecordForwarderError(error);
+
+        return ("Failed", "ForwarderError", error);
     }
 }
