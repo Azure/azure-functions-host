@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class NullMetricsPublisher : IMetricsPublisher
+    public class NullMetricsPublisher : IMetricsPublisher, IWorkerInvocationTracker
     {
         private static readonly Lazy<NullMetricsPublisher> _instance = new Lazy<NullMetricsPublisher>(new NullMetricsPublisher());
 
@@ -26,6 +28,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public void OnFunctionCompleted(string functionName, string invocationId)
         {
+        }
+
+        /// <inheritdoc />
+        public void WorkerLinked(string workerId)
+        {
+        }
+
+        /// <inheritdoc />
+        public void WorkerUnlinked(string workerId)
+        {
+        }
+
+        /// <inheritdoc />
+        public bool TryDispatchInvocation(string invocationId, string workerId, CancellationToken cancellationToken, Func<bool> dispatch)
+        {
+            ArgumentNullException.ThrowIfNull(dispatch);
+
+            return dispatch();
         }
     }
 }

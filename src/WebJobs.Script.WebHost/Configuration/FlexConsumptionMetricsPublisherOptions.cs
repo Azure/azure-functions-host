@@ -62,7 +62,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         public string MetricsFilePath { get; set; }
 
         /// <summary>
-        /// Gets or sets thee maximum number of files to keep in the metrics directory.
+        /// Gets or sets a value indicating whether billing is attributed to linked workers instead of the host.
+        /// </summary>
+        public bool UseWorkerAttribution { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of files to keep in the metrics directory, per Worker when Worker attribution is enabled.
         /// </summary>
         /// <remarks>
         /// When over this limit, the oldest files will be deleted to make room for new files.

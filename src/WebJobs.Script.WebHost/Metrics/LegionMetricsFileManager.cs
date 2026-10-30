@@ -5,6 +5,8 @@ using System;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
@@ -35,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         // Internal access for testing only
         internal string MetricsFilePath { get; set;  }
 
-        private bool PrepareDirectoryForFile()
+        private bool PrepareDirectoryForFile(string filePrefix)
         {
             if (string.IsNullOrEmpty(MetricsFilePath))
             {
@@ -46,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             var metricsDirectoryInfo = _fileSystem.Directory.CreateDirectory(MetricsFilePath);
 
             // ensure we're under the max file count
-            var files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
+            string searchPattern = string.IsNullOrEmpty(filePrefix) ? "*" : $"{filePrefix}*.json";
+            var files = metricsDirectoryInfo.GetFiles(searchPattern).OrderBy(p => p.CreationTime).ToList();
             if (files.Count < _maxFileCount)
             {
                 return true;
@@ -72,20 +75,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 }
             });
 
-            files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
+            files = metricsDirectoryInfo.GetFiles(searchPattern).OrderBy(p => p.CreationTime).ToList();
 
             // return true if we have space for a new file
             return files.Count < _maxFileCount;
         }
 
-        public async Task PublishMetricsAsync(object metrics)
+        public async Task PublishMetricsAsync(object metrics, string instanceId = null)
         {
             string fileName = string.Empty;
 
             try
             {
                 bool metricsPublishEnabled = !string.IsNullOrEmpty(MetricsFilePath);
-                if (metricsPublishEnabled && !PrepareDirectoryForFile())
+                string filePrefix = instanceId is null ? string.Empty : $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(instanceId)))}-";
+                if (metricsPublishEnabled && !PrepareDirectoryForFile(filePrefix))
                 {
                     return;
                 }
@@ -95,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
                 if (metricsPublishEnabled)
                 {
-                    fileName = $"{Guid.NewGuid().ToString().ToLowerInvariant()}.json";
+                    fileName = $"{filePrefix}{Guid.NewGuid().ToString().ToLowerInvariant()}.json";
                     string filePath = Path.Combine(MetricsFilePath, fileName);
 
                     using var streamWriter = _fileSystem.File.CreateText(filePath);

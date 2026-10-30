@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -36,6 +37,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
+    private readonly IWorkerInvocationTracker _invocationTracker;
     private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
@@ -68,10 +70,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         ILogger<WorkerChannelRegistry> logger,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
         IOptions<TokenServiceProxyOptions> proxyOptions = null,
-        TimeProvider timeProvider = null)
+        TimeProvider timeProvider = null,
+        IWorkerInvocationTracker invocationTracker = null)
         : this(duplexChannelFactory, channelFactory, logger,
             proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout : DefaultLinkTimeout,
-            workerHostConfigurationParser, registryOwnedAttempt: proxyOptions?.Value.Enabled == true, timeProvider)
+            workerHostConfigurationParser, registryOwnedAttempt: proxyOptions?.Value.Enabled == true, timeProvider, invocationTracker)
     {
     }
 
@@ -82,11 +85,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         TimeSpan linkTimeout,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
         bool registryOwnedAttempt = false,
-        TimeProvider timeProvider = null)
+        TimeProvider timeProvider = null,
+        IWorkerInvocationTracker invocationTracker = null)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _invocationTracker = invocationTracker;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
@@ -614,6 +619,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         slot.Channel = null;
         slot.AttemptedSetupContext = null;
         slot.SetupException = null;
+        _invocationTracker?.WorkerUnlinked(channel.Id);
         if (slot.LinkTask is not null)
         {
             slot.Terminal = true;
@@ -770,6 +776,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 _hostConfigurationSourceSelected = true;
             }
 
+            _invocationTracker?.WorkerLinked(workerId);
             slot.Channel = channel;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public sealed partial class FlexConsumptionMetricsPublisher : IMetricsPublisher, IDisposable
+    public sealed partial class FlexConsumptionMetricsPublisher : IMetricsPublisher, IWorkerInvocationTracker, IDisposable
     {
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly FlexConsumptionMetricsPublisherOptions _options;
@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly object _lock = new();
         private readonly IFileSystem _fileSystem;
         private readonly LegionMetricsFileManager _metricsFileManager;
+        private readonly TimeProvider _timeProvider;
 
         private DateTime _currentActivityIntervalStart;
         private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private Lifecycle _lifecycle;
 
         public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
-            ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
+            ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider, TimeProvider timeProvider = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _fileSystem = fileSystem ?? new FileSystem();
             _metricsFileManager = new LegionMetricsFileManager(_options.MetricsFilePath, _fileSystem, _logger, _options.MaxFileCount);
             _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
+            _timeProvider = timeProvider ?? TimeProvider.System;
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
@@ -84,6 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 IsAlwaysReady = _environment
                     .GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
 
+                DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+                foreach (WorkerActivity worker in _workers.Values)
+                {
+                    worker.IntervalStart = now;
+                    worker.LastPublishTime = now;
+                }
+
                 _logger.LogInformation(
                     $"Starting metrics publisher (AlwaysReady={IsAlwaysReady},"
                     + $" MetricsPath='{_metricsFileManager.MetricsFilePath}').");
@@ -99,12 +108,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             Interlocked.Exchange(ref _lifecycle, null)?.Dispose();
             Interlocked.Exchange(ref _standbyOptionsOnChangeSubscription, null)?.Dispose();
+            lock (_lock)
+            {
+                foreach (WorkerInvocation invocation in _workerInvocations.Values)
+                {
+                    invocation.CancellationRegistration.Unregister();
+                }
+
+                _workerInvocations.Clear();
+                _workers.Clear();
+            }
         }
 
         internal async Task OnPublishMetrics(DateTime now, ValueStopwatch stopwatch)
         {
             try
             {
+                if (_options.UseWorkerAttribution)
+                {
+                    await PublishWorkerMetricsAsync(now);
+                    return;
+                }
+
                 lock (_lock)
                 {
                     if (ActiveFunctionCount > 0)
@@ -175,6 +200,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal void OnFunctionStarted(string functionName, string invocationId, DateTime now)
         {
+            if (_options.UseWorkerAttribution)
+            {
+                // Worker activity starts at channel selection, after input binding and channel readiness waits.
+                return;
+            }
+
             if (!IsStarted)
             {
                 return;
@@ -205,6 +236,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now, bool success = false)
         {
+            if (_options.UseWorkerAttribution)
+            {
+                lock (_lock)
+                {
+                    if (!CompleteWorkerInvocation(invocationId, now, aborted: false))
+                    {
+                        _logger.LogWarning("No active Worker attribution for completed invocation {InvocationId}. It may have completed before dispatch, been cancelled, or lost its Worker. No Runtime billing fallback will be emitted.", invocationId);
+                    }
+                }
+
+                return;
+            }
+
             if (!IsStarted)
             {
                 return;
@@ -247,12 +291,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private void MeterCurrentActiveInterval(DateTime now)
         {
-            DateTime adjustedActivityIntervalStart = _currentActivityIntervalStart;
-            if (_activityIntervalHighWatermark > _currentActivityIntervalStart)
+            var (durationMS, highWatermark) = MeasureActivityInterval(_currentActivityIntervalStart, _activityIntervalHighWatermark, now);
+            FunctionExecutionTimeMS += durationMS;
+            _activityIntervalHighWatermark = highWatermark;
+        }
+
+        private (long DurationMS, DateTime HighWatermark) MeasureActivityInterval(DateTime intervalStart, DateTime highWatermark, DateTime now)
+        {
+            DateTime adjustedActivityIntervalStart = intervalStart;
+            if (highWatermark > intervalStart)
             {
                 // If we've already metered a previous interval past the current time,
                 // we move forward (since we never want to meter the same interval twice).
-                adjustedActivityIntervalStart = _activityIntervalHighWatermark;
+                adjustedActivityIntervalStart = highWatermark;
             }
 
             // If the elapsed duration is negative, it means invocations are still before
@@ -263,12 +314,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 // Accumulate the duration for this interval, applying minimums and rounding
                 var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
                 duration = RoundUp(duration, _options.MetricsGranularityMS);
-                FunctionExecutionTimeMS += (long)duration;
-
                 // Move the high watermark timestamp forward to the point
                 // up to which we've metered
-                _activityIntervalHighWatermark = adjustedActivityIntervalStart.AddMilliseconds(duration);
+                return ((long)duration, adjustedActivityIntervalStart.AddMilliseconds(duration));
             }
+
+            return (0, highWatermark);
         }
 
         // Rounds up the given metric to a specified granularity. For example, RoundUp(1320.00, 100) = 1400, but RoundUp(1300.00, 100) = 1300.

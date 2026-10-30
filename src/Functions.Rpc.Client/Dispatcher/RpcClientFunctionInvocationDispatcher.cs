@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 
@@ -28,6 +29,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private static readonly TimeSpan DefaultShutdownTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IWorkerChannelRegistry _channelRegistry;
+    private readonly IWorkerInvocationTracker _invocationTracker;
     private readonly CancellationTokenSource _dispatcherStoppedSource = new();
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger;
     private readonly TimeSpan _channelWaitTimeout;
@@ -37,18 +39,21 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     public RpcClientFunctionInvocationDispatcher(
         IWorkerChannelRegistry channelRegistry,
-        ILogger<RpcClientFunctionInvocationDispatcher> logger)
-        : this(channelRegistry, logger, DefaultChannelWaitTimeout)
+        ILogger<RpcClientFunctionInvocationDispatcher> logger,
+        IWorkerInvocationTracker invocationTracker = null)
+        : this(channelRegistry, logger, DefaultChannelWaitTimeout, invocationTracker)
     {
     }
 
     internal RpcClientFunctionInvocationDispatcher(
         IWorkerChannelRegistry channelRegistry,
         ILogger<RpcClientFunctionInvocationDispatcher> logger,
-        TimeSpan channelWaitTimeout)
+        TimeSpan channelWaitTimeout,
+        IWorkerInvocationTracker invocationTracker = null)
     {
         _channelRegistry = channelRegistry ?? throw new ArgumentNullException(nameof(channelRegistry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _invocationTracker = invocationTracker;
 
         if (channelWaitTimeout <= TimeSpan.Zero)
         {
@@ -98,7 +103,12 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
         }
 
-        if (!channel.TryPostInvocation(invocationContext))
+        string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
+        bool accepted = _invocationTracker is null
+            ? channel.TryPostInvocation(invocationContext)
+            : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, invocationContext.CancellationToken,
+                () => channel.TryPostInvocation(invocationContext));
+        if (!accepted)
         {
             invocationContext.ResultSource.TrySetException(
                 new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));

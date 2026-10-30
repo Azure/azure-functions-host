@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -208,6 +209,62 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 
         await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AttributesEachInvocationToItsSelectedWorkerBeforePosting()
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("worker-a");
+        await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("worker-b");
+        _channels.Add(first.Channel);
+        _channels.Add(second.Channel);
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
+            .Returns((string invocationId, string workerId, CancellationToken token, Func<bool> dispatch) => dispatch());
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
+        FunctionMetadata function = CreateFunction();
+        await InitializeDispatcherAsync(dispatcher, function, first, second);
+        ScriptInvocationContext firstInvocation = CreateInvocation(function);
+        ScriptInvocationContext secondInvocation = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(firstInvocation);
+        await dispatcher.InvokeAsync(secondInvocation);
+        StreamingMessage firstRequest = await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        StreamingMessage secondRequest = await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+
+        Assert.Equal(firstInvocation.ExecutionContext.InvocationId.ToString(), firstRequest.InvocationRequest.InvocationId);
+        Assert.Equal(secondInvocation.ExecutionContext.InvocationId.ToString(), secondRequest.InvocationRequest.InvocationId);
+        tracker.Verify(metrics => metrics.TryDispatchInvocation(firstRequest.InvocationRequest.InvocationId, "worker-a",
+            firstInvocation.CancellationToken, It.IsAny<Func<bool>>()), Times.Once);
+        tracker.Verify(metrics => metrics.TryDispatchInvocation(secondRequest.InvocationRequest.InvocationId, "worker-b",
+            secondInvocation.CancellationToken, It.IsAny<Func<bool>>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_RejectsMissingAttributionOrDeclinedBuffer(bool declineBuffer)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
+            It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
+            .Returns((string invocationId, string workerId, CancellationToken token, Func<bool> dispatch) =>
+                declineBuffer && dispatch());
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
+        FunctionMetadata function = CreateFunction();
+        await InitializeDispatcherAsync(dispatcher, function, worker);
+        if (declineBuffer)
+        {
+            worker.Channel.FunctionInputBuffers[function.GetFunctionId()].Complete();
+        }
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.InvokeAsync(CreateInvocation(function)));
+
+        tracker.Verify(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
+            It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()), Times.Once);
     }
 
     [Fact]
@@ -561,11 +618,13 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         _registry.VerifyNoOtherCalls();
     }
 
-    private RpcClientFunctionInvocationDispatcher CreateDispatcher(TimeSpan? channelWaitTimeout = null)
+    private RpcClientFunctionInvocationDispatcher CreateDispatcher(TimeSpan? channelWaitTimeout = null,
+        IWorkerInvocationTracker invocationTracker = null)
         => new(
             _registry.Object,
             NullLogger<RpcClientFunctionInvocationDispatcher>.Instance,
-            channelWaitTimeout ?? TimeSpan.FromSeconds(10));
+            channelWaitTimeout ?? TimeSpan.FromSeconds(10),
+            invocationTracker);
 
     private void PublishReady(params WorkerChannel[] channels)
     {

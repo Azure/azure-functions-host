@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     await Task.Delay(_initialDelay, cancellation);
                     while (!cancellation.IsCancellationRequested)
                     {
-                        await _parent.OnPublishMetrics(DateTime.UtcNow, stopwatch);
+                        await _parent.OnPublishMetrics(_parent._timeProvider.GetUtcNow().UtcDateTime, stopwatch);
                         stopwatch = ValueStopwatch.StartNew();
                         await Task.Delay(_intervalDelay, cancellation);
                     }
