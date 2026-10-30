@@ -34,10 +34,10 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(null, null, null, 75)]
-    [InlineData("00:02:30", "00:00:20", "00:00:45", 175)]
+    [InlineData(null, null, 75)]
+    [InlineData("00:02:30", "00:00:20", 175)]
     public async Task LinkBudgetAndChannelTimeouts_UseTheSameConfiguredWorkerOptions(
-        string startup, string initialization, string reload, int totalSeconds)
+        string startup, string initialization, int totalSeconds)
     {
         ServiceCollection services = new();
         Dictionary<string, string> values = new();
@@ -45,7 +45,6 @@ public sealed partial class WorkerChannelRegistryTests
         {
             values["RpcClient:Worker:ProcessStartupTimeout"] = startup;
             values["RpcClient:Worker:InitializationTimeout"] = initialization;
-            values["RpcClient:Worker:EnvironmentReloadTimeout"] = reload;
         }
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
         services.AddRpcClientServices();
@@ -61,7 +60,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(TimeSpan.FromSeconds(totalSeconds), registry.LinkTimeout);
         Assert.Equal(expected.ProcessStartupTimeout, channel.WorkerConfig.CountOptions.ProcessStartupTimeout);
         Assert.Equal(expected.InitializationTimeout, channel.WorkerConfig.CountOptions.InitializationTimeout);
-        Assert.Equal(expected.EnvironmentReloadTimeout, channel.WorkerConfig.CountOptions.EnvironmentReloadTimeout);
+        Assert.Equal(new WorkerProcessCountOptions().EnvironmentReloadTimeout, channel.WorkerConfig.CountOptions.EnvironmentReloadTimeout);
         Assert.Equal(RpcClientFactory.DefaultConnectTimeout + channel.WorkerConfig.CountOptions.ProcessStartupTimeout
             + channel.WorkerConfig.CountOptions.InitializationTimeout, registry.LinkTimeout);
     }
@@ -105,7 +104,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Theory]
     [InlineData("ProcessStartupTimeout", "00:00:00")]
     [InlineData("InitializationTimeout", "-00:00:01")]
-    [InlineData("EnvironmentReloadTimeout", "100.00:00:00")]
+    [InlineData("ProcessStartupTimeout", "100.00:00:00")]
     public void WorkerOptions_RejectUnboundedOrNonpositiveTimeouts(string setting, string value)
     {
         ServiceCollection services = new();

@@ -40,7 +40,7 @@ public static class RpcClientServiceCollectionExtensions
         services.AddOptions<WorkerProcessCountOptions>(RpcClientWorkerChannelFactory.WorkerOptionsName)
             .BindConfiguration("RpcClient:Worker")
             .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),
-                "RpcClient worker startup, initialization and reload timeouts must be positive and have a bounded total.")
+                "RpcClient worker startup and initialization timeouts must be positive and have a bounded total.")
             .ValidateOnStart();
         services.AddSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>();
         services.AddOptions<TokenServiceProxyOptions>().ValidateOnStart();

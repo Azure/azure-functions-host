@@ -53,23 +53,6 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
     return await ToResultAsync("worker assign", response, cancellationToken);
 });
 
-simulate.MapPost("/worker/{workerProxyName}/state", async (string workerProxyName, IHttpClientFactory clients, CancellationToken cancellationToken) =>
-{
-    WorkerProxyOptions? workerProxy = Array.Find(options.WorkerProxies,
-        proxy => string.Equals(proxy.Name, workerProxyName, StringComparison.Ordinal));
-    if (workerProxy is null)
-    {
-        Log.UnknownWorkerProxy(logger, workerProxyName);
-        return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
-    }
-    using HttpRequestMessage request = new(HttpMethod.Post, "/admin/infra/instanceState");
-    request.Headers.Add("x-ms-site-token", ManagementToken.Create(workerProxy.RuntimeAccessKey, workerProxy.WorkerId));
-    request.Headers.Add("x-ms-functions-pod-name", workerProxy.WorkerId);
-    using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name).SendAsync(request, cancellationToken);
-
-    return await ToResultAsync("worker state", response, cancellationToken);
-});
-
 // Called by a developer in the `project-placeholder-manual` profile, before the link, to assign the placeholder Host to
 // the sample app (POST /admin/instance/assign). The Host accepts with 202, then leaves placeholder mode and specializes.
 simulate.MapPost("/host/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>

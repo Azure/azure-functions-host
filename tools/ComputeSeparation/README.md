@@ -128,7 +128,6 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 | Fake platform | `POST /simulate/worker/{workerProxyName}/assign` | Sends step 1 to the named WorkerProxy and returns its response. |
 | Fake platform | `POST /simulate/host/assign` | Sends step 2 to the Host and returns its response; see [Placeholder mode](#placeholder-mode). |
 | Fake platform | `POST /simulate/worker/{workerProxyName}/link` | Sends step 3 to the Host using the named proxy's worker ID and runtime gRPC endpoint. |
-| Fake platform | `POST /simulate/worker/{workerProxyName}/state` | Authenticates an empty-body state poll for the named proxy and relays its snapshot or 204. |
 
 ## Send requests manually
 
@@ -225,7 +224,7 @@ Open the mock's `http` endpoint from the dashboard to use these development-only
 
 For example, posting `{"statusCode":429,"retryAfterSeconds":7}` makes the next upstream request return 429 and `Retry-After: 7`; posting `{}` restores success. These controls do not bypass SDK token caching: to exercise another upstream request, restart the customer sample or make a raw authenticated local HTTP request. WorkerProxy itself never caches tokens. Mock tokens are deliberately invalid for Azure services.
 
-The `Functions.Host.Tests` identity suite includes the real SDK, socket/gRPC forwarding, and a local HTTP upstream check. The interactive profile adds separate processes and the sample's actual startup call; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
+The existing `Functions.Host.Tests` identity suite uses normal startup keys, supplied PEMs and authenticated assignment with its controlled HTTP upstream. The interactive profile adds separate processes and the sample's actual startup call; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
 
 Worker restart, registration, assignment, and persistent pod-transport behavior remain owned by the existing WorkerProxy lifecycle. The registry-owned setup from [#12100](https://github.com/Azure/azure-functions-host/pull/12100) is integrated, but it does not change relay transport lifetime. This checkout still couples worker-stream termination to transport termination; the identity scenario is a first-start flow, not proof of preserved transport across customer-only restarts.
 

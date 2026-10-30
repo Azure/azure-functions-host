@@ -55,10 +55,8 @@ internal sealed class RpcClientWorkerChannelFactory(
 
     internal static bool HasValidTimeouts(WorkerProcessCountOptions options) =>
         options.ProcessStartupTimeout > TimeSpan.Zero && options.InitializationTimeout > TimeSpan.Zero
-        && options.EnvironmentReloadTimeout > TimeSpan.Zero
         && options.ProcessStartupTimeout.TotalMilliseconds + options.InitializationTimeout.TotalMilliseconds
-            + RpcClientFactory.DefaultConnectTimeout.TotalMilliseconds <= uint.MaxValue - 1
-        && options.EnvironmentReloadTimeout.TotalMilliseconds <= uint.MaxValue - 1;
+            + RpcClientFactory.DefaultConnectTimeout.TotalMilliseconds <= uint.MaxValue - 1;
 
     internal static TimeSpan GetLinkTimeout(WorkerProcessCountOptions options)
     {
@@ -87,8 +85,7 @@ internal sealed class RpcClientWorkerChannelFactory(
             CountOptions = new()
             {
                 ProcessStartupTimeout = _processOptions.ProcessStartupTimeout,
-                InitializationTimeout = _processOptions.InitializationTimeout,
-                EnvironmentReloadTimeout = _processOptions.EnvironmentReloadTimeout
+                InitializationTimeout = _processOptions.InitializationTimeout
             },
         };
         ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{workerConfig.Description.Language}.{workerId}");

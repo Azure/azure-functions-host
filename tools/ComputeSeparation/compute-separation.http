@@ -22,10 +22,6 @@
 ### Assignment does not require the customer worker to have started or connected.
 POST {{platform}}/simulate/worker/worker-proxy-1/assign
 
-### Optional: the fake platform authenticates a POST state poll. Before assignment expect 204; afterward a flat
-### Starting/Unlinked snapshot does not claim that Host accepted Link or that platform serving convergence completed.
-POST {{platform}}/simulate/worker/worker-proxy-1/state
-
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
 ### repeated. The Host finishes specializing only after step 3 links the worker.
 POST {{platform}}/simulate/host/assign
@@ -41,9 +37,6 @@ GET {{host}}/api/hello
 
 ### 5. Assign the second pod. Expect 201, or 204 if repeated; customer startup is not required.
 POST {{platform}}/simulate/worker/worker-proxy-2/assign
-
-### Optional: inspect the second pod independently.
-POST {{platform}}/simulate/worker/worker-proxy-2/state
 
 ### 6. Link the second worker to the existing Host. Expect 201, or 200 for a matching retry.
 ### Do not send /simulate/host/assign again: the same Host and indexed functions are reused.

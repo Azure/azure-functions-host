@@ -4,6 +4,8 @@ WorkerProxy requires TLS and a worker-specific caller JWT on its runtime-facing 
 
 The loopback worker FunctionRpc listener (50054) remains plaintext and pod-local. Management on port 80 uses a separate container-management site-token contract, not the runtime caller JWT.
 
+This slice adds authentication, TLS and the platform assignment/state contract. Existing multiworker registration, Host configuration delivery and optional Token Service proxying remain compatibility dependencies, not new identity, configuration, restart or worker-reuse features.
+
 ## Keys and identities
 
 The platform sends the target WorkerProxy's `CONTAINER_ENCRYPTION_KEY` to Host as `runtimeAccessKey` in Link. Host retains that key by worker identity and uses it only for that worker's caller tokens. WorkerProxy validates them using its own startup container key, not a runtime or customer container key. There is no separate runtime-access-key environment setting.
@@ -57,7 +59,7 @@ The authenticated management route is `PUT /admin/workers/{workerId}`. Worker id
 
 HTTP support and routing remain negotiated through `HttpUri`. WorkerProxy validates the customer's local HTTP destination separately and advertises the accepted assignment's HTTPS origin (or explicit trusted configuration alternative). If an HTTP-capable worker has no usable external origin, initialization fails instead of forwarding a local/customer address or guessing an allocated port. Link may wait for a still-starting customer worker within the existing bounded initialization attempt; only successful initialization and valid app proof publish a worker.
 
-The Link budget derives from the same worker timing options used by the linked channel: the five-second connection budget plus `ProcessStartupTimeout` and `InitializationTimeout` (defaults 60 and 10 seconds, totaling 75). Standard options configuration under `RpcClient:Worker` can set those timeouts and `EnvironmentReloadTimeout`; values must remain positive and bounded. A retry or canceled caller does not create an unbounded wait.
+The Link budget derives from the same worker timing options used by the linked channel: the five-second connection budget plus `ProcessStartupTimeout` and `InitializationTimeout` (defaults 60 and 10 seconds, totaling 75). Options under `RpcClient:Worker` can set those two startup timeouts; values must remain positive and bounded. Reload retains its existing default timing. A retry or canceled caller does not create an unbounded wait.
 
 When the Token Service proxy is enabled, its opt-in `Functions:TokenServiceProxy:LinkTimeout` is the independent registry-owned early-link deadline (default two minutes). The channel's startup and initialization waits use that deadline so identity bootstrap can finish before the customer starts. Canceling an administrative caller ends only its wait; explicit unlink, shutdown or the bounded deadline ends the pending attempt. With the proxy disabled, the shared worker-derived budget above is unchanged.
 

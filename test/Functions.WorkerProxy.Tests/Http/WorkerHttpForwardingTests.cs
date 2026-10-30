@@ -58,7 +58,7 @@ public class WorkerHttpForwardingTests
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         using HttpClient client = factory.CreateHttpForwardingClient();
-        using RequestActivityRecorder activityRecorder = new("/invoke");
+        using RequestActivityRecorder activityRecorder = new("/invoke", client.BaseAddress!.Port);
         using HttpRequestMessage request = new(HttpMethod.Post, "/invoke?name=worker")
         {
             Content = new StringContent("payload", Encoding.UTF8, "text/plain")

@@ -19,10 +19,6 @@ using Azure.Identity;
 using Google.Protobuf;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -37,7 +33,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -82,49 +77,6 @@ public sealed class TokenServiceProxyIntegrationTests
             new TokenRequestContext(["https://vault.azure.net/.default"]), timeout.Token);
 
         Assert.Equal("opaque-test-token", token.Token);
-        Assert.Empty(harness.Registry.GetInitializedChannels());
-        await harness.CompleteWorkerHandshakeAsync(timeout.Token);
-    }
-
-    [Fact]
-    public async Task ManagedIdentityCredential_UsesActualUpstreamHttpSocketsBeforeCustomerInitialization()
-    {
-        int received = 0;
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
-        builder.Logging.ClearProviders();
-        await using WebApplication upstream = builder.Build();
-        upstream.MapGet("/token", (HttpRequest request) =>
-        {
-            Interlocked.Increment(ref received);
-            Assert.Equal(HostSecret, request.Headers[TokenServiceProxyProtocol.IdentityHeader]);
-            Assert.False(request.Headers.ContainsKey(TokenServiceProxyProtocol.LegacyIdentityHeader));
-            Assert.Equal("https://storage.azure.net", request.Query["resource"]);
-
-            return Results.Json(new
-            {
-                access_token = "opaque-local-socket-token",
-                expires_on = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture),
-                resource = "https://storage.azure.net",
-                token_type = "Bearer",
-                client_id = "00000000-0000-0000-0000-000000000001"
-            });
-        });
-        await upstream.StartAsync(timeout.Token);
-        string address = upstream.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-        await using Harness harness = await Harness.CreateWithActualHttpAsync();
-        harness.Configuration["MSI_ENDPOINT"] = new Uri(new Uri(address), "/token").AbsoluteUri;
-        using EnvironmentVariableScope endpoint = new("IDENTITY_ENDPOINT", new Uri(harness.LocalClient.BaseAddress!, "/msi/token").AbsoluteUri);
-        using EnvironmentVariableScope localSecret = new("IDENTITY_HEADER", LocalSecret);
-        using EnvironmentVariableScope serviceFabric = new("IDENTITY_SERVER_THUMBPRINT", null);
-        await harness.ConnectAsync(timeout.Token);
-
-        AccessToken token = await new ManagedIdentityCredential().GetTokenAsync(
-            new TokenRequestContext(["https://storage.azure.net/.default"]), timeout.Token);
-
-        Assert.Equal("opaque-local-socket-token", token.Token);
-        Assert.Equal(1, received);
         Assert.Empty(harness.Registry.GetInitializedChannels());
         await harness.CompleteWorkerHandshakeAsync(timeout.Token);
     }
@@ -623,23 +575,11 @@ public sealed class TokenServiceProxyIntegrationTests
         internal void DelayHostPreparation(Task preparation)
             => _environment.SetupGet(environment => environment.DelayCompletionTask).Returns(preparation);
 
-        internal static Task<Harness> CreateAsync(
+        internal static async Task<Harness> CreateAsync(
             Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond, params string[] overrides)
-            => CreateCoreAsync(new HttpClient(new RespondingHandler(respond)), overrides);
-
-        internal static Task<Harness> CreateWithActualHttpAsync() =>
-            CreateCoreAsync(new HttpClient(new SocketsHttpHandler
-            {
-                AllowAutoRedirect = false,
-                UseCookies = false,
-                UseProxy = false,
-                Credentials = null,
-                ActivityHeadersPropagator = null
-            }), []);
-
-        private static async Task<Harness> CreateCoreAsync(HttpClient upstream, string[] overrides)
         {
             TestCertificateFiles certificates = new();
+            HttpClient upstream = new(new RespondingHandler(respond));
             WebApplication? proxy = null;
             try
             {
