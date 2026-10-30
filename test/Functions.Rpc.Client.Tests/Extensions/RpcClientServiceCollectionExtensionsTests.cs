@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
@@ -29,11 +30,13 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
+        AssertSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>(services);
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerHostConfigurationParser));
         AssertSingleton(services, typeof(IHttpProxyService), "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
-        AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertRegistryServices(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostedService));
@@ -96,7 +99,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientWebHostServices(_ => scriptHost);
 
         Assert.Same(services, result);
-        AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertRegistryServices(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         AssertSingleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>(services);
         ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));
@@ -184,6 +187,17 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(TService)));
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
         Assert.Equal(typeof(TImplementation), descriptor.ImplementationType);
+    }
+
+    private static void AssertRegistryServices(IServiceCollection services)
+    {
+        AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
+        foreach (Type serviceType in new[] { typeof(IWorkerChannelRegistry), typeof(IHostConfigurationSourceProvider) })
+        {
+            ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == serviceType));
+            Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+            Assert.NotNull(descriptor.ImplementationFactory);
+        }
     }
 
     private static void AssertSingleton(IServiceCollection services, Type serviceType, string implementationTypeName)

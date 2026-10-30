@@ -21,6 +21,8 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -514,7 +516,7 @@ public sealed partial class WorkerChannelRegistryTests
                 observedDue = due;
                 return Mock.Of<ITimer>();
             });
-        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true, clock.Object);
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true, timeProvider: clock.Object);
         ChannelControl channel = new("worker", blockStart: true);
         harness.Enqueue(channel);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -1899,8 +1901,17 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
-        public RegistryHarness(TimeSpan? linkTimeout, bool registryOwnedAttempt = false, TimeProvider timeProvider = null)
+        public RegistryHarness(
+            TimeSpan? linkTimeout,
+            IConfiguration configuration = null,
+            IWorkerHostConfigurationParser workerHostConfigurationParser = null,
+            bool registryOwnedAttempt = false,
+            TimeProvider timeProvider = null)
         {
+            HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
+                configuration ?? new ConfigurationBuilder().Build(),
+                HostConfigurationLogger.Object);
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
                 {
@@ -1939,13 +1950,15 @@ public sealed partial class WorkerChannelRegistryTests
                 });
             Registry = linkTimeout.HasValue
                 ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance,
-                    linkTimeout.Value, registryOwnedAttempt, timeProvider)
-                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
+                    linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider)
+                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
 
         internal Mock<IDuplexChannelFactory<StreamingMessage>> DuplexFactory { get; } = new();
+
+        internal Mock<ILogger<WorkerHostConfigurationParser>> HostConfigurationLogger { get; } = new();
 
         internal WorkerChannelRegistry Registry { get; }
 
@@ -2043,6 +2056,12 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
+        internal HostConfiguration HostConfiguration { get; init; }
+
+        internal WorkerInitRequest InitRequest { get; private set; }
+
+        internal StatusResult InitResult { get; init; } = new() { Status = StatusResult.Types.Status.Success };
+
         internal void AllowDispose() => Transport.AllowDispose();
 
         internal void AllowSetup() => _setupRelease.TrySetResult();
@@ -2103,7 +2122,7 @@ public sealed partial class WorkerChannelRegistryTests
             try
             {
                 await Transport.SendResponseAsync(new() { StartStream = new() { WorkerId = Id } });
-                await Transport.Requests.ReadAsync().AsTask();
+                InitRequest = (await Transport.Requests.ReadAsync().AsTask()).WorkerInitRequest;
                 _startEntered.TrySetResult();
 
                 Task completed = await Task.WhenAny(_startRelease.Task, Transport.DisposeStarted);
@@ -2123,7 +2142,8 @@ public sealed partial class WorkerChannelRegistryTests
                 {
                     WorkerInitResponse = new WorkerInitResponse
                     {
-                        Result = new() { Status = StatusResult.Types.Status.Success },
+                        Result = InitResult,
+                        HostConfiguration = HostConfiguration,
                     },
                 });
             }

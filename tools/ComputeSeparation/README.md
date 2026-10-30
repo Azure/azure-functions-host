@@ -2,7 +2,7 @@
 
 A local development tool for running the real Functions Host, WorkerProxy, and .NET isolated `SampleIsolatedApp` together.
 
-The tool supplies no `host.json`. It sets the Host's existing read-only app-content option, so the unchanged Host uses defaults without writing that file.
+The tool supplies no Host-side `host.json` and sets the Host's existing read-only app-content option. The compute Host always requests worker delivery with the `HostConfiguration=1` initialization capability. If the first admitted worker sends no envelope, it selects file-based loading, which uses local missing-file defaults in this tool.
 
 ## Prerequisites
 
@@ -38,6 +38,34 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 ```
 
 Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
+
+## Host configuration delivery
+
+Workers deliver an immutable Host Configuration JSON payload, which may be generated entirely in memory. The compute/BYOC Host always advertises `WorkerInitRequest.capabilities["HostConfiguration"] = "1"` in both project and container modes. Supporting workers check for that exact capability value before obtaining or preparing configuration. No Host feature flag, configuration setting, or worker command-line switch is required. The existing sample's published worker package must be replaced with a compatible worker build to deliver Host configuration. An older worker can still start using file-based loading. Ordinary co-located Host execution does not advertise this capability and continues to use file-based loading.
+
+The worker returns the typed `WorkerInitResponse.host_configuration` envelope. Its acquisition source is not part of the delivery contract. WorkerProxy forwards the initialization request unchanged and does not add the capability. It only relays the returned envelope, including through capability/HTTP endpoint rewriting; it never acquires, parses, defaults, or merges configuration.
+
+| Delivery | Compute Host behavior |
+| --- | --- |
+| `Available` | Accept at most **65,536 transmitted UTF-8 bytes**, without a BOM. Require a strict JSON object and supported configuration profile. No file-schema version header is required. |
+| `Available` with empty bytes | Reject as invalid JSON, not as missing configuration. An empty object `{}` is valid empty configuration. |
+| Explicit `Missing` with no bytes | Delivery is supported but no configuration is available. Select empty delivered configuration with the applicable profile, not file-based fallback. |
+| Absent envelope | If this is the first admitted worker, select file-based loading. This is not explicit `Missing` and emits no rejection warning. Later absence leaves the selected source unchanged. |
+| `Error`, `TooLarge`, unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid UTF-8, a BOM, invalid JSON, and unsupported profiles also reject it; no parser exception or payload content is logged. |
+
+`Error` means the worker could not obtain, generate, or convert Host configuration. Workers own source-encoding conversion to BOM-free UTF-8 and bound acquisition/conversion; the Host independently validates the final payload. The limit applies after conversion, not to the source representation.
+
+Delivered configuration rejects non-JSON syntax, including `undefined`, unquoted `NaN`/`Infinity`/`-Infinity`, single-quoted or unquoted property names, comments, and trailing commas. Ordinary file-based `host.json` parsing retains its existing permissive behavior. Valid delivered JSON still uses the shared profile and value-conversion behavior.
+
+This payload cap is independent of gRPC message limits. Failed links remain retryable after cleanup. A present failure or invalid payload never falls back to file-based loading.
+
+Rejected deliveries emit the `HostConfigurationRejected` warning in the Host's `Azure.Functions.Rpc.Client.WorkerHostConfigurationParser` log category. Its fixed, bounded reason distinguishes production, status, size, encoding, and payload errors without logging configuration values, paths, content, or parser exceptions. The parser throws a sanitized `HostConfigurationException`; the registry translates that failure to the existing `WorkerLinkException` admission contract. The public link response remains HTTP 503 with the generic `WorkerUnavailable` error.
+
+These warnings use the existing platform system-log sink without changing customer logging filters. On Windows, capture `FunctionsSystemLogsEventSource` through an `EventListener`, ETW, or EventPipe: event `RaiseFunctionsEventWarning` (65522, Warning) carries `EventName=HostConfigurationRejected`, `Source` for the category, and `Summary` for the safe message. The development root console's default category filter excludes `Azure.Functions.*`; customer `AzureFunctionsJobHost` console settings apply to the child ScriptHost and do not make these pre-start warnings appear on stdout.
+
+Validation completes before initialized-channel publication and the first-link ScriptHost startup signal. The first successful worker admission atomically selects either the delivered snapshot or file-based loading. Rejected or canceled candidates select neither; requesting a source before admission fails instead of choosing file-based loading early. ScriptHost installs a snapshot at the same configuration precedence as file-based loading, before the extension-discovery configuration pre-build. Existing profile processing, `AzureFunctionsJobHost` key prefixing, unknown extension sections, arrays/scalars, and environment precedence are preserved. Delivered settings do not infer extension bundles, enable PowerShell managed dependencies, or synthesize file-bootstrap version/default markers. Applications that need a bundle must supply its configuration explicitly. File-based loading retains its existing schema validation, defaults, logging, and read-only behavior. Snapshot loading is synchronous and does not await RPC, write process environment variables, perform file I/O, or log even a sanitized copy of the payload.
+
+The source choice survives worker loss and child ScriptHost restarts, including when file-based loading was selected. Later supplied envelopes are still validated, but never replace that choice or a selected snapshot. Later workers may omit the envelope without switching a selected snapshot to file-based loading. This draft **does not compare payloads** or restart ScriptHost for a different valid delivery. Multi-worker agreement is deferred to [APP-02 (#12048)](https://github.com/Azure/azure-functions-host/issues/12048). Initialized/configuration-accepted does not mean invocation-ready; channel setup remains a separate concern. No live reload is added. Other language-worker deliveries and cross-repository completion remain tracked by [APP-01 (#12049)](https://github.com/Azure/azure-functions-host/issues/12049).
 
 ## Try the sample
 

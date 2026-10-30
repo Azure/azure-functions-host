@@ -8,11 +8,15 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -27,7 +31,7 @@ namespace Azure.Functions.Rpc.Client;
 /// context, and retains terminal identities. Initialized channels remain available for metadata bootstrap before a
 /// ScriptHost function set is known; only ready channels are available for invocation dispatch.
 /// </remarks>
-internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
+internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
 
@@ -43,6 +47,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
+    private readonly IWorkerHostConfigurationParser _workerHostConfigurationParser;
+    private IConfigurationSource _hostConfigurationSource;
+    private bool _hostConfigurationSourceSelected;
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
@@ -55,11 +62,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
+        IWorkerHostConfigurationParser workerHostConfigurationParser,
         IOptions<TokenServiceProxyOptions> proxyOptions = null,
         TimeProvider timeProvider = null)
         : this(duplexChannelFactory, channelFactory, logger,
             proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout : DefaultLinkTimeout,
-            registryOwnedAttempt: proxyOptions?.Value.Enabled == true, timeProvider)
+            workerHostConfigurationParser, registryOwnedAttempt: proxyOptions?.Value.Enabled == true, timeProvider)
     {
     }
 
@@ -68,6 +76,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout,
+        IWorkerHostConfigurationParser workerHostConfigurationParser,
         bool registryOwnedAttempt = false,
         TimeProvider timeProvider = null)
     {
@@ -77,6 +86,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
+        _workerHostConfigurationParser = workerHostConfigurationParser ?? throw new ArgumentNullException(nameof(workerHostConfigurationParser));
         _registryOwnedAttempt = registryOwnedAttempt;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
@@ -204,7 +214,17 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 }
 
                 operationSource.Token.ThrowIfCancellationRequested();
-                RegisterInitializedChannel(workerId, slot, candidate, operationSource.Token);
+                IConfigurationSource configurationSource;
+                try
+                {
+                    configurationSource = _workerHostConfigurationParser.Parse(candidate.HostConfiguration);
+                }
+                catch (HostConfigurationException exception)
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable, exception.Message);
+                }
+
+                RegisterInitializedChannel(workerId, slot, candidate, configurationSource, operationSource.Token);
 
                 WorkerChannel linkedChannel = candidate;
                 candidate = null;
@@ -333,6 +353,19 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             return [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)];
+        }
+    }
+
+    public IConfigurationSource GetConfigurationSource()
+    {
+        lock (_stateLock)
+        {
+            if (!_hostConfigurationSourceSelected)
+            {
+                throw new InvalidOperationException("Host configuration source has not been selected.");
+            }
+
+            return _hostConfigurationSource;
         }
     }
 
@@ -637,7 +670,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private void RegisterInitializedChannel(string workerId, WorkerSlot slot, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
+    private void RegisterInitializedChannel(
+        string workerId,
+        WorkerSlot slot,
+        RpcClientWorkerChannel channel,
+        IConfigurationSource configurationSource,
+        CancellationToken cancellationToken)
     {
         Task monitorTask;
 
@@ -646,12 +684,25 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             ObjectDisposedException.ThrowIf(_disposed, this);
             // Setup can hold this lock past the link deadline or transport lifetime.
             cancellationToken.ThrowIfCancellationRequested();
+            if (!_slots.TryGetValue(workerId, out WorkerSlot currentSlot) || !ReferenceEquals(currentSlot, slot) ||
+                slot.Terminal || slot.Channel is not null)
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Conflict, "The worker link is no longer available for admission.");
+            }
+
             if (channel.IsTerminated)
             {
                 Exception failure = channel.FunctionLoadFailure.IsCompletedSuccessfully
                     ? channel.FunctionLoadFailure.Result
                     : channel.Completion.Exception?.GetBaseException();
                 throw new IOException("The worker channel terminated before initialization was registered.", failure);
+            }
+
+            // Retain the first configuration source or file-based loading choice for the root lifetime.
+            if (!_hostConfigurationSourceSelected)
+            {
+                _hostConfigurationSource = configurationSource;
+                _hostConfigurationSourceSelected = true;
             }
 
             slot.Channel = channel;

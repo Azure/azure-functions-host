@@ -79,6 +79,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task Completion { get; }
 
+    internal HostConfiguration HostConfiguration { get; private set; }
+
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
@@ -120,6 +122,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
 
         return _startCompletion.Task.WaitAsync(cancellationToken);
+    }
+
+    protected override void OnWorkerInitRequest(WorkerInitRequest request)
+        => request.Capabilities["HostConfiguration"] = "1";
+
+    protected override void OnWorkerInitResponse(WorkerInitResponse response)
+    {
+        if (response.HostConfiguration is not null && response.Result.Status is not StatusResult.Types.Status.Success)
+        {
+            throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                "The worker did not report successful initialization for Host configuration delivery.");
+        }
+
+        HostConfiguration = response.HostConfiguration?.Clone();
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
