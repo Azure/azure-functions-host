@@ -25,10 +25,13 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
 
     internal ChannelReader<StreamingMessage> Requests => _requests.Reader;
 
+    internal string LinkId { get; private set; }
+
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
         using CancellationTokenSource streamSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        LinkId = context.RequestHeaders.GetValue("x-ms-functions-link-id");
         _connected.TrySetResult();
 
         Task readTask = ReadRequestsAsync(requestStream, streamSource.Token);

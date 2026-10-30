@@ -120,15 +120,19 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     {
         try
         {
+            Log.LinkStarted(_logger, workerId, slot.LinkId);
             WorkerChannel channel = await LinkCoreAsync(workerId, grpcEndpoint, slot, cancellationToken);
+            Log.LinkInitialized(_logger, workerId, slot.LinkId);
             linkCompletion.SetResult(channel);
         }
         catch (OperationCanceledException exception)
         {
+            Log.LinkEnded(_logger, workerId, slot.LinkId, "Canceled");
             linkCompletion.SetCanceled(exception.CancellationToken);
         }
         catch (Exception exception)
         {
+            Log.LinkEnded(_logger, workerId, slot.LinkId, "Failed");
             linkCompletion.SetException(exception);
         }
     }
@@ -153,7 +157,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             try
             {
                 operationSource.Token.ThrowIfCancellationRequested();
-                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
+                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token, slot.LinkId);
                 operationSource.Token.ThrowIfCancellationRequested();
 
                 candidate = _channelFactory.Create(workerId, ownedChannel)
@@ -769,6 +773,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private sealed class WorkerSlot
     {
+        public string LinkId { get; } = Guid.NewGuid().ToString("N");
+
         // The exact active setup context attempted for this channel.
         public ChannelSetupContext AttemptedSetupContext { get; set; }
 
@@ -814,5 +820,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(6, LogLevel.Information, "FunctionRpc link {LinkId} for worker {WorkerId} started.")]
+        public static partial void LinkStarted(ILogger logger, string workerId, string linkId);
+
+        [LoggerMessage(7, LogLevel.Information, "FunctionRpc link {LinkId} for worker {WorkerId} initialized.")]
+        public static partial void LinkInitialized(ILogger logger, string workerId, string linkId);
+
+        [LoggerMessage(8, LogLevel.Warning, "FunctionRpc link {LinkId} for worker {WorkerId} ended with {Outcome}.")]
+        public static partial void LinkEnded(ILogger logger, string workerId, string linkId, string outcome);
     }
 }

@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -30,6 +31,7 @@ internal sealed partial class FunctionRpcRelay(
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -60,6 +62,14 @@ internal sealed partial class FunctionRpcRelay(
             {
                 return _currentSession?.WorkerHttpDestination;
             }
+        }
+    }
+
+    internal (Uri? Destination, WorkerSystemLogContext Context) GetHttpForwardingContext()
+    {
+        lock (_syncLock)
+        {
+            return _currentSession?.GetHttpForwardingContext() ?? (null, new WorkerSystemLogContext());
         }
     }
 
@@ -113,48 +123,69 @@ internal sealed partial class FunctionRpcRelay(
     /// <param name="requestStream">The messages produced by the attached peer.</param>
     /// <param name="responseStream">The messages relayed from the opposite peer.</param>
     /// <param name="cancellationToken">The gRPC call cancellation token.</param>
+    /// <param name="linkId">The runtime-provided connection correlation ID, if available.</param>
     /// <returns>A task that returns the first terminal state after the session terminates and this attachment releases.</returns>
     /// <exception cref="FunctionRpcRelayAttachmentException">
     /// The side is already attached, the previous session is still tearing down, or shutdown has started.
     /// </exception>
     public Task<FunctionRpcRelayTerminalState> AttachAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
+        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken, string? linkId = null)
     {
         ArgumentNullException.ThrowIfNull(requestStream);
         ArgumentNullException.ThrowIfNull(responseStream);
 
         FunctionRpcRelaySession session;
 
-        lock (_syncLock)
+        try
         {
-            if (_stopping)
+            lock (_syncLock)
             {
-                throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
-                    "The FunctionRpc relay is shutting down.");
-            }
-
-            if (_currentSession?.IsTerminalAndReleased == true)
-            {
-                ClearCurrentSessionLocked();
-            }
-
-            session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager);
-
-            FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
-            if (attachResult != FunctionRpcRelayAttachResult.Attached)
-            {
-                (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
+                if (_stopping)
                 {
-                    FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
-                        $"A {side} FunctionRpc stream is already attached."),
-                    FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
-                        "The previous FunctionRpc relay session is still tearing down."),
-                    _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
-                };
+                    throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
+                        "The FunctionRpc relay is shutting down.");
+                }
 
-                throw new FunctionRpcRelayAttachmentException(side, failure, message);
+                if (_currentSession?.IsTerminalAndReleased == true)
+                {
+                    ClearCurrentSessionLocked();
+                }
+
+                session = _currentSession ??= new FunctionRpcRelaySession(
+                    Interlocked.Increment(ref _nextSessionId),
+                    logger,
+                    _capabilityFinalizer,
+                    _stateManager);
+
+                FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, linkId);
+                if (attachResult != FunctionRpcRelayAttachResult.Attached)
+                {
+                    (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
+                    {
+                        FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
+                            $"A {side} FunctionRpc stream is already attached."),
+                        FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
+                            "The previous FunctionRpc relay session is still tearing down."),
+                        _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
+                    };
+
+                    throw new FunctionRpcRelayAttachmentException(side, failure, message);
+                }
             }
+        }
+        catch (FunctionRpcRelayAttachmentException exception)
+        {
+            using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
+            {
+                LinkId = side is FunctionRpcRelaySide.Runtime ? linkId : null,
+                Operation = "Link",
+                Stage = "PeerAttachment",
+                Outcome = "Rejected",
+                ReasonCode = exception.Failure.ToString(),
+                Attributes = new() { PeerSide = side.ToString() }
+            });
+            Log.AttachmentRejected(logger, side, exception.Failure);
+            throw;
         }
 
         return RunAttachmentAsync(session, side, requestStream, responseStream, cancellationToken);
@@ -199,12 +230,14 @@ internal sealed partial class FunctionRpcRelay(
     {
         try
         {
+            session.LogAttachment(side, released: false);
             return await session.RunAsync(side, requestStream, responseStream, cancellationToken);
         }
         finally
         {
             session.Detach(side);
             TryClearReleasedSession(session);
+            session.LogAttachment(side, released: true);
         }
     }
 
