@@ -228,6 +228,45 @@ public partial class FunctionRpcRelayTests
         Assert.Null(factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys());
     }
 
+    [Fact]
+    public async Task Relay_RuntimeCloseBeforeInitializationPreservesAssignedLocalWorkerForAuthenticatedRetry()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new(useTestAuthentication: false);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        AssignAuthenticationState(manager);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        StreamingMessage start = CreateStartStream();
+        await worker.WriteAsync(start, timeout.Token);
+        await using (RelayClient firstRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
+        {
+            Assert.Equal(start, await firstRuntime.ReadAsync(timeout.Token));
+            await firstRuntime.CompleteRequestAsync(timeout.Token);
+            Assert.Equal(StatusCode.Unavailable, await firstRuntime.WaitForTerminationAsync(timeout.Token));
+        }
+
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.True(manager.State.IsWorkerAttached);
+        Assert.True(manager.State.IsWorkerReady);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(new(
+            WorkerStartupMode.Preconfigured, RuntimeAuthenticationTestData.AppName, "group", false,
+            new Dictionary<string, string>
+            {
+                [RuntimeWorkerAuthentication.AppKeySetting] =
+                    Convert.ToHexString(SHA256.HashData("assignment-is-not-the-proof-key-source"u8))
+            }, string.Empty)));
+
+        await using RelayClient retry = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        Assert.Equal(start, await retry.ReadAsync(timeout.Token));
+        await retry.WriteAsync(new() { WorkerInitRequest = new() }, timeout.Token);
+        Assert.NotNull((await worker.ReadAsync(timeout.Token)).WorkerInitRequest);
+        await worker.WriteAsync(CreateInitResponse("retry-init", httpUri: null), timeout.Token);
+        StreamingMessage response = await retry.ReadAsync(timeout.Token, retainProof: true);
+        string? proof = RuntimeWorkerAuthentication.RemoveAppProof(response.WorkerInitResponse.Capabilities);
+        Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(proof, RuntimeAuthenticationTestData.AppKey,
+            RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

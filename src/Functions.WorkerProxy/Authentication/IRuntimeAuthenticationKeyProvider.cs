@@ -5,6 +5,7 @@ using System;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Authentication;
@@ -29,7 +30,7 @@ internal sealed class RuntimeAuthenticationKeys(
     public ReadOnlyMemory<byte> AppKey { get; } = appKey;
 }
 
-internal sealed class RuntimeAuthenticationKeyProvider : IRuntimeAuthenticationKeyProvider
+internal sealed partial class RuntimeAuthenticationKeyProvider : IRuntimeAuthenticationKeyProvider
 {
     private readonly WorkerPodStateManager _manager;
     private readonly IConfiguration _configuration;
@@ -37,12 +38,14 @@ internal sealed class RuntimeAuthenticationKeyProvider : IRuntimeAuthenticationK
     private readonly byte[] _workerKey;
 
     public RuntimeAuthenticationKeyProvider(
-        IConfiguration configuration, IOptions<WorkerProxyOptions> options, WorkerPodStateManager manager)
+        IConfiguration configuration, IOptions<WorkerProxyOptions> options, WorkerPodStateManager manager,
+        ILogger<RuntimeAuthenticationKeyProvider> logger)
     {
         _manager = manager;
         _configuration = configuration;
         _workerId = options.Value.PodName;
-        RuntimeWorkerAuthentication.TryDecodeWorkerKey(configuration[RuntimeWorkerAuthentication.WorkerKeySetting], out _workerKey);
+        ValidateKey(configuration[RuntimeWorkerAuthentication.WorkerKeySetting], RuntimeWorkerAuthentication.WorkerKeySetting, logger, out _workerKey);
+        ValidateKey(configuration[RuntimeWorkerAuthentication.AppKeySetting], RuntimeWorkerAuthentication.AppKeySetting, logger, out _);
     }
 
     public RuntimeAuthenticationKeys? GetKeys()
@@ -57,5 +60,20 @@ internal sealed class RuntimeAuthenticationKeyProvider : IRuntimeAuthenticationK
         RuntimeWorkerAuthentication.TryDecodeAppKey(_configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey);
 
         return new(_workerId, state.FunctionAppName, _workerKey, appKey);
+    }
+
+    private static void ValidateKey(string? encoded, string setting, ILogger logger, out byte[] key)
+    {
+        if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(encoded, out key))
+        {
+            Log.KeyUnavailable(logger, setting,
+                string.IsNullOrWhiteSpace(encoded) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey);
+        }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Error, "WorkerProxy authentication configuration is unavailable: {Setting}, {Reason}.")]
+        public static partial void KeyUnavailable(ILogger logger, string setting, AuthenticationFailureReason reason);
     }
 }

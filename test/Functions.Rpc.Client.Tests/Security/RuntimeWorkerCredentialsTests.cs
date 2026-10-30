@@ -8,7 +8,9 @@ using System.Linq;
 using System.Security.Cryptography;
 using Azure.Functions.Authentication;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -152,5 +154,60 @@ public class RuntimeWorkerCredentialsTests
         Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(token, key, "runtime-pod", "worker-pod", now));
         Assert.False(RuntimeWorkerAuthentication.ValidateToken(token, key,
             RuntimeWorkerAuthentication.WorkerAudience("runtime-pod"), RuntimeWorkerAuthentication.WorkerPurpose, now));
+    }
+
+    [Theory]
+    [InlineData("missing-key", "MissingKey")]
+    [InlineData("invalid-key", "InvalidKey")]
+    [InlineData("missing-proof", "MissingToken")]
+    [InlineData("wrong-key", "Signature")]
+    [InlineData("wrong-app", "Audience")]
+    [InlineData("wrong-worker", "WorkerIdentity")]
+    [InlineData("wrong-purpose", "Purpose")]
+    [InlineData("expired", "Lifetime")]
+    public void ReverseProofFailure_LogsSafeCategoryWithoutProofKeysOrClaims(string scenario, string reason)
+    {
+        IConfiguration configuration = RuntimeWorkerTestData.CreateConfiguration();
+        if (string.Equals(scenario, "missing-key", StringComparison.Ordinal))
+        {
+            configuration["WEBSITE_AUTH_ENCRYPTION_KEY"] = null;
+        }
+        if (string.Equals(scenario, "invalid-key", StringComparison.Ordinal))
+        {
+            configuration["WEBSITE_AUTH_ENCRYPTION_KEY"] = "private-invalid-key";
+        }
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        byte[] key = Convert.FromHexString(RuntimeWorkerTestData.AppKey);
+        string proof = scenario switch
+        {
+            "missing-proof" => null,
+            "wrong-key" => RuntimeWorkerAuthentication.CreateAppProof(Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey),
+                "test-app", "worker", now),
+            "wrong-app" => RuntimeWorkerAuthentication.CreateAppProof(key, "private-customer-app", "worker", now),
+            "wrong-worker" => RuntimeWorkerAuthentication.CreateAppProof(key, "test-app", "private-customer-worker", now),
+            "wrong-purpose" => RuntimeWorkerAuthentication.CreateToken(key, RuntimeWorkerAuthentication.AppAudience("test-app"),
+                "private-customer-purpose", now, "worker"),
+            "expired" => RuntimeWorkerAuthentication.CreateAppProof(key, "test-app", "worker", now.AddMinutes(-6)),
+            _ => RuntimeWorkerTestData.CreateAppProof("worker")
+        };
+        string logged = string.Empty;
+        Mock<ILogger> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        logger.Setup(value => value.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(new InvocationAction(call =>
+                logged = (string)((Delegate)call.Arguments[4]).DynamicInvoke(call.Arguments[2], call.Arguments[3])));
+        RuntimeWorkerCredentials credentials = new("worker", RuntimeWorkerTestData.WorkerKey, configuration, TimeProvider.System, logger.Object);
+
+        Assert.Throws<WorkerLinkException>(() => credentials.ValidateAppProof(proof));
+
+        Assert.Contains(reason, logged, StringComparison.Ordinal);
+        Assert.DoesNotContain(RuntimeWorkerTestData.WorkerKey, logged, StringComparison.Ordinal);
+        Assert.DoesNotContain(RuntimeWorkerTestData.AppKey, logged, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-", logged, StringComparison.Ordinal);
+        if (proof is not null)
+        {
+            Assert.DoesNotContain(proof, logged, StringComparison.Ordinal);
+        }
     }
 }

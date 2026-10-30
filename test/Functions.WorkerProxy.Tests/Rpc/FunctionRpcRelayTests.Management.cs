@@ -22,7 +22,8 @@ public partial class FunctionRpcRelayTests
 {
     private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot",
+         "configLastModifiedTime":1761868800,"contentLastModifiedTime":1761868801,"maxHttpConcurrency":0}
         """;
 
     [Theory]

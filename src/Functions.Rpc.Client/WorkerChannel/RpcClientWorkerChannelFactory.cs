@@ -31,20 +31,44 @@ internal sealed class RpcClientWorkerChannelFactory(
     IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
     IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
     IAppCapabilitiesStore appCapabilitiesStore,
-    IHttpProxyService httpProxyService,
-    IMetricsLogger metricsLogger) : IRpcClientWorkerChannelFactory
+    Func<IHttpProxyService> httpProxyServiceFactory,
+    IMetricsLogger metricsLogger,
+    IOptionsMonitor<WorkerProcessCountOptions> processOptions = null) : IRpcClientWorkerChannelFactory
 {
+    internal const string WorkerOptionsName = "RpcClient";
+
     private readonly IAppCapabilitiesStore _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
     private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
     private readonly IEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     private readonly IScriptEventManager _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
     private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
     private readonly IScriptHostManager _hostManager = hostManager ?? throw new ArgumentNullException(nameof(hostManager));
-    private readonly IHttpProxyService _httpProxyService = httpProxyService ?? throw new ArgumentNullException(nameof(httpProxyService));
+
+    private readonly IHttpProxyService _httpProxyService = httpProxyServiceFactory?.Invoke()
+        ?? throw new ArgumentNullException(nameof(httpProxyServiceFactory));
+
     private readonly ILoggerFactory _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly IMetricsLogger _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
     private readonly ISharedMemoryManager _sharedMemoryManager = sharedMemoryManager ?? throw new ArgumentNullException(nameof(sharedMemoryManager));
     private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions = workerConcurrencyOptions ?? throw new ArgumentNullException(nameof(workerConcurrencyOptions));
+    private readonly WorkerProcessCountOptions _processOptions = processOptions?.Get(WorkerOptionsName) ?? new();
+
+    internal static bool HasValidTimeouts(WorkerProcessCountOptions options) =>
+        options.ProcessStartupTimeout > TimeSpan.Zero && options.InitializationTimeout > TimeSpan.Zero
+        && options.EnvironmentReloadTimeout > TimeSpan.Zero
+        && options.ProcessStartupTimeout.TotalMilliseconds + options.InitializationTimeout.TotalMilliseconds
+            + RpcClientFactory.DefaultConnectTimeout.TotalMilliseconds <= uint.MaxValue - 1
+        && options.EnvironmentReloadTimeout.TotalMilliseconds <= uint.MaxValue - 1;
+
+    internal static TimeSpan GetLinkTimeout(WorkerProcessCountOptions options)
+    {
+        if (!HasValidTimeouts(options))
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Worker startup and initialization require bounded positive timeouts.");
+        }
+
+        return RpcClientFactory.DefaultConnectTimeout + options.ProcessStartupTimeout + options.InitializationTimeout;
+    }
 
     public RpcClientWorkerChannel Create(
         string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials)
@@ -60,7 +84,12 @@ internal sealed class RpcClientWorkerChannelFactory(
                 Language = "external",
                 WorkerDirectory = string.Empty,
             },
-            CountOptions = new(),
+            CountOptions = new()
+            {
+                ProcessStartupTimeout = _processOptions.ProcessStartupTimeout,
+                InitializationTimeout = _processOptions.InitializationTimeout,
+                EnvironmentReloadTimeout = _processOptions.EnvironmentReloadTimeout
+            },
         };
         ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{workerConfig.Description.Language}.{workerId}");
         return new(

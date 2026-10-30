@@ -16,17 +16,26 @@ public partial class FunctionRpcRelayTests
     {
         private readonly Task _releaseFault;
         private readonly Exception _exception;
+        private readonly StreamingMessage? _firstMessage;
+        private bool _firstRead;
 
-        public GatedFaultingStreamReader(Task releaseFault, Exception exception)
+        public GatedFaultingStreamReader(Task releaseFault, Exception exception, StreamingMessage? firstMessage = null)
         {
             _releaseFault = releaseFault;
             _exception = exception;
+            _firstMessage = firstMessage;
         }
 
-        public StreamingMessage Current { get; } = new();
+        public StreamingMessage Current => _firstMessage ?? new();
 
         public async Task<bool> MoveNext(CancellationToken cancellationToken)
         {
+            if (!_firstRead && _firstMessage is not null)
+            {
+                _firstRead = true;
+
+                return true;
+            }
             await _releaseFault.WaitAsync(cancellationToken);
             throw _exception;
         }

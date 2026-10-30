@@ -1788,7 +1788,8 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(IMetricsLogger metricsLogger = null)
+    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(IMetricsLogger metricsLogger = null,
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -1811,8 +1812,8 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
-            metricsLogger ?? Mock.Of<IMetricsLogger>());
+            () => Mock.Of<IHttpProxyService>(),
+            metricsLogger ?? Mock.Of<IMetricsLogger>(), processOptions);
     }
 
     private sealed class RegistryHarness

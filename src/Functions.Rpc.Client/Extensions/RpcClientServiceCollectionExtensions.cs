@@ -31,11 +31,15 @@ public static class RpcClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
-        services.AddDefaultHttpProxyService();
-        services.Replace(ServiceDescriptor.Singleton<IHttpProxyService>(provider => new DefaultHttpProxyService(
-            provider.GetRequiredService<IHttpForwarder>(),
-            provider.GetRequiredService<ILogger<DefaultHttpProxyService>>(),
-            RpcClientFactory.CreateHttpHandler())));
+        services.AddHttpForwarder();
+        services.TryAddSingleton<IHttpProxyService, DefaultHttpProxyService>();
+        services.AddSingleton<WorkerProxyHttpTransport>();
+        services.AddSingleton<Func<IHttpProxyService>>(provider => () => provider.GetRequiredService<WorkerProxyHttpTransport>());
+        services.AddOptions<WorkerProcessCountOptions>(RpcClientWorkerChannelFactory.WorkerOptionsName)
+            .BindConfiguration("RpcClient:Worker")
+            .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),
+                "RpcClient worker startup, initialization and reload timeouts must be positive and have a bounded total.")
+            .ValidateOnStart();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();

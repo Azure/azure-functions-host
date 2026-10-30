@@ -143,8 +143,9 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        await Assert.ThrowsAsync<UriFormatException>(
+        WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(
             () => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
 
         Assert.Empty(registry.GetInitializedChannels());
         await worker.Disconnected.WaitAsync(timeout.Token);

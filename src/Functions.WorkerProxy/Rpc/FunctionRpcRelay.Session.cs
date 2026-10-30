@@ -37,12 +37,15 @@ internal sealed partial class FunctionRpcRelay
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<StreamingMessage> _startStream = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+        private long _runtimeGeneration;
+        private bool _runtimeProtocolStarted;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -102,6 +105,10 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: true);
+                if (side is FunctionRpcRelaySide.Runtime)
+                {
+                    _runtimeGeneration = checked(_runtimeGeneration + 1);
+                }
                 if (side == FunctionRpcRelaySide.Worker)
                 {
                     // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
@@ -137,6 +144,11 @@ internal sealed partial class FunctionRpcRelay
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             using CancellationTokenSource linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_terminationSource.Token, cancellationToken);
+            long runtimeGeneration;
+            lock (_stateLock)
+            {
+                runtimeGeneration = _runtimeGeneration;
+            }
 
             ChannelWriter<StreamingMessage> destination = side switch
             {
@@ -151,23 +163,49 @@ internal sealed partial class FunctionRpcRelay
                 _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
             };
 
-            Task readTask = ReadInboundAsync(side, requestStream, destination, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(source, responseStream, linkedSource.Token);
+            Task readTask = ReadInboundAsync(side, requestStream, destination, runtimeGeneration, linkedSource.Token);
+            Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
+            FunctionRpcRelayTerminalState? detachedRuntime = null;
 
             if (!_completion.Task.IsCompleted)
             {
                 FunctionRpcRelayTerminalState terminalState = await ClassifyCompletionAsync(side, firstCompletedTask, cancellationToken);
-                TryTerminate(terminalState);
+                if (side is FunctionRpcRelaySide.Runtime && TryDetachBeforeInitialization(runtimeGeneration))
+                {
+                    detachedRuntime = terminalState;
+                    Log.RuntimeDetachedBeforeInitialization(logger, id, terminalState.Reason);
+                }
+                else
+                {
+                    TryTerminate(terminalState);
+                }
             }
 
             await linkedSource.CancelAsync();
             // Reads can remain blocked until the transport releases them, so observe that task
             // out of band. The write must finish before gRPC writes trailers to the same response.
-            _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
-            await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
+            _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask, linkedSource.Token);
+            await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask, linkedSource.Token);
 
-            return await _completion.Task;
+            return detachedRuntime ?? await _completion.Task;
+        }
+
+        private bool TryDetachBeforeInitialization(long runtimeGeneration)
+        {
+            lock (_stateLock)
+            {
+                if (_terminalState is not null || !_workerAttached || _runtimeProtocolStarted
+                    || runtimeGeneration != _runtimeGeneration)
+                {
+                    return false;
+                }
+
+                // Fence a canceled reader that ignores transport cancellation before another runtime can attach.
+                _runtimeGeneration = checked(_runtimeGeneration + 1);
+
+                return true;
+            }
         }
 
         /// <summary>
@@ -212,27 +250,44 @@ internal sealed partial class FunctionRpcRelay
         }
 
         private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-            ChannelWriter<StreamingMessage> destination, CancellationToken cancellationToken)
+            ChannelWriter<StreamingMessage> destination, long runtimeGeneration, CancellationToken cancellationToken)
         {
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
-                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage);
+                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage, runtimeGeneration);
                 if (message is null)
                 {
                     return;
                 }
 
+                bool startStream = side is FunctionRpcRelaySide.Worker && isFirstMessage;
                 isFirstMessage = false;
+                if (startStream)
+                {
+                    continue;
+                }
                 await destination.WriteAsync(message, cancellationToken);
             }
         }
 
-        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
+        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage,
+            long runtimeGeneration)
         {
             if (side != FunctionRpcRelaySide.Worker)
             {
-                return message;
+                lock (_stateLock)
+                {
+                    if (_terminalState is not null || runtimeGeneration != _runtimeGeneration || !_runtimeAttached)
+                    {
+                        return null;
+                    }
+
+                    // Retrying after any runtime protocol input could replay init or mix responses across callers.
+                    _runtimeProtocolStarted = true;
+
+                    return message;
+                }
             }
 
             if (isFirstMessage)
@@ -251,6 +306,7 @@ internal sealed partial class FunctionRpcRelay
                     }
 
                     stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    _startStream.TrySetResult(message.Clone());
                 }
             }
 
@@ -361,9 +417,14 @@ internal sealed partial class FunctionRpcRelay
             Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
-        private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,
+        private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
+            if (side is FunctionRpcRelaySide.Runtime)
+            {
+                // A runtime retry before initialization sees the same validated local StartStream.
+                await responseStream.WriteAsync(await _startStream.Task.WaitAsync(cancellationToken), cancellationToken);
+            }
             await foreach (StreamingMessage message in source.ReadAllAsync(cancellationToken))
             {
                 // This is the only task that writes this response stream. The linked token
@@ -418,6 +479,7 @@ internal sealed partial class FunctionRpcRelay
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
                 stateManager.OnSessionTerminated(id);
                 _completion.SetResult(terminalState);
+                _startStream.TrySetCanceled();
             }
 
             Exception? completionException = terminalState.Reason switch
@@ -453,19 +515,20 @@ internal sealed partial class FunctionRpcRelay
             return true;
         }
 
-        private async Task ObserveStreamOperationAfterTerminationAsync(FunctionRpcRelaySide side, string operationName, Task operationTask)
+        private async Task ObserveStreamOperationAfterTerminationAsync(
+            FunctionRpcRelaySide side, string operationName, Task operationTask, CancellationToken operationToken)
         {
             try
             {
                 await operationTask;
             }
-            catch (OperationCanceledException) when (_terminationSource.IsCancellationRequested)
+            catch (OperationCanceledException) when (_completion.Task.IsCompleted || operationToken.IsCancellationRequested)
             {
             }
             catch (ChannelClosedException) when (_completion.Task.IsCompleted)
             {
             }
-            catch (Exception exception) when (_completion.Task.IsCompleted)
+            catch (Exception exception) when (_completion.Task.IsCompleted || operationToken.IsCancellationRequested)
             {
                 Log.SecondaryStreamFailure(logger, exception, id, operationName, side);
             }
@@ -512,6 +575,10 @@ internal sealed partial class FunctionRpcRelay
 
     private static partial class Log
     {
+        [LoggerMessage(4, LogLevel.Information,
+            "Runtime disconnected before initialization for FunctionRpc relay session {SessionId}: {Reason}. The local worker is waiting for a replacement runtime.")]
+        public static partial void RuntimeDetachedBeforeInitialization(ILogger logger, long sessionId, FunctionRpcRelayTerminationReason reason);
+
         [LoggerMessage(0, LogLevel.Warning, "FunctionRpc relay session {SessionId} faulted on the {Side} side.")]
         public static partial void SessionFaulted(ILogger logger, Exception? exception, long sessionId, FunctionRpcRelaySide? side);
 

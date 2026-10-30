@@ -68,6 +68,7 @@ internal static class WorkerProxyApplication
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
+        _ = app.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>();
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);

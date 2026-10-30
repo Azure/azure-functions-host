@@ -17,8 +17,9 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// </summary>
 /// <remarks>
 /// A relay session admits one stream per <see cref="FunctionRpcRelaySide"/>. The first peer close,
-/// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
-/// session is created only after both attachments from the previous session have released.
+/// cancellation, stream failure, or application shutdown terminates the whole session once runtime protocol
+/// traffic has begun. Before that boundary a runtime can detach and retry without replacing the local worker.
+/// A replacement whole session is created only after both attachments from the previous session have released.
 /// Locks are acquired in relay, session, then pod-state order; the state manager never calls back into the relay.
 /// </remarks>
 internal sealed partial class FunctionRpcRelay(

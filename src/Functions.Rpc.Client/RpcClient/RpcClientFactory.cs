@@ -26,7 +26,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
     /// <summary>
     /// Gets the maximum time allowed for an individual socket connection attempt.
     /// </summary>
-    private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
+    internal static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Gets the idle interval before an HTTP/2 keepalive ping is sent.

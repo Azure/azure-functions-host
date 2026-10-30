@@ -69,7 +69,7 @@ public sealed class RpcClientWorkerChannelTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             _appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            () => Mock.Of<IHttpProxyService>(),
             _metricsLogger);
     }
 

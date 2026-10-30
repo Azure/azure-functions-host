@@ -41,7 +41,7 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
     }
 
     WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty,
-        workerProxy.WorkerHttpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped));
+        workerProxy.WorkerHttpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped), 0, 0, 0);
     using HttpRequestMessage request = new(HttpMethod.Put, "/admin/worker/assignment") { Content = JsonContent.Create(assignment) };
     request.Headers.Add("x-ms-site-token", ManagementToken.Create(workerProxy.RuntimeAccessKey, workerProxy.WorkerId));
     using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name).SendAsync(request, cancellationToken);
@@ -195,7 +195,8 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, string HttpProxyEndpoint);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, string HttpProxyEndpoint,
+        long ConfigLastModifiedTime, long ContentLastModifiedTime, int MaxHttpConcurrency);
 
     private static partial class Log
     {

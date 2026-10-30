@@ -251,13 +251,14 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_FirstReadFaultStopsBothStreamOperationsAndPreservesFault()
+    public async Task Relay_RuntimeReadFaultAfterProtocolStartsStopsBothStreamOperationsAndPreservesFault()
     {
         FunctionRpcRelay relay = CreateInProcessRelay();
         using CancellationTokenSource timeout = new(TestTimeout);
         TaskCompletionSource<bool> releaseFault = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IOException expectedException = new("Injected read failure.");
-        GatedFaultingStreamReader faultingReader = new(releaseFault.Task, expectedException);
+        GatedFaultingStreamReader faultingReader = new(releaseFault.Task, expectedException,
+            new() { WorkerInitRequest = new() });
         BlockingStreamReader blockingReader = new();
         TestServerStreamWriter responseWriter = new();
         TestServerStreamWriter workerResponseWriter = new();

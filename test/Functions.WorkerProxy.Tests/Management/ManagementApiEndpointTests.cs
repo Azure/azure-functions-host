@@ -26,7 +26,8 @@ public class ManagementApiEndpointTests
     private const string StatePath = "/admin/infra/instanceState";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot",
+         "configLastModifiedTime":1761868800,"contentLastModifiedTime":1761868801,"maxHttpConcurrency":0}
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
@@ -200,6 +201,7 @@ public class ManagementApiEndpointTests
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         JsonObject original = JsonNode.Parse(ValidAssignment)!.AsObject();
+        original.Remove(field);
         if (supplied)
         {
             original[field] = 0;
@@ -218,6 +220,7 @@ public class ManagementApiEndpointTests
         Assert.Same(assigned, manager.State);
 
         JsonObject changed = JsonNode.Parse(ValidAssignment)!.AsObject();
+        changed.Remove(field);
         if (!supplied)
         {
             changed[field] = 0;

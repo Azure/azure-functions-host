@@ -111,7 +111,7 @@ public sealed class RpcClientHttpInvocationTests
     }
 
     [Theory]
-    [InlineData("http://localhost:5678/customer", typeof(ArgumentException))]
+    [InlineData("http://localhost:5678/customer", typeof(WorkerLinkException))]
     [InlineData("https://different-customer:48801", typeof(WorkerLinkException))]
     public async Task CapabilityReload_RejectsUnrewrittenCustomerOriginBeforeAnyCredentialForwarding(string destination, Type exceptionType)
     {

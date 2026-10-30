@@ -12,8 +12,10 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -28,8 +30,6 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 {
-    private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
-
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly IConfiguration _configuration;
     private readonly TimeProvider _timeProvider;
@@ -55,8 +55,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         IConfiguration configuration,
-        TimeProvider timeProvider)
-        : this(duplexChannelFactory, channelFactory, logger, configuration, timeProvider, DefaultLinkTimeout)
+        TimeProvider timeProvider,
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions = null)
+        : this(duplexChannelFactory, channelFactory, logger, configuration, timeProvider,
+            RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new()))
     {
     }
 
@@ -78,6 +80,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         _linkTimeout = linkTimeout;
     }
 
+    internal TimeSpan LinkTimeout => _linkTimeout;
+
     public Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
@@ -86,7 +90,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
-        RuntimeWorkerCredentials credentials = new(workerId, runtimeAccessKey, _configuration, _timeProvider);
+        RuntimeWorkerCredentials credentials = new(workerId, runtimeAccessKey, _configuration, _timeProvider, _logger);
         cancellationToken.ThrowIfCancellationRequested();
 
         TaskCompletionSource<WorkerChannel> linkCompletion;
@@ -109,7 +113,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         "The worker's initialized channel has terminated.");
                 }
 
-                return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
+                return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, _timeProvider, cancellationToken), isNewLink: false);
             }
 
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -155,7 +159,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         bool initialized = false;
         try
         {
-            using CancellationTokenSource deadline = new(_linkTimeout);
+            using CancellationTokenSource deadline = new(_linkTimeout, _timeProvider);
             using CancellationTokenSource operationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token, deadline.Token);
 

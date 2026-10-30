@@ -19,26 +19,33 @@ internal sealed partial class RuntimeRequestAuthenticator(
         RuntimeAuthenticationKeys? keys = keyProvider.GetKeys();
         if (!context.Request.IsHttps || keys is null)
         {
-            Log.AuthenticationRejected(logger);
+            Log.AuthenticationRejected(logger, keys is null ? AuthenticationFailureReason.AssignmentUnavailable : AuthenticationFailureReason.Transport);
 
             return false;
         }
 
-        if (!RuntimeWorkerAuthentication.ValidateHeaders(
-            name => context.Request.Headers[name] is [string token] ? token : null,
-            keys.WorkerKey.Span, keys.WorkerId, timeProvider.GetUtcNow()))
+        AuthenticationFailureReason reason;
+        if (context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader].Count > 1
+            || context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader].ToString().Contains(',', StringComparison.Ordinal))
         {
-            Log.AuthenticationRejected(logger);
+            reason = AuthenticationFailureReason.DuplicateToken;
+        }
+        else if (RuntimeWorkerAuthentication.ValidateToken(
+            context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader].ToString(),
+            keys.WorkerKey.Span, RuntimeWorkerAuthentication.WorkerAudience(keys.WorkerId),
+            RuntimeWorkerAuthentication.WorkerPurpose, timeProvider.GetUtcNow(), out reason))
+        {
+            foreach (string name in RuntimeWorkerAuthentication.TokenHeaders)
+            {
+                context.Request.Headers.Remove(name);
+            }
 
-            return false;
+            return true;
         }
 
-        foreach (string name in RuntimeWorkerAuthentication.TokenHeaders)
-        {
-            context.Request.Headers.Remove(name);
-        }
+        Log.AuthenticationRejected(logger, reason);
 
-        return true;
+        return false;
     }
 
     public string CreateAppProof()
@@ -46,6 +53,7 @@ internal sealed partial class RuntimeRequestAuthenticator(
         RuntimeAuthenticationKeys? keys = keyProvider.GetKeys();
         if (keys is null || keys.AppKey.Length < 32)
         {
+            Log.AppProofUnavailable(logger, keys is null ? AuthenticationFailureReason.AssignmentUnavailable : AuthenticationFailureReason.InvalidKey);
             throw new InvalidOperationException("WorkerProxy application authentication configuration is unavailable.");
         }
 
@@ -55,7 +63,10 @@ internal sealed partial class RuntimeRequestAuthenticator(
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Warning, "Runtime request authentication failed.")]
-        public static partial void AuthenticationRejected(ILogger logger);
+        [LoggerMessage(0, LogLevel.Warning, "Runtime request authentication failed: {Reason}.")]
+        public static partial void AuthenticationRejected(ILogger logger, AuthenticationFailureReason reason);
+
+        [LoggerMessage(1, LogLevel.Error, "WorkerProxy application proof cannot be created: {Reason}.")]
+        public static partial void AppProofUnavailable(ILogger logger, AuthenticationFailureReason reason);
     }
 }
