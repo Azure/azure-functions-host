@@ -271,9 +271,11 @@ public class WorkerLinkControllerTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task LinkWorker_LogsStructuredOutcomeWithoutReservedKey(bool fail)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task LinkWorker_LogsStructuredOutcomeWithoutReservedKey(bool fail, bool legacy)
     {
         Mock<ILogger<WorkerLinkController>> logger = new();
         logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
@@ -299,7 +301,19 @@ public class WorkerLinkControllerTests
         request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
         WorkerLinkController controller = new(logger.Object, _registry.Object);
 
-        await controller.LinkWorker(WorkerId, request);
+        if (legacy)
+        {
+            await controller.LinkLegacyWorker(new LegacyWorkerLinkRequest
+            {
+                WorkerPodName = WorkerId,
+                WorkerGrpcEndpoint = request.WorkerGrpcEndpoint,
+                RuntimeAccessKey = request.WorkerContainerEncryptionKey
+            });
+        }
+        else
+        {
+            await controller.LinkWorker(WorkerId, request);
+        }
 
         Assert.Single(logger.Invocations.Where(call => string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal)));
         Assert.Equal(fail ? 701 : 700, eventId.Id);

@@ -27,8 +27,8 @@ namespace Azure.Functions.Host.Controllers;
 /// </summary>
 /// <remarks>
 /// This controller exists only in compute separation mode. It is discovered via an MVC application part
-/// registered from <c>ClientWorkerComposition</c>, so the <c>admin/workers/{workerId}</c> route is absent from the
-/// standard host by construction.
+/// registered from <c>ClientWorkerComposition</c>, so both worker-link routes are absent from the standard host
+/// by construction.
 /// </remarks>
 public sealed partial class WorkerLinkController : Controller
 {
@@ -49,6 +49,34 @@ public sealed partial class WorkerLinkController : Controller
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+    }
+
+    /// <summary>
+    /// Links a worker using the legacy Legion request with its identity in the body.
+    /// </summary>
+    /// <param name="request">The legacy request containing the worker pod name and gRPC endpoint.</param>
+    /// <param name="cancellationToken">Cancels this request and, for a new link, its initialization attempt.</param>
+    /// <returns>The same validation, initialization, and link results as <see cref="LinkWorker"/>.</returns>
+    [HttpPut]
+    [Route("admin/workers")]
+    public async Task<IActionResult> LinkLegacyWorker([FromBody] LegacyWorkerLinkRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        long started = Stopwatch.GetTimestamp();
+        if (!ModelState.IsValid || request is null)
+        {
+            return RejectValidation(request?.WorkerPodName, [new(ErrorCodes.InvalidBody, "request")], started);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.WorkerPodName))
+        {
+            return RejectValidation(request.WorkerPodName, [new(ErrorCodes.Required, "workerPodName")], started);
+        }
+
+        return await LinkWorker(request.WorkerPodName, new WorkerLinkRequest
+        {
+            WorkerGrpcEndpoint = request.WorkerGrpcEndpoint
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -83,13 +111,18 @@ public sealed partial class WorkerLinkController : Controller
         IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
-            Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
-                Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-
-            return BadRequest(new RequestValidationResponse(errors));
+            return RejectValidation(workerId, errors, started);
         }
 
         return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
+    }
+
+    private BadRequestObjectResult RejectValidation(string? workerId, IReadOnlyList<RequestValidationError> errors, long started)
+    {
+        Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+
+        return BadRequest(new RequestValidationResponse(errors));
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,

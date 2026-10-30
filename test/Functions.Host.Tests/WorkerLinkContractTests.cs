@@ -27,6 +27,7 @@ public class WorkerLinkContractTests
 
         Assert.Same(compute, typeof(WorkerLinkController).Assembly);
         Assert.Same(compute, typeof(WorkerLinkRequest).Assembly);
+        Assert.Same(compute, typeof(LegacyWorkerLinkRequest).Assembly);
         Assert.Same(compute, typeof(WorkerLinkError).Assembly);
         Assert.Same(compute, typeof(WorkerLinkErrorResponse).Assembly);
         Assert.Same(compute, typeof(RequestValidationError).Assembly);
@@ -42,6 +43,7 @@ public class WorkerLinkContractTests
 
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.Controllers.WorkerLinkController"));
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.WorkerLink.WorkerLinkRequest"));
+        Assert.Null(standardWebHost.GetType("Azure.Functions.Host.WorkerLink.LegacyWorkerLinkRequest"));
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.WorkerLink.WorkerLinkError"));
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.WorkerLink.WorkerLinkErrorResponse"));
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.Models.RequestValidationError"));
@@ -62,6 +64,35 @@ public class WorkerLinkContractTests
         ParameterInfo workerId = Assert.Single(link.GetParameters().Where(parameter =>
             string.Equals(parameter.Name, "workerId", StringComparison.Ordinal)));
         Assert.NotNull(workerId.GetCustomAttribute<Microsoft.AspNetCore.Mvc.FromRouteAttribute>());
+    }
+
+    [Fact]
+    public void WorkerLinkController_MapsLegacyPutAdminWorkersWithBodyIdentity()
+    {
+        MethodInfo link = typeof(WorkerLinkController).GetMethod(nameof(WorkerLinkController.LinkLegacyWorker))!;
+
+        Assert.NotNull(link.GetCustomAttribute<Microsoft.AspNetCore.Mvc.HttpPutAttribute>());
+        Assert.Equal("admin/workers", link.GetCustomAttribute<Microsoft.AspNetCore.Mvc.RouteAttribute>()?.Template);
+        ParameterInfo request = Assert.Single(link.GetParameters().Where(parameter =>
+            parameter.ParameterType == typeof(LegacyWorkerLinkRequest)));
+        Assert.NotNull(request.GetCustomAttribute<Microsoft.AspNetCore.Mvc.FromBodyAttribute>());
+    }
+
+    [Fact]
+    public void LegacyWorkerLinkRequest_PreservesLegionWireContract()
+    {
+        const string json = """
+            {"WorkerPodName":"worker-pod","WorkerGrpcEndpoint":"http://worker-pod:50053","RuntimeAccessKey":"reserved-test-value"}
+            """;
+
+        LegacyWorkerLinkRequest request = Assert.IsType<LegacyWorkerLinkRequest>(JsonConvert.DeserializeObject<LegacyWorkerLinkRequest>(json));
+        JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
+
+        Assert.Equal("worker-pod", request.WorkerPodName);
+        Assert.Equal("http://worker-pod:50053", request.WorkerGrpcEndpoint);
+        Assert.Equal("reserved-test-value", request.RuntimeAccessKey);
+        Assert.Equal(new[] { "RuntimeAccessKey", "WorkerGrpcEndpoint", "WorkerPodName" },
+            body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 
     [Fact]

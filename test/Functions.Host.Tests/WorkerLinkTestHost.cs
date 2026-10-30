@@ -86,10 +86,16 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         }
     }
 
-    internal async Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken,
+    internal Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken,
         string workerId = "worker-pod-abc123")
+        => SendPutAsync($"/admin/workers/{workerId}", json, cancellationToken);
+
+    internal Task<HttpResponseMessage> PutLegacyAsync(string? json, CancellationToken cancellationToken)
+        => SendPutAsync("/admin/workers", json, cancellationToken);
+
+    private async Task<HttpResponseMessage> SendPutAsync(string path, string? json, CancellationToken cancellationToken)
     {
-        using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerId}");
+        using HttpRequestMessage request = new(HttpMethod.Put, path);
         request.Content = new StringContent(json ?? string.Empty, Encoding.UTF8, "application/json");
 
         return await Client.SendAsync(request, cancellationToken);
