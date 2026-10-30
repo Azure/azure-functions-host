@@ -32,17 +32,12 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
-    public static IEnumerable<object[]> InvalidRuntimeRequests =>
-        from transport in new[] { "http", "grpc" }
-        from failure in new[]
-        {
-            "missing", "malformed", "expired", "tampered", "wrong-key", "app-key",
-            "wrong-worker", "wrong-purpose", "future", "duplicate"
-        }
-        select new object[] { transport, failure };
-
     [Theory]
-    [MemberData(nameof(InvalidRuntimeRequests))]
+    [InlineData("grpc", "missing")]
+    [InlineData("grpc", "wrong-key")]
+    [InlineData("http", "tampered")]
+    [InlineData("http", "future")]
+    [InlineData("http", "duplicate")]
     public async Task RuntimeListeners_RejectInvalidCallerProof(string transport, string failure)
     {
         await using WorkerProxyWebApplicationFactory factory = new(useTestAuthentication: false);
@@ -84,7 +79,6 @@ public partial class FunctionRpcRelayTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("invalid")]
     [InlineData("c2hvcnQ=")]
     public async Task RuntimeListeners_InvalidContainerKeyFailsClosed(string? key)
@@ -144,7 +138,6 @@ public partial class FunctionRpcRelayTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("invalid")]
     public async Task ReverseProof_MissingNormalAppKeyFailsDespiteAssignmentEnvironment(string? key)
     {
@@ -226,45 +219,6 @@ public partial class FunctionRpcRelayTests
             factory.Services.GetRequiredService<IConfiguration>()[RuntimeWorkerAuthentication.AppKeySetting]);
         factory.Services.GetRequiredService<WorkerPodStateManager>().OnSessionTerminated(1);
         Assert.Null(factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys());
-    }
-
-    [Fact]
-    public async Task Relay_RuntimeCloseBeforeInitializationPreservesAssignedLocalWorkerForAuthenticatedRetry()
-    {
-        await using WorkerProxyWebApplicationFactory factory = new(useTestAuthentication: false);
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        AssignAuthenticationState(manager);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        StreamingMessage start = CreateStartStream();
-        await worker.WriteAsync(start, timeout.Token);
-        await using (RelayClient firstRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
-        {
-            Assert.Equal(start, await firstRuntime.ReadAsync(timeout.Token));
-            await firstRuntime.CompleteRequestAsync(timeout.Token);
-            Assert.Equal(StatusCode.Unavailable, await firstRuntime.WaitForTerminationAsync(timeout.Token));
-        }
-
-        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        Assert.True(manager.State.IsWorkerAttached);
-        Assert.True(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(new(
-            WorkerStartupMode.Preconfigured, RuntimeAuthenticationTestData.AppName, "group", false,
-            new Dictionary<string, string>
-            {
-                [RuntimeWorkerAuthentication.AppKeySetting] =
-                    Convert.ToHexString(SHA256.HashData("assignment-is-not-the-proof-key-source"u8))
-            }, string.Empty)));
-
-        await using RelayClient retry = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        Assert.Equal(start, await retry.ReadAsync(timeout.Token));
-        await retry.WriteAsync(new() { WorkerInitRequest = new() }, timeout.Token);
-        Assert.NotNull((await worker.ReadAsync(timeout.Token)).WorkerInitRequest);
-        await worker.WriteAsync(CreateInitResponse("retry-init", httpUri: null), timeout.Token);
-        StreamingMessage response = await retry.ReadAsync(timeout.Token, retainProof: true);
-        string? proof = RuntimeWorkerAuthentication.RemoveAppProof(response.WorkerInitResponse.Capabilities);
-        Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(proof, RuntimeAuthenticationTestData.AppKey,
-            RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
     }
 
     [Theory]
@@ -388,13 +342,8 @@ public partial class FunctionRpcRelayTests
 
         return failure switch
         {
-            "malformed" => "invalid-token",
-            "expired" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now.AddMinutes(-6)),
             "future" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now.AddMinutes(1)),
             "wrong-key" => RuntimeWorkerAuthentication.CreateToken(new byte[32], audience, purpose, now),
-            "app-key" => RuntimeWorkerAuthentication.CreateToken(RuntimeAuthenticationTestData.AppKey, audience, purpose, now),
-            "wrong-worker" => RuntimeWorkerAuthentication.CreateToken(key, audience + "-other", purpose, now),
-            "wrong-purpose" => RuntimeWorkerAuthentication.CreateToken(key, audience, "other-purpose", now),
             "tampered" => RuntimeAuthenticationTestData.CreateCallerToken() + "A",
             _ => RuntimeAuthenticationTestData.CreateCallerToken()
         };

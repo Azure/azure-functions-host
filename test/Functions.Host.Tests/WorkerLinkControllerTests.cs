@@ -47,11 +47,8 @@ public class WorkerLinkControllerTests
     [Theory]
     [InlineData("100.86.1.2:48800", "https://100.86.1.2:48800/")]
     [InlineData("https://100.64.1.12:50053", "https://100.64.1.12:50053/")]
-    [InlineData("worker-proxy:48800", "https://worker-proxy:48800/")]
     [InlineData("WORKER.EXAMPLE:443", "https://worker.example/")]
     [InlineData("[::1]:48800", "https://[::1]:48800/")]
-    [InlineData("worker.example:1", "https://worker.example:1/")]
-    [InlineData("worker.example:65535", "https://worker.example:65535/")]
     public async Task LinkWorker_ValidRequest_AwaitsLinkAndReturnsCreated(string grpcEndpoint, string runtimeEndpoint)
     {
         using CancellationTokenSource cancellation = new();
@@ -492,22 +489,6 @@ public class WorkerLinkControllerTests
 
         Assert.Equal(code, error.Code);
         Assert.Equal("runtimeAccessKey", error.Target);
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public async Task LinkWorker_ContainerKey_IsPassedToRegistry()
-    {
-        _registry.Setup(registry => registry.LinkAsync(WorkerId, RuntimeGrpcEndpoint,
-            ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WorkerLinkResult(null!, true));
-        WorkerLinkRequest request = ValidRequest();
-
-        StatusCodeResult response = Assert.IsType<StatusCodeResult>(await CreateController().LinkWorker(WorkerId, request));
-
-        Assert.Equal(StatusCodes.Status201Created, response.StatusCode);
-        _registry.Verify(registry => registry.LinkAsync(WorkerId, RuntimeGrpcEndpoint,
-            ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 

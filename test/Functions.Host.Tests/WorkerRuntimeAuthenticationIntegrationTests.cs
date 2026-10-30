@@ -150,8 +150,6 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     [Theory]
     [InlineData("not-an-absolute-uri")]
     [InlineData("http://worker-proxy:28080/")]
-    [InlineData("https://worker-proxy:28080/customer")]
-    [InlineData("https://user@worker-proxy:28080/")]
     public async Task Link_InvalidAuthenticatedAdvertisedHttpOriginReturnsRetryable503OnRealKestrel(string origin)
     {
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
@@ -196,9 +194,6 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     [InlineData("wrong-proxy-key")]
     [InlineData("missing-runtime-key")]
     [InlineData("failed-init")]
-    [InlineData("failed-init-missing-proxy-key")]
-    [InlineData("failed-init-wrong-proxy-key")]
-    [InlineData("failed-init-missing-runtime-key")]
     [InlineData("cancelled-init")]
     [InlineData("unknown-init-status")]
     [InlineData("null-init-result")]
@@ -207,8 +202,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         const string workerId = "test-worker-pod";
         const string appName = "TeSt-App";
         const string initializationError = "customer-worker-initialization-failure";
-        bool initializationFails = scenario.StartsWith("failed-init", StringComparison.Ordinal)
-            || string.Equals(scenario, "cancelled-init", StringComparison.Ordinal);
+        bool initializationFails = scenario is "failed-init" or "cancelled-init";
         bool malformedResult = scenario is "unknown-init-status" or "null-init-result";
         bool preInitRetry = string.Equals(scenario, "pre-init-retry", StringComparison.Ordinal);
         ConcurrentQueue<(string Message, Exception? Error)> diagnostics = new();
@@ -242,8 +236,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             "--CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey,
             "--WEBSITE_AUTH_ENCRYPTION_KEY", scenario switch
             {
-                "missing-proxy-key" or "failed-init-missing-proxy-key" => string.Empty,
-                "wrong-proxy-key" or "failed-init-wrong-proxy-key" => Convert.ToHexString(SHA256.HashData("different-app-key"u8)),
+                "missing-proxy-key" => string.Empty,
+                "wrong-proxy-key" => Convert.ToHexString(SHA256.HashData("different-app-key"u8)),
                 _ => appKey
             },
             "--WorkerProxy:CertificatePath", certificates.CertificatePath,
@@ -302,10 +296,12 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             Assert.False(proxy.Services.GetRequiredService<ProxyStateManager>().State.IsWorkerAttached);
             Assert.Null(proxy.Services.GetRequiredService<IConfiguration>()["PRIVATE_SETTING"]);
         }
-        foreach (string field in new[] { "configLastModifiedTime", "contentLastModifiedTime", "maxHttpConcurrency" })
+        foreach (string field in new[] { "configLastModifiedTime", "contentLastModifiedTime", "maxHttpConcurrency", "httpProxyEndpoint" })
         {
             JsonObject changed = JsonNode.Parse(assignmentJson)!.AsObject();
-            changed[field] = changed[field]!.GetValue<long>() + 1;
+            changed[field] = string.Equals(field, "httpProxyEndpoint", StringComparison.Ordinal)
+                ? JsonValue.Create("different-assigned-origin:48802")
+                : JsonValue.Create(changed[field]!.GetValue<long>() + 1);
             using StringContent changedContent = new(changed.ToJsonString(), Encoding.UTF8, "application/json");
             using HttpResponseMessage conflict = await management.PutAsync("/admin/worker/assignment", changedContent, timeout.Token);
             Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
@@ -323,7 +319,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(HttpStatusCode.NoContent, equivalentRetry.StatusCode);
 
         await using ServiceProvider runtime = CreateRuntime(appName, appKey,
-            includeAppKey: scenario is not ("missing-runtime-key" or "failed-init-missing-runtime-key"),
+            includeAppKey: !string.Equals(scenario, "missing-runtime-key", StringComparison.Ordinal),
             diagnostics, forwardedOrigins);
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(

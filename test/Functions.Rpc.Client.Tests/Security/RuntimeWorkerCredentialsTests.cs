@@ -80,6 +80,10 @@ public class RuntimeWorkerCredentialsTests
         WorkerLinkException error = Assert.Throws<WorkerLinkException>(() => credentials.ValidateAppProof(RuntimeWorkerTestData.CreateAppProof("worker")));
         Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, error.Reason);
         Assert.DoesNotContain(RuntimeWorkerTestData.AppKey, error.Message, StringComparison.Ordinal);
+
+        configuration[setting] = string.Equals(setting, RuntimeWorkerAuthentication.AppNameSetting, StringComparison.Ordinal)
+            ? "test-app" : RuntimeWorkerTestData.AppKey;
+        credentials.ValidateAppProof(RuntimeWorkerTestData.CreateAppProof("worker"));
     }
 
     [Theory]

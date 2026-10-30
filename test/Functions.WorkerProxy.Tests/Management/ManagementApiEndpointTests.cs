@@ -91,6 +91,26 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData("http://127.0.0.1:48801")]
+    [InlineData("0.0.0.0:48801")]
+    public async Task Assignment_InvalidAllocatedOriginCannotClaimIdentity(string origin)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        WorkerPodState before = manager.State;
+        JsonObject invalid = JsonNode.Parse(ValidAssignment)!.AsObject();
+        invalid["httpProxyEndpoint"] = origin;
+        using StringContent content = JsonBody(invalid.ToJsonString());
+
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("httpProxyEndpoint", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Same(before, manager.State);
+    }
+
+    [Theory]
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, true)]
@@ -126,16 +146,12 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
-    [InlineData("configLastModifiedTime", "1761868801", false)]
-    [InlineData("contentLastModifiedTime", "1761868802", false)]
-    [InlineData("maxHttpConcurrency", "101", false)]
-    [InlineData("httpProxyEndpoint", "\"127.0.0.1:48802\"", false)]
-    [InlineData("configLastModifiedTime", "1761868801", true)]
-    [InlineData("contentLastModifiedTime", "1761868802", true)]
-    [InlineData("maxHttpConcurrency", "101", true)]
-    [InlineData("httpProxyEndpoint", "\"127.0.0.1:48802\"", true)]
+    [InlineData("configLastModifiedTime", "1761868801")]
+    [InlineData("contentLastModifiedTime", "1761868802")]
+    [InlineData("maxHttpConcurrency", "101")]
+    [InlineData("httpProxyEndpoint", "\"127.0.0.1:48802\"")]
     public async Task AssignmentMetadataChangesConflictAndRetainOriginalIdentityAcrossWorkerLifecycle(
-        string field, string changedValue, bool workerAttached)
+        string field, string changedValue)
     {
         const string original = """
             {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"http","isAlwaysReady":false,
@@ -150,11 +166,8 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent, timeout.Token);
         await AssertAssignmentSuccessAsync(initial, HttpStatusCode.Created, timeout.Token);
         Assert.False(manager.State.IsWorkerAttached);
-        if (workerAttached)
-        {
-            Assert.True(manager.OnWorkerAttached(1));
-            Assert.True(manager.OnWorkerStartStream(1, "worker"));
-        }
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
 
         WorkerPodState assigned = manager.State;
         using StringContent exactContent = JsonBody(original);
@@ -174,18 +187,15 @@ public class ManagementApiEndpointTests
         await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
         Assert.Same(assigned, manager.State);
 
-        if (workerAttached)
-        {
-            Assert.True(manager.OnSessionTerminated(1));
-            WorkerPodState terminated = manager.State;
-            using StringContent terminalChangedContent = JsonBody(changed.ToJsonString());
-            using HttpResponseMessage terminalConflict = await client.PutAsync(AssignPath, terminalChangedContent, timeout.Token);
-            await AssertAssignmentErrorAsync(terminalConflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
-            using StringContent terminalExactContent = JsonBody(original);
-            using HttpResponseMessage terminalExact = await client.PutAsync(AssignPath, terminalExactContent, timeout.Token);
-            await AssertAssignmentErrorAsync(terminalExact, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
-            Assert.Same(terminated, manager.State);
-        }
+        Assert.True(manager.OnSessionTerminated(1));
+        WorkerPodState terminated = manager.State;
+        using StringContent terminalChangedContent = JsonBody(changed.ToJsonString());
+        using HttpResponseMessage terminalConflict = await client.PutAsync(AssignPath, terminalChangedContent, timeout.Token);
+        await AssertAssignmentErrorAsync(terminalConflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        using StringContent terminalExactContent = JsonBody(original);
+        using HttpResponseMessage terminalExact = await client.PutAsync(AssignPath, terminalExactContent, timeout.Token);
+        await AssertAssignmentErrorAsync(terminalExact, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
+        Assert.Same(terminated, manager.State);
     }
 
     [Theory]

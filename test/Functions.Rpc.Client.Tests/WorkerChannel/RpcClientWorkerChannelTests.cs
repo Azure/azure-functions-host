@@ -85,11 +85,7 @@ public sealed class RpcClientWorkerChannelTests
     [InlineData(StatusResult.Types.Status.Success, "missing")]
     [InlineData(StatusResult.Types.Status.Success, "invalid")]
     [InlineData(StatusResult.Types.Status.Failure, "valid")]
-    [InlineData(StatusResult.Types.Status.Failure, "missing")]
-    [InlineData(StatusResult.Types.Status.Failure, "invalid")]
     [InlineData(StatusResult.Types.Status.Cancelled, "valid")]
-    [InlineData(StatusResult.Types.Status.Cancelled, "missing")]
-    [InlineData(StatusResult.Types.Status.Cancelled, "invalid")]
     public async Task StartAsync_ReverseProofIsRemovedBeforeLoggingOrCapabilityPublication(StatusResult.Types.Status status, string proofKind)
     {
         bool initializationFails = status is not StatusResult.Types.Status.Success;

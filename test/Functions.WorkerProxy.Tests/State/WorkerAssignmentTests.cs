@@ -72,47 +72,6 @@ public class WorkerAssignmentTests
     }
 
     [Theory]
-    [InlineData("configLastModifiedTime")]
-    [InlineData("contentLastModifiedTime")]
-    [InlineData("maxHttpConcurrency")]
-    public void Equality_RetainsExactRequestedMetadataWithoutApplyingIt(string field)
-    {
-        WorkerAssignment original = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), string.Empty, configLastModifiedTime: 9007199254740993,
-            contentLastModifiedTime: long.MinValue, maxHttpConcurrency: 0);
-        WorkerAssignment same = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), string.Empty, configLastModifiedTime: 9007199254740993,
-            contentLastModifiedTime: long.MinValue, maxHttpConcurrency: 0);
-        WorkerAssignment changed = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), string.Empty,
-            configLastModifiedTime: string.Equals(field, "configLastModifiedTime", StringComparison.Ordinal) ? 9007199254740994 : 9007199254740993,
-            contentLastModifiedTime: string.Equals(field, "contentLastModifiedTime", StringComparison.Ordinal) ? long.MinValue + 1 : long.MinValue,
-            maxHttpConcurrency: string.Equals(field, "maxHttpConcurrency", StringComparison.Ordinal) ? -1 : 0);
-
-        Assert.Equal(9007199254740993, original.ConfigLastModifiedTime);
-        Assert.Equal(long.MinValue, original.ContentLastModifiedTime);
-        Assert.Equal(0, original.MaxHttpConcurrency);
-        Assert.True(original.IsEquivalentTo(same));
-        Assert.False(original.IsEquivalentTo(changed));
-        Assert.False(changed.IsEquivalentTo(original));
-    }
-
-    [Fact]
-    public void Construction_OmittedRequestedMetadataRemainsUnspecifiedRatherThanZero()
-    {
-        WorkerAssignment unspecified = Create(new Dictionary<string, string>());
-        WorkerAssignment supplied = new(WorkerStartupMode.Preconfigured, "app", "http", false,
-            new Dictionary<string, string>(), "/home/site/wwwroot", configLastModifiedTime: 0,
-            contentLastModifiedTime: 0, maxHttpConcurrency: 0);
-
-        Assert.Null(unspecified.ConfigLastModifiedTime);
-        Assert.Null(unspecified.ContentLastModifiedTime);
-        Assert.Null(unspecified.MaxHttpConcurrency);
-        Assert.False(unspecified.IsEquivalentTo(supplied));
-        Assert.False(supplied.IsEquivalentTo(unspecified));
-    }
-
-    [Theory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]

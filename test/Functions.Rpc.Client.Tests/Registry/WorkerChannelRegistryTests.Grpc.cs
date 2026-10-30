@@ -4,13 +4,18 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -367,6 +372,61 @@ public sealed partial class WorkerChannelRegistryTests
             "caller-token" => RuntimeWorkerTestData.CreateCredentials(GrpcWorkerId).CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader],
             _ => RuntimeWorkerTestData.CreateAppProof(GrpcWorkerId)
         };
+    }
+
+    [Theory]
+    [InlineData(null, null, 75)]
+    [InlineData("00:02:30", "00:00:20", 175)]
+    public async Task LinkBudgetAndChannelTimeouts_UseTheSameConfiguredWorkerOptions(
+        string? startup, string? initialization, int totalSeconds)
+    {
+        ServiceCollection services = new();
+        Dictionary<string, string?> values = new();
+        if (startup is not null)
+        {
+            values["RpcClient:Worker:ProcessStartupTimeout"] = startup;
+            values["RpcClient:Worker:InitializationTimeout"] = initialization;
+        }
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+        services.AddRpcClientServices();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IOptionsMonitor<WorkerProcessCountOptions> options = provider.GetRequiredService<IOptionsMonitor<WorkerProcessCountOptions>>();
+        WorkerProcessCountOptions expected = options.Get(RpcClientWorkerChannelFactory.WorkerOptionsName);
+        await using WorkerChannelRegistry registry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
+            Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options);
+        await using RpcClientWorkerChannel channel = CreateRealChannelFactory(processOptions: options)
+            .Create("worker", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("worker"));
+
+        Assert.Equal(TimeSpan.FromSeconds(totalSeconds), registry.LinkTimeout);
+        Assert.Equal(expected.ProcessStartupTimeout, channel.WorkerConfig.CountOptions.ProcessStartupTimeout);
+        Assert.Equal(expected.InitializationTimeout, channel.WorkerConfig.CountOptions.InitializationTimeout);
+        Assert.Equal(new WorkerProcessCountOptions().EnvironmentReloadTimeout, channel.WorkerConfig.CountOptions.EnvironmentReloadTimeout);
+        Assert.Equal(RpcClientFactory.DefaultConnectTimeout + channel.WorkerConfig.CountOptions.ProcessStartupTimeout
+            + channel.WorkerConfig.CountOptions.InitializationTimeout, registry.LinkTimeout);
+        await using WorkerChannelRegistry identityRegistry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
+            Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options,
+            Options.Create(new TokenServiceProxyOptions { Enabled = true }));
+        Assert.Equal(TimeSpan.FromMinutes(2), identityRegistry.LinkTimeout);
+    }
+
+    [Theory]
+    [InlineData("ProcessStartupTimeout", "00:00:00")]
+    [InlineData("InitializationTimeout", "-00:00:01")]
+    [InlineData("ProcessStartupTimeout", "100.00:00:00")]
+    public void WorkerOptions_RejectUnboundedOrNonpositiveTimeouts(string setting, string value)
+    {
+        ServiceCollection services = new();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [$"RpcClient:Worker:{setting}"] = value
+        }).Build());
+        services.AddRpcClientServices();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.Throws<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptionsMonitor<WorkerProcessCountOptions>>().Get(RpcClientWorkerChannelFactory.WorkerOptionsName));
     }
 
     private static WorkerChannelRegistry CreateGrpcRegistry(RpcClientFactory clientFactory, TimeSpan? linkTimeout = null)

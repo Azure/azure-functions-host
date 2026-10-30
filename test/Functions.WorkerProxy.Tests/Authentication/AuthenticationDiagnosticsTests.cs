@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.Tests;
@@ -41,6 +42,16 @@ public class AuthenticationDiagnosticsTests
             && entry.Message.Contains(reason, StringComparison.Ordinal));
         capture.AssertNoCredentials();
         Assert.DoesNotContain("invalid-private-key", capture.Text, StringComparison.Ordinal);
+        if (string.Equals(setting, RuntimeWorkerAuthentication.AppKeySetting, StringComparison.Ordinal))
+        {
+            using HttpClient client = factory.CreateWorkerProxyClient();
+            using StringContent assignment = new(
+                """{"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,"environment":{},"functionAppDirectory":""}""",
+                Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", assignment);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            Assert.False(factory.Services.GetRequiredService<WorkerPodStateManager>().State.IsWorkerAttached);
+        }
     }
 
     [Fact]
@@ -65,6 +76,9 @@ public class AuthenticationDiagnosticsTests
     [Theory]
     [InlineData("malformed", "MalformedToken")]
     [InlineData("wrong-key", "Signature")]
+    [InlineData("runtime-key", "Signature")]
+    [InlineData("caller-token", "Issuer")]
+    [InlineData("wrong-algorithm", "Algorithm")]
     [InlineData("wrong-issuer", "Issuer")]
     [InlineData("wrong-pod", "Audience")]
     [InlineData("expired", "Lifetime")]
@@ -78,6 +92,10 @@ public class AuthenticationDiagnosticsTests
         {
             "malformed" => "private-malformed-token",
             "wrong-key" => ManagementTokenTestData.Create(RuntimeAuthenticationTestData.EncodedAppKey, RuntimeAuthenticationTestData.WorkerId),
+            "runtime-key" => ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, RuntimeAuthenticationTestData.WorkerId),
+            "caller-token" => RuntimeAuthenticationTestData.CreateCallerToken(),
+            "wrong-algorithm" => ManagementTokenTestData.Create(RuntimeAuthenticationTestData.EncodedWorkerKey, RuntimeAuthenticationTestData.WorkerId,
+                algorithm: "HS512"),
             "wrong-issuer" => ManagementTokenTestData.Create(RuntimeAuthenticationTestData.EncodedWorkerKey, RuntimeAuthenticationTestData.WorkerId,
                 issuer: "https://private-customer-issuer"),
             "wrong-pod" => ManagementTokenTestData.Create(RuntimeAuthenticationTestData.EncodedWorkerKey, "private-customer-pod"),
@@ -88,9 +106,14 @@ public class AuthenticationDiagnosticsTests
         client.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
             string.Equals(scenario, "duplicate", StringComparison.Ordinal) ? [token, token] : [token]);
 
-        using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", content: null);
+        using StringContent assignment = new(
+            """{"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,"environment":{},"functionAppDirectory":""}""",
+            Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", assignment);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
+        Assert.Equal(WorkerAssignmentState.Unassigned, factory.Services.GetRequiredService<WorkerPodStateManager>().State.AssignmentState);
         Assert.Empty(await response.Content.ReadAsStringAsync());
         Assert.Contains(capture.Entries, entry => entry.Level is LogLevel.Warning
             && entry.Message.Contains($"authentication failed: {reason}", StringComparison.Ordinal));
