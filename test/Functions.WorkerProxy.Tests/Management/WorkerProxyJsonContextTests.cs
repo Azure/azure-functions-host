@@ -22,6 +22,7 @@ public class WorkerProxyJsonContextTests
             StartupMode = startupMode,
             FunctionAppName = "app",
             FunctionGroupName = "group",
+            MaxHttpConcurrency = 10,
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
@@ -30,9 +31,10 @@ public class WorkerProxyJsonContextTests
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment");
+        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "maxHttpConcurrency", "functionAppDirectory", "isAlwaysReady", "environment");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(10, root.GetProperty("maxHttpConcurrency").GetInt32());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
         Assert.Equal("private-value", root.GetProperty("environment").GetProperty("SECRET").GetString());
 
@@ -41,6 +43,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.StartupMode, copy.StartupMode);
         Assert.Equal(request.FunctionAppName, copy.FunctionAppName);
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
+        Assert.Equal(request.MaxHttpConcurrency, copy.MaxHttpConcurrency);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
@@ -103,6 +106,11 @@ public class WorkerProxyJsonContextTests
     [InlineData("""{"isAlwaysReady":0}""")]
     [InlineData("""{"functionAppName":123}""")]
     [InlineData("""{"functionGroupName":[]}""")]
+    [InlineData("""{"maxHttpConcurrency":null}""")]
+    [InlineData("""{"maxHttpConcurrency":"10"}""")]
+    [InlineData("""{"maxHttpConcurrency":1.5}""")]
+    [InlineData("""{"maxHttpConcurrency":true}""")]
+    [InlineData("""{"maxHttpConcurrency":{}}""")]
     [InlineData("""{"functionAppDirectory":{}}""")]
     [InlineData("""{"environment":[]}""")]
     [InlineData("""{"environment":{"SETTING":123}}""")]

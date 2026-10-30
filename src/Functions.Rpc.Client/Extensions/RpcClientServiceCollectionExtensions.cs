@@ -51,7 +51,7 @@ public static class RpcClientServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds the Client worker graph, worker-backed Host metadata, and first-link ScriptHost activation.
+    /// Adds the Client worker graph, worker-backed Host metadata, registry-based runtime capacity, and first-link ScriptHost activation.
     /// </summary>
     /// <param name="services">The root service collection to update.</param>
     /// <param name="scriptHostFactory">Resolves the root-owned ScriptHost service whose activation is deferred.</param>
@@ -68,6 +68,10 @@ public static class RpcClientServiceCollectionExtensions
 
         services.AddRpcClientServices();
         services.Replace(ServiceDescriptor.Singleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>());
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<RuntimeStateManager>();
+        services.AddSingleton<IRuntimeStateManager>(provider => provider.GetRequiredService<RuntimeStateManager>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RuntimeStateManager>());
         services.AddSingleton(provider => new RpcClientScriptHostStartupCoordinator(
             provider.GetRequiredService<IWorkerChannelRegistry>(),
             scriptHostFactory(provider),
