@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -39,7 +40,7 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
-            HttpProxyEndpoint = "http://worker-pod:28080",
+            HttpProxyEndpoint = "https://worker-pod:28080",
             WorkerHttpEndpoint = " https://override:1234/prefix/ "
         });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
@@ -47,7 +48,7 @@ public class WorkerHttpCapabilityProviderTests
         Uri? destination = provider.FinalizeCapabilities(capabilities);
 
         Assert.Equal(new Uri("https://override:1234/prefix/"), destination);
-        Assert.Equal("http://worker-pod:28080/", capabilities["HttpUri"]);
+        Assert.Equal("https://worker-pod:28080/", capabilities["HttpUri"]);
     }
 
     [Theory]
@@ -58,7 +59,7 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
-            HttpProxyEndpoint = "http://worker-pod:28080",
+            HttpProxyEndpoint = "https://worker-pod:28080",
             WorkerHttpEndpoint = "http://override:1234"
         });
         Dictionary<string, string> capabilities = new() { ["WorkerIndexing"] = "true" };
@@ -82,7 +83,7 @@ public class WorkerHttpCapabilityProviderTests
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
-            HttpProxyEndpoint = "http://worker-pod:28080",
+            HttpProxyEndpoint = "https://worker-pod:28080",
             WorkerHttpEndpoint = endpoint
         });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
@@ -103,7 +104,7 @@ public class WorkerHttpCapabilityProviderTests
     [InlineData("http://localhost:1234/worker#fragment")]
     public void FinalizeCapabilities_InvalidHttpCapability_FailsInsteadOfChangingInvocationTransport(string advertisedEndpoint)
     {
-        WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = "http://worker-pod:28080" });
+        WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = "https://worker-pod:28080" });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = advertisedEndpoint };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities));
@@ -116,19 +117,38 @@ public class WorkerHttpCapabilityProviderTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void FinalizeCapabilities_MissingProxyEndpoint_FailsInsteadOfAdvertisingWorkerLoopback(string? proxyEndpoint)
+    public void FinalizeCapabilities_MissingProxyEndpoint_RejectsLocalDestinationFallback(string? proxyEndpoint)
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = proxyEndpoint });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities));
-
-        Assert.Contains(nameof(WorkerProxyOptions.HttpProxyEndpoint), exception.Message);
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => provider.FinalizeCapabilities(capabilities));
+        Assert.Contains(nameof(WorkerProxyOptions.HttpProxyEndpoint), error.Message);
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
+    }
+
+    [Fact]
+    public void FinalizeCapabilities_UsesAcceptedMappedOriginForInitializationAndReloadInsteadOfStaticOrCustomerOrigin()
+    {
+        WorkerPodStateManager manager = new(
+            Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }), TimeProvider.System);
+        manager.Assign(new(WorkerStartupMode.Preconfigured, "test-app", "group", false, new Dictionary<string, string>(), string.Empty,
+            new Uri("https://127.0.0.1:48801/")));
+        WorkerHttpCapabilityProvider provider = new(
+            Options.Create(new WorkerProxyOptions { HttpProxyEndpoint = "https://old-config:28080/" }),
+            NullLogger<WorkerHttpCapabilityProvider>.Instance, manager);
+        Dictionary<string, string> first = new() { ["HttpUri"] = "http://localhost:1234/customer/" };
+        Dictionary<string, string> reload = new() { ["HttpUri"] = "http://localhost:5678/changed/" };
+
+        Assert.Equal(new Uri("http://localhost:1234/customer/"), provider.FinalizeCapabilities(first));
+        Assert.Equal(new Uri("http://localhost:5678/changed/"), provider.FinalizeCapabilities(reload));
+        Assert.Equal("https://127.0.0.1:48801/", first["HttpUri"]);
+        Assert.Equal("https://127.0.0.1:48801/", reload["HttpUri"]);
     }
 
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance,
+            new WorkerPodStateManager(Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }), TimeProvider.System));
     }
 }

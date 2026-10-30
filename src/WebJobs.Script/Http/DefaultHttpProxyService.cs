@@ -25,15 +25,19 @@ namespace Microsoft.Azure.WebJobs.Script.Http
         private readonly HttpTransformer _httpTransformer = ScriptInvocationRequestTransformer.Instance;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger)
+            : this(httpForwarder, logger, new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false })
+        {
+        }
+
+        internal DefaultHttpProxyService(
+            IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger, SocketsHttpHandler handler)
         {
             _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _handler = new SocketsHttpHandler
-            {
-                AllowAutoRedirect = false,
-                UseCookies = false
-            };
+            _handler = handler ?? throw new ArgumentNullException(nameof(handler));
+            _handler.AllowAutoRedirect = false;
+            _handler.UseCookies = false;
 
             _messageInvoker = new HttpMessageInvoker(new RetryProxyHandler(_handler, logger));
 

@@ -4,11 +4,18 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -139,7 +146,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_GrpcInvalidHttpUri_FailsInitializationAndAllowsRetry()
+    public async Task LinkAsync_GrpcInvalidNegotiatedHttpOrigin_FailsInitializationAndAllowsRetry()
     {
         using var timeout = new CancellationTokenSource(GrpcTestTimeout);
         await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
@@ -147,12 +154,14 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        await Assert.ThrowsAsync<UriFormatException>(() => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
+        WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
 
         Assert.Empty(registry.GetInitializedChannels());
         await worker.Disconnected.WaitAsync(timeout.Token);
-        server.AddWorker(GrpcWorkerId, httpUri: "http://worker-proxy:28080");
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        server.AddWorker(GrpcWorkerId, httpUri: "https://worker-proxy:28080");
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(2, server.StreamCount);
@@ -273,6 +282,153 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(2, server.StreamCount);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkAsync_DifferentCredentialOrGrpcOriginConflictsWithoutReinitialization(bool changeKey)
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Uri grpcEndpoint = CreateEndpoint("worker");
+        string differentKey = Convert.ToBase64String(SHA256.HashData("different-worker-key"u8));
+        Task<WorkerLinkResult> first = registry.LinkAsync("worker", grpcEndpoint, RuntimeWorkerTestData.WorkerKey);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        foreach (bool ready in new[] { false, true })
+        {
+            if (ready)
+            {
+                channel.AllowStart();
+                await first.WaitAsync(TestTimeout);
+            }
+
+            WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(() =>
+                registry.LinkAsync("worker", changeKey ? grpcEndpoint : new Uri("https://different-proxy:48802"),
+                    changeKey ? differentKey : RuntimeWorkerTestData.WorkerKey));
+            Assert.Equal(WorkerLinkFailureReason.Conflict, failure.Reason);
+            Assert.DoesNotContain(differentKey, failure.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(RuntimeWorkerTestData.WorkerKey, failure.Message, StringComparison.Ordinal);
+        }
+
+        Assert.Single(harness.Transports);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("empty")]
+    [InlineData("malformed")]
+    [InlineData("tampered")]
+    [InlineData("expired")]
+    [InlineData("future")]
+    [InlineData("wrong-key")]
+    [InlineData("wrong-app")]
+    [InlineData("wrong-worker")]
+    [InlineData("worker-case")]
+    [InlineData("missing-worker")]
+    [InlineData("wrong-purpose")]
+    [InlineData("caller-token")]
+    public async Task LinkAsync_InvalidReverseProofNeverPublishesAndCleansTransport(string failure)
+    {
+        using CancellationTokenSource timeout = new(GrpcTestTimeout);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(GrpcWorkerId);
+        await using RpcClientFactory clients = new(NullLogger<RpcClientFactory>.Instance);
+        await using WorkerChannelRegistry registry = CreateGrpcRegistry(clients);
+        Task<WorkerLinkResult> link = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        await worker.InitializationStarted.WaitAsync(timeout.Token);
+        worker.CompleteInitialization(appProof: InvalidAppProof(failure),
+            includeProof: !string.Equals(failure, "missing", StringComparison.Ordinal));
+
+        WorkerLinkException error = await Assert.ThrowsAsync<WorkerLinkException>(() => link.WaitAsync(timeout.Token));
+
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, error.Reason);
+        Assert.Empty(registry.GetInitializedChannels());
+        await worker.Disconnected.WaitAsync(timeout.Token);
+        Assert.DoesNotContain(RuntimeWorkerTestData.AppKey, error.Message, StringComparison.Ordinal);
+    }
+
+    private static string InvalidAppProof(string failure)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        byte[] key = Convert.FromHexString(RuntimeWorkerTestData.AppKey);
+        string audience = RuntimeWorkerAuthentication.AppAudience("test-app");
+        string purpose = RuntimeWorkerAuthentication.AppPurpose;
+
+        return failure switch
+        {
+            "empty" => string.Empty,
+            "malformed" => "invalid-proof",
+            "tampered" => RuntimeWorkerTestData.CreateAppProof(GrpcWorkerId) + "A",
+            "expired" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now.AddMinutes(-6), GrpcWorkerId),
+            "future" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now.AddMinutes(1), GrpcWorkerId),
+            "wrong-key" => RuntimeWorkerAuthentication.CreateToken(new byte[32], audience, purpose, now, GrpcWorkerId),
+            "wrong-app" => RuntimeWorkerAuthentication.CreateToken(key, audience + "-other-app", purpose, now, GrpcWorkerId),
+            "wrong-worker" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now, "different-worker"),
+            "worker-case" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now, GrpcWorkerId.ToUpperInvariant()),
+            "missing-worker" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now),
+            "wrong-purpose" => RuntimeWorkerAuthentication.CreateToken(key, audience, "wrong-purpose", now, GrpcWorkerId),
+            "caller-token" => RuntimeWorkerTestData.CreateCredentials(GrpcWorkerId).CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader],
+            _ => RuntimeWorkerTestData.CreateAppProof(GrpcWorkerId)
+        };
+    }
+
+    [Theory]
+    [InlineData(null, null, 75)]
+    [InlineData("00:02:30", "00:00:20", 175)]
+    public async Task LinkBudgetAndChannelTimeouts_UseTheSameConfiguredWorkerOptions(
+        string? startup, string? initialization, int totalSeconds)
+    {
+        ServiceCollection services = new();
+        Dictionary<string, string?> values = new();
+        if (startup is not null)
+        {
+            values["RpcClient:Worker:ProcessStartupTimeout"] = startup;
+            values["RpcClient:Worker:InitializationTimeout"] = initialization;
+        }
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+        services.AddRpcClientServices();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IOptionsMonitor<WorkerProcessCountOptions> options = provider.GetRequiredService<IOptionsMonitor<WorkerProcessCountOptions>>();
+        WorkerProcessCountOptions expected = options.Get(RpcClientWorkerChannelFactory.WorkerOptionsName);
+        await using WorkerChannelRegistry registry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
+            Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options);
+        await using RpcClientWorkerChannel channel = CreateRealChannelFactory(processOptions: options)
+            .Create("worker", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("worker"));
+
+        Assert.Equal(TimeSpan.FromSeconds(totalSeconds), registry.LinkTimeout);
+        Assert.Equal(expected.ProcessStartupTimeout, channel.WorkerConfig.CountOptions.ProcessStartupTimeout);
+        Assert.Equal(expected.InitializationTimeout, channel.WorkerConfig.CountOptions.InitializationTimeout);
+        Assert.Equal(new WorkerProcessCountOptions().EnvironmentReloadTimeout, channel.WorkerConfig.CountOptions.EnvironmentReloadTimeout);
+        Assert.Equal(RpcClientFactory.DefaultConnectTimeout + channel.WorkerConfig.CountOptions.ProcessStartupTimeout
+            + channel.WorkerConfig.CountOptions.InitializationTimeout, registry.LinkTimeout);
+        await using WorkerChannelRegistry identityRegistry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
+            Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options,
+            Options.Create(new TokenServiceProxyOptions { Enabled = true }));
+        Assert.Equal(TimeSpan.FromMinutes(2), identityRegistry.LinkTimeout);
+    }
+
+    [Theory]
+    [InlineData("ProcessStartupTimeout", "00:00:00")]
+    [InlineData("InitializationTimeout", "-00:00:01")]
+    [InlineData("ProcessStartupTimeout", "100.00:00:00")]
+    public void WorkerOptions_RejectUnboundedOrNonpositiveTimeouts(string setting, string value)
+    {
+        ServiceCollection services = new();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [$"RpcClient:Worker:{setting}"] = value
+        }).Build());
+        services.AddRpcClientServices();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.Throws<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptionsMonitor<WorkerProcessCountOptions>>().Get(RpcClientWorkerChannelFactory.WorkerOptionsName));
+    }
+
     private static WorkerChannelRegistry CreateGrpcRegistry(RpcClientFactory clientFactory, TimeSpan? linkTimeout = null)
     {
         FunctionRpcDuplexChannelFactory duplexFactory = new(clientFactory, NullLogger<FunctionRpcDuplexChannelFactory>.Instance);
@@ -281,7 +437,9 @@ public sealed partial class WorkerChannelRegistryTests
             new ConfigurationBuilder().Build(), NullLogger<WorkerHostConfigurationParser>.Instance);
 
         return linkTimeout.HasValue
-            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value, workerHostConfigurationParser)
-            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
+            ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance,
+                RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, linkTimeout.Value, workerHostConfigurationParser)
+            : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance,
+                RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, workerHostConfigurationParser);
     }
 }

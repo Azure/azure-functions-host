@@ -64,8 +64,18 @@ public class ClientWorkerCompositionTests
 
         ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
 
-        AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.Http.IHttpProxyService",
-            "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
+        ServiceDescriptor httpProxy = Assert.Single(services.Where(service => string.Equals(
+            service.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.IHttpProxyService", StringComparison.Ordinal) && !service.IsKeyedService));
+        Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
+        Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", httpProxy.ImplementationType?.FullName);
+        Assert.Single(services.Where(service => string.Equals(service.ServiceType.FullName,
+            "Azure.Functions.Rpc.Client.WorkerProxyHttpTransport", StringComparison.Ordinal)));
+        services.AddLogging();
+        using (ServiceProvider provider = services.BuildServiceProvider())
+        {
+            Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService",
+                provider.GetRequiredService(httpProxy.ServiceType).GetType().FullName);
+        }
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IRpcClientFactory",
             "Azure.Functions.Rpc.Client.RpcClientFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IDuplexChannelFactory`1",

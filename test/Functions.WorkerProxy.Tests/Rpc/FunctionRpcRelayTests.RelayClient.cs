@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -40,12 +41,18 @@ public partial class FunctionRpcRelayTests
             }
         }
 
-        public async Task<StreamingMessage> ReadAsync(CancellationToken cancellationToken)
+        public async Task<StreamingMessage> ReadAsync(CancellationToken cancellationToken, bool retainProof = false)
         {
             bool hasMessage = await _call.ResponseStream.MoveNext(cancellationToken);
             Assert.True(hasMessage);
 
-            return _call.ResponseStream.Current;
+            StreamingMessage message = _call.ResponseStream.Current;
+            if (!retainProof && message.WorkerInitResponse is not null)
+            {
+                RuntimeWorkerAuthentication.RemoveAppProof(message.WorkerInitResponse.Capabilities);
+            }
+
+            return message;
         }
 
         public async Task<IReadOnlyList<StreamingMessage>> ReadAsync(int count, CancellationToken cancellationToken)

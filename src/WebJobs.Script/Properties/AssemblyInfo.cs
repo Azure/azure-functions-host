@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Benchmarks")]
 [assembly: InternalsVisibleTo("Azure.Functions.Rpc.Server")]
+[assembly: InternalsVisibleTo("Azure.Functions.Rpc.Client")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Grpc")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost.Core")]

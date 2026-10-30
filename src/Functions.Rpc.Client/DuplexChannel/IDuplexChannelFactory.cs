@@ -24,7 +24,8 @@ internal interface IDuplexChannelFactory<T>
     /// channel rather than from this method.
     /// </remarks>
     /// <param name="endpoint">The service endpoint.</param>
+    /// <param name="credentials">The admitted worker's runtime credentials.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
-    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default);
+    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, RuntimeWorkerCredentials credentials, CancellationToken cancellationToken = default);
 }

@@ -59,6 +59,8 @@ public class WorkerLinkContractTests
         Assert.NotNull(httpPut);
         Assert.NotNull(route);
         Assert.Equal("admin/workers/{workerId}", route!.Template);
+        Assert.Equal("ContainerManagement",
+            link.GetCustomAttribute<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()?.Policy);
         ParameterInfo workerId = Assert.Single(link.GetParameters().Where(parameter =>
             string.Equals(parameter.Name, "workerId", StringComparison.Ordinal)));
         Assert.NotNull(workerId.GetCustomAttribute<Microsoft.AspNetCore.Mvc.FromRouteAttribute>());
@@ -80,23 +82,23 @@ public class WorkerLinkContractTests
     public void WorkerLinkRequest_Serialization_DoesNotIncludeBodyIdentity(string propertyName)
     {
         WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
-            $$"""{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","{{propertyName}}":null}"""));
+            $$"""{"workerGrpcEndpoint":"worker-pod-abc123:5001","{{propertyName}}":null}"""));
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
-        Assert.Equal("http://worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
+        Assert.Equal("worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
         Assert.Null(body.Property(propertyName));
     }
 
     [Fact]
-    public void WorkerLinkRequest_Serialization_DoesNotIncludeRemovedHttpEndpoint()
+    public void WorkerLinkRequest_Serialization_IncludesRuntimeCredentialsAndHttpOrigin()
     {
         WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
-            """{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
+            """{"workerGrpcEndpoint":"worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
-        Assert.Equal(new[] { "workerContainerEncryptionKey", "workerGrpcEndpoint" },
+        Assert.Equal(new[] { "runtimeAccessKey", "workerContainerEncryptionKey", "workerGrpcEndpoint" },
             body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 }

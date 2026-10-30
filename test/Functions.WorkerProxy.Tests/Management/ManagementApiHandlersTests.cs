@@ -21,28 +21,14 @@ public class ManagementApiHandlersTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public void GetWorkerReady_TracksStartStreamAndTerminationWithoutChangingState()
+    public void AssignWorker_DoesNotRequireAWorkerAndDoesNotMakeItReady()
     {
+        Assert.Equal("WorkerNotReady", WorkerApiErrorCodes.WorkerNotReady);
         WorkerPodStateManager manager = CreateManager();
-        WorkerPodState initial = manager.State;
-
-        Assert.Equal(503, Assert.IsType<StatusCodeHttpResult>(ManagementApiHandlers.GetWorkerReady(manager)).StatusCode);
-        Assert.Same(initial, manager.State);
-        manager.OnWorkerAttached(1);
-        Assert.Equal(503, Assert.IsType<StatusCodeHttpResult>(ManagementApiHandlers.GetWorkerReady(manager)).StatusCode);
-
-        manager.OnWorkerStartStream(1, "worker");
-        WorkerPodState started = manager.State;
-        Assert.Equal(200, Assert.IsType<Ok>(ManagementApiHandlers.GetWorkerReady(manager)).StatusCode);
-        Assert.Same(started, manager.State);
-        Assert.Equal(WorkerPodStatus.None, started.PodStatus);
-
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
-        Assert.IsType<Ok>(ManagementApiHandlers.GetWorkerReady(manager));
-        manager.OnSessionTerminated(1);
-        WorkerPodState terminated = manager.State;
-        Assert.Equal(503, Assert.IsType<StatusCodeHttpResult>(ManagementApiHandlers.GetWorkerReady(manager)).StatusCode);
-        Assert.Same(terminated, manager.State);
+        Assert.False(manager.State.IsWorkerReady);
+        Assert.Null(manager.State.SessionId);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
     }
 
     [Theory]
@@ -154,7 +140,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_ExplicitBooleanAndEmptyEnvironmentAreAccepted(bool isAlwaysReady)
+    public void AssignWorker_ExplicitBooleanAndAuthenticationEnvironmentAreAccepted(bool isAlwaysReady)
     {
         WorkerPodStateManager manager = CreateReadyManager();
         WorkerPodState before = manager.State;
@@ -167,7 +153,6 @@ public class ManagementApiHandlersTests
         Assert.Equal("/admin/worker/assignment", created.Location);
         Assert.Equal(before.Revision + 1, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
         Assert.Equal("app", manager.State.FunctionAppName);
         Assert.Equal("group", manager.State.FunctionGroupName);
         Assert.Equal(isAlwaysReady, manager.State.IsAlwaysReady);
@@ -275,7 +260,6 @@ public class ManagementApiHandlersTests
         Assert.Equal(startupMode, assigned.StartupMode.ToString());
         Assert.Equal(before.Revision + 1, assigned.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
         Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(request, manager));
         Assert.Same(assigned, manager.State);
         AssertError(ManagementApiHandlers.AssignWorker(
@@ -324,7 +308,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_NotReadyDoesNotReserveIdentity(bool attached)
+    public void AssignWorker_BeforeStartStreamReservesAndPreservesIdentity(bool attached)
     {
         WorkerPodStateManager manager = CreateManager();
         if (attached)
@@ -332,9 +316,8 @@ public class ManagementApiHandlersTests
             manager.OnWorkerAttached(1);
         }
 
-        WorkerPodState before = manager.State;
-        AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(), manager), 503, "WorkerNotReady");
-        Assert.Same(before, manager.State);
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        Assert.False(manager.State.IsWorkerReady);
 
         if (!attached)
         {
@@ -342,8 +325,9 @@ public class ManagementApiHandlersTests
         }
 
         manager.OnWorkerStartStream(1, "worker");
-        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager));
-        Assert.Equal("other-app", manager.State.FunctionAppName);
+        Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager), 409, "AssignmentConflict");
+        Assert.Equal("app", manager.State.FunctionAppName);
     }
 
     [Fact]
@@ -422,7 +406,16 @@ public class ManagementApiHandlersTests
         Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(null, manager);
 
         Assert.True(poll.IsCompletedSuccessfully);
-        WorkerInstanceState response = AssertState(await poll, before);
+        IResult result = await poll;
+        if (!assigned)
+        {
+            Assert.IsType<NoContent>(result);
+            Assert.Same(before, manager.State);
+
+            return;
+        }
+
+        WorkerInstanceState response = AssertState(result, before);
         Assert.Same(before, manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
         Assert.Empty(clock.Timers);
@@ -436,7 +429,7 @@ public class ManagementApiHandlersTests
             manager.OnWorkerAttached(1);
         }
 
-        Assert.Equal(WorkerInstanceState.FromState(before), response);
+        Assert.Equal(WorkerInstanceState.FromState(before, manager.StartupTime), response);
         Assert.NotEqual(manager.State.Revision, response.RevisionId);
     }
 
@@ -445,9 +438,10 @@ public class ManagementApiHandlersTests
     {
         PollClock clock = new();
         WorkerPodStateManager manager = CreateManager(clock.Provider);
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         manager.OnWorkerAttached(1);
 
-        Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(0, manager);
+        Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(LastState(0, manager), manager);
 
         Assert.True(poll.IsCompletedSuccessfully);
         AssertState(await poll, manager.State);
@@ -457,17 +451,15 @@ public class ManagementApiHandlersTests
 
     [Theory]
     [InlineData(-1)]
-    [InlineData(1)]
-    [InlineData(long.MaxValue)]
-    public async Task GetInstanceStateAsync_InvalidRevisionReturnsErrorWithoutWaiting(long revision)
+    public async Task GetInstanceStateAsync_InvalidRevisionReturnsErrorWithoutWaiting(int revision)
     {
         PollClock clock = new();
         WorkerPodStateManager manager = CreateManager(clock.Provider);
         WorkerPodState initial = manager.State;
 
-        Assert.Equal(new("InvalidRevision", "lastKnownRevision"), Assert.Single(
+        Assert.Equal(new("InvalidRevision", "revisionId"), Assert.Single(
             AssertValidation(await ManagementApiHandlers.GetInstanceStateAsync(
-                revision, manager))));
+                LastState(revision, manager), manager))));
 
         Assert.Same(initial, manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
@@ -477,29 +469,24 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData("attach")]
     [InlineData("start")]
-    [InlineData("assign")]
     [InlineData("terminate")]
     public async Task GetInstanceStateAsync_EqualRevisionWaitsForTypedChangedSnapshot(string transition)
     {
         PollClock clock = new();
         WorkerPodStateManager manager = CreateManager(clock.Provider);
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         if (!string.Equals(transition, "attach", StringComparison.Ordinal))
         {
             manager.OnWorkerAttached(1);
         }
 
-        if (transition is "assign" or "terminate")
+        if (string.Equals(transition, "terminate", StringComparison.Ordinal))
         {
             manager.OnWorkerStartStream(1, "worker");
         }
 
-        if (string.Equals(transition, "terminate", StringComparison.Ordinal))
-        {
-            Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
-        }
-
-        long revision = manager.State.Revision;
-        Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(revision, manager);
+        int revision = checked((int)manager.State.Revision);
+        Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(LastState(revision, manager), manager);
         Assert.False(poll.IsCompleted);
         Assert.Equal(1, manager.PendingWaiterCount);
 
@@ -510,9 +497,6 @@ public class ManagementApiHandlersTests
                 break;
             case "start":
                 manager.OnWorkerStartStream(1, "worker");
-                break;
-            case "assign":
-                Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
                 break;
             case "terminate":
                 manager.OnSessionTerminated(1);
@@ -535,7 +519,7 @@ public class ManagementApiHandlersTests
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         WorkerPodState assigned = manager.State;
         Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(
-            assigned.Revision, manager);
+            LastState(checked((int)assigned.Revision), manager), manager);
 
         Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other"), manager),
@@ -559,11 +543,12 @@ public class ManagementApiHandlersTests
     {
         PollClock clock = new();
         WorkerPodStateManager manager = CreateManager(clock.Provider);
+        ManagementApiHandlers.AssignWorker(CreateRequest(), manager);
         using CancellationTokenSource cancellation = new();
         Task<IResult> canceledPoll = ManagementApiHandlers.GetInstanceStateAsync(
-            0, manager, cancellation.Token);
+            LastState(1, manager), manager, cancellation.Token);
         Task<IResult> activePoll = ManagementApiHandlers.GetInstanceStateAsync(
-            0, manager);
+            LastState(1, manager), manager);
         Assert.Equal(2, manager.PendingWaiterCount);
 
         cancellation.Cancel();
@@ -584,10 +569,11 @@ public class ManagementApiHandlersTests
     {
         PollClock clock = new();
         WorkerPodStateManager manager = CreateManager(clock.Provider);
+        ManagementApiHandlers.AssignWorker(CreateRequest(), manager);
         WorkerPodState initial = manager.State;
         using CancellationTokenSource cancellation = new();
         Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(
-            0, manager, cancellation.Token);
+            LastState(1, manager), manager, cancellation.Token);
         Assert.Equal(1, manager.PendingWaiterCount);
 
         cancellation.Cancel();
@@ -612,7 +598,7 @@ public class ManagementApiHandlersTests
 
         OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => ManagementApiHandlers.GetInstanceStateAsync(
-                revision, manager, cancellation.Token));
+                revision is { } value ? LastState(checked((int)value), manager) : null, manager, cancellation.Token));
 
         Assert.Equal(cancellation.Token, exception.CancellationToken);
         Assert.Equal(0, manager.PendingWaiterCount);
@@ -636,16 +622,20 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
-        new()
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured))
+    {
+        environment ??= new() { ["SETTING"] = "private-value" };
+
+        return new()
         {
             StartupMode = startupMode,
             FunctionAppName = functionAppName,
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" }
+            Environment = environment
         };
+    }
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)
     {
@@ -673,9 +663,19 @@ public class ManagementApiHandlersTests
         JsonHttpResult<WorkerInstanceState> json = Assert.IsType<JsonHttpResult<WorkerInstanceState>>(result);
         Assert.Equal(200, json.StatusCode ?? StatusCodes.Status200OK);
         WorkerInstanceState response = Assert.IsType<WorkerInstanceState>(json.Value);
-        Assert.Equal(WorkerInstanceState.FromState(expected), response);
+        Assert.Equal(expected.Revision, response.RevisionId);
+        Assert.Equal(expected.FunctionGroupName, response.FunctionGroup);
+        Assert.Equal(expected.IsAlwaysReady ?? false, response.IsAlwaysReady);
+        Assert.Equal("Starting", response.Status);
+        WorkerLinkState link = Assert.IsType<WorkerLinkState>(response.Link);
+        Assert.Equal("Unlinked", link.State);
+        Assert.Null(link.Runtime);
+        Assert.Equal(expected.AssignmentState is WorkerAssignmentState.Failed, response.IsUnhealthy);
         return response;
     }
+
+    private static WorkerInstanceState LastState(int revision, WorkerPodStateManager manager) =>
+        WorkerInstanceState.FromState(manager.State, manager.StartupTime) with { RevisionId = revision };
 
     private sealed class PollClock
     {

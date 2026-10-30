@@ -21,6 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Functions.WorkerProxy.Tests\TestCertificateFiles.cs" Link="TestCertificateFiles.cs" />
+    <Compile Include="..\Functions.WorkerProxy.Tests\Management\ManagementTokenTestData.cs" Link="ManagementTokenTestData.cs" />
     <ProjectReference Include="..\..\src\Functions.Rpc.Client\Functions.Rpc.Client.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
   </ItemGroup>

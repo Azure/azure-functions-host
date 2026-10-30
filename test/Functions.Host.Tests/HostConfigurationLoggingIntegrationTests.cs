@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+extern alias workerproxy;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,6 +13,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.AspNetCore.Builder;
@@ -26,7 +29,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit;
+using ProxyAuthentication = workerproxy::Azure.Functions.Authentication.RuntimeWorkerAuthentication;
+using ProxyCertificate = workerproxy::Azure.Functions.WorkerProxy.Authentication.WorkerProxyCertificate;
+using ProxyOptions = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyOptions;
 
 namespace Azure.Functions.Host.Tests;
 
@@ -61,10 +68,21 @@ public sealed class HostConfigurationLoggingIntegrationTests
                 : ByteString.Empty,
         };
         WorkerService service = new(delivery);
+        using TestCertificateFiles certificates = new();
+        using ProxyCertificate certificate = new(Options.Create(new ProxyOptions
+        {
+            CertificatePath = certificates.CertificatePath,
+            CertificateKeyPath = certificates.KeyPath
+        }));
         WebApplicationBuilder workerBuilder = WebApplication.CreateSlimBuilder();
         workerBuilder.Logging.ClearProviders();
+        workerBuilder.WebHost.UseKestrelHttpsConfiguration();
         workerBuilder.WebHost.ConfigureKestrel(options =>
-            options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
+            options.Listen(IPAddress.Loopback, 0, listener =>
+            {
+                listener.Protocols = HttpProtocols.Http2;
+                listener.UseHttps(certificate.Certificate);
+            }));
         workerBuilder.Services.AddSingleton(service);
         workerBuilder.Services.AddGrpc();
         await using WebApplication worker = workerBuilder.Build();
@@ -87,7 +105,7 @@ public sealed class HostConfigurationLoggingIntegrationTests
                     .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
 
                 WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(() =>
-                    registry.LinkAsync("worker", new Uri(endpoint), timeout.Token));
+                    registry.LinkAsync("worker", new Uri(endpoint), ManagementTokenTestData.WorkerKey, timeout.Token));
 
                 Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
                 Assert.Equal(expectedReason, failure.Message);
@@ -139,6 +157,10 @@ public sealed class HostConfigurationLoggingIntegrationTests
                     ["AzureFunctionsWebHost:IsFileSystemReadOnly"] = "true",
                     ["AzureFunctionsJobHost:logging:logLevel:default"] = "Information",
                     ["AzureFunctionsJobHost:logging:console:isEnabled"] = "true",
+                    ["WEBSITE_SITE_NAME"] = "test-app",
+                    ["WEBSITE_AUTH_ENCRYPTION_KEY"] = ManagementTokenTestData.AppKey,
+                    ["WEBSITE_POD_NAME"] = ManagementTokenTestData.RuntimePodName,
+                    ["CONTAINER_ENCRYPTION_KEY"] = ManagementTokenTestData.RuntimeKey,
                     [EnvironmentSettingNames.AzureWebJobsSecretStorageType] = "Files",
                 });
             });
@@ -199,6 +221,11 @@ public sealed class HostConfigurationLoggingIntegrationTests
                         {
                             Result = new() { Status = StatusResult.Types.Status.Success },
                             HostConfiguration = delivery,
+                            Capabilities =
+                            {
+                                ["WorkerProxyAppToken"] = ProxyAuthentication.CreateAppProof(
+                                    Convert.FromHexString(ManagementTokenTestData.AppKey), "test-app", "worker", DateTimeOffset.UtcNow)
+                            }
                         },
                     });
                 }

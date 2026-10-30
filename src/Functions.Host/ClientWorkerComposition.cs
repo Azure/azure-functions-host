@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.Identity;
 using Azure.Functions.Rpc.Client;
@@ -45,6 +46,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         });
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
+        ContainerManagementAuthenticationHandler.AddServices(services);
         services.AddOptions<TokenServiceProxyOptions>().BindConfiguration(TokenServiceProxyOptions.HostSectionName);
         services.AddSingleton<ITokenServiceProxyRequestHandler, HostTokenServiceForwarder>();
         // Root-owned forwarding works before ScriptHost startup. The RPC request owns the deadline, and the HTTP

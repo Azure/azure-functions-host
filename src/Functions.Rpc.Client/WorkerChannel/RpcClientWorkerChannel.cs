@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -32,6 +34,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly RuntimeWorkerCredentials _credentials;
+    private Uri _httpEndpoint;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -49,7 +53,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService)
+        IHttpProxyService httpProxyService,
+        RuntimeWorkerCredentials credentials)
         : base(
             workerId,
             ownedChannel,
@@ -67,6 +72,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
+        _credentials = credentials;
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -143,6 +149,55 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+
+    internal override void WorkerInitResponse(StreamingMessage initMessage)
+    {
+        string proof = RuntimeWorkerAuthentication.RemoveAppProof(initMessage.WorkerInitResponse.Capabilities);
+        _credentials.ValidateAppProof(proof);
+        if (initMessage.WorkerInitResponse.Result is not
+            { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+        {
+            throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                "The worker initialization response must have a known result status.");
+        }
+
+        base.WorkerInitResponse(initMessage);
+    }
+
+    internal override void UpdateCapabilities(IDictionary<string, string> fields, GrpcCapabilitiesUpdateStrategy strategy)
+    {
+        fields = new Dictionary<string, string>(fields, StringComparer.Ordinal);
+        RuntimeWorkerAuthentication.RemoveAppProof(fields);
+        if (fields.TryGetValue(RpcWorkerConstants.HttpUri, out string advertisedHttpUri)
+            && !string.IsNullOrEmpty(advertisedHttpUri))
+        {
+            if (!Uri.TryCreate(advertisedHttpUri, UriKind.Absolute, out Uri endpoint))
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "The advertised WorkerProxy HTTP origin is invalid.");
+            }
+
+            try
+            {
+                RpcClientFactory.ValidateEndpoint(endpoint);
+            }
+            catch (ArgumentException exception)
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "The advertised WorkerProxy HTTP origin is invalid.", exception);
+            }
+            if (_httpEndpoint is not null
+                && !string.Equals(_httpEndpoint.AbsoluteUri, endpoint.AbsoluteUri, StringComparison.Ordinal))
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "The initialized WorkerProxy HTTP origin cannot change.");
+            }
+
+            _httpEndpoint = endpoint;
+        }
+
+        base.UpdateCapabilities(fields, strategy);
+    }
 
     protected override void Dispose(bool disposing)
     {
