@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
@@ -38,6 +39,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
+    private readonly bool _registryOwnedAttempt;
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
@@ -56,9 +58,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ILogger<WorkerChannelRegistry> logger,
         IConfiguration configuration,
         TimeProvider timeProvider,
-        IOptionsMonitor<WorkerProcessCountOptions> processOptions = null)
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions = null,
+        IOptions<TokenServiceProxyOptions> proxyOptions = null)
         : this(duplexChannelFactory, channelFactory, logger, configuration, timeProvider,
-            RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new()))
+            ResolveLinkTimeout(processOptions, proxyOptions),
+            registryOwnedAttempt: proxyOptions?.Value.Enabled == true)
     {
     }
 
@@ -68,7 +72,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ILogger<WorkerChannelRegistry> logger,
         IConfiguration configuration,
         TimeProvider timeProvider,
-        TimeSpan linkTimeout)
+        TimeSpan linkTimeout,
+        bool registryOwnedAttempt = false)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -78,9 +83,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
+        _registryOwnedAttempt = registryOwnedAttempt;
     }
 
     internal TimeSpan LinkTimeout => _linkTimeout;
+
+    private static TimeSpan ResolveLinkTimeout(
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions, IOptions<TokenServiceProxyOptions> proxyOptions) =>
+        proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout
+            : RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new());
 
     public Task<WorkerLinkResult> LinkAsync(
         string workerId,
@@ -123,9 +134,19 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
 
         // The shared completion is published before I/O begins, and connection work runs outside the state lock.
-        _ = LinkAndCompleteAsync(workerId, grpcEndpoint, slot, linkCompletion, cancellationToken);
+        _ = LinkAndCompleteAsync(workerId, grpcEndpoint, slot, linkCompletion,
+            _registryOwnedAttempt ? CancellationToken.None : cancellationToken);
+        Task<WorkerChannel> link = linkCompletion.Task;
+        if (_registryOwnedAttempt)
+        {
+            _ = link.ContinueWith(failed =>
+                _logger.LogWarning("Registry-owned worker link {WorkerId} failed ({ErrorType}).",
+                    workerId, failed.Exception.GetBaseException().GetType().Name),
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
 
-        return CompleteLinkAsync(linkCompletion.Task, isNewLink: true);
+        return CompleteLinkAsync(_registryOwnedAttempt ? link.WaitAsync(cancellationToken) : link, isNewLink: true);
     }
 
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
@@ -161,7 +182,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         {
             using CancellationTokenSource deadline = new(_linkTimeout, _timeProvider);
             using CancellationTokenSource operationSource =
-                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token, deadline.Token);
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token, deadline.Token, slot.PendingCancellation.Token);
 
             DuplexChannel<StreamingMessage> ownedChannel = null;
             RpcClientWorkerChannel candidate = null;
@@ -180,6 +201,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 {
                     throw new InvalidOperationException(
                         $"The client worker channel factory returned worker '{candidate.Id}' for requested worker '{workerId}'.");
+                }
+
+                if (_registryOwnedAttempt)
+                {
+                    candidate.WorkerConfig.CountOptions.ProcessStartupTimeout = _linkTimeout;
+                    candidate.WorkerConfig.CountOptions.InitializationTimeout = _linkTimeout;
                 }
 
                 try
@@ -222,6 +249,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
         finally
         {
+            slot.DisposePendingCancellation();
             // Accepted links are cleaned up by monitor/unlink; completing Link must not wait for deferred setup.
             if (!initialized)
             {
@@ -248,6 +276,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
         }
 
+        bool canceledPending = _registryOwnedAttempt && slot.CancelPending();
+
         try
         {
             using CancellationTokenSource operationSource =
@@ -273,7 +303,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
                     if (channel is null)
                     {
-                        return false;
+                        return canceledPending;
                     }
 
                     await channel.DisposeAsync();
@@ -785,6 +815,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private sealed class WorkerSlot
     {
+        private readonly Lock _pendingLock = new();
+        private bool _pendingDisposed;
+
+        public CancellationTokenSource PendingCancellation { get; } = new();
+
         // The exact active setup context attempted for this channel.
         public ChannelSetupContext AttemptedSetupContext { get; set; }
 
@@ -806,6 +841,29 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         // Indicates that a previously accepted link has terminated and cannot be replayed.
         public bool Terminal { get; set; }
+
+        public bool CancelPending()
+        {
+            lock (_pendingLock)
+            {
+                if (!_pendingDisposed)
+                {
+                    PendingCancellation.Cancel();
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        public void DisposePendingCancellation()
+        {
+            lock (_pendingLock)
+            {
+                _pendingDisposed = true;
+                PendingCancellation.Dispose();
+            }
+        }
     }
 
     private sealed record ChannelSetupContext(

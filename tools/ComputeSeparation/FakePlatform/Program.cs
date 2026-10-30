@@ -14,7 +14,11 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").Get<FakePlatformOptions>()
     ?? throw new InvalidOperationException("The FakePlatform configuration section is required.");
 builder.Services.AddHealthChecks();
-builder.Services.AddHttpClient(HostClient, client => client.BaseAddress = options.HostUri);
+builder.Services.AddHttpClient(HostClient, client =>
+{
+    client.BaseAddress = options.HostUri;
+    client.Timeout = Timeout.InfiniteTimeSpan;
+});
 foreach (WorkerProxyOptions workerProxy in options.WorkerProxies)
 {
     builder.Services.AddHttpClient(workerProxy.Name, client => client.BaseAddress = workerProxy.ManagementUri);

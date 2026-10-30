@@ -1,4 +1,4 @@
-# Runtime connection authentication
+# WorkerProxy authentication and Token Service proxy
 
 WorkerProxy requires TLS and a worker-specific caller JWT on its runtime-facing HTTP listener (28080) and FunctionRpc listener (50053). WorkerProxy returns a separate app-key proof during initialization on the same runtime-initiated duplex stream. Host must validate that proof before accepting Link or publishing the worker.
 
@@ -59,7 +59,11 @@ HTTP support and routing remain negotiated through `HttpUri`. WorkerProxy valida
 
 The Link budget derives from the same worker timing options used by the linked channel: the five-second connection budget plus `ProcessStartupTimeout` and `InitializationTimeout` (defaults 60 and 10 seconds, totaling 75). Standard options configuration under `RpcClient:Worker` can set those timeouts and `EnvironmentReloadTimeout`; values must remain positive and bounded. A retry or canceled caller does not create an unbounded wait.
 
+When the Token Service proxy is enabled, its opt-in `Functions:TokenServiceProxy:LinkTimeout` is the independent registry-owned early-link deadline (default two minutes). The channel's startup and initialization waits use that deadline so identity bootstrap can finish before the customer starts. Canceling an administrative caller ends only its wait; explicit unlink, shutdown or the bounded deadline ends the pending attempt. With the proxy disabled, the shared worker-derived budget above is unchanged.
+
 If a runtime disconnects before it has sent any protocol message to the customer worker, WorkerProxy keeps the accepted assignment and the same live local stream. A newly authenticated runtime can receive the cached validated `StartStream` and initialize normally. Canceled-runtime generations are fenced so late input cannot reach the replacement. **Once any runtime-to-worker protocol traffic begins, loss remains terminal**: retrying an in-flight initialization or reusing an initialized worker is not supported. Genuine customer failure, shutdown and terminal assignment protection are unchanged. This is narrowly pre-initialization recovery, not general reconnect or worker-reuse support.
+
+Token Service bootstrap controls are consumed by the infrastructure bridge, not forwarded as customer worker protocol input, so they can run before `StartStream` and do not by themselves cross that retry boundary. Each runtime generation owns its tracked proxy writes and pending HTTP outcomes. A detached generation's requests fail rather than being replayed onto its replacement; the next authenticated stream negotiates a fresh proxy session while the same pre-init local worker remains available.
 
 Capability reloads are rewritten to the same configured proxy origin. Raw customer origins and customer-supplied authentication proofs are not forwarded as runtime destinations. Host rejects a changed initialized proxy origin before it can receive caller credentials.
 
@@ -87,3 +91,99 @@ WorkerProxy consumes the startup app key and assignment-carried mapped origin; m
 The app proof demonstrates app-key possession and worker association, not a uniquely trusted WorkerProxy process. Certificate expiry checking does not establish server identity. Protected key-bearing management delivery, worker-key isolation and cross-app containment remain release conditions; a site token does not provide management payload confidentiality or integrity.
 
 Caller JWTs and returned proofs are not bound to a TLS session and can be replayed within their five-minute lifetime plus the 30-second clock tolerance. Expiry is checked at call admission; it does not revoke or renew open streams. No TLS-session binding, nonce or new token carrier is added. General worker reuse, in-place key rotation, stream renewal and mTLS are outside this implementation.
+## Token Service proxy configuration
+
+The compute-separated `Functions.Host` and `Functions.WorkerProxy` can forward managed-identity HTTP requests over their existing Host-initiated gRPC stream. The Token Service runs only in the Host environment; no worker-pod Token Service or additional cross-pod Token Service listener is needed. The feature is **disabled by default** and must be enabled on both products. These settings supplement existing worker registration, listener, and Host-link configuration.
+
+### Required environment
+
+**Host process** (use the platform's existing app-scoped HTTP(S) Token Service endpoint and credential; no URL credentials or fragment):
+
+```text
+Functions__TokenServiceProxy__Enabled=true
+MSI_ENDPOINT=http://127.0.0.1:8082/MSI/token
+MSI_SECRET=<host-only-token-service-secret>
+```
+
+**WorkerProxy container**:
+
+```text
+WorkerProxy__TokenServiceProxy__Enabled=true
+WorkerProxy__TokenServiceProxy__Port=8081
+WorkerProxy__TokenServiceProxy__TokenPath=/msi/token
+IDENTITY_HEADER=<random-per-pod-secret>
+```
+
+**Customer/language-worker container**, sharing WorkerProxy's pod network:
+
+Modern clients:
+
+```text
+IDENTITY_ENDPOINT=http://127.0.0.1:8081/msi/token
+IDENTITY_HEADER=<same-random-per-pod-secret>
+```
+
+Legacy clients:
+
+```text
+MSI_ENDPOINT=http://127.0.0.1:8081/msi/token
+MSI_SECRET=<same-random-per-pod-secret>
+```
+
+Generate and inject the same per-pod secret into WorkerProxy as `IDENTITY_HEADER` and into the customer using the credential variable for its SDK contract. The customer's legacy `MSI_SECRET` is the local pod credential; it is **not** the Host's separate upstream `MSI_SECRET`. Do not set `IDENTITY_ENDPOINT` or customer credential variables on WorkerProxy. WorkerProxy binds only to loopback; reserve a port distinct from its management/gRPC listeners and do not publish it outside the pod. `Port` and `TokenPath` above show their defaults.
+
+WorkerProxy accepts exactly one local credential header: modern `X-IDENTITY-HEADER` or legacy `Secret`. It validates either against the same injected per-pod secret, then removes it; Host adds its separate upstream credential. The local token path is matched case-insensitively and need not match `MSI_ENDPOINT`. Host always uses the configured upstream authority/path, retains any configured query, and appends the incoming raw query without decoding or interpreting it. Other local routes, including Token Service management routes, are not exposed. Neither component parses token bodies or caches tokens.
+
+Routine Host credential rotation affects new sends; already-sent requests may finish. Explicit revocation must cancel affected work through the approved transport integration.
+
+### Limits and timeouts
+
+Use the keys below under `Functions:TokenServiceProxy` on Host and `WorkerProxy:TokenServiceProxy` on WorkerProxy. For environment variables, replace `:` with `__`, for example `WorkerProxy__TokenServiceProxy__RequestTimeout=00:00:45`. Message limits negotiate down to the smaller peer value; aggregate byte budgets stay local and are enforced independently.
+
+| Key | Default | Scope |
+| --- | --- | --- |
+| `MaxRequestBodyBytes` | `1048576` (1 MiB) | Both |
+| `MaxResponseBodyBytes` | `1048576` (1 MiB) | Both |
+| `MaxHeaderBytes` | `32768` | Both |
+| `MaxHeaderCount` | `100` | Both |
+| `MaxTargetBytes` | `8192` | Both |
+| `MaxPendingRequests` | `32` | Host per transport; WorkerProxy locally |
+| `MaxBufferedBytes` | `67108864` (64 MiB) | Host per transport; WorkerProxy locally |
+| `MaxHostRequests` | `256` | Host-wide across transports |
+| `MaxHostBufferedBytes` | `268435456` (256 MiB) | Host-wide across transports |
+| `RequestTimeout` | `00:00:30` | Total local request deadline; Host also caps the forwarded budget |
+| `LinkTimeout` | `00:02:00` | Host registry-owned early-link attempt |
+
+Equivalent Host JSON configuration, with an example smaller per-transport budget:
+
+```json
+{
+  "Functions": {
+    "TokenServiceProxy": {
+      "Enabled": true,
+      "MaxPendingRequests": 16,
+      "MaxBufferedBytes": 33554432,
+      "RequestTimeout": "00:00:30",
+      "LinkTimeout": "00:02:00"
+    }
+  }
+}
+```
+
+Body limits are **provisional, configurable engineering defaults**, not Token Service or SDK maxima. Admission reserves anticipated body/serialization copies and metadata, not just actual payload size. With default bounds, each request reserves `6430720` bytes, allowing at most 10 per transport and 41 Host-wide despite the higher count limits. These reservations are not a cap on total process/deserialization memory. Each byte budget must accommodate at least one full reservation.
+
+### Startup and failure behavior
+
+Identity calls can precede customer `StartStream`/`WorkerInit`. Waiting for a transport, Host preparation, HTTP forwarding, and local response delivery share one request deadline. Canceling an administrative link HTTP caller ends only that caller's wait; the registry retains its bounded link attempt. Proxy Hello/Ready is not worker initialization or upstream health.
+
+Saturation returns `429` with `Retry-After: 1`, without a capacity wait queue. Local oversized bodies/headers return `413`/`431`; upstream transport/response-limit failures return `502`; unavailable transport or prepared-but-invalid Host configuration returns `503`; deadline expiry returns `504`. Upstream HTTP statuses and retry headers otherwise pass through. Cancellation retains capacity until terminal acknowledgment or transport cleanup; queued terminal responses retain Host reservations until physical write/discard.
+
+Automatic upstream HTTP-client URI logging is disabled. With the proxy enabled, WorkerProxy suppresses request-URI logs below Warning in `Microsoft.AspNetCore.Hosting.Diagnostics`, including provider-specific overrides, on all its listeners. Stricter filters and feature-off logging are unchanged. Do not log credentials, customer queries, or token bodies elsewhere.
+
+For a local mock-backed run:
+
+```powershell
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-identity
+```
+
+See the [compute-separation harness guide](../../tools/ComputeSeparation/README.md#debug-the-complete-first-start-flow) for mock controls and debugging. Production requires the approved authenticated Host/WorkerProxy transport, platform settings, and authorization/revocation integration. Real Token Service interoperability, all-language qualification, and persistent transport across customer-only restarts remain separate qualification/lifecycle work; this feature does not redesign registration, assignment, or restart ownership.

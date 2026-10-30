@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,19 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed partial class WorkerChannelRegistryTests
 {
+    [Theory]
+    [InlineData(false, 75)]
+    [InlineData(true, 120)]
+    public async Task TokenServiceProxy_UsesItsBoundedIndependentEarlyLinkOptionOnlyWhenEnabled(bool enabled, int expectedSeconds)
+    {
+        await using WorkerChannelRegistry registry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
+            Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
+            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System,
+            proxyOptions: Options.Create(new TokenServiceProxyOptions { Enabled = enabled }));
+
+        Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), registry.LinkTimeout);
+    }
+
     [Theory]
     [InlineData(null, null, null, 75)]
     [InlineData("00:02:30", "00:00:20", "00:00:45", 175)]

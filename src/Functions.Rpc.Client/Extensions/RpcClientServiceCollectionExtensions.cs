@@ -6,13 +6,14 @@ using System.Linq;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Yarp.ReverseProxy.Forwarder;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -40,7 +41,14 @@ public static class RpcClientServiceCollectionExtensions
             .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),
                 "RpcClient worker startup, initialization and reload timeouts must be positive and have a bounded total.")
             .ValidateOnStart();
+        services.AddOptions<TokenServiceProxyOptions>().ValidateOnStart();
+        services.AddSingleton<IValidateOptions<TokenServiceProxyOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyOptions>>();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton(provider =>
+        {
+            TokenServiceProxyOptions options = provider.GetRequiredService<IOptions<TokenServiceProxyOptions>>().Value;
+            return new TokenServiceProxyAdmission(options.MaxHostRequests, options.MaxHostBufferedBytes);
+        });
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();

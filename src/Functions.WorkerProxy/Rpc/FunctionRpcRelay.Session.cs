@@ -10,9 +10,12 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Azure.WebJobs.Script.Grpc.Transport;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.WorkerProxy.Rpc;
@@ -26,11 +29,12 @@ internal sealed partial class FunctionRpcRelay
         long id,
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
-        WorkerPodStateManager stateManager)
+        WorkerPodStateManager stateManager,
+        TokenServiceProxyService? tokenServiceProxy)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
-        private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
+        private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
         private readonly CancellationTokenSource _terminationSource = new();
@@ -149,6 +153,8 @@ internal sealed partial class FunctionRpcRelay
             {
                 runtimeGeneration = _runtimeGeneration;
             }
+            TrackedMessageWriter<StreamingMessage>? runtimeWrites = side is FunctionRpcRelaySide.Runtime ? new() : null;
+            using TokenServiceProxyService.Connection? proxyConnection = AttachTokenServiceProxy(side, runtimeWrites, linkedSource.Token);
 
             ChannelWriter<StreamingMessage> destination = side switch
             {
@@ -163,8 +169,8 @@ internal sealed partial class FunctionRpcRelay
                 _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
             };
 
-            Task readTask = ReadInboundAsync(side, requestStream, destination, runtimeGeneration, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
+            Task readTask = ReadInboundAsync(side, requestStream, destination, runtimeGeneration, proxyConnection, linkedSource.Token);
+            Task writeTask = WriteOutboundAsync(side, source, responseStream, runtimeWrites, linkedSource.Token);
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
             FunctionRpcRelayTerminalState? detachedRuntime = null;
 
@@ -239,23 +245,61 @@ internal sealed partial class FunctionRpcRelay
             TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
-        private static Channel<StreamingMessage> CreateChannel()
+        private static Channel<StreamingMessage> CreateChannel(bool singleWriter = true)
         {
             return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
-                SingleWriter = true
+                SingleWriter = singleWriter
             });
         }
 
+        /// <summary>
+        /// Makes only the Host-facing stream available to the identity bridge, before the customer stream attaches.
+        /// </summary>
+        private TokenServiceProxyService.Connection? AttachTokenServiceProxy(
+            FunctionRpcRelaySide side, TrackedMessageWriter<StreamingMessage>? runtimeWrites, CancellationToken cancellationToken)
+        {
+            if (side is not FunctionRpcRelaySide.Runtime || tokenServiceProxy is not { Enabled: true })
+            {
+                return null;
+            }
+
+            return tokenServiceProxy.Attach((message, token, prepare) =>
+                runtimeWrites!.WriteAsync(_toRuntime.Writer, message, token, prepare), cancellationToken);
+        }
+
         private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-            ChannelWriter<StreamingMessage> destination, long runtimeGeneration, CancellationToken cancellationToken)
+            ChannelWriter<StreamingMessage> destination, long runtimeGeneration,
+            TokenServiceProxyService.Connection? proxyConnection, CancellationToken cancellationToken)
         {
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
-                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage, runtimeGeneration);
+                StreamingMessage current = requestStream.Current;
+                if (current.HttpProxy is { } control)
+                {
+                    if (side is FunctionRpcRelaySide.Runtime)
+                    {
+                        lock (_stateLock)
+                        {
+                            if (_terminalState is not null || runtimeGeneration != _runtimeGeneration || !_runtimeAttached)
+                            {
+                                return;
+                            }
+                        }
+                    }
+                    if (side is not FunctionRpcRelaySide.Runtime || proxyConnection is null)
+                    {
+                        throw new InvalidDataException("HTTP proxy controls are only accepted from an enabled runtime transport.");
+                    }
+
+                    await proxyConnection.ReceiveAsync(control);
+                    continue;
+                }
+
+                StreamingMessage? message = ProcessInboundMessage(side, current, isFirstMessage, runtimeGeneration);
                 if (message is null)
                 {
                     return;
@@ -418,18 +462,65 @@ internal sealed partial class FunctionRpcRelay
         }
 
         private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
-            IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
+            IServerStreamWriter<StreamingMessage> responseStream, TrackedMessageWriter<StreamingMessage>? runtimeWrites,
+            CancellationToken cancellationToken)
         {
-            if (side is FunctionRpcRelaySide.Runtime)
+            try
             {
-                // A runtime retry before initialization sees the same validated local StartStream.
-                await responseStream.WriteAsync(await _startStream.Task.WaitAsync(cancellationToken), cancellationToken);
+                bool startSent = side is not FunctionRpcRelaySide.Runtime;
+                Task<StreamingMessage> startReady = _startStream.Task.WaitAsync(cancellationToken);
+                Task<bool>? queueReady = null;
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!startSent && startReady.IsCompleted)
+                    {
+                        await responseStream.WriteAsync(await startReady, cancellationToken);
+                        startSent = true;
+                        continue;
+                    }
+
+                    if (!source.TryRead(out StreamingMessage? message))
+                    {
+                        queueReady ??= source.WaitToReadAsync(cancellationToken).AsTask();
+                        // Proxy bootstrap must not wait for the customer's StartStream: identity may be needed to start it.
+                        if (!startSent && await Task.WhenAny(queueReady, startReady) == startReady)
+                        {
+                            continue;
+                        }
+                        if (!await queueReady)
+                        {
+                            break;
+                        }
+                        queueReady = null;
+                        continue;
+                    }
+
+                    if (runtimeWrites is not null && !runtimeWrites.Prepare(message))
+                    {
+                        continue;
+                    }
+
+                    // This is the only task that writes this response stream.
+                    await responseStream.WriteAsync(message, cancellationToken);
+                    if (runtimeWrites is not null)
+                    {
+                        runtimeWrites.Written(message);
+                    }
+                }
             }
-            await foreach (StreamingMessage message in source.ReadAllAsync(cancellationToken))
+            finally
             {
-                // This is the only task that writes this response stream. The linked token
-                // releases an in-flight gRPC write during teardown.
-                await responseStream.WriteAsync(message, cancellationToken);
+                if (runtimeWrites is not null)
+                {
+                    // A safe pre-init detach leaves the local worker and its queue available for a new runtime generation.
+                    // This task is the sole reader. Drop abandoned HTTP payloads before releasing tracked ownership.
+                    while (source.TryRead(out _))
+                    {
+                    }
+
+                    runtimeWrites.Complete(new IOException("The HTTP proxy transport closed."));
+                }
             }
         }
 

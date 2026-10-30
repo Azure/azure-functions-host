@@ -13,7 +13,9 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 /// </summary>
 /// <remarks>
 /// With a fake platform, the calls go through it in order: assign the pod on the WorkerProxy, then link the worker to
-/// the Host. Without one, assignment and Link are sent directly to WorkerProxy and Host.
+/// the Host. Assignment is accepted before customer startup, so the identity scenario can establish its
+/// authenticated runtime transport without waiting for StartStream. Without a fake platform, assignment and Link
+/// are sent directly to WorkerProxy and Host.
 /// </remarks>
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
@@ -108,11 +110,20 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
-        using HttpResponseMessage assignment = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
-        await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assignment, cancellationToken);
+        await AssignThroughPlatformAsync(client, cancellationToken);
+        await LinkThroughPlatformAsync(client, cancellationToken);
+    }
+
+    private async Task AssignThroughPlatformAsync(HttpClient client, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage assign = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
+        await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
 
         Log.WorkerAssigned(logger, workerId);
+    }
 
+    private async Task LinkThroughPlatformAsync(HttpClient client, CancellationToken cancellationToken)
+    {
         using HttpResponseMessage link = await client.PostAsync("/simulate/worker/worker-proxy-1/link", null, cancellationToken);
         await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }

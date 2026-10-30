@@ -23,6 +23,8 @@
 !src/WebJobs.Script.Grpc/azure-functions-language-worker-protobuf/src/proto/**
 !src/WebJobs.Script.Grpc/Protos/
 !src/WebJobs.Script.Grpc/Protos/**
+!src/WebJobs.Script.Grpc/HttpProxy/
+!src/WebJobs.Script.Grpc/HttpProxy/**
 **/bin/
 **/obj/
 **/out/

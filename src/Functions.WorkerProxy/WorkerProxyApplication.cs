@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -16,7 +17,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy;
@@ -49,6 +52,14 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         ContainerManagementAuthenticationHandler.AddServices(builder.Services);
+        builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
+        builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();
+        builder.Services.AddOptions<TokenServiceProxyWorkerOptions>()
+            .BindConfiguration(TokenServiceProxyWorkerOptions.SectionName)
+            .ValidateOnStart();
+        builder.Services.AddSingleton<IPostConfigureOptions<LoggerFilterOptions>, TokenServiceProxyLoggingOptionsSetup>();
+        builder.Services.AddSingleton<TokenServiceProxyService>();
+        builder.Services.AddSingleton<TokenServiceProxyMiddleware>();
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
         builder.Services.AddSingleton<RuntimeRequestAuthenticator>();
@@ -73,6 +84,8 @@ internal static class WorkerProxyApplication
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
         app.MapWhen(context => endpoints.IsHttpPort(context.Connection.LocalPort), ConfigureHttpPipeline);
+        app.MapWhen(context => endpoints.IsTokenServiceProxyPort(context.Connection.LocalPort), static pipeline =>
+            pipeline.Run(context => context.RequestServices.GetRequiredService<TokenServiceProxyMiddleware>().InvokeAsync(context)));
         app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;

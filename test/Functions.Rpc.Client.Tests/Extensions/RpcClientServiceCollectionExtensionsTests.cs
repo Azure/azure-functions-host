@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -52,6 +53,48 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => services.AddRpcClientServices());
         Assert.Contains(nameof(RpcClientServiceCollectionExtensions.AddRpcClientServices), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddRpcClientServices_ReportsSpecificProxyValidationFailures()
+    {
+        ServiceCollection services = new();
+        services.AddRpcClientServices();
+        services.Configure<TokenServiceProxyOptions>(options =>
+        {
+            options.Enabled = true;
+            options.MaxRequestBodyBytes = 0;
+            options.MaxHostRequests = 0;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        OptionsValidationException error = Assert.Throws<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<TokenServiceProxyOptions>>().Value);
+
+        Assert.Equal(
+        [
+            $"{nameof(TokenServiceProxyOptions.MaxRequestBodyBytes)} must be greater than zero.",
+            $"{nameof(TokenServiceProxyOptions.MaxHostRequests)} must be greater than zero."
+        ], error.Failures);
+    }
+
+    [Fact]
+    public void AddRpcClientServices_DisabledProxyDoesNotValidateUnusedSettings()
+    {
+        ServiceCollection services = new();
+        services.AddRpcClientServices();
+        services.Configure<TokenServiceProxyOptions>(options =>
+        {
+            options.MaxRequestBodyBytes = 0;
+            options.RequestTimeout = TimeSpan.Zero;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        TokenServiceProxyOptions options = provider.GetRequiredService<IOptions<TokenServiceProxyOptions>>().Value;
+
+        Assert.False(options.Enabled);
+        Assert.Equal(0, options.MaxRequestBodyBytes);
+        Assert.Equal(TimeSpan.Zero, options.RequestTimeout);
     }
 
     [Fact]

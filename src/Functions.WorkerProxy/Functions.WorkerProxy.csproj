@@ -30,6 +30,8 @@
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <Compile Include="..\Functions.Rpc.Client\Security\RuntimeWorkerAuthentication.cs" Link="Authentication\RuntimeWorkerAuthentication.cs" />
     <Compile Include="..\Functions.Host\Authentication\ContainerManagementAuthenticationHandler.cs" Link="Authentication\ContainerManagementAuthenticationHandler.cs" />
+    <Compile Include="..\WebJobs.Script.Grpc\TokenServiceProxy\*.cs" Link="TokenServiceProxy\%(Filename)%(Extension)" />
+    <Compile Include="..\WebJobs.Script.Grpc\Transport\TrackedMessageWriter.cs" Link="Transport\TrackedMessageWriter.cs" />
   </ItemGroup>
 
   <ItemGroup>

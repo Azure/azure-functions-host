@@ -13,6 +13,7 @@ const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
 const string AppName = "aspire-sample-app";
+const string TokenServiceProxyEndpointName = "token-service-proxy";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -24,6 +25,12 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 
 bool multipleWorkers = builder.Configuration.GetValue("ComputeSeparation:MultipleWorkers", false);
 bool autoLink = builder.Configuration.GetValue("ComputeSeparation:AutoLink", true);
+bool tokenServiceProxyScenario = builder.Configuration.GetValue("ComputeSeparation:TokenServiceProxy", false);
+if (tokenServiceProxyScenario && useContainers)
+{
+    throw new InvalidOperationException("The identity debugging scenario currently requires project mode.");
+}
+
 if (multipleWorkers && (useContainers || autoLink))
 {
     throw new InvalidOperationException("Multiple workers require project mode with ComputeSeparation:AutoLink=false.");
@@ -116,6 +123,24 @@ else
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
         ReferenceExpression.Create($"http://127.0.0.1:{functionsHost.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
 
+    if (tokenServiceProxyScenario)
+    {
+        string hostSecretValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        IResourceBuilder<ParameterResource> hostSecret = builder.AddParameter("mock-token-service-secret",
+            () => hostSecretValue, secret: true);
+        IResourceBuilder<ProjectResource> tokenService = builder.AddProject<Projects.MockTokenService>("mock-token-service", launchProfileName: null)
+            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:TokenServicePort"), name: HttpEndpointName)
+            .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
+            .WithEnvironment("MockTokenService__Secret", hostSecret);
+        tokenService.WithEnvironment("ASPNETCORE_URLS",
+            ReferenceExpression.Create($"http://127.0.0.1:{tokenService.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
+        functionsHost
+            .WithEnvironment("Functions__TokenServiceProxy__Enabled", "true")
+            .WithEnvironment("MSI_ENDPOINT", ReferenceExpression.Create($"{tokenService.GetEndpoint(HttpEndpointName)}/token"))
+            .WithEnvironment("MSI_SECRET", hostSecret)
+            .WaitFor(tokenService);
+    }
+
     IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
         .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
@@ -149,7 +174,9 @@ else
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
     workerManagementEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(ManagementEndpointName)}");
     workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
-    dependencies = ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
+    dependencies = tokenServiceProxyScenario
+        ? ["functions-host", "worker-proxy-1", "fake-platform", "mock-token-service"]
+        : ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
 
     IResourceBuilder<ProjectResource> AddProjectWorker(bool secondWorker)
     {
@@ -187,13 +214,30 @@ else
             context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
         });
 
-        builder.AddProject<Projects.SampleIsolatedApp>($"isolated-worker{suffix}", launchProfileName: null)
+        IResourceBuilder<ProjectResource> worker = builder.AddProject<Projects.SampleIsolatedApp>($"isolated-worker{suffix}", launchProfileName: null)
             .WithArgs(
                 "--functions-uri", proxy.GetEndpoint(WorkerGrpcEndpointName),
                 "--functions-worker-id", linkedWorkerId,
                 "--functions-request-id", Guid.NewGuid().ToString(),
                 "--functions-grpc-max-message-length", "134217728")
             .WaitFor(proxy);
+
+        if (tokenServiceProxyScenario)
+        {
+            string localSecretValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            IResourceBuilder<ParameterResource> localSecret = builder.AddParameter($"worker-token-service-secret{suffix}",
+                () => localSecretValue, secret: true);
+            proxy.WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:TokenServiceProxyPort"),
+                    name: TokenServiceProxyEndpointName)
+                .WithEnvironment("WorkerProxy__TokenServiceProxy__Enabled", "true")
+                .WithEnvironment("WorkerProxy__TokenServiceProxy__Port",
+                    proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort))
+                .WithEnvironment("IDENTITY_HEADER", localSecret);
+            worker.WithEnvironment("IDENTITY_ENDPOINT",
+                    ReferenceExpression.Create($"http://127.0.0.1:{proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort)}/msi/token"))
+                .WithEnvironment("IDENTITY_HEADER", localSecret)
+                .WithEnvironment("ComputeSeparation__AcquireIdentityBeforeStart", "true");
+        }
 
         // One platform owns the known proxy mappings; simulation requests select a mapping by resource name.
         fakePlatform
