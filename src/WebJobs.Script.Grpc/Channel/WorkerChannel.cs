@@ -1464,7 +1464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 return;
             }
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+            OnFunctionLoadError(exc);
         }
 
         private void PublishWorkerErrorEvent(Exception exc)
@@ -1481,6 +1481,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
             OnMetadataRequestError(exc);
+        }
+
+        /// <summary>
+        /// Reports a fatal function-load request failure through the worker-error event by default.
+        /// </summary>
+        /// <param name="exception">The function-load request failure.</param>
+        protected virtual void OnFunctionLoadError(Exception exception)
+        {
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exception));
         }
 
         /// <summary>

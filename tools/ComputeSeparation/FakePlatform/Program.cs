@@ -5,7 +5,6 @@
 // Host.
 
 using System.Buffers.Text;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -16,7 +15,10 @@ FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").G
     ?? throw new InvalidOperationException("The FakePlatform configuration section is required.");
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient(HostClient, client => client.BaseAddress = options.HostUri);
-builder.Services.AddHttpClient(WorkerProxyClient, client => client.BaseAddress = options.WorkerProxyUri);
+foreach (WorkerProxyOptions workerProxy in options.WorkerProxies)
+{
+    builder.Services.AddHttpClient(workerProxy.Name, client => client.BaseAddress = workerProxy.ManagementUri);
+}
 
 WebApplication app = builder.Build();
 ILogger logger = app.Logger;
@@ -28,23 +30,38 @@ app.MapHealthChecks("/health");
 RouteGroupBuilder simulate = app.MapGroup("/simulate");
 
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
-simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyName, IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
+    WorkerProxyOptions? workerProxy = Array.Find(options.WorkerProxies,
+        proxy => string.Equals(proxy.Name, workerProxyName, StringComparison.Ordinal));
+    if (workerProxy is null)
+    {
+        Log.UnknownWorkerProxy(logger, workerProxyName);
+        return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
+    }
+
     WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty,
-        options.WorkerHttpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped));
+        workerProxy.WorkerHttpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped));
     using HttpRequestMessage request = new(HttpMethod.Put, "/admin/worker/assignment") { Content = JsonContent.Create(assignment) };
-    request.Headers.Add("x-ms-site-token", ManagementToken.Create(options.RuntimeAccessKey, options.WorkerId));
-    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient).SendAsync(request, cancellationToken);
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(workerProxy.RuntimeAccessKey, workerProxy.WorkerId));
+    using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name).SendAsync(request, cancellationToken);
 
     return await ToResultAsync("worker assign", response, cancellationToken);
 });
 
-simulate.MapPost("/worker/state", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+simulate.MapPost("/worker/{workerProxyName}/state", async (string workerProxyName, IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
+    WorkerProxyOptions? workerProxy = Array.Find(options.WorkerProxies,
+        proxy => string.Equals(proxy.Name, workerProxyName, StringComparison.Ordinal));
+    if (workerProxy is null)
+    {
+        Log.UnknownWorkerProxy(logger, workerProxyName);
+        return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
+    }
     using HttpRequestMessage request = new(HttpMethod.Post, "/admin/infra/instanceState");
-    request.Headers.Add("x-ms-site-token", ManagementToken.Create(options.RuntimeAccessKey, options.WorkerId));
-    request.Headers.Add("x-ms-functions-pod-name", options.WorkerId);
-    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient).SendAsync(request, cancellationToken);
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(workerProxy.RuntimeAccessKey, workerProxy.WorkerId));
+    request.Headers.Add("x-ms-functions-pod-name", workerProxy.WorkerId);
+    using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name).SendAsync(request, cancellationToken);
 
     return await ToResultAsync("worker state", response, cancellationToken);
 });
@@ -72,15 +89,23 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
 });
 
 // Called by AppHost or a developer, after assignment, to link the worker to the Host (PUT /admin/workers/{workerId}).
-simulate.MapPost("/worker/link", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+simulate.MapPost("/worker/{workerProxyName}/link", async (string workerProxyName, IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
+    WorkerProxyOptions? workerProxy = Array.Find(options.WorkerProxies,
+        proxy => string.Equals(proxy.Name, workerProxyName, StringComparison.Ordinal));
+    if (workerProxy is null)
+    {
+        Log.UnknownWorkerProxy(logger, workerProxyName);
+        return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
+    }
+
     var link = new
     {
-        workerPodName = options.WorkerId,
-        workerGrpcEndpoint = options.WorkerGrpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
-        runtimeAccessKey = options.RuntimeAccessKey
+        workerPodName = workerProxy.WorkerId,
+        workerGrpcEndpoint = workerProxy.WorkerGrpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
+        runtimeAccessKey = workerProxy.RuntimeAccessKey
     };
-    using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}")
+    using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{Uri.EscapeDataString(workerProxy.WorkerId)}")
     {
         Content = JsonContent.Create(link)
     };
@@ -133,13 +158,28 @@ internal partial class Program
     // `project-placeholder-manual` profile.
     private const string AppName = "aspire-sample-app";
     private const string HostClient = "host";
-    private const string WorkerProxyClient = "worker-proxy";
 
     private sealed class FakePlatformOptions
     {
         public required Uri HostUri { get; init; }
 
-        public required Uri WorkerProxyUri { get; init; }
+        public required WorkerProxyOptions[] WorkerProxies { get; init; }
+
+        public required string AppAuthKey { get; init; }
+
+        public required string RuntimeContainerKey { get; init; }
+
+        public required string RuntimePodName { get; init; }
+
+        // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in placeholder profiles.
+        public string? EncryptionKey { get; init; }
+    }
+
+    private sealed class WorkerProxyOptions
+    {
+        public required string Name { get; init; }
+
+        public required Uri ManagementUri { get; init; }
 
         public required Uri WorkerGrpcEndpoint { get; init; }
 
@@ -147,16 +187,7 @@ internal partial class Program
 
         public required string RuntimeAccessKey { get; init; }
 
-        public required string AppAuthKey { get; init; }
-
         public required string WorkerId { get; init; }
-
-        public required string RuntimeContainerKey { get; init; }
-
-        public required string RuntimePodName { get; init; }
-
-        // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
-        public string? EncryptionKey { get; init; }
     }
 
     private sealed record HostAssignmentContext(int SiteId, string SiteName, Dictionary<string, string> Environment);
@@ -165,4 +196,10 @@ internal partial class Program
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
         bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, string HttpProxyEndpoint);
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Warning, "No worker proxy named {WorkerProxyName} is configured.")]
+        public static partial void UnknownWorkerProxy(ILogger logger, string workerProxyName);
+    }
 }

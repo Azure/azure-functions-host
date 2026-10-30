@@ -15,10 +15,8 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
@@ -156,7 +154,7 @@ public class ClientWorkerCompositionTests
                 childServiceProvider.GetRequiredService<IWorkerFunctionMetadataProvider>().GetType().FullName);
             Assert.Equal("Microsoft.Azure.WebJobs.Script.Description.RpcWorkerFunctionDescriptorProviderFactory",
                 childServiceProvider.GetRequiredService<IWorkerFunctionDescriptorProviderFactory>().GetType().FullName);
-            Assert.Equal("Microsoft.Azure.WebJobs.Script.Rpc.RpcScriptHostLifecycleService",
+            Assert.Equal("Azure.Functions.Rpc.Client.RpcClientScriptHostLifecycleService",
                 childServiceProvider.GetRequiredService<IScriptHostLifecycleService>().GetType().FullName);
             Assert.Equal("Azure.Functions.Rpc.Client.RpcClientScriptHostWorkerManager",
                 childServiceProvider.GetRequiredService<IScriptHostWorkerManager>().GetType().FullName);

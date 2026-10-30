@@ -105,12 +105,12 @@ internal sealed partial class HostLinkService(
             ?? throw new InvalidOperationException("The fake platform HTTP endpoint was not allocated.");
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
-        using HttpResponseMessage assignment = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
+        using HttpResponseMessage assignment = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
         await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assignment, cancellationToken);
 
         Log.WorkerAssigned(logger, workerId);
 
-        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/link", null, cancellationToken);
+        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/worker-proxy-1/link", null, cancellationToken);
         await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }
 

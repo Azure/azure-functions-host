@@ -10,10 +10,12 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -311,6 +313,58 @@ public sealed class RpcClientWorkerChannelTests
         await sharedStart.WaitAsync(TestTimeout);
 
         await channel.DisposeAsync();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FunctionLoadCallbackFailure_SignalsTerminationWithoutDisposingTransport(bool useCollection)
+    {
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        WorkerInitResponse initResponse = CreateSuccessfulInitResponse();
+        if (useCollection)
+        {
+            initResponse.Capabilities.Add(RpcWorkerConstants.SupportsLoadResponseCollection, "1");
+        }
+
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await start.WaitAsync(TestTimeout);
+        FunctionMetadata function = new() { Name = "TestFunction", Language = "external" };
+        channel.SetupFunctionInvocationBuffers([function]);
+        channel.SendFunctionLoadRequests(new ManagedDependencyOptions(), functionTimeout: null);
+        StreamingMessage request = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal(useCollection
+            ? StreamingMessage.ContentOneofCase.FunctionLoadRequestCollection
+            : StreamingMessage.ContentOneofCase.FunctionLoadRequest, request.ContentCase);
+        Assert.True(channel.IsReadyForInvocations);
+
+        FunctionLoadResponse response = new()
+        {
+            FunctionId = "unknown-function",
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        };
+        StreamingMessage message = new();
+        if (useCollection)
+        {
+            message.FunctionLoadResponseCollection = new();
+            message.FunctionLoadResponseCollection.FunctionLoadResponses.Add(response);
+        }
+        else
+        {
+            message.FunctionLoadResponse = response;
+        }
+
+        await duplexChannel.SendResponseAsync(message);
+        Exception failure = await channel.FunctionLoadFailure.WaitAsync(TestTimeout);
+
+        Assert.IsType<KeyNotFoundException>(failure);
+        Assert.True(channel.IsTerminated);
+        Assert.False(channel.IsReadyForInvocations);
+        Assert.False(channel.Completion.IsCompleted);
+        Assert.Equal(0, duplexChannel.DisposeCount);
     }
 
     [Fact]
