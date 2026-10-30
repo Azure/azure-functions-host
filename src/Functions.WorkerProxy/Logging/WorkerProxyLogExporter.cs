@@ -26,9 +26,6 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
     internal static readonly string RelayCategory =
         typeof(FunctionRpcRelay).FullName!;
 
-    internal static readonly string HttpCategory =
-        typeof(WorkerHttpForwardingMiddleware).FullName!;
-
     private readonly IWorkerSystemEventGenerator _eventGenerator =
         eventGenerator ?? throw new ArgumentNullException(nameof(eventGenerator));
 
@@ -58,7 +55,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                 details = exception.ToString();
             }
 
-            InvocationState invocationState = new();
+            ScopeState scopeState = new();
             record.ForEachScope(
                 static (scope, state) =>
                 {
@@ -67,7 +64,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                         state.Context = state.Context.Merge(context);
                     }
                 },
-                invocationState);
+                scopeState);
 
             _eventGenerator.LogEvent(
                 record.LogLevel,
@@ -77,8 +74,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                 message,
                 exceptionType,
                 exceptionMessage,
-                invocationState.Context.InvocationId ?? string.Empty,
-                invocationState.Context,
+                scopeState.Context,
                 record.Timestamp);
         }
 
@@ -88,7 +84,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
     // The shared writer drains on generator disposal; it has no non-destructive flush operation.
     protected override bool OnForceFlush(int timeoutMilliseconds) => false;
 
-    private sealed class InvocationState
+    private sealed class ScopeState
     {
         public WorkerSystemLogContext Context { get; set; } = new();
     }

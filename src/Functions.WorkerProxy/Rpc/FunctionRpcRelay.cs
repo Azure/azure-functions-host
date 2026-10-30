@@ -65,14 +65,6 @@ internal sealed partial class FunctionRpcRelay(
         }
     }
 
-    internal (Uri? Destination, WorkerSystemLogContext Context) GetHttpForwardingContext()
-    {
-        lock (_syncLock)
-        {
-            return _currentSession?.GetHttpForwardingContext() ?? (null, new WorkerSystemLogContext());
-        }
-    }
-
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {

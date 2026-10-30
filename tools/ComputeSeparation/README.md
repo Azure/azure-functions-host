@@ -60,13 +60,10 @@ to stdout; there is no OTLP exporter. Disposal uses the writer's existing best-e
 (up to five seconds). Explicit `ForceFlush` is unsupported and returns `false`.
 
 Records use the existing `MS_FUNCTIONS_WORKER_POD_LOGS` prefix and 21-column positional format.
-Worker/session IDs and operation details are included in the message; InvocationId keeps its existing column.
+Worker/session IDs (when known) and operation details are included in the message; the InvocationId column is empty.
 The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
 Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
-`HttpForwardingCompleted` describes forwarding, **not final function completion**.
-
-For bounded Debug relay/HTTP diagnostics, set `WorkerProxy__EnableInvocationSystemLogs=true`
-on the proxy process and restart it. This is off by default and is not an app `host.json` setting.
+Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.
 
 Fields are bounded and encoded; unsafe identities are fingerprinted rather than truncated.
 Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs

@@ -16,7 +16,6 @@ internal interface IWorkerSystemEventGenerator
         string summary,
         string exceptionType,
         string exceptionMessage,
-        string invocationId,
         WorkerSystemLogContext? context = null,
         DateTimeOffset? timestamp = null);
 }

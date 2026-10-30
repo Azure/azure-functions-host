@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -18,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Logs;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -168,11 +170,13 @@ public partial class FunctionRpcRelayTests
         CapturingEventGenerator eventGenerator)
     {
         return new WorkerProxyWebApplicationFactory(
-            new Dictionary<string, string?> { ["WorkerProxy:EnableInvocationSystemLogs"] = bool.TrueString },
             configureServices: services =>
         {
             services.RemoveAll<IWorkerSystemEventGenerator>();
             services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
+            services.AddLogging(logging => logging
+                .AddFilter<OpenTelemetryLoggerProvider>(WorkerProxyLogExporter.RelayCategory, LogLevel.Trace)
+                .AddFilter<OpenTelemetryLoggerProvider>(typeof(WorkerHttpForwardingMiddleware).FullName, LogLevel.Trace));
         });
     }
 
@@ -218,11 +222,10 @@ public partial class FunctionRpcRelayTests
             string summary,
             string exceptionType,
             string exceptionMessage,
-            string invocationId,
             WorkerSystemLogContext? context = null,
             DateTimeOffset? timestamp = null)
         {
-            ProxyRecords.Enqueue(new(eventName, summary, context, source, details, exceptionType, exceptionMessage, invocationId));
+            ProxyRecords.Enqueue(new(eventName, summary, context, source, details, exceptionType, exceptionMessage));
         }
     }
 
@@ -233,6 +236,5 @@ public partial class FunctionRpcRelayTests
         string Source,
         string Details,
         string ExceptionType,
-        string ExceptionMessage,
-        string InvocationId);
+        string ExceptionMessage);
 }

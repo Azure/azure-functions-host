@@ -47,7 +47,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         string summary,
         string exceptionType,
         string exceptionMessage,
-        string invocationId,
         WorkerSystemLogContext? context = null,
         DateTimeOffset? timestamp = null)
     {
@@ -59,8 +58,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             FormatSummary(summary, context),
             timestamp ?? _timeProvider.GetUtcNow(),
             exceptionType,
-            exceptionMessage,
-            invocationId)));
+            exceptionMessage)));
     }
 
     private static string FormatSummary(string summary, WorkerSystemLogContext? context)
@@ -81,7 +79,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         if (context.Attributes is { } attributes)
         {
             Add(nameof(attributes.HttpStatusCode), attributes.HttpStatusCode?.ToString(CultureInfo.InvariantCulture));
-            Add(nameof(attributes.ForwarderError), attributes.ForwarderError);
             Add(nameof(attributes.RpcStatus), attributes.RpcStatus);
             Add(nameof(attributes.PeerSide), attributes.PeerSide);
             Add(nameof(attributes.StateRevision), attributes.StateRevision?.ToString(CultureInfo.InvariantCulture));
@@ -137,7 +134,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
                 CultureInfo.InvariantCulture),
             NormalizeColumn(record.ExceptionType, 256),
             NormalizeString(record.ExceptionMessage, 1_024),
-            NormalizeIdentifier(record.InvocationId),
+            string.Empty,
             string.Empty,
             string.Empty,
             string.Empty,
@@ -199,6 +196,5 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         string Summary,
         DateTimeOffset Timestamp,
         string ExceptionType,
-        string ExceptionMessage,
-        string InvocationId);
+        string ExceptionMessage);
 }

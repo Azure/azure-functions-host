@@ -54,10 +54,4 @@ internal sealed class WorkerProxyOptions
     /// <see cref="HttpPort"/>, but its external port may differ because of platform port mapping.
     /// </summary>
     public string? HttpProxyEndpoint { get; set; }
-
-    /// <summary>
-    /// Gets or sets whether to collect Debug relay and HTTP forwarding diagnostics.
-    /// This enables per-invocation observations and should be used for bounded diagnostic runs.
-    /// </summary>
-    public bool EnableInvocationSystemLogs { get; set; }
 }

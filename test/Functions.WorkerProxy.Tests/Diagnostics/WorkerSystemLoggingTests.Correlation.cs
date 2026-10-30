@@ -31,8 +31,7 @@ public partial class WorkerSystemLoggingTests
         using (logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }))
         using (logger.BeginScope(new WorkerSystemLogContext
         {
-            InvocationId = "invocation-id",
-            Operation = "RpcInvocation",
+            Operation = "Initialization",
             Stage = "ResponseReceived",
             Outcome = "Failed",
             ReasonCode = "WorkerFailure",
@@ -40,7 +39,7 @@ public partial class WorkerSystemLoggingTests
             Attributes = new() { RpcStatus = "Failure", WorkerReady = false, StateRevision = 3 }
         }))
         {
-            logger.LogDebug(new EventId(8, "ProtocolMessageObserved"), "Response received.");
+            logger.LogWarning(new EventId(8, "ProtocolMessageObserved"), "Response received.");
         }
 
         logger.LogInformation(new EventId(1, "Unscoped"), "No invocation.");
@@ -50,10 +49,10 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(2, records.Length);
         Assert.All(records, record => Assert.Equal(21, record.Length));
         Assert.Equal(WorkerProxyLogExporter.RelayCategory, records[0][5]);
-        Assert.Equal("invocation-id", records[0][12]);
+        Assert.Equal(string.Empty, records[0][12]);
         foreach (string field in new[]
         {
-            "WorkerId=worker-id;", "ProxySessionId=7;", "Operation=RpcInvocation;",
+            "WorkerId=worker-id;", "ProxySessionId=7;", "Operation=Initialization;",
             "Stage=ResponseReceived;", "Outcome=Failed;", "ReasonCode=WorkerFailure;",
             "DurationMs=12.5;", "RpcStatus=Failure;", "WorkerReady=False;", "StateRevision=3;"
         })
@@ -107,7 +106,7 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         string oversized = new('\u2603', 10_000);
         generator.LogEvent(LogLevel.Warning, "Failure", "Proxy", string.Empty, oversized,
-            string.Empty, string.Empty, "invocation-id", new()
+            string.Empty, string.Empty, new()
             {
                 WorkerId = workerId,
                 ProxySessionId = 7,
@@ -124,7 +123,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains($"WorkerId=sha256:{hash};", record[7], StringComparison.Ordinal);
         Assert.Contains("ProxySessionId=7;", record[7], StringComparison.Ordinal);
         Assert.Contains("ReasonCode=", record[7], StringComparison.Ordinal);
-        Assert.Equal("invocation-id", record[12]);
+        Assert.Equal(string.Empty, record[12]);
         Assert.InRange(record[7].Length, 1, 1_024);
         Assert.DoesNotContain(workerId, output.ToString(), StringComparison.Ordinal);
         Assert.InRange(Encoding.UTF8.GetByteCount(output.ToString()), 1, 32_768);
@@ -145,7 +144,7 @@ public partial class WorkerSystemLoggingTests
         }));
         ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
         DateTimeOffset before = DateTimeOffset.UtcNow;
-        using (logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id", InvocationId = "invocation-id" }))
+        using (logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id" }))
         {
             logger.LogInformation(new EventId(8, "Deferred"), "Observed {Operation}.", "forwarding");
         }
@@ -160,7 +159,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains("WorkerId=worker-id;", record[7], StringComparison.Ordinal);
         Assert.DoesNotContain("unrelated-worker", record[7], StringComparison.Ordinal);
         Assert.EndsWith("Observed forwarding.", record[7], StringComparison.Ordinal);
-        Assert.Equal("invocation-id", record[12]);
+        Assert.Equal(string.Empty, record[12]);
     }
 
     [Fact]
@@ -211,7 +210,7 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         await Task.WhenAll(Enumerable.Range(0, 100).Select(index => Task.Run(() =>
             generator.LogEvent(LogLevel.Information, "Concurrent", "Proxy", string.Empty,
-                index.ToString(CultureInfo.InvariantCulture), string.Empty, string.Empty, string.Empty))));
+                index.ToString(CultureInfo.InvariantCulture), string.Empty, string.Empty))));
         await generator.CompleteAsync();
 
         string[][] records = ParseCsvOutput(output.ToString());

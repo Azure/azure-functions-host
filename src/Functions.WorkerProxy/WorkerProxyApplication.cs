@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -71,7 +70,7 @@ internal static partial class WorkerProxyApplication
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         generator.LogEvent(LogLevel.Critical, "WorkerProxyStartupFailed", WorkerProxyLogExporter.ApplicationCategory,
             details: string.Empty, summary: $"WorkerProxy failed to start ({exception.GetType().FullName}).",
-            exceptionType: string.Empty, exceptionMessage: string.Empty, invocationId: string.Empty,
+            exceptionType: string.Empty, exceptionMessage: string.Empty,
             context: new() { Operation = "Startup", Stage = "Failed", Outcome = "Failed", ReasonCode = "StartupFailed" });
     }
 
@@ -105,24 +104,11 @@ internal static partial class WorkerProxyApplication
             WorkerProxyLogExporter.RelayCategory,
             LogLevel.Information);
         builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
-            WorkerProxyLogExporter.HttpCategory,
-            LogLevel.Information);
-        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
             WorkerProxyLogExporter.ApplicationCategory,
             LogLevel.Information);
         builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
             WorkerProxyLogExporter.AssignmentCategory,
             LogLevel.Information);
-        builder.Services.AddOptions<LoggerFilterOptions>().Configure<IConfiguration>(static (filters, configuration) =>
-        {
-            if (configuration.GetValue<bool>(
-                $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.EnableInvocationSystemLogs)}"))
-            {
-                string provider = typeof(OpenTelemetryLoggerProvider).FullName!;
-                filters.Rules.Add(new(provider, WorkerProxyLogExporter.RelayCategory, LogLevel.Debug, null));
-                filters.Rules.Add(new(provider, WorkerProxyLogExporter.HttpCategory, LogLevel.Debug, null));
-            }
-        });
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.ConfigureHttpJsonOptions(options =>

@@ -2,41 +2,26 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_LogsCorrelatedBoundariesWithoutInvocationPayload(bool enableInvocations)
+    [Fact]
+    public async Task Relay_LogsLinkAndStartupBoundariesWithoutInvocationTelemetry()
     {
         const string sentinel = "customer-payload-secret";
         const string invocationId = "invocation-id";
         CapturingEventGenerator generator = new();
-        await using WorkerProxyWebApplicationFactory factory = new(
-            new Dictionary<string, string?>
-            {
-                ["WorkerProxy:EnableInvocationSystemLogs"] = enableInvocations.ToString()
-            },
-            services =>
-            {
-                services.RemoveAll<IWorkerSystemEventGenerator>();
-                services.AddSingleton<IWorkerSystemEventGenerator>(generator);
-            });
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
@@ -64,6 +49,42 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(initialized, timeout.Token);
         await runtime.ReadAsync(timeout.Token);
 
+        StreamingMessage loadRequest = new() { FunctionLoadRequest = new() { FunctionId = sentinel } };
+        StreamingMessage loadResponse = new()
+        {
+            FunctionLoadResponse = new()
+            {
+                FunctionId = sentinel,
+                Result = new()
+                {
+                    Status = StatusResult.Types.Status.Failure,
+                    Exception = new() { Message = sentinel, StackTrace = sentinel }
+                }
+            }
+        };
+        await runtime.WriteAsync(loadRequest, timeout.Token);
+        Assert.Equal(loadRequest, await worker.ReadAsync(timeout.Token));
+        await worker.WriteAsync(loadResponse, timeout.Token);
+        Assert.Equal(loadResponse, await runtime.ReadAsync(timeout.Token));
+        await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
+            string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)) == 8, timeout.Token);
+
+        foreach (string operation in new[] { "Initialization", "FunctionLoad" })
+        {
+            CapturedProxyLog[] records = generator.ProxyRecords.Where(record =>
+                string.Equals(record.Context?.Operation, operation, StringComparison.Ordinal)).ToArray();
+            Assert.Equal(new[] { "RequestForwarded", "RequestReceived", "ResponseForwarded", "ResponseReceived" },
+                records.Select(record => record.Context!.Stage).Order(StringComparer.Ordinal));
+            Assert.All(records, record =>
+            {
+                Assert.Equal("telemetry-worker", record.Context!.WorkerId);
+                Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
+            });
+            Assert.All(records.Where(record => record.Context!.Stage!.StartsWith("Response", StringComparison.Ordinal)),
+                record => Assert.Equal(string.Equals(operation, "Initialization", StringComparison.Ordinal) ? "Success" : "Failure",
+                    record.Context!.Attributes!.RpcStatus));
+        }
+
         StreamingMessage request = new()
         {
             InvocationRequest = new()
@@ -90,44 +111,11 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(request, await worker.ReadAsync(timeout.Token));
         await worker.WriteAsync(response, timeout.Token);
         Assert.Equal(response, await runtime.ReadAsync(timeout.Token));
-        if (enableInvocations)
-        {
-            await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
-                string.Equals(record.Context?.Operation, "RpcInvocation", StringComparison.Ordinal)) == 4, timeout.Token);
-        }
-
-        CapturedProxyLog[] invocationLogs = generator.ProxyRecords.Where(record =>
-            string.Equals(record.Context?.Operation, "RpcInvocation", StringComparison.Ordinal)).ToArray();
-        Assert.Equal(enableInvocations ? 4 : 0, invocationLogs.Length);
-        Assert.All(invocationLogs, record =>
-        {
-            Assert.Equal(invocationId, record.Context!.InvocationId);
-            Assert.Equal("telemetry-worker", record.Context.WorkerId);
-            Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
-            Assert.Null(record.Context.Outcome);
-        });
-        if (enableInvocations)
-        {
-            Assert.Equal(new[] { "RequestForwarded", "RequestReceived", "ResponseForwarded", "ResponseReceived" },
-                invocationLogs.Select(record => record.Context!.Stage).Order(StringComparer.Ordinal));
-            Assert.All(invocationLogs.Where(record => record.Context!.Stage!.StartsWith("Response", StringComparison.Ordinal)),
-                record => Assert.Equal("Failure", record.Context!.Attributes!.RpcStatus));
-        }
-
         using HttpClient http = factory.CreateHttpForwardingClient();
         using HttpRequestMessage httpRequest = new(HttpMethod.Get, $"/function?secret={sentinel}");
         httpRequest.Headers.Add("x-ms-invocation-id", invocationId);
         using HttpResponseMessage httpResponse = await http.SendAsync(httpRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, httpResponse.StatusCode);
-        CapturedProxyLog httpLog = Assert.Single(generator.ProxyRecords, record =>
-            string.Equals(record.EventName, "HttpForwardingCompleted", StringComparison.Ordinal));
-        Assert.Equal(invocationId, httpLog.Context!.InvocationId);
-        Assert.Equal("telemetry-worker", httpLog.Context.WorkerId);
-        Assert.Equal(preLink.Context.ProxySessionId, httpLog.Context.ProxySessionId);
-        Assert.Equal("Rejected", httpLog.Context.Outcome);
-        Assert.Equal("DestinationNotConfigured", httpLog.Context.ReasonCode);
-        Assert.Equal(503, httpLog.Context.Attributes!.HttpStatusCode);
-
         await worker.CompleteRequestAsync(timeout.Token);
         await runtime.WaitForTerminationAsync(timeout.Token);
         await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
@@ -136,6 +124,11 @@ public partial class FunctionRpcRelayTests
             string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal)
             && string.Equals(record.Context?.WorkerId, "telemetry-worker", StringComparison.Ordinal)
             && record.Context?.Attributes?.WorkerReady is false);
+        Assert.Equal(8, generator.ProxyRecords.Count(record =>
+            string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)));
+        Assert.DoesNotContain(generator.ProxyRecords, record =>
+            string.Equals(record.Context?.Operation, "RpcInvocation", StringComparison.Ordinal)
+            || string.Equals(record.Context?.Operation, "HttpForwarding", StringComparison.Ordinal));
         Assert.DoesNotContain(generator.ProxyRecords, record =>
             record.Message.Contains(sentinel, StringComparison.Ordinal)
             || (record.Context?.ToString().Contains(sentinel, StringComparison.Ordinal) ?? false));

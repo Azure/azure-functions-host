@@ -9,7 +9,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,12 +55,13 @@ public partial class WorkerSystemLoggingTests
         CapturingEventGenerator generator = new();
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
-        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext { InvocationId = "invocation-id" });
+        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 });
         logger.LogWarning(new EventId(3, "RelayFailure"), "Relay failed.");
 
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         Assert.Equal("RelayFailure", record.EventName);
-        Assert.Equal("invocation-id", record.InvocationId);
+        Assert.Equal("worker-id", record.Context!.WorkerId);
+        Assert.Equal(7, record.Context.ProxySessionId);
         Assert.Equal(WorkerProxyLogExporter.RelayCategory, record.Source);
     }
 
@@ -77,8 +77,7 @@ public partial class WorkerSystemLoggingTests
             "WorkerProxy started.",
             Timestamp,
             string.Empty,
-            string.Empty,
-            "invocation-id");
+            string.Empty);
 
         string formatted = generator.Format(record);
 
@@ -94,7 +93,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(Timestamp.UtcDateTime.ToString("O"), formatted, StringComparison.Ordinal);
         string[] fields = Assert.Single(ParseCsvOutput(formatted));
         Assert.Equal(21, fields.Length);
-        Assert.Equal("invocation-id", fields[12]);
+        Assert.Equal(string.Empty, fields[12]);
     }
 
     [Fact]
@@ -110,7 +109,6 @@ public partial class WorkerSystemLoggingTests
                 string.Empty,
                 "first \"value\"\r\nsecond value",
                 Timestamp,
-                string.Empty,
                 string.Empty,
                 string.Empty));
 
@@ -131,8 +129,7 @@ public partial class WorkerSystemLoggingTests
             value,
             Timestamp,
             value,
-            value,
-            string.Empty);
+            value);
         string formatted = generator.Format(record);
 
         string[] fields = Assert.Single(ParseCsvOutput(formatted));
@@ -145,37 +142,6 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(1_024, fields[11].Length);
         Assert.DoesNotContain("customer-secret-sentinel", formatted, StringComparison.Ordinal);
         Assert.InRange(Encoding.UTF8.GetByteCount(formatted), 1, 32_768);
-    }
-
-    [Theory]
-    [InlineData("value,extra")]
-    [InlineData("value\nextra")]
-    [InlineData("value\r\nextra")]
-    [InlineData("value\"extra")]
-    [InlineData("oversized")]
-    public async Task PositionalLogging_FingerprintsUnsafeInvocationIds(string invocationId)
-    {
-        if (string.Equals(invocationId, "oversized", StringComparison.Ordinal))
-        {
-            invocationId = new string('x', 4_096);
-        }
-
-        StringWriter output = new();
-        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
-        using ILoggerFactory factory = CreateLoggerFactory(generator);
-        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.HttpCategory);
-        using (logger.BeginScope(new WorkerSystemLogContext { InvocationId = invocationId }))
-        {
-            logger.LogWarning(new EventId(1, "HttpForwardingCompleted"), "Forwarding rejected.");
-        }
-
-        await generator.CompleteAsync();
-
-        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
-        Assert.Equal(21, fields.Length);
-        Assert.Equal($"sha256:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(invocationId)))}", fields[12]);
-        Assert.DoesNotContain(invocationId, output.ToString(), StringComparison.Ordinal);
-        Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
     [Fact]
@@ -244,7 +210,6 @@ public partial class WorkerSystemLoggingTests
     [Fact]
     public void LogExporter_PassesReadinessDestinationWithHostExceptionDetails()
     {
-        const string sentinel = "customer-secret-sentinel";
         Uri destination = new("http://worker.internal:4321/functions");
         CapturingEventGenerator eventGenerator = new();
         using ILoggerFactory provider = CreateLoggerFactory(eventGenerator);
@@ -268,7 +233,6 @@ public partial class WorkerSystemLoggingTests
             record.Message);
         Assert.Equal(typeof(SocketException).FullName, record.ExceptionType);
         Assert.Contains(exception.Message, record.Details, StringComparison.Ordinal);
-        Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -454,7 +418,6 @@ public partial class WorkerSystemLoggingTests
             string summary,
             string exceptionType,
             string exceptionMessage,
-            string invocationId,
             WorkerSystemLogContext? context = null,
             DateTimeOffset? timestamp = null)
         {
@@ -466,7 +429,7 @@ public partial class WorkerSystemLoggingTests
                 summary,
                 exceptionType,
                 exceptionMessage,
-                invocationId));
+                context));
         }
     }
 
@@ -478,5 +441,5 @@ public partial class WorkerSystemLoggingTests
         string Message,
         string ExceptionType,
         string ExceptionMessage,
-        string InvocationId);
+        WorkerSystemLogContext? Context);
 }

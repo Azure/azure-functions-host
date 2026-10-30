@@ -9,8 +9,6 @@ internal sealed record WorkerSystemLogContext
 
     public long? ProxySessionId { get; init; }
 
-    public string? InvocationId { get; init; }
-
     public string? Operation { get; init; }
 
     public string? Stage { get; init; }
@@ -27,7 +25,6 @@ internal sealed record WorkerSystemLogContext
     {
         WorkerId = inner.WorkerId ?? WorkerId,
         ProxySessionId = inner.ProxySessionId ?? ProxySessionId,
-        InvocationId = inner.InvocationId ?? InvocationId,
         Operation = inner.Operation ?? Operation,
         Stage = inner.Stage ?? Stage,
         Outcome = inner.Outcome ?? Outcome,
@@ -40,8 +37,6 @@ internal sealed record WorkerSystemLogContext
 internal sealed record WorkerSystemLogAttributes
 {
     public int? HttpStatusCode { get; init; }
-
-    public string? ForwarderError { get; init; }
 
     public string? RpcStatus { get; init; }
 

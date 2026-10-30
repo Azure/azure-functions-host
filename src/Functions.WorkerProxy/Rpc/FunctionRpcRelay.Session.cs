@@ -124,14 +124,6 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
-        public (Uri? Destination, WorkerSystemLogContext Context) GetHttpForwardingContext()
-        {
-            lock (_stateLock)
-            {
-                return (_terminalState is null ? _workerHttpDestination : null, GetLogContext());
-            }
-        }
-
         public void LogAttachment(FunctionRpcRelaySide side, bool released)
         {
             using IDisposable? scope = logger.BeginScope(GetLogContext() with
@@ -390,14 +382,12 @@ internal sealed partial class FunctionRpcRelay
 
         private void LogProtocolMessage(StreamingMessage message, bool forwarded)
         {
-            (string Operation, bool Response, string? InvocationId, StatusResult? Result)? operation = message.ContentCase switch
+            (string Operation, bool Response, StatusResult? Result)? operation = message.ContentCase switch
             {
-                StreamingMessage.ContentOneofCase.WorkerInitRequest => ("Initialization", false, null, null),
-                StreamingMessage.ContentOneofCase.WorkerInitResponse => ("Initialization", true, null, message.WorkerInitResponse.Result),
-                StreamingMessage.ContentOneofCase.FunctionLoadRequest => ("FunctionLoad", false, null, null),
-                StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, null, message.FunctionLoadResponse.Result),
-                StreamingMessage.ContentOneofCase.InvocationRequest => ("RpcInvocation", false, message.InvocationRequest.InvocationId, null),
-                StreamingMessage.ContentOneofCase.InvocationResponse => ("RpcInvocation", true, message.InvocationResponse.InvocationId, message.InvocationResponse.Result),
+                StreamingMessage.ContentOneofCase.WorkerInitRequest => ("Initialization", false, null),
+                StreamingMessage.ContentOneofCase.WorkerInitResponse => ("Initialization", true, message.WorkerInitResponse.Result),
+                StreamingMessage.ContentOneofCase.FunctionLoadRequest => ("FunctionLoad", false, null),
+                StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, message.FunctionLoadResponse.Result),
                 _ => null
             };
             if (operation is not { } value)
@@ -405,10 +395,8 @@ internal sealed partial class FunctionRpcRelay
                 return;
             }
 
-            LogLevel level = string.Equals(value.Operation, "RpcInvocation", StringComparison.Ordinal)
-                ? LogLevel.Debug
-                : value.Result is { Status: not StatusResult.Types.Status.Success }
-                    ? LogLevel.Warning : LogLevel.Information;
+            LogLevel level = value.Result is { Status: not StatusResult.Types.Status.Success }
+                ? LogLevel.Warning : LogLevel.Information;
             if (!logger.IsEnabled(level))
             {
                 return;
@@ -423,7 +411,6 @@ internal sealed partial class FunctionRpcRelay
             };
             using IDisposable? scope = logger.BeginScope(GetLogContext() with
             {
-                InvocationId = value.InvocationId,
                 Operation = value.Operation,
                 Stage = stage,
                 Attributes = value.Result is null ? null : new() { RpcStatus = value.Result.Status.ToString() }
