@@ -20,12 +20,12 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | Profile | Runs locally |
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
-| `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. The worker acquires a token before opening its worker connection; Host linking proceeds independently of assignment. |
+| `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. Authenticated assignment precedes Link; the worker acquires a token before opening its worker connection. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project`, `project-identity`, and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. The identity profile starts linking while assignment waits for the worker, avoiding a circular wait on startup token acquisition. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project`, `project-identity`, and `container` link the worker automatically. AppHost authenticates and records assignment before linking; neither assignment nor identity bootstrap requires the customer worker to connect first. The identity profile can therefore acquire its startup token over the pending Link without a circular startup wait. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
@@ -195,7 +195,7 @@ Open the mock's `http` endpoint from the dashboard to use these development-only
 
 For example, posting `{"statusCode":429,"retryAfterSeconds":7}` makes the next upstream request return 429 and `Retry-After: 7`; posting `{}` restores success. These controls do not bypass SDK token caching: to exercise another upstream request, restart the customer sample or make a raw authenticated local HTTP request. WorkerProxy itself never caches tokens. Mock tokens are deliberately invalid for Azure services.
 
-The `Functions.Host.Tests` identity suite remains a faster automated socket/gRPC check. The interactive profile adds actual outbound HTTP and separate processes; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
+The `Functions.Host.Tests` identity suite includes the real SDK, socket/gRPC forwarding, and a local HTTP upstream check. The interactive profile adds separate processes and the sample's actual startup call; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
 
 Worker restart, registration, assignment, and persistent pod-transport behavior remain owned by the existing WorkerProxy lifecycle. The registry-owned setup from [#12100](https://github.com/Azure/azure-functions-host/pull/12100) is integrated, but it does not change relay transport lifetime. This checkout still couples worker-stream termination to transport termination; the identity scenario is a first-start flow, not proof of preserved transport across customer-only restarts.
 
