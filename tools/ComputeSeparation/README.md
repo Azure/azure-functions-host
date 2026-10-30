@@ -20,16 +20,18 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | Profile | Runs locally |
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
+| `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. The worker acquires a token before opening its worker connection; Host linking proceeds independently of assignment. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project`, `project-identity`, and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. The identity profile starts linking while assignment waits for the worker, avoiding a circular wait on startup token acquisition. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-identity
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multiple-workers
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile container
@@ -175,3 +177,42 @@ Stopping `worker-pod-1` removes only that pod's containers, leaving the same Hos
 Stop AppHost to stop the local run; normal shutdown removes worker pods before the runtime and its network. If AppHost is forcibly terminated, remove its `functions-aspire-...` groups in Docker Desktop. Relinking restarted workers is not automated; start a new AppHost session for another end-to-end run.
 
 This tool uses local-development transport and authentication settings. Do not expose its endpoints outside your development machine.
+
+## Opt-in Token Service proxy
+
+The Host and WorkerProxy can forward managed-identity HTTP requests over the existing Host-initiated FunctionRpc stream. The Token Service stays in the Host environment; no Token Service sidecar or new cross-pod identity port is needed.
+
+See [Token Service proxy configuration](../../src/Functions.WorkerProxy/README.md) for the required Host, WorkerProxy, and customer environment variables, configuration examples, limits, and failure behavior. The bridge is disabled by default; the `project-identity` profile below supplies its development-only settings automatically.
+
+Host linking can proceed independently of WorkerProxy assignment; the manual harness's assign-before-link sequence is not a platform requirement. Customer-only restarts do not imply a new per-pod credential or a WorkerProxy restart.
+
+### Debug the complete first-start flow
+
+Run the `project-identity` profile or select it in Visual Studio. It is project-mode only; no Azure subscription, production credentials, or Docker is required.
+
+The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential; only WorkerProxy and its customer receive the per-pod credential. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated Token Service proxy port to loopback.
+
+The full token path is:
+
+```text
+Mock Token Service <-- HTTP --> Host <-- existing gRPC --> WorkerProxy <-- HTTP --> worker SDK
+```
+
+Host's mock upstream is `/token`, while the worker uses `/msi/token`, exercising independent endpoint mapping. Before `builder.Build().RunAsync()`, the sample calls `ManagedIdentityCredential` and prints `Managed identity token acquired through WorkerProxy before worker startup.` without printing the token or either secret. Normal worker initialization follows; invoke `/api/hello` on the Host to confirm the application subsequently executes.
+
+Set breakpoints in the sample's startup credential call, `TokenServiceProxyMiddleware`, `TokenServiceProxyDuplexChannel`, `HostTokenServiceForwarder`, and the mock's `/token` handler to inspect each hop. The normal 30-second token and two-minute early-link deadlines still apply while stopped in a debugger.
+
+Open the mock's `http` endpoint from the dashboard to use these development-only controls:
+
+| Request | Purpose |
+| --- | --- |
+| `GET /simulate/state` | Inspect received/authorized request counts and current response controls, without secrets, tokens, or request queries. |
+| `POST /simulate/response` | Set `delayMilliseconds` (0-120000), `statusCode` (200-599), `bodyBytes` (0-2097152), and `retryAfterSeconds` (0-3600). Omitted properties restore their defaults. |
+
+For example, posting `{"statusCode":429,"retryAfterSeconds":7}` makes the next upstream request return 429 and `Retry-After: 7`; posting `{}` restores success. These controls do not bypass SDK token caching: to exercise another upstream request, restart the customer sample or make a raw authenticated local HTTP request. WorkerProxy itself never caches tokens. Mock tokens are deliberately invalid for Azure services.
+
+The `Functions.Host.Tests` identity suite remains a faster automated socket/gRPC check. The interactive profile adds actual outbound HTTP and separate processes; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
+
+Worker restart, registration, assignment, and persistent pod-transport behavior remain owned by the existing WorkerProxy lifecycle. The registry-owned setup from [#12100](https://github.com/Azure/azure-functions-host/pull/12100) is integrated, but it does not change relay transport lifetime. This checkout still couples worker-stream termination to transport termination; the identity scenario is a first-start flow, not proof of preserved transport across customer-only restarts.
+
+Enable production deployments only with the approved Host/WorkerProxy transport, authorization/revocation integration, and platform-provided settings. Do not expose the development transport or silently restore a worker-side Token Service as a fallback.

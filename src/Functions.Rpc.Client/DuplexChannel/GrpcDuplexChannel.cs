@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Transport;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -30,6 +31,7 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
     private readonly Task _readPump;
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Task _writePump;
+    private readonly TrackedMessageWriter<T> _trackedWrites = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GrpcDuplexChannel{T}"/> class.
@@ -57,6 +59,21 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         _readPump = PumpResponsesAsync();
         _writePump = PumpRequestsAsync();
     }
+
+    /// <summary>
+    /// Gets whether the outgoing queue retains payloads, excluding the current physical write.
+    /// </summary>
+    internal bool HasQueuedWrites => _outgoing.Reader.TryPeek(out _);
+
+    /// <summary>
+    /// Completes after the sole writer sends or discards the queued message, not merely after queue admission.
+    /// </summary>
+    /// <remarks>
+    /// Cancellation can discard an unsent message, but cannot end ownership of an in-progress write.
+    /// Success describes local gRPC write completion, not peer processing or a terminal HTTP response.
+    /// </remarks>
+    internal Task<bool> WriteTrackedAsync(T message, CancellationToken cancellationToken, Func<bool> prepare = null)
+        => _trackedWrites.WriteAsync(_outgoing.Writer, message, cancellationToken, prepare);
 
     protected override async ValueTask DisposeAsyncCore()
     {
@@ -129,7 +146,13 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         {
             await foreach (T message in _outgoing.Reader.ReadAllAsync(_shutdownSource.Token))
             {
+                if (!_trackedWrites.Prepare(message))
+                {
+                    continue;
+                }
+
                 await _call.RequestStream.WriteAsync(message);
+                _trackedWrites.Written(message);
             }
 
             await _call.RequestStream.CompleteAsync();
@@ -143,9 +166,16 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         }
         finally
         {
+            _outgoing.Writer.TryComplete(error);
+
+            // Close admission and drop queued payload references before tracked senders can release their buffer leases.
+            while (_outgoing.Reader.TryRead(out _))
+            {
+            }
+
+            _trackedWrites.Complete(error ?? new ObjectDisposedException(nameof(GrpcDuplexChannel<T>)));
             if (error is not null)
             {
-                _outgoing.Writer.TryComplete(error);
                 _incoming.Writer.TryComplete(error);
                 await _shutdownSource.CancelAsync();
             }

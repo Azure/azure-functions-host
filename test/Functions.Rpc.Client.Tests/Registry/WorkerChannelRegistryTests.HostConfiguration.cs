@@ -189,11 +189,14 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task LinkAsync_MixedDeliveriesAndWorkerLossRetainFirstSource(bool firstSuppliesConfiguration)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task LinkAsync_MixedDeliveriesAndWorkerLossRetainFirstSource(
+        bool firstSuppliesConfiguration, bool registryOwnedAttempt)
     {
-        RegistryHarness harness = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), registryOwnedAttempt: registryOwnedAttempt);
         ChannelControl first = new("first") { HostConfiguration = firstSuppliesConfiguration ? CreateHostConfiguration("first") : null };
         ChannelControl later = new("later") { HostConfiguration = firstSuppliesConfiguration ? null : CreateHostConfiguration("later") };
         harness.Enqueue(first);
@@ -222,10 +225,12 @@ public sealed partial class WorkerChannelRegistryTests
         harness.HostConfigurationLogger.VerifyNoOtherCalls();
     }
 
-    [Fact]
-    public async Task LinkAsync_RejectedCandidateDoesNotPreventFileBasedLoadingSelection()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkAsync_RejectedCandidateDoesNotPreventFileBasedLoadingSelection(bool registryOwnedAttempt)
     {
-        RegistryHarness harness = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), registryOwnedAttempt: registryOwnedAttempt);
         ChannelControl rejected = new("worker") { HostConfiguration = new() { Status = HostConfiguration.Types.Status.Error } };
         ChannelControl replacement = new("worker");
         harness.Enqueue(rejected);
