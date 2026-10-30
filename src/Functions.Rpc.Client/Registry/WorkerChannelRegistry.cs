@@ -203,27 +203,22 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 }
                 catch (Exception exception)
                 {
-                    Exception failure = exception switch
+                    (Exception failure, string reason) = exception switch
                     {
-                        OperationCanceledException when !cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested
-                            => new ObjectDisposedException(GetType().FullName),
-                        OperationCanceledException when !cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested
-                            => new TimeoutException("The worker link initialization deadline expired.", exception),
-                        _ => exception,
-                    };
-                    string reason = exception switch
-                    {
-                        OperationCanceledException when cancellationToken.IsCancellationRequested => "CallerCanceled",
-                        OperationCanceledException when _shutdownSource.IsCancellationRequested => "HostShutdown",
-                        OperationCanceledException when deadline.IsCancellationRequested => "InitializationDeadlineExpired",
-                        OperationCanceledException => "OperationCanceled",
-                        _ => stage switch
+                        OperationCanceledException when cancellationToken.IsCancellationRequested
+                            => (exception, "CallerCanceled"),
+                        OperationCanceledException when _shutdownSource.IsCancellationRequested
+                            => (new ObjectDisposedException(GetType().FullName), "HostShutdown"),
+                        OperationCanceledException when deadline.IsCancellationRequested
+                            => (new TimeoutException("The worker link initialization deadline expired.", exception), "InitializationDeadlineExpired"),
+                        OperationCanceledException => (exception, "OperationCanceled"),
+                        _ => (exception, stage switch
                         {
                             LinkStage.ConnectingToProxy => "ConnectionFailed",
                             LinkStage.CreatingWorkerChannel => "ChannelCreationFailed",
                             LinkStage.InitializingWorker => "WorkerInitializationFailed",
                             _ => "ChannelRegistrationFailed"
-                        }
+                        })
                     };
                     // Preserve the primary cause before cleanup can aggregate additional exceptions.
                     linkFailure = (stage, reason, failure.GetType().FullName);
