@@ -113,6 +113,45 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
+    public async Task InvokeAsync_FunctionNotLoaded_Throws()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        FunctionMetadata unknownFunction = CreateFunction();
+        unknownFunction.Name = "UnknownFunction";
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(unknownFunction)));
+
+        Assert.Contains("UnknownFunction", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(worker.Channel.Id, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CompletedBuffer_FailsInvocation()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        worker.Channel.FunctionInputBuffers[function.GetFunctionId()].Complete();
+        ScriptInvocationContext invocation = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(invocation);
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        Assert.Contains("no longer accepting invocations", exception.Message, StringComparison.Ordinal);
+        await worker.Channel.DrainInvocationsAsync().WaitAsync(TestTimeout);
+    }
+
+    [Fact]
     public async Task InvokeAsync_SurfacesFunctionLoadFailure()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");

@@ -58,6 +58,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public List<Task> ExecutionContexts => _executionContexts;
 
+        public bool TryPostInvocation(ScriptInvocationContext invocationContext)
+        {
+            string functionId = invocationContext.FunctionMetadata.GetFunctionId();
+            if (!FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
+            {
+                throw new InvalidOperationException(
+                    $"Function '{invocationContext.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
+            }
+
+            return inputBuffer.Post(invocationContext);
+        }
+
         public void Dispose()
         {
             _isDisposed = true;

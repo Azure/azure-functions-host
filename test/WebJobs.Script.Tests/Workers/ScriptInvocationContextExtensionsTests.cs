@@ -1067,6 +1067,66 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Contains(activity.Events, e => e.Name == "exception");
         }
 
+        [Theory]
+        [InlineData(TaskStatus.RanToCompletion)]
+        [InlineData(TaskStatus.Faulted)]
+        [InlineData(TaskStatus.Canceled)]
+        public void RecordException_WhenInvocationAlreadyCompleted_DoesNotUpdateActivity(TaskStatus status)
+        {
+            using Activity activity = new Activity("TestActivity").Start();
+            activity.SetStatus(ActivityStatusCode.Ok);
+            ScriptInvocationContext context = new()
+            {
+                ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            };
+            InvalidOperationException originalFailure = new("Original failure");
+            switch (status)
+            {
+                case TaskStatus.RanToCompletion:
+                    context.ResultSource.SetResult(new ScriptInvocationResult());
+                    break;
+                case TaskStatus.Faulted:
+                    context.ResultSource.SetException(originalFailure);
+                    break;
+                case TaskStatus.Canceled:
+                    context.ResultSource.SetCanceled();
+                    break;
+            }
+
+            Assert.False(context.TrySetException(new InvalidOperationException("Worker failed")));
+            context.SetException(new InvalidOperationException("Late failure"));
+
+            Assert.Equal(status, context.ResultSource.Task.Status);
+            Assert.Equal(ActivityStatusCode.Ok, activity.Status);
+            Assert.Null(activity.StatusDescription);
+            Assert.Empty(activity.Events);
+            if (status is TaskStatus.Faulted)
+            {
+                Assert.Same(originalFailure, context.ResultSource.Task.Exception.InnerException);
+            }
+        }
+
+        [Fact]
+        public void RecordException_WhenFailureAlreadyRecorded_PreservesOriginalFailureAndActivity()
+        {
+            using Activity activity = new Activity("TestActivity").Start();
+            ScriptInvocationContext context = new()
+            {
+                ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            };
+            InvalidOperationException failure = new("Original failure");
+
+            Assert.True(context.TrySetException(failure));
+            Assert.False(context.TrySetException(new InvalidOperationException("Worker failed")));
+
+            Assert.Same(failure, context.ResultSource.Task.Exception.InnerException);
+            Assert.Equal(ActivityStatusCode.Error, activity.Status);
+            Assert.Equal(failure.Message, activity.StatusDescription);
+            Assert.Single(activity.Events);
+        }
+
         private class TestPoco
         {
             public string Name { get; set; }

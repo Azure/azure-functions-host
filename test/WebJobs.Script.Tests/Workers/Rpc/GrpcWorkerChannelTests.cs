@@ -133,7 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockScriptHostManager.Setup(p => p.State).Returns(ScriptHostState.Running);
         }
 
-        private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
+        private Task CreateDefaultWorkerChannel(
+            bool autoStart = true,
+            IDictionary<string, string> capabilities = null,
+            ISharedMemoryManager sharedMemoryManager = null)
         {
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
@@ -147,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                0,
                _testEnvironment,
                _hostOptionsMonitor,
-               _sharedMemoryManager,
+               sharedMemoryManager ?? _sharedMemoryManager,
                _workerConcurrencyOptions,
                _hostingConfigOptions,
                _mockAppCapabilitiesStore.Object,
@@ -2125,6 +2128,211 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var resultSource = invocationContexts[i].ResultSource;
                 Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
             }
+        }
+
+        [Fact]
+        public async Task Shutdown_AfterSuccessfulResponseBeforeCleanup_PreservesResultAndActivity()
+        {
+            Mock<ISharedMemoryManager> sharedMemoryManager = new();
+            InvalidOperationException failure = new("Worker failed");
+            sharedMemoryManager.Setup(manager => manager.TryFreeSharedMemoryMapsForInvocation(It.IsAny<string>()))
+                .Returns(() =>
+                {
+                    _workerChannel.Shutdown(failure);
+                    return true;
+                });
+            _testEnvironment.SetEnvironmentVariable(
+                RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName, "1");
+            await CreateDefaultWorkerChannel(autoStart: false, sharedMemoryManager: sharedMemoryManager.Object);
+            _workerChannel.ApplyCapabilities(new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.SharedMemoryDataTransfer, "1" },
+            });
+            using Activity activity = new Activity("TestActivity").Start();
+            activity.SetStatus(ActivityStatusCode.Ok);
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+            await _workerChannel.SendInvocationRequest(context);
+
+            await _workerChannel.InvokeResponse(
+                BuildSuccessfulInvocationResponse(context.ExecutionContext.InvocationId.ToString()));
+
+            Assert.True(context.ResultSource.Task.IsCompletedSuccessfully);
+            Assert.Equal(ActivityStatusCode.Ok, activity.Status);
+            Assert.Empty(activity.Events);
+            Assert.DoesNotContain(_logger.GetLogMessages(),
+                message => message.FormattedMessage.Contains("Failing invocation:", StringComparison.Ordinal));
+            sharedMemoryManager.Verify(
+                manager => manager.TryFreeSharedMemoryMapsForInvocation(context.ExecutionContext.InvocationId.ToString()),
+                Times.Once);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task Shutdown_DuringResponseForwarding_PreservesShutdownFailureAndActivity(bool succeeded)
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.HttpUri, "http://localhost:1234" },
+            });
+            TaskCompletionSource releaseForwarding = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _mockHttpProxyService.Setup(service => service.EnsureSuccessfulForwardingAsync(It.IsAny<ScriptInvocationContext>()))
+                .Returns(releaseForwarding.Task);
+            using Activity activity = new Activity("TestActivity").Start();
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+            context.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
+            await _workerChannel.SendInvocationRequest(context);
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            Task response = _workerChannel.InvokeResponse(succeeded
+                ? BuildSuccessfulInvocationResponse(invocationId)
+                : BuildFailureInvocationResponse(invocationId));
+            Assert.False(response.IsCompleted);
+            InvalidOperationException failure = new("Worker failed");
+
+            try
+            {
+                _workerChannel.Shutdown(failure);
+                Exception actual = await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => context.ResultSource.Task.WaitAsync(TimeSpan.FromSeconds(3)));
+                Assert.Same(failure, actual);
+            }
+            finally
+            {
+                releaseForwarding.TrySetResult();
+            }
+
+            await response.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal(ActivityStatusCode.Error, activity.Status);
+            Assert.Equal(failure.Message, activity.StatusDescription);
+            Assert.Single(activity.Events);
+            Assert.DoesNotContain(_metricsLogger.LoggedEvents,
+                metric => string.Equals(metric, string.Format(MetricEventNames.WorkerInvokeSucceeded, _workerId), StringComparison.Ordinal)
+                    || string.Equals(metric, string.Format(MetricEventNames.WorkerInvokeFailed, _workerId), StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_DuplicateExecution_PreservesExceptionOrigin()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+            await _workerChannel.SendInvocationRequest(context);
+
+            await _workerChannel.SendInvocationRequest(context);
+
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => context.ResultSource.Task);
+            Assert.Contains("WorkerChannel.TryStartInvocation", exception.StackTrace, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_DisposedChannel_PreservesExceptionOrigin()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            await _workerChannel.DisposeAsync();
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+
+            await _workerChannel.SendInvocationRequest(context);
+
+            ObjectDisposedException exception = await Assert.ThrowsAsync<ObjectDisposedException>(
+                () => context.ResultSource.Task);
+            Assert.Contains("WorkerChannel.TryTrackInvocationLocked", exception.StackTrace, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task TryPostInvocation_FunctionNotLoaded_Throws()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                () => _workerChannel.TryPostInvocation(context));
+
+            Assert.Contains(context.FunctionMetadata.Name, exception.Message, StringComparison.Ordinal);
+            Assert.Contains(_workerId, exception.Message, StringComparison.Ordinal);
+            Assert.False(context.ResultSource.Task.IsCompleted);
+        }
+
+        [Fact]
+        public async Task TryPostInvocation_AfterShutdown_RejectsInvocation()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            _workerChannel.Shutdown(new InvalidOperationException("Worker failed"));
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+
+            Assert.False(_workerChannel.TryPostInvocation(context));
+
+            Assert.False(context.ResultSource.Task.IsCompleted);
+            Assert.Equal(0, _workerChannel.FunctionInputBuffers[context.FunctionMetadata.GetFunctionId()].Count);
+        }
+
+        [Fact]
+        public async Task Shutdown_BlockedInputConversionDoesNotSendInvocationAfterResuming()
+        {
+            TaskCompletionSource conversionStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource releaseConversion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Mock<ISharedMemoryManager> sharedMemoryManager = new();
+            sharedMemoryManager.Setup(manager => manager.IsSupported(It.IsAny<object>()))
+                .Returns(true);
+            sharedMemoryManager.Setup(manager => manager.PutObjectAsync(It.IsAny<object>()))
+                .Returns(async (object _) =>
+                {
+                    conversionStarted.TrySetResult();
+                    await releaseConversion.Task;
+                    return null;
+                });
+            sharedMemoryManager.Setup(manager => manager.TryFreeSharedMemoryMapsForInvocation(It.IsAny<string>()))
+                .Returns(true);
+            _testEnvironment.SetEnvironmentVariable(
+                RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName,
+                "1");
+            await CreateDefaultWorkerChannel(autoStart: false, sharedMemoryManager: sharedMemoryManager.Object);
+            _workerChannel.ApplyCapabilities(new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.SharedMemoryDataTransfer, "1" },
+            });
+            FunctionMetadata function = GetTestFunctionsList("node").First();
+            ScriptInvocationContext invocation = new()
+            {
+                FunctionMetadata = function,
+                ExecutionContext = new()
+                {
+                    FunctionName = function.Name,
+                    InvocationId = Guid.NewGuid(),
+                },
+                BindingData = [],
+                Inputs = [("input", DataType.Binary, new byte[] { 1 })],
+                ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                Logger = _logger,
+            };
+
+            Task send = _workerChannel.SendInvocationRequest(invocation);
+            await conversionStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            InvalidOperationException failure = new("worker failed");
+
+            try
+            {
+                _workerChannel.Shutdown(failure);
+
+                InvalidOperationException invocationFailure = await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => invocation.ResultSource.Task.WaitAsync(TimeSpan.FromSeconds(3)));
+                Assert.Same(failure, invocationFailure);
+            }
+            finally
+            {
+                releaseConversion.TrySetResult();
+            }
+
+            await send.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.False(_workerChannel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
+            Assert.False(_serviceEndpoints.HostToWorkerReader.TryRead(out _));
         }
 
         [Theory]
