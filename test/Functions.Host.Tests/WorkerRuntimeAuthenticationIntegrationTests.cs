@@ -142,6 +142,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         string assignmentJson = $$"""
             {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,
              "environment":{"PRIVATE_SETTING":"not-customer-config"},"functionAppDirectory":"",
+             "configLastModifiedTime":9007199254740993,"contentLastModifiedTime":1761868801,"maxHttpConcurrency":0,
              "httpProxyEndpoint":"{{httpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}"}
             """;
         using StringContent assignmentContent = new(assignmentJson, Encoding.UTF8, "application/json");
@@ -152,6 +153,25 @@ public class WorkerRuntimeAuthenticationIntegrationTests
             Assert.False(proxy.Services.GetRequiredService<ProxyStateManager>().State.IsWorkerAttached);
             Assert.Null(proxy.Services.GetRequiredService<IConfiguration>()["PRIVATE_SETTING"]);
         }
+        foreach (string field in new[] { "configLastModifiedTime", "contentLastModifiedTime", "maxHttpConcurrency" })
+        {
+            JsonObject changed = JsonNode.Parse(assignmentJson)!.AsObject();
+            changed[field] = changed[field]!.GetValue<long>() + 1;
+            using StringContent changedContent = new(changed.ToJsonString(), Encoding.UTF8, "application/json");
+            using HttpResponseMessage conflict = await management.PutAsync("/admin/worker/assignment", changedContent, timeout.Token);
+            Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+            Assert.Contains("AssignmentConflict", await conflict.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        }
+        using StringContent exactContent = new(assignmentJson, Encoding.UTF8, "application/json");
+        using HttpResponseMessage exactRetry = await management.PutAsync("/admin/worker/assignment", exactContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.NoContent, exactRetry.StatusCode);
+        JsonObject numericStringRetry = JsonNode.Parse(assignmentJson)!.AsObject();
+        numericStringRetry["configLastModifiedTime"] = "9007199254740993";
+        numericStringRetry["contentLastModifiedTime"] = "1761868801";
+        numericStringRetry["maxHttpConcurrency"] = "0";
+        using StringContent equivalentContent = new(numericStringRetry.ToJsonString(), Encoding.UTF8, "application/json");
+        using HttpResponseMessage equivalentRetry = await management.PutAsync("/admin/worker/assignment", equivalentContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.NoContent, equivalentRetry.StatusCode);
 
         await using ServiceProvider runtime = CreateRuntime(appName, appKey,
             includeAppKey: scenario is not ("missing-runtime-key" or "failed-init-missing-runtime-key"),
@@ -279,6 +299,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests
         Assert.StartsWith("""{"functionsContainerType":"FunctionsSplitWorkerProxy",""", state, StringComparison.Ordinal);
         Assert.Contains(""""status":"Starting"""", state, StringComparison.Ordinal);
         Assert.Contains(""""state":"Unlinked"""", state, StringComparison.Ordinal);
+        Assert.DoesNotContain("configLastModifiedTime", state, StringComparison.Ordinal);
+        Assert.DoesNotContain("contentLastModifiedTime", state, StringComparison.Ordinal);
+        Assert.DoesNotContain("maxHttpConcurrency", state, StringComparison.Ordinal);
         Assert.DoesNotContain(appKey, state, StringComparison.Ordinal);
         Assert.DoesNotContain(WorkerLinkTestData.RuntimeAccessKey, state, StringComparison.Ordinal);
         JsonObject replay = JsonNode.Parse(state)!.AsObject();

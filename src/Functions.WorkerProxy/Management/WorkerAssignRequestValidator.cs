@@ -76,7 +76,10 @@ internal static class WorkerAssignRequestValidator
             isAlwaysReady,
             environment,
             functionAppDirectory,
-            httpProxyEndpoint);
+            httpProxyEndpoint,
+            request.ConfigLastModifiedTime,
+            request.ContentLastModifiedTime,
+            request.MaxHttpConcurrency);
 
         return true;
     }

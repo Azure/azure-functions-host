@@ -11,8 +11,8 @@ namespace Azure.Functions.WorkerProxy.State;
 /// Captures immutable assignment identity, including the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// Environment and app directory participate in retry equality only; this model does not apply them
-/// to the worker. Keep environment values out of published pod snapshots and diagnostic output.
+/// Environment, app directory and requested version/concurrency metadata participate in retry equality only;
+/// this model does not apply them to the worker. Keep environment values out of published pod snapshots and diagnostic output.
 /// </remarks>
 internal sealed class WorkerAssignment
 {
@@ -30,7 +30,10 @@ internal sealed class WorkerAssignment
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
         string functionAppDirectory,
-        Uri? httpProxyEndpoint = null)
+        Uri? httpProxyEndpoint = null,
+        long? configLastModifiedTime = null,
+        long? contentLastModifiedTime = null,
+        int? maxHttpConcurrency = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -60,6 +63,9 @@ internal sealed class WorkerAssignment
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
         HttpProxyEndpoint = httpProxyEndpoint;
+        ConfigLastModifiedTime = configLastModifiedTime;
+        ContentLastModifiedTime = contentLastModifiedTime;
+        MaxHttpConcurrency = maxHttpConcurrency;
     }
 
     /// <summary>
@@ -80,6 +86,21 @@ internal sealed class WorkerAssignment
     public Uri? HttpProxyEndpoint { get; }
 
     /// <summary>
+    /// Gets the requested configuration version, not a confirmed loaded version.
+    /// </summary>
+    public long? ConfigLastModifiedTime { get; }
+
+    /// <summary>
+    /// Gets the requested content version, not a confirmed loaded version.
+    /// </summary>
+    public long? ContentLastModifiedTime { get; }
+
+    /// <summary>
+    /// Gets the requested concurrency metadata, not an applied limit.
+    /// </summary>
+    public int? MaxHttpConcurrency { get; }
+
+    /// <summary>
     /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
@@ -92,6 +113,9 @@ internal sealed class WorkerAssignment
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
             || !string.Equals(HttpProxyEndpoint?.AbsoluteUri, other.HttpProxyEndpoint?.AbsoluteUri, StringComparison.Ordinal)
+            || ConfigLastModifiedTime != other.ConfigLastModifiedTime
+            || ContentLastModifiedTime != other.ContentLastModifiedTime
+            || MaxHttpConcurrency != other.MaxHttpConcurrency
             || Environment.Count != other.Environment.Count)
         {
             return false;

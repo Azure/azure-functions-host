@@ -125,6 +125,183 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData("configLastModifiedTime", "1761868801", false)]
+    [InlineData("contentLastModifiedTime", "1761868802", false)]
+    [InlineData("maxHttpConcurrency", "101", false)]
+    [InlineData("httpProxyEndpoint", "\"127.0.0.1:48802\"", false)]
+    [InlineData("configLastModifiedTime", "1761868801", true)]
+    [InlineData("contentLastModifiedTime", "1761868802", true)]
+    [InlineData("maxHttpConcurrency", "101", true)]
+    [InlineData("httpProxyEndpoint", "\"127.0.0.1:48802\"", true)]
+    public async Task AssignmentMetadataChangesConflictAndRetainOriginalIdentityAcrossWorkerLifecycle(
+        string field, string changedValue, bool workerAttached)
+    {
+        const string original = """
+            {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"http","isAlwaysReady":false,
+             "environment":{},"functionAppDirectory":"","httpProxyEndpoint":"127.0.0.1:48801",
+             "configLastModifiedTime":1761868800,"contentLastModifiedTime":1761868801,"maxHttpConcurrency":100}
+            """;
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using StringContent initialContent = JsonBody(original);
+        using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(initial, HttpStatusCode.Created, timeout.Token);
+        Assert.False(manager.State.IsWorkerAttached);
+        if (workerAttached)
+        {
+            Assert.True(manager.OnWorkerAttached(1));
+            Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        }
+
+        WorkerPodState assigned = manager.State;
+        using StringContent exactContent = JsonBody(original);
+        using HttpResponseMessage exact = await client.PutAsync(AssignPath, exactContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(exact, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        JsonObject changed = JsonNode.Parse(original)!.AsObject();
+        changed[field] = JsonNode.Parse(changedValue);
+        using StringContent changedContent = JsonBody(changed.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, changedContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        using StringContent replayContent = JsonBody(original);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        if (workerAttached)
+        {
+            Assert.True(manager.OnSessionTerminated(1));
+            WorkerPodState terminated = manager.State;
+            using StringContent terminalChangedContent = JsonBody(changed.ToJsonString());
+            using HttpResponseMessage terminalConflict = await client.PutAsync(AssignPath, terminalChangedContent, timeout.Token);
+            await AssertAssignmentErrorAsync(terminalConflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+            using StringContent terminalExactContent = JsonBody(original);
+            using HttpResponseMessage terminalExact = await client.PutAsync(AssignPath, terminalExactContent, timeout.Token);
+            await AssertAssignmentErrorAsync(terminalExact, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
+            Assert.Same(terminated, manager.State);
+        }
+    }
+
+    [Theory]
+    [InlineData("configLastModifiedTime", false)]
+    [InlineData("contentLastModifiedTime", false)]
+    [InlineData("maxHttpConcurrency", false)]
+    [InlineData("configLastModifiedTime", true)]
+    [InlineData("contentLastModifiedTime", true)]
+    [InlineData("maxHttpConcurrency", true)]
+    public async Task AssignmentMetadata_UnspecifiedAndExplicitZeroHaveDistinctRetryIdentity(string field, bool supplied)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject original = JsonNode.Parse(ValidAssignment)!.AsObject();
+        if (supplied)
+        {
+            original[field] = 0;
+        }
+        using StringContent initialContent = JsonBody(original.ToJsonString());
+        using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(initial, HttpStatusCode.Created, timeout.Token);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        WorkerPodState assigned = manager.State;
+
+        JsonObject equivalent = JsonNode.Parse(ValidAssignment)!.AsObject();
+        equivalent[field] = supplied ? JsonValue.Create("0") : null;
+        using StringContent equivalentContent = JsonBody(equivalent.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, equivalentContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        JsonObject changed = JsonNode.Parse(ValidAssignment)!.AsObject();
+        if (!supplied)
+        {
+            changed[field] = 0;
+        }
+        using StringContent changedContent = JsonBody(changed.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, changedContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        using StringContent exactContent = JsonBody(original.ToJsonString());
+        using HttpResponseMessage exact = await client.PutAsync(AssignPath, exactContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(exact, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("configLastModifiedTime", "9007199254740993", "9007199254740994")]
+    [InlineData("contentLastModifiedTime", "-9223372036854775808", "-9223372036854775807")]
+    [InlineData("maxHttpConcurrency", "-2147483648", "-2147483647")]
+    public async Task AssignmentMetadata_NumericStringsMatchNumbersWithoutLosingSignedPrecision(
+        string field, string originalValue, string changedValue)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject original = JsonNode.Parse(ValidAssignment)!.AsObject();
+        original[field] = JsonNode.Parse(originalValue);
+        using StringContent initialContent = JsonBody(original.ToJsonString());
+        using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(initial, HttpStatusCode.Created, timeout.Token);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        WorkerPodState assigned = manager.State;
+
+        JsonObject equivalent = JsonNode.Parse(original.ToJsonString())!.AsObject();
+        equivalent[field] = originalValue;
+        using StringContent equivalentContent = JsonBody(equivalent.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, equivalentContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        JsonObject changed = JsonNode.Parse(original.ToJsonString())!.AsObject();
+        changed[field] = changedValue;
+        using StringContent changedContent = JsonBody(changed.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, changedContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("configLastModifiedTime", "9223372036854775808")]
+    [InlineData("configLastModifiedTime", "\"not-a-number\"")]
+    [InlineData("configLastModifiedTime", "\"2026-10-30T00:00:00Z\"")]
+    [InlineData("contentLastModifiedTime", "-9223372036854775809")]
+    [InlineData("contentLastModifiedTime", "\"9223372036854775808\"")]
+    [InlineData("contentLastModifiedTime", "1.5")]
+    [InlineData("maxHttpConcurrency", "2147483648")]
+    [InlineData("maxHttpConcurrency", "\"-2147483649\"")]
+    [InlineData("maxHttpConcurrency", "true")]
+    [InlineData("maxHttpConcurrency", "{}")]
+    public async Task AssignmentMetadata_MalformedOrOutOfRangeJsonCannotClaimOrChangeIdentity(string field, string value)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        JsonObject invalid = JsonNode.Parse(ValidAssignment)!.AsObject();
+        invalid[field] = JsonNode.Parse(value);
+        WorkerPodState before = manager.State;
+        using StringContent invalidContent = JsonBody(invalid.ToJsonString());
+        using HttpResponseMessage rejected = await client.PutAsync(AssignPath, invalidContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        Assert.Same(before, manager.State);
+
+        using StringContent validContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, validContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        using StringContent retryContent = JsonBody(invalid.ToJsonString());
+        using HttpResponseMessage retry = await client.PutAsync(AssignPath, retryContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.BadRequest, retry.StatusCode);
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("null")]

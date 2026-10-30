@@ -4,7 +4,7 @@
 - My change description (#PR)
 -->
 
-- Authenticate compute-separated Link and WorkerProxy management with container-specific site tokens, accept assignment before customer startup, negotiate mapped HTTPS origins, validate directional worker/app proofs, and load startup-provisioned TLS certificates. (#12103)
+- Authenticate compute-separated Link and WorkerProxy management with container-specific site tokens, accept assignment before customer startup with immutable version/concurrency retry metadata, negotiate mapped HTTPS origins, validate directional worker/app proofs, and load startup-provisioned TLS certificates. (#12103)
 - `Executing HTTP request` no longer logs the user agent or request URI, `Executed HTTP request` now logs matched function and MVC route templates, `Sanitizer` redacts email addresses, host status startup errors are sanitized, and trace context attribute values are no longer logged. (#12039)
 - Fix false AzureWebJobsStorage health failures for identities with documented blob data permissions while retaining low-cost connectivity probes (#12086)
 - Require exact canonical master key secret names in the Key Vault secrets repository (#12083)

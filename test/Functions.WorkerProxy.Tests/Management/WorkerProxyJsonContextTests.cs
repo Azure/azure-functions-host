@@ -26,13 +26,17 @@ public class WorkerProxyJsonContextTests
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" },
-            HttpProxyEndpoint = "127.0.0.1:48801"
+            HttpProxyEndpoint = "127.0.0.1:48801",
+            ConfigLastModifiedTime = 1761868800,
+            ContentLastModifiedTime = 1761868801,
+            MaxHttpConcurrency = 0
         };
 
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment", "httpProxyEndpoint");
+        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment",
+            "httpProxyEndpoint", "configLastModifiedTime", "contentLastModifiedTime", "maxHttpConcurrency");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
@@ -45,6 +49,9 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
         Assert.Equal(request.HttpProxyEndpoint, copy.HttpProxyEndpoint);
+        Assert.Equal(request.ConfigLastModifiedTime, copy.ConfigLastModifiedTime);
+        Assert.Equal(request.ContentLastModifiedTime, copy.ContentLastModifiedTime);
+        Assert.Equal(request.MaxHttpConcurrency, copy.MaxHttpConcurrency);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
     }
@@ -84,6 +91,47 @@ public class WorkerProxyJsonContextTests
         Assert.Null(request.FunctionAppDirectory);
         Assert.Null(request.IsAlwaysReady);
         Assert.Null(request.Environment);
+        Assert.Null(request.ConfigLastModifiedTime);
+        Assert.Null(request.ContentLastModifiedTime);
+        Assert.Null(request.MaxHttpConcurrency);
+        Assert.Equal("{}", JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest));
+    }
+
+    [Theory]
+    [InlineData(long.MinValue, long.MaxValue, int.MinValue)]
+    [InlineData(long.MaxValue, long.MinValue, int.MaxValue)]
+    [InlineData(9007199254740993L, -9007199254740993L, -1)]
+    [InlineData(0L, 0L, 0)]
+    public void Assignment_RequestedMetadataAcceptsSignedNumbersAndNumericStringsAndWritesExactNumbers(
+        long configTime, long contentTime, int concurrency)
+    {
+        string numbers = FormattableString.Invariant(
+            $$"""{"configLastModifiedTime":{{configTime}},"contentLastModifiedTime":{{contentTime}},"maxHttpConcurrency":{{concurrency}}}""");
+        string strings = FormattableString.Invariant(
+            $$"""{"configLastModifiedTime":"{{configTime}}","contentLastModifiedTime":"{{contentTime}}","maxHttpConcurrency":"{{concurrency}}"}""");
+        foreach (string input in new[] { numbers, strings })
+        {
+            WorkerAssignRequest request = Assert.IsType<WorkerAssignRequest>(
+                JsonSerializer.Deserialize(input, WorkerProxyJsonContext.Default.WorkerAssignRequest));
+            Assert.Equal(configTime, request.ConfigLastModifiedTime);
+            Assert.Equal(contentTime, request.ContentLastModifiedTime);
+            Assert.Equal(concurrency, request.MaxHttpConcurrency);
+
+            string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
+            Assert.Equal(numbers, json);
+        }
+    }
+
+    [Fact]
+    public void Assignment_NullRequestedMetadataIsUnspecifiedAndOmittedOnWrite()
+    {
+        const string input = """{"configLastModifiedTime":null,"contentLastModifiedTime":null,"maxHttpConcurrency":null}""";
+        WorkerAssignRequest request = Assert.IsType<WorkerAssignRequest>(
+            JsonSerializer.Deserialize(input, WorkerProxyJsonContext.Default.WorkerAssignRequest));
+
+        Assert.Null(request.ConfigLastModifiedTime);
+        Assert.Null(request.ContentLastModifiedTime);
+        Assert.Null(request.MaxHttpConcurrency);
         Assert.Equal("{}", JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest));
     }
 
