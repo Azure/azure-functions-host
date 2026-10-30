@@ -138,6 +138,13 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     {
         string proof = RuntimeWorkerAuthentication.RemoveAppProof(initMessage.WorkerInitResponse.Capabilities);
         _credentials.ValidateAppProof(proof);
+        if (initMessage.WorkerInitResponse.Result is not
+            { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+        {
+            throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                "The worker initialization response must have a known result status.");
+        }
+
         base.WorkerInitResponse(initMessage);
     }
 

@@ -65,6 +65,89 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     private const string AppKeySetting = "WEBSITE_AUTH_ENCRYPTION_KEY";
 
     [Theory]
+    [InlineData(null)]
+    [InlineData((StatusResult.Types.Status)42)]
+    [InlineData(StatusResult.Types.Status.Success)]
+    [InlineData(StatusResult.Types.Status.Failure)]
+    [InlineData(StatusResult.Types.Status.Cancelled)]
+    public async Task Link_AuthenticatedInitializationResultIsValidatedAtReceivingBoundary(StatusResult.Types.Status? status)
+    {
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
+        using TestCertificateFiles certificates = new();
+        using ProxyCertificate certificate = new(Options.Create(new ProxyOptions
+        {
+            CertificatePath = certificates.CertificatePath,
+            CertificateKeyPath = certificates.KeyPath
+        }));
+        byte[] appKey = SHA256.HashData("integration-test-app-key"u8);
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        string header = Convert.ToBase64String("""{"alg":"HS256","typ":"JWT"}"""u8).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        string payload = $$"""{"aud":"azure-functions-app:test-app","purpose":"app","worker_id":"test-worker-pod","iat":{{now}},"nbf":{{now}},"exp":{{now + 300}}}""";
+        string content = $"{header}.{Convert.ToBase64String(Encoding.UTF8.GetBytes(payload)).TrimEnd('=').Replace('+', '-').Replace('/', '_')}";
+        string proof = $"{content}.{Convert.ToBase64String(HMACSHA256.HashData(appKey, Encoding.ASCII.GetBytes(content))).TrimEnd('=').Replace('+', '-').Replace('/', '_')}";
+        AuthenticatedInitializationService service = new(status, proof);
+        WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseKestrelHttpsConfiguration();
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
+        {
+            listener.Protocols = HttpProtocols.Http2;
+            listener.UseHttps(certificate.Certificate);
+        }));
+        builder.Services.AddSingleton(service);
+        builder.Services.AddGrpc();
+        await using WebApplication endpoint = builder.Build();
+        endpoint.MapGrpcService<AuthenticatedInitializationService>();
+        await endpoint.StartAsync(timeout.Token);
+        Uri grpc = new(endpoint.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single());
+        ConcurrentQueue<(string Message, Exception? Error)> diagnostics = new();
+        await using ServiceProvider runtime = CreateRuntime("test-app", Convert.ToHexString(appKey), true, diagnostics, new());
+        IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
+        await using WorkerLinkTestHost receiver = await WorkerLinkTestHost.StartAsync(timeout.Token, registry, useKestrel: true);
+        string json = $$"""
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{WorkerLinkTestData.RuntimeAccessKey}}"}
+            """;
+
+        using HttpResponseMessage response = await receiver.PutAsync(json, timeout.Token, "test-worker-pod");
+
+        Assert.True(service.CallerAuthenticated);
+        bool success = status is StatusResult.Types.Status.Success;
+        Assert.Equal(success ? HttpStatusCode.Created : HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        if (success)
+        {
+            Assert.Single(registry.GetInitializedChannels());
+        }
+        else
+        {
+            Assert.Contains("WorkerUnavailable", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+            Assert.Empty(registry.GetInitializedChannels());
+            Assert.False(registry.TryGetInitializedChannel("test-worker-pod", out _));
+            await service.Disconnected.WaitAsync(timeout.Token);
+            if (status is null or (StatusResult.Types.Status)42)
+            {
+                Assert.DoesNotContain(diagnostics, entry => entry.Message.Contains("Worker capabilities:", StringComparison.Ordinal)
+                    || entry.Message.Contains("Worker process initialized", StringComparison.Ordinal)
+                    || entry.Message.Contains("must-not-be-published", StringComparison.Ordinal));
+            }
+            else
+            {
+                Assert.Contains(diagnostics, entry =>
+                    string.Equals(entry.Message, "Initializing worker process failed", StringComparison.Ordinal)
+                    && (status is StatusResult.Types.Status.Cancelled
+                        ? entry.Error is TaskCanceledException
+                        : entry.Error is Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException
+                            && entry.Error.Message.Contains("original-worker-initialization-error", StringComparison.Ordinal)));
+            }
+        }
+        using CancellationTokenSource readyWait = new();
+        Task<IReadOnlyList<WorkerChannel>> ready = registry.GetReadyChannelsAsync().AsTask().WaitAsync(readyWait.Token);
+        Assert.False(ready.IsCompleted);
+        readyWait.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ready);
+        Assert.DoesNotContain(diagnostics, entry => entry.Message.Contains(proof, StringComparison.Ordinal)
+            || entry.Message.Contains("WorkerProxyAppToken", StringComparison.Ordinal));
+    }
+
+    [Theory]
     [InlineData("not-an-absolute-uri")]
     [InlineData("http://worker-proxy:28080/")]
     [InlineData("https://worker-proxy:28080/customer")]
@@ -523,6 +606,64 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         }
 
         public Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context) => inner.EnsureSuccessfulForwardingAsync(context);
+    }
+
+    private sealed class AuthenticatedInitializationService(StatusResult.Types.Status? status, string proof) : FunctionRpc.FunctionRpcBase
+    {
+        private readonly TaskCompletionSource _disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal bool CallerAuthenticated { get; private set; }
+
+        internal Task Disconnected => _disconnected.Task;
+
+        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
+            IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
+        {
+            CallerAuthenticated = ProxyAuthentication.ValidateHeaders(
+                name => context.RequestHeaders.GetValue(name), Convert.FromBase64String(WorkerLinkTestData.RuntimeAccessKey),
+                "test-worker-pod", DateTimeOffset.UtcNow);
+            if (!CallerAuthenticated)
+            {
+                throw new Grpc.Core.RpcException(new Status(StatusCode.Unauthenticated, "A worker caller token is required."));
+            }
+
+            try
+            {
+                await responseStream.WriteAsync(new() { StartStream = new() { WorkerId = "test-worker-pod" } });
+                while (await requestStream.MoveNext(context.CancellationToken))
+                {
+                    if (requestStream.Current.WorkerInitRequest is not null)
+                    {
+                        await responseStream.WriteAsync(new()
+                        {
+                            RequestId = requestStream.Current.RequestId,
+                            WorkerInitResponse = new()
+                            {
+                                Result = status is { } value ? new()
+                                {
+                                    Status = value,
+                                    Exception = new() { Message = "original-worker-initialization-error" }
+                                }
+                                    : null,
+                                Capabilities =
+                                {
+                                    ["WorkerProxyAppToken"] = proof,
+                                    ["UntrustedCapability"] = "must-not-be-published"
+                                },
+                                AppCapabilities = { ["UntrustedAppCapability"] = "must-not-be-published" }
+                            }
+                        });
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+            {
+            }
+            finally
+            {
+                _disconnected.TrySetResult();
+            }
+        }
     }
 
     private sealed class AdvertisedOriginService(string origin, byte[] appKey) : FunctionRpc.FunctionRpcBase

@@ -156,6 +156,8 @@ Stopping `worker-pod-1` removes only that pod's containers, leaving the same Hos
 
 The container profile assigns WorkerProxy through its mapped management endpoint before linking its HTTPS runtime endpoints, using the same authentication contract as project mode.
 
+The WorkerProxy Dockerfile uses the repository root as its build context. Its sibling `Dockerfile.dockerignore` explicitly includes the product version props, shared management handler, RPC authentication helper, Token Service proxy sources, tracked writer and protobuf inputs compiled by `Functions.WorkerProxy.csproj`. Keep these rules aligned when adding linked inputs; reopening ancestor directories must not admit unrelated source trees. Build outputs, local settings and environment files remain excluded.
+
 `worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Aspire does not currently create additional container pods automatically; use the multiple-worker project profile above for the manual late-link flow.
 
 Stop AppHost to stop the local run; normal shutdown removes worker pods before the runtime and its network. If AppHost is forcibly terminated, remove its `functions-aspire-...` groups in Docker Desktop. Relinking restarted workers is not automated; start a new AppHost session for another end-to-end run.

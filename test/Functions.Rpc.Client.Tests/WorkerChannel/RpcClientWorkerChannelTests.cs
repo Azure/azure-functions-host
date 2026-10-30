@@ -135,6 +135,33 @@ public sealed class RpcClientWorkerChannelTests
         Assert.DoesNotContain("WorkerProxyAppToken", log, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData((StatusResult.Types.Status)42)]
+    public async Task StartAsync_ValidProofWithMalformedResultFailsBeforeCapabilityPublication(StatusResult.Types.Status? status)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Result = status is { } value ? new() { Status = value } : null;
+        response.Capabilities.Add("UntrustedCapability", "must-not-be-published");
+        response.AppCapabilities.Add("UntrustedAppCapability", "must-not-be-published");
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
+        Assert.False(channel.IsReadyForInvocations);
+        _appCapabilitiesStore.Verify(value => value.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never);
+        Assert.False(response.Capabilities.ContainsKey("WorkerProxyAppToken"));
+        string log = string.Join(Environment.NewLine, _logs);
+        Assert.DoesNotContain("Worker process initialized", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("Worker capabilities:", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("must-not-be-published", log, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task StartAsync_CompletesAfterHandshakeAndAppliesInitialization()
     {
