@@ -31,6 +31,7 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
     [InlineData("""{"version":"2.0","configurationProfile":"default"}""", "mcp-custom-handler")]
     [InlineData("""{"version":"2.0","configurationProfile":"mcp-custom-handler"}""", "default")]
     [InlineData("""{"version":"2.0","extensions":{"unknown":{"flag":true,"values":[1,2.5,null,"value",{"deep":false}]}},"custom":{"date":"2026-01-01T00:00:00Z","empty":[]}}""", null)]
+    [InlineData("""{"version":"2.0","custom":{"undefined":"undefined","values":["NaN","Infinity","-Infinity"],"duplicate":"first","duplicate":"last"}}""", null)]
     public void Parse_MatchesFileProfilesAndFlattening(string content, string? profile)
     {
         HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions { ScriptPath = _directory })
@@ -148,6 +149,41 @@ public sealed class HostConfigurationSnapshotTests : IDisposable
             exception.Message);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory));
+    }
+
+    [Theory]
+    [InlineData("""{"version":"2.0","functionTimeout":undefined,"custom":"customer-secret"}""")]
+    [InlineData("""{"version":"2.0","custom":{"customer-secret":[undefined]}}""")]
+    [InlineData("""{"version":"2.0","custom":{"customer-secret":NaN}}""")]
+    [InlineData("""{"version":"2.0","custom":{"customer-secret":Infinity}}""")]
+    [InlineData("""{"version":"2.0","custom":{"customer-secret":-Infinity}}""")]
+    [InlineData("""{'version':'2.0','custom':'customer-secret'}""")]
+    [InlineData("""{"version":"2.0",custom:"customer-secret"}""")]
+    [InlineData("""{"version":"2.0",/* customer-secret */"custom":true}""")]
+    [InlineData("""{"version":"2.0","custom":"customer-secret",}""")]
+    public void Parse_RejectsNonJsonSyntaxWithoutChangingFileLoading(string content)
+    {
+        string path = Path.Combine(_directory, "host.json");
+        File.WriteAllText(path, content);
+        HostJsonFileConfigurationOptions options = new(new ScriptApplicationHostOptions
+        {
+            ScriptPath = _directory,
+            IsFileSystemReadOnly = true,
+        });
+        IConfigurationRoot local = new ConfigurationBuilder().Add(new HostJsonFileConfigurationSource(
+            options, NullLoggerFactory.Instance, Mock.Of<IMetricsLogger>())).Build();
+
+        Assert.Equal("2.0", local["AzureFunctionsJobHost:version"]);
+
+        HostConfigurationException exception = Assert.Throws<HostConfigurationException>(() =>
+            HostConfigurationSnapshot.Parse(content));
+
+        Assert.Equal(
+            "The Host configuration must be a JSON object with a supported configuration profile.",
+            exception.Message);
+        Assert.Null(exception.InnerException);
+        Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
+        Assert.Equal(content, File.ReadAllText(path));
     }
 
     [Fact]

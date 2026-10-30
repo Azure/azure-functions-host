@@ -55,6 +55,16 @@ public sealed class WorkerHostConfigurationParserTests
             "{customer-secret",
             """{"configurationProfile":"customer-secret"}""",
             """{"configurationProfile":{"customer-secret":true}}""",
+            """{"functionTimeout":undefined,"custom":"customer-secret"}""",
+            """{"extensions":{"custom":{"customer-secret":[undefined]}}}""",
+            """{"extensions":{"custom":{"customer-secret":NaN}}}""",
+            """{"extensions":{"custom":{"customer-secret":Infinity}}}""",
+            """{"extensions":{"custom":{"customer-secret":-Infinity}}}""",
+            """{'custom':'customer-secret'}""",
+            """{custom:"customer-secret"}""",
+            """{/* customer-secret */"custom":true}""",
+            """{"custom":"customer-secret",}""",
+            """{} {"custom":"customer-secret"}""",
         })
         {
             yield return

@@ -8,9 +8,9 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration;
@@ -33,17 +33,26 @@ public sealed class HostConfigurationSnapshot : IConfigurationSource
     /// <param name="content">The decoded JSON payload, or <see langword="null"/> only for explicitly missing configuration.</param>
     /// <param name="configurationProfile">The bootstrap profile, which takes precedence over the payload's profile.</param>
     /// <returns>An immutable source containing the supplied settings and the selected profile, without file-bootstrap defaults.</returns>
-    /// <exception cref="HostConfigurationException">The payload is not a JSON object or its configuration profile is invalid.</exception>
+    /// <exception cref="HostConfigurationException">The payload is not a strict JSON object or its configuration profile is invalid.</exception>
     public static HostConfigurationSnapshot Parse(string? content, string? configurationProfile = null)
     {
         try
         {
-            JObject document = content is null ? new() : JObject.Parse(content);
+            JObject document = new();
+            if (content is not null)
+            {
+                // Validate wire syntax before reusing Json.NET's existing value conversions.
+                using (JsonDocument.Parse(content))
+                {
+                    document = JObject.Parse(content);
+                }
+            }
+
             string profile = configurationProfile ?? document["configurationProfile"]?.Value<string>() ?? string.Empty;
 
             return new(Flatten(document, HostConfigurationProfile.Get(profile)));
         }
-        catch (Exception exception) when (exception is JsonException or NotSupportedException or
+        catch (Exception exception) when (exception is JsonException or Newtonsoft.Json.JsonException or NotSupportedException or
             ArgumentException or InvalidCastException or FormatException)
         {
             // Parser and profile exceptions can contain customer values, paths, or document fragments.

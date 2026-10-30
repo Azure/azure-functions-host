@@ -390,12 +390,15 @@ public class RpcClientScriptHostStartupIntegrationTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task FirstLink_InvalidConfigurationDoesNotStartScriptHost_AndValidRetryCanStart(bool replacementSuppliesConfiguration)
+    [InlineData(false, """{"version":"2.0","configurationProfile":"customer-secret"}""")]
+    [InlineData(true, """{"version":"2.0","configurationProfile":"customer-secret"}""")]
+    [InlineData(false, """{"functionTimeout":undefined,"custom":"customer-secret"}""")]
+    [InlineData(true, """{"functionTimeout":undefined,"custom":"customer-secret"}""")]
+    public async Task FirstLink_InvalidConfigurationDoesNotStartScriptHost_AndValidRetryCanStart(
+        bool replacementSuppliesConfiguration, string content)
     {
         await using TestWorker invalid = await TestWorker.StartAsync("worker",
-            hostConfiguration: CreateHostConfiguration("""{"version":"2.0","configurationProfile":"customer-secret"}"""));
+            hostConfiguration: CreateHostConfiguration(content));
         await using TestWorker valid = await TestWorker.StartAsync("worker",
             hostConfiguration: replacementSuppliesConfiguration ? CreateHostConfiguration("""{"version":"2.0"}""") : null);
         await using ClientTestHost testHost = new(emptyHostRoot: true);

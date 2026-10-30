@@ -45,13 +45,15 @@ The worker returns the typed `WorkerInitResponse.host_configuration` envelope. I
 
 | Delivery | Compute Host behavior |
 | --- | --- |
-| `Available` | Accept at most **65,536 transmitted UTF-8 bytes**, without a BOM. Require a JSON object and supported configuration profile. No file-schema version header is required. |
+| `Available` | Accept at most **65,536 transmitted UTF-8 bytes**, without a BOM. Require a strict JSON object and supported configuration profile. No file-schema version header is required. |
 | `Available` with empty bytes | Reject as invalid JSON, not as missing configuration. An empty object `{}` is valid empty configuration. |
 | Explicit `Missing` with no bytes | Delivery is supported but no configuration is available. Select empty delivered configuration with the applicable profile, not file-based fallback. |
 | Absent envelope | If this is the first admitted worker, select file-based loading. This is not explicit `Missing` and emits no rejection warning. Later absence leaves the selected source unchanged. |
 | `Error`, `TooLarge`, unspecified/unknown status, or content contradicting a non-`Available` status | Reject the candidate with a bounded, content-free error. Invalid UTF-8, a BOM, invalid JSON, and unsupported profiles also reject it; no parser exception or payload content is logged. |
 
 `Error` means the worker could not obtain, generate, or convert Host configuration. Workers own source-encoding conversion to BOM-free UTF-8 and bound acquisition/conversion; the Host independently validates the final payload. The limit applies after conversion, not to the source representation.
+
+Delivered configuration rejects non-JSON syntax, including `undefined`, unquoted `NaN`/`Infinity`/`-Infinity`, single-quoted or unquoted property names, comments, and trailing commas. Ordinary file-based `host.json` parsing retains its existing permissive behavior. Valid delivered JSON still uses the shared profile and value-conversion behavior.
 
 This payload cap is independent of gRPC message limits. Failed links remain retryable after cleanup. A present failure or invalid payload never falls back to file-based loading.
 
