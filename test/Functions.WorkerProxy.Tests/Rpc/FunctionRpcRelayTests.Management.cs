@@ -171,10 +171,10 @@ public partial class FunctionRpcRelayTests
             await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
             using HttpResponseMessage terminalReplay = await PutManagementJsonAsync(
                 management, "/admin/worker/assignment", assignmentBody, timeout.Token);
-            await AssertManagementErrorAsync(terminalReplay, HttpStatusCode.Conflict, "RemovalRequested", timeout.Token);
+            await AssertManagementErrorAsync(terminalReplay, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
             using HttpResponseMessage terminalConflict = await PutManagementJsonAsync(
                 management, "/admin/worker/assignment", conflictingBody, timeout.Token);
-            await AssertManagementErrorAsync(terminalConflict, HttpStatusCode.Conflict, "RemovalRequested", timeout.Token);
+            await AssertManagementErrorAsync(terminalConflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
             using JsonDocument current = await ReadManagementStateAsync(management, 2, timeout.Token);
             Assert.Equal(4, current.RootElement.GetProperty("revisionId").GetInt64());
         }

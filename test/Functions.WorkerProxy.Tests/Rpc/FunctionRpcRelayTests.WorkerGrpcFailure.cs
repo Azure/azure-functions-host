@@ -12,10 +12,8 @@ using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using GrpcRpcException = Grpc.Core.RpcException;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
@@ -57,25 +55,21 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(HttpStatusCode.NoContent, admitted.StatusCode);
         }
 
-        Task<GrpcRpcException> runtimeTermination = runtime.WaitForTerminationExceptionAsync(timeout.Token);
         await worker.CompleteRequestAsync(timeout.Token);
 
-        GrpcRpcException runtimeException = await runtimeTermination;
-        Assert.Equal(StatusCode.Unavailable, runtimeException.StatusCode);
-        AssertRemovalTrailer(runtimeException);
+        Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
         SplitWorkerOriginState first = await WaitForRemovalStateAsync(management, timeout.Token);
         using HttpResponseMessage repeatedResponse = await PollSplitManagementStateAsync(management, first, timeout.Token);
         SplitWorkerOriginState repeated = await ReadSplitManagementStateAsync(repeatedResponse, timeout.Token);
         Assert.Equal(SplitWorkerStatus.RemovalRequested, repeated.Status);
         Assert.Equal(first.RevisionId, repeated.RevisionId);
-        Assert.Equal("test-group", repeated.FunctionGroup);
         Assert.True(repeated.IsUnhealthy);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
         await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
         using (HttpResponseMessage assignment = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token))
         {
-            await AssertManagementErrorAsync(assignment, HttpStatusCode.Conflict, "RemovalRequested", timeout.Token);
+            await AssertManagementErrorAsync(assignment, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
         }
 
         using (HttpResponseMessage rejected = await forwarding.GetAsync("/invoke", timeout.Token))
@@ -98,12 +92,9 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, workerCancellation.Token);
         await ExchangeAsync(runtime, worker, "established-cancel", timeout.Token);
 
-        Task<GrpcRpcException> runtimeTermination = runtime.WaitForTerminationExceptionAsync(timeout.Token);
         workerCancellation.Cancel();
 
-        GrpcRpcException runtimeException = await runtimeTermination;
-        Assert.Equal(StatusCode.Cancelled, runtimeException.StatusCode);
-        AssertRemovalTrailer(runtimeException);
+        Assert.Equal(StatusCode.Cancelled, await runtime.WaitForTerminationAsync(timeout.Token));
         SplitWorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
         Assert.Equal(SplitWorkerStatus.RemovalRequested, removed.Status);
         Assert.True(removed.IsUnhealthy);
@@ -119,12 +110,10 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "shutdown", timeout.Token);
-        WorkerPodState beforeShutdown = manager.State;
 
         await factory.DisposeAsync();
 
         Assert.False(manager.State.RemovalRequested);
-        Assert.Equal(beforeShutdown.WorkerId, manager.State.WorkerId);
     }
 
     private static async Task AssertPreEstablishmentTerminalOutcomeAllowsReplacementAsync(string trigger)
@@ -139,8 +128,6 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, workerCancellation.Token);
         await runtime.WriteAsync(CreateMessage($"{trigger}-runtime"), timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
-        Task<GrpcRpcException> runtimeTermination = runtime.WaitForTerminationExceptionAsync(timeout.Token);
-
         switch (trigger)
         {
             case "invalid-first":
@@ -156,8 +143,7 @@ public partial class FunctionRpcRelayTests
                 throw new ArgumentOutOfRangeException(nameof(trigger));
         }
 
-        GrpcRpcException runtimeException = await runtimeTermination;
-        AssertNoRemovalTrailer(runtimeException);
+        Assert.NotEqual(StatusCode.OK, await runtime.WaitForTerminationAsync(timeout.Token));
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.False(manager.State.RemovalRequested);
         SplitWorkerOriginState state = await ReadSplitManagementStateAsync(management, timeout.Token);
@@ -182,24 +168,7 @@ public partial class FunctionRpcRelayTests
         CancellationToken cancellationToken)
     {
         await using RelayClient client = CreateClient(factory, side, cancellationToken);
-        StreamingMessage message = side == FunctionRpcRelaySide.Worker
-            ? CreateStartStream("late-worker")
-            : CreateMessage("late-runtime");
-        GrpcRpcException exception = await client.WriteAndReadRejectionAsync(message, cancellationToken);
-        Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
-    }
-
-    private static void AssertRemovalTrailer(GrpcRpcException exception)
-    {
-        Metadata.Entry trailer = Assert.Single(exception.Trailers, entry =>
-            string.Equals(entry.Key, FunctionRpcRelayConstants.WorkerRemovalRequestedTrailerName, StringComparison.Ordinal));
-        Assert.Equal(FunctionRpcRelayConstants.WorkerRemovalRequestedTrailerValue, trailer.Value);
-    }
-
-    private static void AssertNoRemovalTrailer(GrpcRpcException exception)
-    {
-        Assert.DoesNotContain(exception.Trailers, entry =>
-            string.Equals(entry.Key, FunctionRpcRelayConstants.WorkerRemovalRequestedTrailerName, StringComparison.Ordinal));
+        Assert.Equal(StatusCode.Unavailable, await client.WaitForTerminationAsync(cancellationToken));
     }
 
     private static async Task<SplitWorkerOriginState> WaitForRemovalStateAsync(

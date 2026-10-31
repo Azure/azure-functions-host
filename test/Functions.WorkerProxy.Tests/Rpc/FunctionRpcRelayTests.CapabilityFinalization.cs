@@ -73,7 +73,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_EstablishedReadFaultRequestsStickyRemovalWithoutForwardingResponse()
+    public async Task Relay_FinalizerFailureTerminatesAssignedWorkerWithoutForwardingResponse()
     {
         InvalidOperationException failure = new("Injected finalization failure.");
         TestCapabilityFinalizer finalizer = new(capabilities =>
@@ -97,14 +97,13 @@ public partial class FunctionRpcRelayTests
 
         Grpc.Core.RpcException exception = await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => runtime.ReadAsync(timeout.Token));
         Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
-        AssertRemovalTrailer(exception);
         Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
         await WaitForReleaseAsync(relay, timeout.Token);
         WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
         Assert.False(failed.IsWorkerReady);
         Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
         Assert.True(failed.RemovalRequested);
-        Assert.Equal(WorkerAssignmentResult.RemovalRequested, manager.Assign(assignment));
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, relay.LastTerminalState?.Reason);
         Assert.Same(failure, relay.LastTerminalState?.Exception);
@@ -235,7 +234,7 @@ public partial class FunctionRpcRelayTests
             await worker.WriteAndReadRejectionAsync(CreateStartStream("replacement-worker"), timeout.Token);
         Assert.Equal(StatusCode.Unavailable, runtimeException.StatusCode);
         Assert.Equal(StatusCode.Unavailable, workerException.StatusCode);
-        Assert.Equal(WorkerAssignmentResult.RemovalRequested, manager.Assign(failedAssignment));
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(failedAssignment));
     }
 
     private static async Task<WorkerAssignment> FailAssignedSessionAsync(WorkerProxyWebApplicationFactory factory,

@@ -16,16 +16,7 @@ internal static class WorkerHttpForwardingTelemetry
 
     internal const string DestinationNotConfiguredResult = "DestinationNotConfigured";
     internal const string DestinationNotReadyResult = "DestinationNotReady";
-    internal const string RemovalRequestedResult = "RemovalRequested";
     internal const string ForwarderErrorResult = "ForwarderError";
-
-    /// <summary>
-    /// Records that sticky worker removal has closed HTTP admission.
-    /// </summary>
-    public static void RecordRemovalRequested()
-    {
-        RecordFailure(RemovalRequestedResult);
-    }
 
     /// <summary>
     /// Records that no worker HTTP destination was configured or advertised.

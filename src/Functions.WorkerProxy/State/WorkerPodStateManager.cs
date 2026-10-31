@@ -197,12 +197,9 @@ internal sealed class WorkerPodStateManager
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
     public bool OnSessionTerminated(long sessionId)
-        => OnSessionTerminated(sessionId, workerTerminated: false);
+        => OnSessionTerminated(sessionId, requestRemoval: false);
 
-    /// <summary>
-    /// Also commits sticky removal when an established worker-facing stream is terminal outside application shutdown.
-    /// </summary>
-    public bool OnSessionTerminated(long sessionId, bool workerTerminated)
+    internal bool OnSessionTerminated(long sessionId, bool requestRemoval)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -225,13 +222,11 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            bool commitWorkerRemoval = workerTerminated && _state.WorkerId is not null && !_applicationStopping;
-            bool removalRequested = _state.RemovalRequested || commitWorkerRemoval;
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
-                RemovalRequested = removalRequested,
+                RemovalRequested = _state.RemovalRequested || (requestRemoval && !_applicationStopping),
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
@@ -248,11 +243,6 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (_state.RemovalRequested)
-            {
-                return WorkerAssignmentResult.RemovalRequested;
-            }
-
             // Replay/conflict takes precedence over current readiness, including after the assigned stream terminates.
             if (_assignment is not null)
             {
@@ -264,6 +254,11 @@ internal sealed class WorkerPodStateManager
                 return _state.AssignmentState == WorkerAssignmentState.Failed
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
+            }
+
+            if (_state.RemovalRequested)
+            {
+                return WorkerAssignmentResult.WorkerTerminated;
             }
 
             if (!_state.IsWorkerReady)

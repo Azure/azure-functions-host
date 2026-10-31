@@ -41,19 +41,11 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
             {
                 FunctionRpcRelayAttachmentFailure.Duplicate => StatusCode.AlreadyExists,
                 FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown => StatusCode.Unavailable,
-                FunctionRpcRelayAttachmentFailure.RemovalRequested => StatusCode.Unavailable,
                 FunctionRpcRelayAttachmentFailure.Shutdown => StatusCode.Unavailable,
                 _ => StatusCode.Unknown
             };
 
             throw new GrpcRpcException(new Status(statusCode, exception.Message));
-        }
-
-        if (side == FunctionRpcRelaySide.Runtime && terminalState.RemovalRequested)
-        {
-            context.ResponseTrailers.Add(
-                FunctionRpcRelayConstants.WorkerRemovalRequestedTrailerName,
-                FunctionRpcRelayConstants.WorkerRemovalRequestedTrailerValue);
         }
 
         context.Status = terminalState.Reason switch

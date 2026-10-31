@@ -215,9 +215,7 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             bool workerTerminated = trigger.StartsWith("worker", StringComparison.Ordinal);
             Assert.Equal(workerTerminated, failed.RemovalRequested);
-            Assert.Equal(
-                workerTerminated ? WorkerAssignmentResult.RemovalRequested : WorkerAssignmentResult.WorkerTerminated,
-                manager.Assign(assignment));
+            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
             Assert.True(relay.IsAttached(FunctionRpcRelaySide.Runtime));
         }
@@ -268,7 +266,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.Unavailable, runtimeException.StatusCode);
         Assert.Equal(StatusCode.Unavailable, workerException.StatusCode);
         Assert.Same(terminated, manager.State);
-        Assert.Equal(WorkerAssignmentResult.RemovalRequested, manager.Assign(assignment));
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
     }
 
     [Fact]

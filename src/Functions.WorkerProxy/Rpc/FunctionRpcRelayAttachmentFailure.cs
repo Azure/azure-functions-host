@@ -19,11 +19,6 @@ internal enum FunctionRpcRelayAttachmentFailure
     PreviousSessionTearingDown,
 
     /// <summary>
-    /// Sticky worker removal has closed FunctionRpc admission.
-    /// </summary>
-    RemovalRequested,
-
-    /// <summary>
     /// WorkerProxy shutdown has started and no new streams are accepted.
     /// </summary>
     Shutdown
