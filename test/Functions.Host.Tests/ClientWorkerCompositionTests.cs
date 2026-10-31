@@ -205,8 +205,15 @@ public class ClientWorkerCompositionTests
             IFunctionMetadataManager metadataManager = rootHost.Services.GetRequiredService<IFunctionMetadataManager>();
             IWebHostWorkerManager workerManager = rootHost.Services.GetRequiredService<IWebHostWorkerManager>();
             WorkerLinkController controller = ActivatorUtilities.CreateInstance<WorkerLinkController>(rootHost.Services);
+            IByocRuntimeDrainManager drainManager =
+                rootHost.Services.GetRequiredService<IByocRuntimeDrainManager>();
+            ByocRuntimeDrainController drainController =
+                ActivatorUtilities.CreateInstance<ByocRuntimeDrainController>(
+                    rootHost.Services);
 
             Assert.NotNull(controller);
+            Assert.NotNull(drainManager);
+            Assert.NotNull(drainController);
             Assert.Equal("Azure.Functions.Rpc.Client.WorkerChannelRegistry", registry.GetType().FullName);
             Assert.Equal("Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider",
                 metadataProvider.GetType().FullName);

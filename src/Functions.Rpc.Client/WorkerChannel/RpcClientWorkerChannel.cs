@@ -163,8 +163,19 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    private bool IsHttpFunctionGroup =>
-        string.Equals(_functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
+    internal bool IsHttpFunctionGroup
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return string.Equals(
+                    _functionGroupName,
+                    FunctionGroups.Http,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
 
     internal void CompleteRequests() => _requestWriter.TryComplete();
 
@@ -172,50 +183,28 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        InvocationPermit permit = null;
-        try
+        lock (_invocationAdmissionLock)
         {
-            lock (_invocationAdmissionLock)
+            if (!CanAdmitInvocationLocked())
             {
-                if (!CanAdmitInvocationLocked())
-                {
-                    return false;
-                }
-
-                string functionId = context.FunctionMetadata.GetFunctionId();
-                if (!FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
-                {
-                    throw new InvalidOperationException(
-                        $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
-                }
-
-                if (!HasTrustedScaleInMetadataLocked())
-                {
-                    return inputBuffer.Post(context);
-                }
-
-                Guid invocationId = context.ExecutionContext.InvocationId;
-                permit = new(this, context);
-                if (!_committedInvocations.TryAdd(invocationId, permit))
-                {
-                    throw new InvalidOperationException(
-                        $"Invocation '{invocationId}' is already committed to worker '{Id}'.");
-                }
-
-                if (!inputBuffer.Post(context))
-                {
-                    return false;
-                }
+                return false;
             }
 
-            permit.ObserveResult(context.ResultSource.Task);
-            permit = null;
+            string functionId = context.FunctionMetadata.GetFunctionId();
+            if (!FunctionInputBuffers.TryGetValue(
+                functionId,
+                out BufferBlock<ScriptInvocationContext> inputBuffer))
+            {
+                throw new InvalidOperationException(
+                    $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
+            }
+
+            if (!inputBuffer.Post(context))
+            {
+                return false;
+            }
 
             return true;
-        }
-        finally
-        {
-            permit?.Dispose();
         }
     }
 
@@ -282,6 +271,61 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+
+    protected override bool TryBeginInvocationDispatch(
+        ScriptInvocationContext context,
+        bool usesHttpProxy)
+    {
+        InvocationPermit permit = null;
+        lock (_invocationAdmissionLock)
+        {
+            if (CanAdmitInvocationLocked())
+            {
+                permit = new(this, context, usesHttpProxy);
+                if (!_committedInvocations.TryAdd(
+                    context.ExecutionContext.InvocationId,
+                    permit))
+                {
+                    throw new InvalidOperationException(
+                        $"Invocation '{context.ExecutionContext.InvocationId}' is already committed to worker '{Id}'.");
+                }
+            }
+        }
+
+        if (permit is null)
+        {
+            context.ResultSource.TrySetException(
+                new InvalidOperationException($"Worker '{Id}' no longer accepts new invocations."));
+            return false;
+        }
+
+        permit.ObserveResult(context.ResultSource.Task);
+        return true;
+    }
+
+    protected override bool TryBeginInvocationSend(ScriptInvocationContext context)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            return !_terminalAdmissionClosed &&
+                _committedInvocations.ContainsKey(context.ExecutionContext.InvocationId);
+        }
+    }
+
+    protected override void OnInvocationDispatchCompleted(
+        ScriptInvocationContext context,
+        Task httpForwardingTask)
+    {
+        InvocationPermit permit;
+        lock (_invocationAdmissionLock)
+        {
+            _committedInvocations.TryGetValue(
+                context.ExecutionContext.InvocationId,
+                out permit);
+        }
+
+        permit?.ObserveHttpForwarding(httpForwardingTask);
+    }
 
     internal bool CancelScaleInReservation(Guid reservationId, bool restoreInvocationAdmission)
     {
@@ -449,6 +493,55 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         base.Dispose(disposing);
     }
 
+    internal Task BeginRuntimeDrain()
+    {
+        List<ScriptInvocationContext> queuedInvocations = [];
+        lock (_invocationAdmissionLock)
+        {
+            if (_draining)
+            {
+                return _drainCompletion.Task;
+            }
+
+            Volatile.Write(ref _draining, true);
+            foreach (BufferBlock<ScriptInvocationContext> inputBuffer in FunctionInputBuffers.Values)
+            {
+                while (inputBuffer.TryReceive(out ScriptInvocationContext invocation))
+                {
+                    queuedInvocations.Add(invocation);
+                }
+            }
+
+            CompleteDrainIfReadyLocked();
+        }
+
+        foreach (ScriptInvocationContext invocation in queuedInvocations)
+        {
+            invocation.ResultSource.TrySetException(
+                new InvalidOperationException($"Worker '{Id}' was selected for Runtime drain before the invocation committed."));
+        }
+
+        return _drainCompletion.Task;
+    }
+
+    internal void ExpireRuntimeDrain(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        InvocationPermit[] committedInvocations;
+        lock (_invocationAdmissionLock)
+        {
+            Volatile.Write(ref _draining, true);
+            Volatile.Write(ref _terminalAdmissionClosed, true);
+            committedInvocations = [.. _committedInvocations.Values];
+        }
+
+        foreach (InvocationPermit invocation in committedInvocations)
+        {
+            invocation.Expire(exception);
+        }
+    }
+
     private async Task CompleteStartAsync()
     {
         try
@@ -507,11 +600,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             !IsTerminated &&
             IsChannelReadyForInvocations();
 
-    private bool HasTrustedScaleInMetadataLocked()
-        => IsHttpFunctionGroup &&
-            _isAlwaysReady is false &&
-            _maxHttpConcurrency is > 0;
-
     private void CompleteDrainIfReadyLocked()
     {
         if (_draining && _committedInvocations.Count == 0)
@@ -561,14 +649,23 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         private readonly ScriptInvocationContext _context;
         private readonly Guid _invocationId;
         private readonly RpcClientWorkerChannel _owner;
+        private int _httpCompletionObserved;
         private int _released;
+        private int _remainingCompletions;
 
-        public InvocationPermit(RpcClientWorkerChannel owner, ScriptInvocationContext context)
+        public InvocationPermit(
+            RpcClientWorkerChannel owner,
+            ScriptInvocationContext context,
+            bool usesHttpProxy)
         {
             _owner = owner;
             _context = context;
             _invocationId = context.ExecutionContext.InvocationId;
+            _remainingCompletions = usesHttpProxy ? 2 : 1;
+            RequiresHttpCompletion = usesHttpProxy;
         }
+
+        private bool RequiresHttpCompletion { get; }
 
         public void Dispose()
         {
@@ -578,16 +675,53 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
         }
 
-        public void Fail(Exception exception) => _context.ResultSource.TrySetException(exception);
-
-        public void ObserveResult(Task resultTask)
+        public void Expire(Exception exception)
         {
-            _ = resultTask.ContinueWith(
-                static (_, state) => ((InvocationPermit)state).Dispose(),
+            _context.ResultSource.TrySetException(exception);
+            Dispose();
+        }
+
+        public void Fail(Exception exception) => Expire(exception);
+
+        public void ObserveHttpForwarding(Task forwardingTask)
+        {
+            if (!RequiresHttpCompletion ||
+                Interlocked.Exchange(ref _httpCompletionObserved, 1) != 0)
+            {
+                return;
+            }
+
+            if (forwardingTask is null)
+            {
+                Complete();
+                return;
+            }
+
+            _ = forwardingTask.ContinueWith(
+                static (_, state) => ((InvocationPermit)state!).Complete(),
                 this,
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
+        }
+
+        public void ObserveResult(Task resultTask)
+        {
+            _ = resultTask.ContinueWith(
+                static (_, state) => ((InvocationPermit)state!).Complete(),
+                this,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        private void Complete()
+        {
+            if (Volatile.Read(ref _released) == 0 &&
+                Interlocked.Decrement(ref _remainingCompletions) == 0)
+            {
+                Dispose();
+            }
         }
     }
 }
