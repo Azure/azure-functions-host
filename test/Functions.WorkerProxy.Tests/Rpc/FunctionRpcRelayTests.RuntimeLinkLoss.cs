@@ -150,6 +150,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(
             SplitWorkerStatus.Starting,
             (await ReadSplitManagementStateAsync(management, timeout.Token)).Status);
+
+        await AssertRuntimeCancellationAfterShutdownMarkDoesNotRequestRemovalAsync();
     }
 
     [Fact]
@@ -276,6 +278,47 @@ public partial class FunctionRpcRelayTests
         Assert.All(terminalStates, state => Assert.Same(expectedException, state.Exception));
         Assert.All(terminalStates, state => Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, state.Reason));
         Assert.All(terminalStates, state => Assert.Equal(FunctionRpcRelaySide.Runtime, state.Side));
+    }
+
+    private static async Task AssertRuntimeCancellationAfterShutdownMarkDoesNotRequestRemovalAsync()
+    {
+        WorkerPodStateManager manager = CreatePodStateManager();
+        await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using CancellationTokenSource runtimeCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        TaskCompletionSource shutdownMarked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource continueShutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        relay.ShutdownMarkedTestHook = () =>
+        {
+            shutdownMarked.TrySetResult();
+            continueShutdown.Task.GetAwaiter().GetResult();
+        };
+        Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(
+            FunctionRpcRelaySide.Runtime,
+            new BlockingStreamReader(),
+            new TestServerStreamWriter(),
+            runtimeCancellation.Token);
+        await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
+
+        Task stopTask = Task.Run(() => relay.StopAsync(timeout.Token), timeout.Token);
+        try
+        {
+            await shutdownMarked.Task.WaitAsync(timeout.Token);
+            runtimeCancellation.Cancel();
+            FunctionRpcRelayTerminalState terminalState = await runtimeTask.WaitAsync(timeout.Token);
+
+            Assert.Equal(FunctionRpcRelayTerminationReason.Canceled, terminalState.Reason);
+            Assert.Equal(FunctionRpcRelaySide.Runtime, terminalState.Side);
+            Assert.False(manager.State.RemovalRequested);
+        }
+        finally
+        {
+            continueShutdown.TrySetResult();
+        }
+
+        await stopTask.WaitAsync(timeout.Token);
+        Assert.False(manager.State.RemovalRequested);
     }
 
     private static async Task InitializeAndAssignWorkerAsync(

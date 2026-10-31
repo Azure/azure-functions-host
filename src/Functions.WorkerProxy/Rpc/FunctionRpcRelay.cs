@@ -45,6 +45,8 @@ internal sealed partial class FunctionRpcRelay(
         Terminated
     }
 
+    internal Action? ShutdownMarkedTestHook { get; set; }
+
     /// <summary>
     /// Gets the terminal state of the most recently completed relay session.
     /// </summary>
@@ -184,6 +186,7 @@ internal sealed partial class FunctionRpcRelay(
 
         if (initiateStop)
         {
+            ShutdownMarkedTestHook?.Invoke();
             _ = CompleteStopAsync(session);
         }
 
