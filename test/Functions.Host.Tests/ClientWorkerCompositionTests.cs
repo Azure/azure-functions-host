@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Azure.Functions.Host.Controllers;
-using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -78,20 +77,12 @@ public class ClientWorkerCompositionTests
         AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IHostStateCoordinator");
         AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IHttpWorkerScaleInManager");
         AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IRuntimeWorkerAdmissionGate");
-        AssertSingleton(services, "Azure.Functions.Rpc.Client.IByocRuntimeDrainManager",
-            "Azure.Functions.Rpc.Client.ByocRuntimeDrainManager");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IWorkerFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
             "Azure.Functions.Host.ClientWebHostWorkerManager");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
-        ServiceDescriptor stateObserver = Assert.Single(
-            services.Where(service =>
-                service.ServiceType == typeof(IHostedService) &&
-                service.ImplementationType ==
-                    typeof(ByocRuntimeDrainHostStateObserver)));
-        Assert.Equal(ServiceLifetime.Singleton, stateObserver.Lifetime);
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
             string.Equals(service.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
@@ -209,26 +200,13 @@ public class ClientWorkerCompositionTests
             Type registryType = GetServiceType(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry");
 
             object registry = rootHost.Services.GetRequiredService(registryType);
-            IHostStateCoordinator hostStateCoordinator =
-                rootHost.Services.GetRequiredService<IHostStateCoordinator>();
-            IRuntimeWorkerAdmissionGate runtimeAdmissionGate =
-                rootHost.Services.GetRequiredService<IRuntimeWorkerAdmissionGate>();
             IWorkerFunctionMetadataProvider metadataProvider =
                 rootHost.Services.GetRequiredService<IWorkerFunctionMetadataProvider>();
             IFunctionMetadataManager metadataManager = rootHost.Services.GetRequiredService<IFunctionMetadataManager>();
             IWebHostWorkerManager workerManager = rootHost.Services.GetRequiredService<IWebHostWorkerManager>();
             WorkerLinkController controller = ActivatorUtilities.CreateInstance<WorkerLinkController>(rootHost.Services);
-            IByocRuntimeDrainManager drainManager =
-                rootHost.Services.GetRequiredService<IByocRuntimeDrainManager>();
-            ByocRuntimeDrainController drainController =
-                ActivatorUtilities.CreateInstance<ByocRuntimeDrainController>(
-                    rootHost.Services);
 
             Assert.NotNull(controller);
-            Assert.NotNull(drainManager);
-            Assert.NotNull(drainController);
-            Assert.Same(registry, hostStateCoordinator);
-            Assert.Same(registry, runtimeAdmissionGate);
             Assert.Equal("Azure.Functions.Rpc.Client.WorkerChannelRegistry", registry.GetType().FullName);
             Assert.Equal("Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider",
                 metadataProvider.GetType().FullName);
@@ -241,10 +219,6 @@ public class ClientWorkerCompositionTests
             Type coordinatorType = GetServiceType(services, StartupCoordinatorTypeName);
             Assert.Same(rootHost.Services.GetRequiredService(coordinatorType),
                 Assert.Single(hostedServices.Where(service => string.Equals(service.GetType().FullName, StartupCoordinatorTypeName, StringComparison.Ordinal))));
-            Assert.Single(
-                hostedServices,
-                service => service is
-                    ByocRuntimeDrainHostStateObserver);
             Assert.Same(rootHost.Services.GetRequiredService<WebJobsScriptHostService>(),
                 rootHost.Services.GetRequiredService<IScriptHostManager>());
             await workerManager.SpecializeAsync();

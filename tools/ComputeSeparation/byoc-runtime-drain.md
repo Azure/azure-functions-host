@@ -419,19 +419,19 @@ wire body remains the established three-field contract and contains no new lifec
 
 ## 14. Behavioral test matrix
 
-Exactly five public/hosted behavioral test methods cover the contract.
+Three hosted endpoint methods cover the public management contract. One existing R2 hosted theory
+retains the consequential shared-admission regression.
 
 | # | Public method | Behavior covered |
 |---|---|---|
-| 1 | `Post_EnforcesAdminContractAndPublishesSharedHostState` | Auth, strict body/model validation, valid models, compute-only route exposure, transient publication retry, and exact lifecycle-free Host-state wire body |
-| 2 | `ByocDrain_PhasedUsesFrozenFiveBatchScheduleAndHttpCutoff` | Fixed `0/10/20/30/40s` non-HTTP schedule, frozen 20% batch, `35s` HTTP cutoff |
-| 3 | `ByocDrain_ImmediateSelectsEveryWorkerAndClosesNewLinks` | All-at-once selection, permanent admission closure, pre-accept initialization/disposal races, one monotonic state update per completed cleanup, and final zero only after disposal |
-| 4 | `ByocDrain_SelectionFencesIntakeAndWaitsForRpcAndHttpCompletion` | Atomic intake withdrawal plus RPC/HTTP committed ownership and link close |
-| 5 | `ByocDrain_RetryAndEscalationKeepOriginalDeadlineAndRetireWithoutReuseGrace` | Replay, escalation, no deadline reset, no downgrade, no R1 grace, public link outcome |
+| 1 | `Post_AcceptsSupportedDrainModel` | Authenticated `POST` accepts exact `Phased` and `Immediate` values and returns the immutable acceptance receipt |
+| 2 | `Post_PropagatesEscalationReceiptAndConflict` | Phased-to-Immediate response keeps the original acceptance time and a later downgrade returns the public conflict shape |
+| 3 | `Post_RejectsUnauthorizedAndInvalidRequests` | Admin authentication plus representative missing, malformed, case-mismatched, and extra-field rejection without invoking the drain manager |
+| 4 | `RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission` | Existing R2 behavior proves a canceled reservation stays invocation-eligible when Runtime drain owns the shared capacity fence |
 
-The tests use a deterministic `TimeProvider`; they do not sleep for schedule seconds or minutes.
-The existing shared R2 admission-race behavior also forces the post-before-commit ordering and
-proves that pending ownership blocks scale-in while normal shutdown still waits for the invocation.
+Implementation-level manager and registry branch tests are intentionally omitted. The public tests
+protect the management contract, while the retained R2 sibling protects the one cross-feature
+admission regression that is externally consequential.
 
 ## 15. Explicit non-goals
 

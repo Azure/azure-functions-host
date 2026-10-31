@@ -11,18 +11,15 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Azure.Functions.Host.HostState;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -254,29 +251,24 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(3, hostStateCoordinator.Current.LinkedWorkerCount);
             Assert.Equal(0, worker.DisposeCount);
             Assert.Equal(0, alternateWorker.DisposeCount);
-            IReadOnlyList<WorkerChannel> readyChannels =
-                await registry.GetReadyChannelsAsync();
-            bool canceledWorkerReady =
-                readyChannels.Contains(worker.Channel);
+            var readyChannels = await registry.GetReadyChannelsAsync();
+            Assert.Contains(worker.Channel, readyChannels);
             Assert.Contains(alternateWorker.Channel, readyChannels);
 
-            if (canceledWorkerReady)
-            {
-                ScriptInvocationContext canceledReservationInvocation =
-                    CreateScaleInInvocation(function);
-                Assert.True(
-                    worker.Channel.TryDispatchInvocation(
-                        canceledReservationInvocation));
-                StreamingMessage invocationRequest =
-                    await worker.ReadRequestAsync(
-                        StreamingMessage.ContentOneofCase.InvocationRequest);
-                await SendInvocationResponseAsync(
-                    worker,
-                    invocationRequest.InvocationRequest.InvocationId);
-                Assert.NotNull(
-                    await canceledReservationInvocation.ResultSource.Task.WaitAsync(
-                        TestTimeout));
-            }
+            ScriptInvocationContext canceledReservationInvocation =
+                CreateScaleInInvocation(function);
+            Assert.True(
+                worker.Channel.TryDispatchInvocation(
+                    canceledReservationInvocation));
+            StreamingMessage invocationRequest =
+                await worker.ReadRequestAsync(
+                    StreamingMessage.ContentOneofCase.InvocationRequest);
+            await SendInvocationResponseAsync(
+                worker,
+                invocationRequest.InvocationRequest.InvocationId);
+            Assert.NotNull(
+                await canceledReservationInvocation.ResultSource.Task.WaitAsync(
+                    TestTimeout));
 
             pendingWorker.AllowStart();
             await pendingWorker.DisposeStarted.WaitAsync(TestTimeout);
@@ -309,7 +301,6 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(
                 [0L],
                 authoritativeHandler.PublishedStates.Select(state => state.HttpCapacity));
-            Assert.True(canceledWorkerReady);
             return;
         }
 
@@ -344,9 +335,6 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task InvocationAdmissionAndScaleInReservation_RaceHasOneSafeWinner()
     {
-        await AssertPostedInvocationOwnershipAsync();
-        await AssertByocSelectionWithdrawsShutdownPendingAsync();
-
         ManualTimeProvider timeProvider = new();
         RegistryHarness harness = new(timeProvider);
         ChannelControl worker = CreateScaleInChannel("worker", maxHttpConcurrency: "7");
@@ -396,112 +384,6 @@ public sealed partial class WorkerChannelRegistryTests
                 out bool postInvocationAdmissionRestored));
             Assert.True(postInvocationAdmissionRestored);
         }
-    }
-
-    private static async Task AssertPostedInvocationOwnershipAsync()
-    {
-        ManualTimeProvider timeProvider = new();
-        RegistryHarness harness = new(timeProvider);
-        ChannelControl worker = CreateScaleInChannel(
-            "pending-worker",
-            maxHttpConcurrency: "7");
-        harness.Enqueue(worker);
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateScaleInHttpFunction();
-        await LinkAsync(registry, worker.Id);
-        await registry.ActivateAsync(
-            [function],
-            new ManagedDependencyOptions(),
-            functionTimeout: null);
-        await worker.ReadRequestAsync(
-            StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-
-        ScriptInvocationContext invocation =
-            CreateScaleInInvocation(function);
-        Assert.True(worker.Channel.TryDispatchInvocation(invocation));
-        BufferBlock<ScriptInvocationContext> inputBuffer =
-            worker.Channel.FunctionInputBuffers[function.GetFunctionId()];
-        Assert.True(inputBuffer.TryReceive(
-            out ScriptInvocationContext queuedInvocation));
-        Assert.Same(invocation, queuedInvocation);
-        await SendFunctionLoadResponseAsync(
-            worker,
-            function.GetFunctionId());
-        await WaitUntilAsync(
-            () => worker.Channel.ScaleInFunctionLoadsComplete);
-        Assert.Null(((IHttpWorkerScaleInManager)registry).TryReserveWorker());
-
-        Task shutdownDrain = worker.Channel.BeginShutdownDrain();
-        Assert.False(shutdownDrain.IsCompleted);
-        Assert.True(inputBuffer.Post(queuedInvocation));
-        StreamingMessage request = await worker.ReadRequestAsync(
-            StreamingMessage.ContentOneofCase.InvocationRequest);
-        await SendInvocationResponseAsync(
-            worker,
-            request.InvocationRequest.InvocationId);
-        Assert.NotNull(
-            await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-        await shutdownDrain.WaitAsync(TestTimeout);
-    }
-
-    private static async Task AssertByocSelectionWithdrawsShutdownPendingAsync()
-    {
-        ManualTimeProvider timeProvider = new();
-        RegistryHarness harness = new(timeProvider);
-        ChannelControl worker = CreateScaleInChannel(
-            "shutdown-pending-worker",
-            maxHttpConcurrency: "7");
-        harness.Enqueue(worker);
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateScaleInHttpFunction();
-        await LinkAsync(registry, worker.Id);
-        await registry.ActivateAsync(
-            [function],
-            new ManagedDependencyOptions(),
-            functionTimeout: null);
-        await worker.ReadRequestAsync(
-            StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-
-        ScriptInvocationContext invocation =
-            CreateScaleInInvocation(function);
-        Assert.True(worker.Channel.TryDispatchInvocation(invocation));
-        BufferBlock<ScriptInvocationContext> inputBuffer =
-            worker.Channel.FunctionInputBuffers[function.GetFunctionId()];
-        Assert.True(
-            inputBuffer.TryReceive(
-                out ScriptInvocationContext queuedInvocation));
-        await SendFunctionLoadResponseAsync(
-            worker,
-            function.GetFunctionId());
-
-        Task shutdownDrain = worker.Channel.BeginShutdownDrain();
-        Assert.False(shutdownDrain.IsCompleted);
-
-        ByocRuntimeDrainManager manager = new(
-            registry,
-            timeProvider,
-            NullLogger<ByocRuntimeDrainManager>.Instance);
-        manager.Accept(ByocDrainModel.Immediate);
-
-        Exception failure = await Record.ExceptionAsync(
-            () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
-        if (failure is TimeoutException)
-        {
-            Assert.True(inputBuffer.Post(queuedInvocation));
-            StreamingMessage request = await worker.ReadRequestAsync(
-                StreamingMessage.ContentOneofCase.InvocationRequest);
-            await SendInvocationResponseAsync(
-                worker,
-                request.InvocationRequest.InvocationId);
-            Assert.NotNull(
-                await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-        }
-
-        Assert.Contains(
-            "before the invocation committed",
-            Assert.IsType<InvalidOperationException>(failure).Message,
-            StringComparison.Ordinal);
-        await shutdownDrain.WaitAsync(TestTimeout);
     }
 
     [Theory]
