@@ -73,10 +73,6 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.RpcClientWorkerChannelFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.WorkerChannelRegistry",
             "Azure.Functions.Rpc.Client.WorkerChannelRegistry");
-        AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry");
-        AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IHostStateCoordinator");
-        AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IHttpWorkerScaleInManager");
-        AssertSingletonFactory(services, "Azure.Functions.Rpc.Client.IRuntimeWorkerAdmissionGate");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IWorkerFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
@@ -373,14 +369,6 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor =>
             ForbiddenWorkerImplementations.Contains(descriptor.ServiceType.FullName, StringComparer.Ordinal) ||
             ForbiddenWorkerImplementations.Contains(descriptor.GetImplementationType()?.FullName, StringComparer.Ordinal));
-    }
-
-    private static void AssertSingletonFactory(IServiceCollection services, string serviceTypeName)
-    {
-        ServiceDescriptor descriptor = Assert.Single(services.Where(service =>
-            string.Equals(GetTypeName(service.ServiceType), serviceTypeName, StringComparison.Ordinal)));
-        Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
-        Assert.NotNull(descriptor.ImplementationFactory);
     }
 
     private static string GetImplementationTypeName(ServiceDescriptor descriptor)

@@ -1928,7 +1928,6 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly string _isAlwaysReady;
         private readonly string _maxHttpConcurrency;
         private readonly Exception _setupFailure;
-        private readonly bool _trustedAssignmentMetadata;
         private int _remainingSetupFailures;
         private int _setupAttempts;
         private Exception _startFailure;
@@ -1946,8 +1945,7 @@ public sealed partial class WorkerChannelRegistryTests
             string maxHttpConcurrency = null,
             IHttpProxyService httpProxyService = null,
             bool completeResponsesOnRequestCompletion = false,
-            string advertisedHttpUri = null,
-            bool trustedAssignmentMetadata = true)
+            string advertisedHttpUri = null)
         {
             Id = id;
             Transport = new(blockDisposal);
@@ -1956,7 +1954,6 @@ public sealed partial class WorkerChannelRegistryTests
             _functionGroupName = functionGroupName;
             _isAlwaysReady = isAlwaysReady;
             _maxHttpConcurrency = maxHttpConcurrency;
-            _trustedAssignmentMetadata = trustedAssignmentMetadata;
             _completeResponsesOnRequestCompletion = completeResponsesOnRequestCompletion;
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
@@ -2097,7 +2094,7 @@ public sealed partial class WorkerChannelRegistryTests
                 {
                     Result = new() { Status = StatusResult.Types.Status.Success },
                 };
-                if (_trustedAssignmentMetadata && _functionGroupName is not null)
+                if (_functionGroupName is not null)
                 {
                     initResponse.Capabilities[RpcClientWorkerChannel.WorkerAssignmentMetadataVersionCapability] =
                         RpcClientWorkerChannel.WorkerAssignmentMetadataVersion;

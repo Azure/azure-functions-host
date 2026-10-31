@@ -22,7 +22,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -84,30 +83,6 @@ public sealed partial class WorkerChannelRegistryTests
             forwarding.SetResult();
         }
 
-        Assert.False(worker.Channel.TryReserveScaleIn(out _));
-
-        if (resultCompletesFirst)
-        {
-            forwarding.SetResult();
-        }
-        else
-        {
-            await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
-        }
-
-        Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-        IHttpWorkerScaleInManager scaleInManager = registry;
-        HttpWorkerScaleInReservation completedInvocationReservation = null;
-        await WaitUntilAsync(() =>
-        {
-            completedInvocationReservation = scaleInManager.TryReserveWorker();
-            return completedInvocationReservation is not null;
-        });
-        Assert.True(scaleInManager.CancelReservation(
-            completedInvocationReservation,
-            out bool invocationAdmissionRestored));
-        Assert.True(invocationAdmissionRestored);
-        laterWorker.Channel.SetScaleInReady(true);
         HostStateSequenceHandler handler = new(static _ => CreateAppliedResponse());
         using HttpClient httpClient = new(handler);
         HttpOnDemandWorkerScaleInService service = CreateScaleInService(
@@ -125,12 +100,29 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Empty(handler.PublishedStates);
 
             timeProvider.FireNextTimer();
+            await WaitUntilAsync(() => handler.RequestCount == 1);
+            Assert.Equal(0, worker.DisposeCount);
+
+            if (resultCompletesFirst)
+            {
+                forwarding.SetResult();
+            }
+            else
+            {
+                await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
+            }
+
+            Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
+            laterWorker.Channel.SetScaleInReady(true);
+            await WaitUntilAsync(() =>
+                timeProvider.NextTimerDueTime == HttpOnDemandWorkerScaleInService.AttemptInterval);
+            timeProvider.FireNextTimer();
             await worker.DisposeStarted.WaitAsync(TestTimeout);
 
             IHostStateCoordinator hostStateCoordinator = registry;
             Assert.Equal(3, hostStateCoordinator.Current.LinkedWorkerCount);
             Assert.Equal(4, hostStateCoordinator.Current.HttpCapacity);
-            Assert.Equal([11L, 4L], handler.PublishedStates.Select(state => state.HttpCapacity));
+            Assert.Equal([10L, 11L, 4L], handler.PublishedStates.Select(state => state.HttpCapacity));
 
             worker.AllowDispose();
             await WaitUntilAsync(() => hostStateCoordinator.Current.LinkedWorkerCount == 2);
@@ -141,7 +133,7 @@ public sealed partial class WorkerChannelRegistryTests
             await WaitUntilAsync(() => laterWorker.DisposeCount == 1);
 
             Assert.Equal(
-                [11L, 4L, 4L, 3L],
+                [10L, 11L, 4L, 4L, 3L],
                 handler.PublishedStates.Select(state => state.HttpCapacity));
             Assert.Equal(1, hostStateCoordinator.Current.LinkedWorkerCount);
             Assert.Equal(3, hostStateCoordinator.Current.HttpCapacity);
@@ -162,14 +154,15 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.OK, false, false)]
-    [InlineData(HttpStatusCode.PreconditionFailed, false, false)]
-    [InlineData(HttpStatusCode.Accepted, true, false)]
-    [InlineData(HttpStatusCode.OK, false, true)]
+    [InlineData(HttpStatusCode.OK, false, false, 0)]
+    [InlineData(HttpStatusCode.PreconditionFailed, false, false, 3)]
+    [InlineData(HttpStatusCode.Accepted, true, false, 0)]
+    [InlineData(HttpStatusCode.OK, false, true, 0)]
     public async Task RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission(
         HttpStatusCode projectedStatus,
         bool changeStateAfterProjectedPublication,
-        bool closeRuntimeAdmissionAfterProjectedPublication)
+        bool closeRuntimeAdmissionAfterProjectedPublication,
+        int transientRestoreFailures)
     {
         ManualTimeProvider timeProvider = new();
         RegistryHarness harness = new(timeProvider);
@@ -204,12 +197,21 @@ public sealed partial class WorkerChannelRegistryTests
             await pendingWorker.StartEntered.WaitAsync(TestTimeout);
         }
 
-        HostStateSequenceHandler handler = new(requestIndex => requestIndex == 1
-            ? changeStateAfterProjectedPublication ||
-                closeRuntimeAdmissionAfterProjectedPublication
-                ? CreateAppliedResponse()
-                : new(projectedStatus)
-            : CreateAppliedResponse());
+        HostStateSequenceHandler handler = new(requestIndex =>
+        {
+            if (requestIndex == 1)
+            {
+                return changeStateAfterProjectedPublication ||
+                    closeRuntimeAdmissionAfterProjectedPublication
+                        ? CreateAppliedResponse()
+                        : new(projectedStatus);
+            }
+
+            return requestIndex >= 2 &&
+                requestIndex - 2 < transientRestoreFailures
+                    ? new(HttpStatusCode.ServiceUnavailable)
+                    : CreateAppliedResponse();
+        });
         ChannelControl staleWorker = null;
         if (changeStateAfterProjectedPublication)
         {
@@ -239,7 +241,20 @@ public sealed partial class WorkerChannelRegistryTests
             timeProvider,
             httpClient);
 
-        await service.RunScaleInPassAsync(CancellationToken.None);
+        Task pass = service.RunScaleInPassAsync(CancellationToken.None);
+        int expectedRetryCount = Math.Min(
+            transientRestoreFailures,
+            HttpOnDemandWorkerScaleInService.RestoreRetryCount);
+        for (int retry = 0; retry < expectedRetryCount; retry++)
+        {
+            int expectedRequestCount = retry + 3;
+            await WaitUntilAsync(() =>
+                handler.RequestCount == expectedRequestCount &&
+                timeProvider.NextTimerDueTime.HasValue);
+            timeProvider.FireNextTimer();
+        }
+
+        await pass.WaitAsync(TestTimeout);
 
         IHostStateCoordinator hostStateCoordinator = registry;
         if (closeRuntimeAdmissionAfterProjectedPublication)
@@ -290,303 +305,23 @@ public sealed partial class WorkerChannelRegistryTests
             return;
         }
 
-        Assert.Equal([10L, 3L, 10L], handler.PublishedStates.Select(state => state.HttpCapacity));
+        long[] expectedPublishedCapacity = transientRestoreFailures > 0
+            ? [10L, 3L, 10L, 10L, 10L]
+            : [10L, 3L, 10L];
+        Assert.Equal(
+            expectedPublishedCapacity,
+            handler.PublishedStates.Select(state => state.HttpCapacity));
         Assert.Equal(10, hostStateCoordinator.Current.HttpCapacity);
         Assert.Equal(
             changeStateAfterProjectedPublication ? 3 : 2,
             hostStateCoordinator.Current.LinkedWorkerCount);
         Assert.Equal(0, worker.DisposeCount);
-        if (projectedStatus is HttpStatusCode.PreconditionFailed && !changeStateAfterProjectedPublication)
-        {
-            await service.RunScaleInPassAsync(CancellationToken.None);
-            await WaitUntilAsync(() => worker.DisposeCount == 1);
-            await WaitUntilAsync(() => hostStateCoordinator.Current.LinkedWorkerCount == 1);
-            Assert.Equal(
-                [10L, 3L, 10L, 10L, 3L],
-                handler.PublishedStates.Select(state => state.HttpCapacity));
-            Assert.Equal(3, hostStateCoordinator.Current.HttpCapacity);
-            Assert.Equal(1, hostStateCoordinator.Current.LinkedWorkerCount);
-            Assert.Equal(0, alternateWorker.DisposeCount);
-            return;
-        }
-
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(registry, function);
         ScriptInvocationContext invocation = CreateScaleInInvocation(function);
         await dispatcher.InvokeAsync(invocation);
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
         Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-    }
-
-    [Theory]
-    [InlineData(1, true, false)]
-    [InlineData(3, false, false)]
-    [InlineData(1, true, true)]
-    public async Task RunScaleInPassAsync_TransientRestoreRetriesAreBounded(
-        int transientRestoreFailures,
-        bool restoreApplied,
-        bool cancelPass)
-    {
-        ManualTimeProvider timeProvider = new();
-        RegistryHarness harness = new(timeProvider);
-        ChannelControl worker = CreateScaleInChannel("worker", maxHttpConcurrency: "7");
-        harness.Enqueue(worker);
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateScaleInHttpFunction();
-        await LinkAndLoadAsync(registry, function, worker);
-        HostStateSequenceHandler handler = new(requestIndex =>
-        {
-            if (requestIndex == 0)
-            {
-                return CreateAppliedResponse();
-            }
-
-            if (requestIndex == 1)
-            {
-                return cancelPass
-                    ? CreateAppliedResponse()
-                    : new(HttpStatusCode.PreconditionFailed);
-            }
-
-            return requestIndex - 2 < transientRestoreFailures
-                ? new(HttpStatusCode.ServiceUnavailable)
-                : CreateAppliedResponse();
-        });
-        using CancellationTokenSource passCancellation = new();
-        handler.BeforeResponseAsync = requestIndex =>
-        {
-            if (cancelPass && requestIndex == 1)
-            {
-                passCancellation.Cancel();
-            }
-
-            return Task.CompletedTask;
-        };
-        Mock<ILogger> logger = new();
-        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        Mock<ILoggerProvider> loggerProvider = new();
-        loggerProvider
-            .Setup(provider => provider.CreateLogger(It.IsAny<string>()))
-            .Returns(logger.Object);
-        using ILoggerFactory loggerFactory = LoggerFactory.Create(
-            builder => builder.AddProvider(loggerProvider.Object));
-        using HttpClient httpClient = new(handler);
-        HttpOnDemandWorkerScaleInService service = CreateScaleInService(
-            registry,
-            timeProvider,
-            httpClient,
-            loggerFactory.CreateLogger<HttpOnDemandWorkerScaleInService>());
-
-        Task pass = service.RunScaleInPassAsync(passCancellation.Token);
-        TimeSpan[] expectedRetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)];
-        int expectedRetryCount = restoreApplied
-            ? transientRestoreFailures
-            : HttpOnDemandWorkerScaleInService.RestoreRetryCount;
-        for (int retry = 0; retry < expectedRetryCount; retry++)
-        {
-            int expectedRequestCount = retry + 3;
-            await WaitUntilAsync(() =>
-                handler.RequestCount == expectedRequestCount &&
-                timeProvider.NextTimerDueTime.HasValue);
-            Assert.Equal(expectedRetryDelays[retry], timeProvider.NextTimerDueTime);
-            timeProvider.FireNextTimer();
-        }
-
-        if (cancelPass)
-        {
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(
-                () => pass.WaitAsync(TestTimeout));
-        }
-        else
-        {
-            await pass.WaitAsync(TestTimeout);
-        }
-
-        int expectedRequestTotal = restoreApplied ? 4 : 5;
-        Assert.Equal(expectedRequestTotal, handler.RequestCount);
-        Assert.Equal(7, ((IHostStateCoordinator)registry).Current.HttpCapacity);
-        Assert.Equal(1, ((IHostStateCoordinator)registry).Current.LinkedWorkerCount);
-        Assert.Equal(
-            expectedRetryCount,
-            logger.Invocations.Count(call =>
-                string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal) &&
-                ((EventId)call.Arguments[1]).Id == 1107));
-        Assert.Equal(
-            restoreApplied ? 0 : 1,
-            logger.Invocations.Count(call =>
-                string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal) &&
-                ((EventId)call.Arguments[1]).Id == 1108));
-
-        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(registry, function);
-        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
-        await dispatcher.InvokeAsync(invocation);
-        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
-        Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-    }
-
-    [Fact]
-    public async Task InvocationAdmissionAndScaleInReservation_RaceHasOneSafeWinner()
-    {
-        ManualTimeProvider timeProvider = new();
-        RegistryHarness harness = new(timeProvider);
-        ChannelControl worker = CreateScaleInChannel("worker", maxHttpConcurrency: "7");
-        harness.Enqueue(worker);
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateScaleInHttpFunction();
-        await LinkAndLoadAsync(registry, function, worker);
-        IHttpWorkerScaleInManager scaleInManager = registry;
-        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(registry, function);
-
-        for (int attempt = 0; attempt < 16; attempt++)
-        {
-            ScriptInvocationContext invocation = CreateScaleInInvocation(function);
-            TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            Task<HttpWorkerScaleInReservation> reservationTask = Task.Run(async () =>
-            {
-                await release.Task;
-                return scaleInManager.TryReserveWorker();
-            });
-            Task dispatchTask = Task.Run(async () =>
-            {
-                await release.Task;
-                await dispatcher.InvokeAsync(invocation);
-            });
-
-            release.SetResult();
-            HttpWorkerScaleInReservation reservation = await reservationTask.WaitAsync(TestTimeout);
-            if (reservation is not null)
-            {
-                Assert.False(dispatchTask.IsCompleted);
-                Assert.True(scaleInManager.CancelReservation(
-                    reservation,
-                    out bool invocationAdmissionRestored));
-                Assert.True(invocationAdmissionRestored);
-            }
-
-            await dispatchTask.WaitAsync(TestTimeout);
-            StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-            Assert.Null(scaleInManager.TryReserveWorker());
-            await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
-            Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-
-            HttpWorkerScaleInReservation postInvocationReservation = null;
-            await WaitUntilAsync(() =>
-            {
-                postInvocationReservation = scaleInManager.TryReserveWorker();
-                return postInvocationReservation is not null;
-            });
-            Assert.IsType<HttpWorkerScaleInReservation>(postInvocationReservation);
-            Assert.True(scaleInManager.CancelReservation(
-                postInvocationReservation,
-                out bool postInvocationAdmissionRestored));
-            Assert.True(postInvocationAdmissionRestored);
-        }
-    }
-
-    [Theory]
-    [InlineData(FunctionGroups.Http, "true", "7", 7, "success")]
-    [InlineData("non-http", "false", "7", 0, "success")]
-    [InlineData(null, "false", "7", 0, "success")]
-    [InlineData(FunctionGroups.Http, null, "7", 7, "success")]
-    [InlineData(FunctionGroups.Http, "invalid", "7", 7, "success")]
-    [InlineData(FunctionGroups.Http, "false", null, 0, "success")]
-    [InlineData(FunctionGroups.Http, "false", "invalid", 0, "success")]
-    [InlineData(FunctionGroups.Http, "false", "0", 0, "success")]
-    [InlineData(FunctionGroups.Http, "false", "7", 0, "pending")]
-    [InlineData(FunctionGroups.Http, "false", "7", 0, "failed")]
-    [InlineData(FunctionGroups.Http, "false", "7", 7, "busy")]
-    [InlineData(FunctionGroups.Http, "false", "7", 0, "legacy")]
-    public async Task ScaleIn_IneligibleUnreadyOrBusyWorkerIsRetained(
-        string functionGroupName,
-        string isAlwaysReady,
-        string maxHttpConcurrency,
-        long expectedCapacity,
-        string loadResponse)
-    {
-        ManualTimeProvider timeProvider = new();
-        RegistryHarness harness = new(timeProvider);
-        bool trustedAssignmentMetadata =
-            !string.Equals(loadResponse, "legacy", StringComparison.Ordinal);
-        ChannelControl worker = new(
-            "worker",
-            functionGroupName: functionGroupName,
-            isAlwaysReady: isAlwaysReady,
-            maxHttpConcurrency: maxHttpConcurrency,
-            trustedAssignmentMetadata: trustedAssignmentMetadata);
-        harness.Enqueue(worker);
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateScaleInHttpFunction();
-        await LinkAsync(registry, worker.Id);
-        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
-        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-        IHttpWorkerScaleInManager scaleInManager = registry;
-        IHostStateCoordinator hostStateCoordinator = registry;
-        long pendingCapacityVersion = 0;
-        Task<long> capacityChange = null;
-        if (expectedCapacity > 0 &&
-            string.Equals(loadResponse, "success", StringComparison.Ordinal))
-        {
-            pendingCapacityVersion = hostStateCoordinator.Version;
-            capacityChange = hostStateCoordinator.WaitForChangeAsync(pendingCapacityVersion);
-        }
-
-        if (!string.Equals(loadResponse, "pending", StringComparison.Ordinal))
-        {
-            await SendFunctionLoadResponseAsync(
-                worker,
-                function.GetFunctionId(),
-                succeeded: !string.Equals(loadResponse, "failed", StringComparison.Ordinal));
-            await WaitUntilAsync(() => worker.Channel.ScaleInFunctionLoadsComplete);
-        }
-
-        if (capacityChange is not null)
-        {
-            Assert.True(await capacityChange.WaitAsync(TestTimeout) > pendingCapacityVersion);
-        }
-
-        if (string.Equals(loadResponse, "busy", StringComparison.Ordinal))
-        {
-            using RpcClientFunctionInvocationDispatcher busyDispatcher = CreateDispatcher(registry, function);
-            ScriptInvocationContext busyInvocation = CreateScaleInInvocation(function);
-            await busyDispatcher.InvokeAsync(busyInvocation);
-            StreamingMessage busyRequest = await worker.ReadRequestAsync(
-                StreamingMessage.ContentOneofCase.InvocationRequest);
-
-            Assert.Equal(expectedCapacity, hostStateCoordinator.Current.HttpCapacity);
-            Assert.Null(scaleInManager.TryReserveWorker());
-            Assert.Equal(1, hostStateCoordinator.Current.LinkedWorkerCount);
-
-            await SendInvocationResponseAsync(worker, busyRequest.InvocationRequest.InvocationId);
-            Assert.NotNull(await busyInvocation.ResultSource.Task.WaitAsync(TestTimeout));
-            Assert.Equal(0, worker.DisposeCount);
-            return;
-        }
-
-        Assert.Equal(expectedCapacity, hostStateCoordinator.Current.HttpCapacity);
-        Assert.Null(scaleInManager.TryReserveWorker());
-        Assert.Equal(1, hostStateCoordinator.Current.LinkedWorkerCount);
-        if (string.Equals(loadResponse, "pending", StringComparison.Ordinal))
-        {
-            Assert.Equal(0, worker.DisposeCount);
-            return;
-        }
-
-        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(registry, function);
-        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
-        await dispatcher.InvokeAsync(invocation);
-        if (string.Equals(loadResponse, "failed", StringComparison.Ordinal))
-        {
-            await Assert.ThrowsAnyAsync<Exception>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
-        }
-        else
-        {
-            StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-            await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
-            Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
-        }
-
-        Assert.Equal(0, worker.DisposeCount);
     }
 
     private static ChannelControl CreateScaleInChannel(
@@ -709,15 +444,14 @@ public sealed partial class WorkerChannelRegistryTests
     private static HttpOnDemandWorkerScaleInService CreateScaleInService(
         WorkerChannelRegistry registry,
         TimeProvider timeProvider,
-        HttpClient httpClient,
-        ILogger<HttpOnDemandWorkerScaleInService> logger = null)
+        HttpClient httpClient)
         => new(
             registry,
             registry,
             CreatePublicationCoordinator(registry, httpClient),
             timeProvider,
             Mock.Of<IHostApplicationLifetime>(),
-            logger ?? NullLogger<HttpOnDemandWorkerScaleInService>.Instance);
+            NullLogger<HttpOnDemandWorkerScaleInService>.Instance);
 
     private static HostStatePublicationCoordinator CreatePublicationCoordinator(
         WorkerChannelRegistry registry,

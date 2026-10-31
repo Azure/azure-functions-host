@@ -403,12 +403,11 @@ Rollback restores invocation admission only when the Runtime gate remains open. 
 
 ## Behavioral test matrix
 
-The PR keeps exactly five public R2 behavioral test methods.
+The PR keeps four high-value behavioral test methods through the WorkerProxy relay, hosted R2 service, and dispatcher lifecycle surfaces.
 
 | # | Test method | Behavior covered |
 |---|---|---|
 | 1 | `Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities` | WorkerProxy overwrites spoofed metadata/version, marks the sanitized assignment, relays Legion values, and omits invalid or missing assignment capacity |
-| 2 | `ExecuteAsync_TenMinuteCadenceSelectsLowestOrdinalWorkerAndWaitsForHttpCompletion` | No startup pass, ten-minute cadence, lowest ordinal selection independent of insertion/capacity, one Worker per pass, physical post-disposal count, and both proxied HTTP completion orders |
-| 3 | `RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission` | Missing acknowledgement, 412, stale generation, same-lowest retry, Runtime-closure rollback, accepted initializing-link count, post-disposal notification, and real invocation after ordinary rollback |
-| 4 | `InvocationAdmissionAndScaleInReservation_RaceHasOneSafeWinner` | Invocation commitment and reservation have one lock-linearized winner |
-| 5 | `ScaleIn_IneligibleUnreadyOrBusyWorkerIsRetained` | Always-ready, non-HTTP, missing/legacy trust, invalid capacity, pending/failed loads, and current committed work are retained; final function-load readiness wakes Host-state waiters |
+| 2 | `ExecuteAsync_TenMinuteCadenceSelectsLowestOrdinalWorkerAndWaitsForHttpCompletion` | No startup pass, ten-minute cadence, current committed work exclusion, lowest ordinal selection independent of insertion/capacity, one Worker per pass, physical post-disposal count, and both proxied HTTP completion orders |
+| 3 | `RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission` | Missing acknowledgement, 412, stale generation, bounded transient restoration retry, Runtime-closure rollback, accepted initializing-link count, post-disposal notification, and a real invocation after ordinary rollback |
+| 4 | `ShutdownAsync_DrainsInitializedChannelSnapshot` | Dispatcher shutdown waits for an accepted trusted invocation before completing |

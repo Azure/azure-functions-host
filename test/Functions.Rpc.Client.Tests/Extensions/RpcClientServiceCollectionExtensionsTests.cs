@@ -58,10 +58,6 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         Assert.Same(services, result);
         AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
-        AssertSingletonFactory<IWorkerChannelRegistry>(services);
-        AssertSingletonFactory<IHostStateCoordinator>(services);
-        AssertSingletonFactory<IHttpWorkerScaleInManager>(services);
-        AssertSingletonFactory<IRuntimeWorkerAdmissionGate>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         AssertSingleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>(services);
         ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));

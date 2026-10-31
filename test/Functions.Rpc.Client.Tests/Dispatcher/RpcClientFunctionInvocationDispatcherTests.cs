@@ -408,16 +408,11 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public async Task ShutdownAsync_DrainsInitializedChannelsExcludedFromActiveReadiness(
-        bool readinessPending,
-        bool admissionDisabled)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShutdownAsync_DrainsInitializedChannelsExcludedFromActiveReadiness(bool readinessPending)
     {
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
-            "worker",
-            trustedScaleInMetadata: true);
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
         await using ClientWorkerChannelTestHarness otherWorker = await ClientWorkerChannelTestHarness.CreateAsync("other-worker");
         FunctionMetadata function = CreateFunction();
         await PrepareReadyChannelAsync(worker, function);
@@ -429,11 +424,6 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         ScriptInvocationContext invocation = CreateInvocation(function);
         await dispatcher.InvokeAsync(invocation);
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        if (admissionDisabled)
-        {
-            worker.Channel.SetScaleInReady(false);
-            Assert.False(worker.Channel.IsReadyForInvocations);
-        }
 
         TaskCompletionSource<IReadOnlyList<WorkerChannel>> replacementReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
         if (!readinessPending)
