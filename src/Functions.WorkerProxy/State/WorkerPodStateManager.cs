@@ -31,6 +31,7 @@ internal sealed class WorkerPodStateManager
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
     private NeverLinkedOutcome _neverLinkedOutcome;
+    private bool _applicationStopping;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
     private int _assignmentClaimed;
@@ -154,7 +155,9 @@ internal sealed class WorkerPodStateManager
         lock (_stateLock)
         {
             // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed || _state.RemovalRequested)
+            if (sessionId <= _lastSessionId ||
+                _state.AssignmentState == WorkerAssignmentState.Failed ||
+                _state.RemovalRequested)
             {
                 return false;
             }
@@ -236,6 +239,9 @@ internal sealed class WorkerPodStateManager
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
     public bool OnSessionTerminated(long sessionId)
+        => OnSessionTerminated(sessionId, requestRemoval: false);
+
+    internal bool OnSessionTerminated(long sessionId, bool requestRemoval)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -267,6 +273,7 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
+                RemovalRequested = _state.RemovalRequested || (requestRemoval && !_applicationStopping),
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
@@ -326,6 +333,11 @@ internal sealed class WorkerPodStateManager
                 return _state.AssignmentState == WorkerAssignmentState.Failed
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
+            }
+
+            if (_state.RemovalRequested)
+            {
+                return WorkerAssignmentResult.WorkerTerminated;
             }
 
             if (!_state.IsWorkerReady)
@@ -403,6 +415,17 @@ internal sealed class WorkerPodStateManager
                 Revision = checked(_state.Revision + 1),
                 RemovalRequested = true
             });
+        }
+    }
+
+    /// <summary>
+    /// Prevents intentional application shutdown from being classified as worker loss.
+    /// </summary>
+    public void OnApplicationStopping()
+    {
+        lock (_stateLock)
+        {
+            _applicationStopping = true;
         }
     }
 

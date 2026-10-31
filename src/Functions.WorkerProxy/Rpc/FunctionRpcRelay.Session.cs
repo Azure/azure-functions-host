@@ -42,6 +42,7 @@ internal sealed partial class FunctionRpcRelay
         private bool _runtimeAttached;
         private bool _workerAttached;
         private int _shutdownRequested;
+        private bool _workerHandlerAdmitted;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -105,13 +106,13 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Terminated;
                 }
 
-                SetAttachedLocked(side, value: true);
-                if (side == FunctionRpcRelaySide.Worker)
+                if (side == FunctionRpcRelaySide.Worker &&
+                    !stateManager.OnWorkerAttached(id) && stateManager.State.RemovalRequested)
                 {
-                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
-                    stateManager.OnWorkerAttached(id);
+                    return FunctionRpcRelayAttachResult.Terminated;
                 }
 
+                SetAttachedLocked(side, value: true);
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -263,7 +264,12 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId))
+                    {
+                        throw new InvalidDataException("The worker StartStream arrived after worker admission closed.");
+                    }
+
+                    _workerHandlerAdmitted = true;
                 }
             }
 
@@ -395,6 +401,12 @@ internal sealed partial class FunctionRpcRelay
                     terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
                         or FunctionRpcRelayTerminationReason.Canceled
                         or FunctionRpcRelayTerminationReason.Faulted;
+                bool workerPeerTerminated = _workerHandlerAdmitted &&
+                    terminalState.Side == FunctionRpcRelaySide.Worker &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
+                _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
                 if (runtimePeerTerminated)
                 {
@@ -402,10 +414,8 @@ internal sealed partial class FunctionRpcRelay
                 }
                 else
                 {
-                    stateManager.OnSessionTerminated(id);
+                    stateManager.OnSessionTerminated(id, workerPeerTerminated);
                 }
-
-                _terminalState = terminalState;
                 _completion.SetResult(terminalState);
             }
 

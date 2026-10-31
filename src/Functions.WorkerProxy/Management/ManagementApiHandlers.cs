@@ -62,7 +62,7 @@ internal static class ManagementApiHandlers
         CancellationToken cancellationToken = request.HttpContext.RequestAborted;
         cancellationToken.ThrowIfCancellationRequested();
         SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
-        if (previousState is null || previousState != current)
+        if (current.Status == SplitWorkerStatus.RemovalRequested || previousState is null || previousState != current)
         {
             return SplitStateResponse(current);
         }
