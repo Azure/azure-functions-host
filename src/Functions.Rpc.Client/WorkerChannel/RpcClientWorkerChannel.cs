@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -35,11 +36,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
 
-    private readonly Dictionary<Guid, ScriptInvocationContext> _committedInvocations = [];
+    private readonly Dictionary<Guid, Task> _committedInvocations = [];
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
-    private readonly TaskCompletionSource _drainCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _draining;
     private string _functionGroupName;
@@ -107,16 +107,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    internal void ExecuteUnderInvocationAdmissionLock(Action action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-
-        lock (_invocationAdmissionLock)
-        {
-            action();
-        }
-    }
-
     internal bool TryDispatchInvocation(ScriptInvocationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -136,7 +126,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                     $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
             }
 
-            if (!_committedInvocations.TryAdd(invocationId, context))
+            if (!_committedInvocations.TryAdd(invocationId, context.ResultSource.Task))
             {
                 throw new InvalidOperationException(
                     $"Invocation '{invocationId}' is already committed to worker '{Id}'.");
@@ -163,40 +153,30 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return true;
     }
 
-    internal bool TryGetScaleInCandidate(
-        string functionGroup,
-        bool isAlwaysReady,
-        out bool hasCommittedInvocations)
+    internal bool IsScaleInCandidate(string functionGroup, bool isAlwaysReady)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            return IsScaleInEligibleLocked(functionGroup, isAlwaysReady);
+        }
+    }
+
+    internal Task TryBeginScaleIn(string functionGroup, bool isAlwaysReady)
     {
         lock (_invocationAdmissionLock)
         {
             if (!IsScaleInEligibleLocked(functionGroup, isAlwaysReady))
             {
-                hasCommittedInvocations = false;
-                return false;
-            }
-
-            hasCommittedInvocations = _committedInvocations.Count > 0;
-            return true;
-        }
-    }
-
-    internal Task TryBeginScaleIn(
-        string functionGroup,
-        bool isAlwaysReady,
-        bool requireIdle)
-    {
-        lock (_invocationAdmissionLock)
-        {
-            if (!IsScaleInEligibleLocked(functionGroup, isAlwaysReady) ||
-                (requireIdle && _committedInvocations.Count > 0))
-            {
                 return null;
             }
 
             _draining = true;
-            CompleteDrainIfReadyLocked();
-            return _drainCompletion.Task;
+            return Task.WhenAll(_committedInvocations.Values.Select(
+                static task => task.ContinueWith(
+                    static _ => { },
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default)));
         }
     }
 
@@ -300,15 +280,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         lock (_invocationAdmissionLock)
         {
             _committedInvocations.Remove(invocationId);
-            CompleteDrainIfReadyLocked();
-        }
-    }
-
-    private void CompleteDrainIfReadyLocked()
-    {
-        if (_draining && _committedInvocations.Count == 0)
-        {
-            _drainCompletion.TrySetResult();
         }
     }
 

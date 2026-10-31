@@ -42,7 +42,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
-    private long _nextAdmissionOrder;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // Setup writers hold _stateLock; ready-channel readers observe this published signal without taking that lock.
@@ -102,12 +101,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            slot = new()
-            {
-                AdmissionOrder = ++_nextAdmissionOrder,
-                Endpoint = grpcEndpoint,
-                LinkTask = linkCompletion.Task,
-            };
+            slot = new() { Endpoint = grpcEndpoint, LinkTask = linkCompletion.Task };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
         }
@@ -139,88 +133,42 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 if (_activeSetupContext is null ||
                     !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
                     slot.SetupException is not null ||
-                    slot.Channel is not { } channel ||
-                    slot.DrainTask is not null)
+                    slot.Channel is not { } channel)
                 {
                     continue;
                 }
 
-                candidates.Add(new(workerId, slot, channel));
+                candidates.Add(new(workerId, channel));
             }
 
-            WorkerScaleInCandidate[] admissionOrderedCandidates =
-                [.. candidates.OrderBy(static candidate => candidate.Slot.AdmissionOrder)];
-            ExecuteUnderCandidateAdmissionLocks(
-                admissionOrderedCandidates,
-                0,
-                () =>
+            WorkerScaleInCandidate[] orderedCandidates = [.. candidates
+                .Where(candidate => candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady))
+                .OrderBy(static candidate => candidate.WorkerId, StringComparer.Ordinal)];
+            int remainingRemoveCount = Math.Max(0, orderedCandidates.Length - desiredWorkerCount);
+
+            foreach (WorkerScaleInCandidate candidate in orderedCandidates)
+            {
+                if (remainingRemoveCount == 0)
                 {
-                    List<WorkerScaleInCandidateSnapshot> usableCandidates = [];
-                    foreach (WorkerScaleInCandidate candidate in admissionOrderedCandidates)
-                    {
-                        if (candidate.Channel.TryGetScaleInCandidate(
-                            functionGroup,
-                            isAlwaysReady,
-                            out bool hasCommittedInvocations))
-                        {
-                            usableCandidates.Add(new(candidate, hasCommittedInvocations));
-                        }
-                    }
+                    break;
+                }
 
-                    int removeCount = Math.Max(0, usableCandidates.Count - desiredWorkerCount);
-                    if (removeCount == 0)
-                    {
-                        return;
-                    }
+                if (candidate.Channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
+                {
+                    selections.Add(new(candidate.WorkerId, drainTask));
+                    remainingRemoveCount--;
+                    continue;
+                }
 
-                    WorkerScaleInCandidateSnapshot[] rankedCandidates = [.. usableCandidates
-                        .OrderBy(static candidate => candidate.HasCommittedInvocations)
-                        .ThenBy(static candidate => candidate.Candidate.Slot.AdmissionOrder)];
-                    HashSet<string> selectedWorkerIds = new(StringComparer.Ordinal);
+                remainingRemoveCount = Math.Max(
+                    0,
+                    CountScaleInCandidates(orderedCandidates, functionGroup, isAlwaysReady) - desiredWorkerCount);
+            }
 
-                    foreach (WorkerScaleInCandidateSnapshot candidate in rankedCandidates.Where(
-                        static candidate => !candidate.HasCommittedInvocations))
-                    {
-                        if (selections.Count == removeCount)
-                        {
-                            break;
-                        }
-
-                        TryCommitScaleInCandidateLocked(
-                            candidate.Candidate,
-                            functionGroup,
-                            isAlwaysReady,
-                            requireIdle: true,
-                            selections,
-                            selectedWorkerIds);
-                    }
-
-                    foreach (WorkerScaleInCandidateSnapshot candidate in rankedCandidates)
-                    {
-                        if (selections.Count == removeCount)
-                        {
-                            break;
-                        }
-
-                        if (selectedWorkerIds.Contains(candidate.Candidate.WorkerId))
-                        {
-                            continue;
-                        }
-
-                        TryCommitScaleInCandidateLocked(
-                            candidate.Candidate,
-                            functionGroup,
-                            isAlwaysReady,
-                            requireIdle: false,
-                            selections,
-                            selectedWorkerIds);
-                    }
-
-                    if (selections.Count > 0)
-                    {
-                        SignalReadyChannelsLocked();
-                    }
-                });
+            if (selections.Count > 0)
+            {
+                SignalReadyChannelsLocked();
+            }
         }
 
         foreach (WorkerScaleInSelection selection in selections)
@@ -231,38 +179,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         return new(selections.Count);
     }
 
-    private static void ExecuteUnderCandidateAdmissionLocks(
-        IReadOnlyList<WorkerScaleInCandidate> candidates,
-        int index,
-        Action action)
-    {
-        if (index == candidates.Count)
-        {
-            action();
-            return;
-        }
-
-        candidates[index].Channel.ExecuteUnderInvocationAdmissionLock(
-            () => ExecuteUnderCandidateAdmissionLocks(candidates, index + 1, action));
-    }
-
-    private static void TryCommitScaleInCandidateLocked(
-        WorkerScaleInCandidate candidate,
+    private static int CountScaleInCandidates(
+        IEnumerable<WorkerScaleInCandidate> candidates,
         string functionGroup,
-        bool isAlwaysReady,
-        bool requireIdle,
-        List<WorkerScaleInSelection> selections,
-        HashSet<string> selectedWorkerIds)
-    {
-        if (candidate.Channel.TryBeginScaleIn(functionGroup, isAlwaysReady, requireIdle) is not { } drainTask)
-        {
-            return;
-        }
-
-        candidate.Slot.DrainTask = drainTask;
-        selections.Add(new(candidate.WorkerId, drainTask));
-        selectedWorkerIds.Add(candidate.WorkerId);
-    }
+        bool isAlwaysReady)
+        => candidates.Count(candidate => candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady));
 
     private async Task DrainAndUnlinkAsync(string workerId, Task drainTask)
     {
@@ -935,14 +856,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private sealed class WorkerSlot
     {
-        public long AdmissionOrder { get; init; }
-
         // The exact active setup context attempted for this channel.
         public ChannelSetupContext AttemptedSetupContext { get; set; }
 
         public RpcClientWorkerChannel Channel { get; set; }
-
-        public Task DrainTask { get; set; }
 
         // The initial link owns this gate before its slot is published.
         public SemaphoreSlim Gate { get; } = new(0, 1);
@@ -967,12 +884,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private sealed record WorkerScaleInCandidate(
         string WorkerId,
-        WorkerSlot Slot,
         RpcClientWorkerChannel Channel);
-
-    private sealed record WorkerScaleInCandidateSnapshot(
-        WorkerScaleInCandidate Candidate,
-        bool HasCommittedInvocations);
 
     private sealed record WorkerScaleInSelection(string WorkerId, Task DrainTask);
 

@@ -15,7 +15,7 @@ fencing and remains outside this PR.
 | --- | --- |
 | A Runtime can link and dispatch to multiple split workers, but Legion cannot reduce a local non-HTTP worker count through Host. | Legion can call one protected Host endpoint with an absolute retained count. |
 | WorkerProxy supplies the trusted function group during worker initialization. | WorkerProxy also supplies the trusted always-ready class and removes worker-supplied classification values. |
-| Dispatch reads a ready-channel snapshot and posts directly to a worker buffer. | Dispatch commits admission through a per-worker gate shared with scale-in selection. |
+| Dispatch reads a ready-channel snapshot and posts directly to a worker buffer. | Dispatch rechecks admission through the existing per-worker gate before posting. |
 | Closing a worker link is an explicit unlink operation. | A selected worker stops new intake immediately, drains committed work asynchronously, and then closes the existing link. |
 
 ## API contract
@@ -79,7 +79,7 @@ sequenceDiagram
     Note over P,L: Required downstream W2 removal publication is not implemented<br/>in the foundation SHA or this PR
 ```
 
-## Selection population and ranking
+## Selection population and order
 
 Host evaluates only workers that are usable at the instant of the request:
 
@@ -98,43 +98,39 @@ its Runtime link.
 flowchart TD
     A[Receive protected request] --> B{Function group is HTTP?}
     B -- Yes --> C[400 InvalidValue]
-    B -- No --> D[Snapshot current matching usable workers]
+    B -- No --> D[Filter current matching usable workers]
     D --> E[removeCount = max(0, usable - desired)]
     E --> F{removeCount is zero?}
     F -- Yes --> G[Return 200 with count 0]
-    F -- No --> H[Rank idle workers oldest first]
-    H --> I[Commit idle drains while needed]
-    I --> J{More removals needed?}
-    J -- Yes --> K[Rank remaining busy workers oldest first]
-    K --> L[Commit busy drains while needed]
-    J -- No --> M[Publish new ready snapshot]
-    L --> M
-    M --> N[Start asynchronous drain and unlink]
-    N --> O[Return 200 with newly committed count]
+    F -- No --> H[Sort by Worker ID using ordinal comparison]
+    H --> I[Commit the lowest IDs while removal is needed]
+    I --> J[Recount after a failed commitment]
+    J --> K[Publish new ready snapshot]
+    K --> L[Start asynchronous drain and unlink]
+    L --> M[Return 200 with newly committed count]
 ```
 
-The tie-breaker is the Runtime's monotonically increasing link-admission order. This is deterministic and
-keeps the newest usable worker when a positive retained count remains. No separate Durable or regional
-activity state is introduced.
+Selection uses only Worker ID. Busy state, creation time, link order, and capacity do not affect selection.
+A selected busy worker stops new intake and waits for its already committed work through the normal drain
+contract.
 
 ## Locking and race behavior
 
 Each client worker channel has one invocation-admission gate. Both dispatch and scale-in commitment use that
-gate. For one request, the registry acquires the candidate gates in link-admission order, takes one coherent
-usable/activity snapshot, ranks it, and commits the selected drains before releasing those gates:
+gate:
 
 1. Dispatch checks usability, records the invocation as committed, and posts it to the worker buffer while
    holding the gate.
-2. Scale-in freezes candidate admission gates, then checks group, class, readiness, drain state, and committed
-   work from one stable snapshot.
-3. Idle-first and oldest-first ranking is computed from that stable snapshot.
-4. Selected channels become permanently draining before any candidate gate is released.
-5. A dispatcher using an older ready-channel snapshot rechecks the channel gate, observes draining, and tries
+2. The registry serializes count calculation and selection with its existing state lock.
+3. Each selected channel rechecks group, class, readiness, and drain state while holding its own admission
+   gate, then becomes permanently draining before releasing that gate.
+4. A dispatcher using an older ready-channel snapshot rechecks the channel gate, observes draining, and tries
    another worker.
+5. If a candidate cannot be committed, the registry recounts the remaining usable matches before continuing.
 
 Registry state still owns the multi-worker selection and ready-channel publication. The per-channel gate is
 the final admission fence, so invocation admission and retirement have one winner without adding a parallel
-worker state machine. Scale-in holds no candidate gate across I/O or an `await`.
+worker state machine. No lock is held across I/O or an `await`.
 
 ## Worker state and drain lifecycle
 
@@ -176,8 +172,6 @@ instruction.
 
 - WorkerProxy assignment is the trusted source for `functionGroup` and `isAlwaysReady`. Worker-supplied values
   are removed before Host receives the initialization capabilities.
-- The current link contract does not carry physical worker startup time. Link-admission order is therefore
-  the local deterministic age proxy.
 - Production deletion requires W2 to translate Runtime link closure into `RemovalRequested`. That transition
   is not present at foundation SHA `639da523aaa9fe8c1625659849a3c72b30d5f84b` and is intentionally outside
   this PR.
@@ -215,8 +209,8 @@ instruction.
 | Area | Files | Review purpose |
 | --- | --- | --- |
 | API | `src/Functions.Host/Controllers/WorkerScaleInController.cs`, `src/Functions.Host/Models/WorkerScaleInRequest.cs` | Contract, validation, authentication, and numerical response |
-| Trusted classification | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `src/WebJobs.Script.Grpc/Channel/WorkerChannel.cs` | Adds trusted always-ready capability beside the existing group capability and exposes a narrow protected capability reader |
-| Selection | `src/Functions.Rpc.Client/Registry/IWorkerChannelRegistry.cs`, `src/Functions.Rpc.Client/Registry/WorkerChannelRegistry.cs` | One-shot count calculation, idle/age ranking, and asynchronous unlink |
+| Trusted classification | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `src/WebJobs.Script.Grpc/Channel/WorkerChannel.cs` | Adds trusted always-ready capability beside the existing group capability and lets derived channels use existing capability state |
+| Selection | `src/Functions.Rpc.Client/Registry/IWorkerChannelRegistry.cs`, `src/Functions.Rpc.Client/Registry/WorkerChannelRegistry.cs` | One-shot count calculation, ordinal Worker ID selection, and asynchronous unlink |
 | Admission and drain | `src/Functions.Rpc.Client/WorkerChannel/RpcClientWorkerChannel.cs`, `src/Functions.Rpc.Client/Dispatcher/RpcClientFunctionInvocationDispatcher.cs` | Shared dispatch/scale-in fence and committed-work tracking |
 | Behavioral coverage | `test/Functions.Rpc.Client.Tests/Registry/WorkerChannelRegistryTests.ScaleInApi.cs` | Five hosted public API methods |
 
@@ -224,10 +218,10 @@ instruction.
 
 | Test method | Observable behavior |
 | --- | --- |
-| `PostScaleIn_AbsoluteRetainedCount_ReturnsNewDrainCountAndRepeatIsNoOp` | Absolute retained count, numerical response, positive retention, and repeat no-op |
+| `PostScaleIn_AbsoluteRetainedCount_SelectsLowestWorkerIdAndRepeatIsNoOp` | Absolute retained count, lowest ordinal Worker ID selection, numerical response, and repeat no-op |
 | `PostScaleIn_ExactGroupClassAndUsablePopulation_ExcludesOtherAndDrainingWorkers` | Exact group/class isolation plus starting, readiness-pending, and already-draining exclusions |
-| `PostScaleIn_SelectionUsesIdleThenOldestOrderAndBusyFallback` | Idle-before-busy ranking, deterministic oldest-first choice, busy fallback, and dispatcher retry from a stale ready snapshot |
-| `PostScaleIn_WithdrawsIntakeBeforeResponseAndClosesLinkAfterDrain` | Immediate intake withdrawal, non-blocking response, committed completion, and later link close |
+| `PostScaleIn_SelectedBusyWorkerWithdrawsIntakeAndClosesAfterCommittedWork` | Busy selection by Worker ID, immediate intake withdrawal, non-blocking response, committed completion, and later link close |
+| `PostScaleIn_ScaleInWinsStaleSnapshotRaceAndDispatcherUsesRetainedWorker` | Atomic dispatch-versus-drain winner and dispatcher fallback from a stale ready snapshot |
 | `PostScaleIn_InvalidHttpAndAuthenticationFailuresFailClosed` | Missing authentication, HTTP rejection, malformed body, missing count, and negative count |
 
 ## Explicit non-goals
@@ -237,5 +231,5 @@ instruction.
 - Legion, AppServer, Docker, protobuf, W1, W2, W3, R1, or R2 protocol changes
 - WorkerProxy physical deletion
 - Cross-Runtime redistribution or app-level scale decisions
-- Durable age floors beyond the local newest-worker retention produced by oldest-first selection
+- Idle/busy preference, worker age, capacity ranking, or cross-request selection history
 - Result persistence, automatic retry, or exactly-once delivery
