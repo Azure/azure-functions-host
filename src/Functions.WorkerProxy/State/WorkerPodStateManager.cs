@@ -25,24 +25,45 @@ internal sealed class WorkerPodStateManager
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
     private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _neverLinkedClock;
+    private readonly TimeSpan _neverLinkedTimeout;
+    private readonly long _startupTimestamp;
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
+    private NeverLinkedOutcome _neverLinkedOutcome;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
     private int _assignmentClaimed;
 
+    public WorkerPodStateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
+        : this(options, timeProvider, WorkerProxyStartupTime.Capture(timeProvider))
+    {
+    }
+
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        WorkerProxyStartupTime startupTime)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(startupTime);
 
         string podName = options.Value.PodName;
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
+        _neverLinkedClock = startupTime.Clock;
+        _neverLinkedTimeout = options.Value.NeverLinkedTimeout;
+        _startupTimestamp = startupTime.Timestamp;
+        _state = WorkerPodState.CreateUnassigned(podName, startupTime.UtcTime);
+    }
+
+    private enum NeverLinkedOutcome
+    {
+        Pending,
+        RuntimeLinkAccepted,
+        RemovalRequested
     }
 
     /// <summary>
@@ -190,6 +211,28 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Records an accepted Runtime-facing FunctionRpc Link.
+    /// </summary>
+    public bool TryAcceptRuntimeLink()
+    {
+        lock (_stateLock)
+        {
+            if (_neverLinkedOutcome == NeverLinkedOutcome.Pending &&
+                _neverLinkedClock.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
+            {
+                SelectRemovalRequestedLocked();
+            }
+
+            if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
+            {
+                _neverLinkedOutcome = NeverLinkedOutcome.RuntimeLinkAccepted;
+            }
+
+            return _neverLinkedOutcome == NeverLinkedOutcome.RuntimeLinkAccepted;
+        }
+    }
+
+    /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
     public bool OnSessionTerminated(long sessionId)
@@ -273,6 +316,56 @@ internal sealed class WorkerPodStateManager
             _assignment = assignment;
             UpdateStateAndNotifyWaitersLocked(assigned);
             return WorkerAssignmentResult.Created;
+        }
+    }
+
+    /// <summary>
+    /// Waits once for the remaining process-start deadline, then attempts removal.
+    /// </summary>
+    public async Task WatchNeverLinkedAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        TimeSpan remaining;
+        lock (_stateLock)
+        {
+            if (_neverLinkedOutcome != NeverLinkedOutcome.Pending)
+            {
+                return;
+            }
+
+            remaining = _neverLinkedTimeout - _neverLinkedClock.GetElapsedTime(_startupTimestamp);
+        }
+
+        if (remaining > TimeSpan.Zero)
+        {
+            long delayMilliseconds = Math.DivRem(
+                remaining.Ticks,
+                TimeSpan.TicksPerMillisecond,
+                out long remainingTicks);
+            if (remainingTicks > 0)
+            {
+                delayMilliseconds++;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(delayMilliseconds), _neverLinkedClock, cancellationToken);
+        }
+
+        lock (_stateLock)
+        {
+            SelectRemovalRequestedLocked();
+        }
+    }
+
+    private void SelectRemovalRequestedLocked()
+    {
+        if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
+        {
+            _neverLinkedOutcome = NeverLinkedOutcome.RemovalRequested;
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RemovalRequested = true
+            });
         }
     }
 

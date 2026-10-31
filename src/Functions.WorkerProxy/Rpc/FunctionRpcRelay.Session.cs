@@ -99,6 +99,11 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
+                if (side == FunctionRpcRelaySide.Runtime && !stateManager.TryAcceptRuntimeLink())
+                {
+                    return FunctionRpcRelayAttachResult.Terminated;
+                }
+
                 SetAttachedLocked(side, value: true);
                 if (side == FunctionRpcRelaySide.Worker)
                 {
