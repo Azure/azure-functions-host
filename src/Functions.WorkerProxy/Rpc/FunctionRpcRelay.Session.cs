@@ -99,13 +99,18 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
-                if (side == FunctionRpcRelaySide.Worker &&
-                    !stateManager.OnWorkerAttached(id) && stateManager.State.RemovalRequested)
+                if (side == FunctionRpcRelaySide.Runtime && !stateManager.TryAcceptRuntimeLink())
                 {
                     return FunctionRpcRelayAttachResult.Terminated;
                 }
 
                 SetAttachedLocked(side, value: true);
+                if (side == FunctionRpcRelaySide.Worker)
+                {
+                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
+                    stateManager.OnWorkerAttached(id);
+                }
+
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -248,11 +253,7 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId) &&
-                        stateManager.State.RemovalRequested)
-                    {
-                        return null;
-                    }
+                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
                 }
             }
 
@@ -283,8 +284,7 @@ internal sealed partial class FunctionRpcRelay
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
-                    if (_terminalState is not null || !_runtimeAttached || !_workerAttached ||
-                        !stateManager.OnWorkerInitialized(id))
+                    if (_terminalState is not null)
                     {
                         return null;
                     }

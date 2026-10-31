@@ -27,9 +27,10 @@ internal sealed class WorkerPodStateManager
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _neverLinkedTimeout;
     private readonly long _startupTimestamp;
-    private readonly TaskCompletionSource _linkAccepted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _runtimeLinkAccepted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
+    private bool _hasAcceptedRuntimeLink;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
     private int _assignmentClaimed;
@@ -142,16 +143,9 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireNeverLinkedLocked();
             // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.RemovalRequested)
+            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
             {
-                return false;
-            }
-
-            if (_state.AssignmentState == WorkerAssignmentState.Failed)
-            {
-                _lastSessionId = sessionId;
                 return false;
             }
 
@@ -186,8 +180,7 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireNeverLinkedLocked();
-            if (_state.SessionId != sessionId || !_state.IsWorkerAttached || _state.RemovalRequested)
+            if (_state.SessionId != sessionId || !_state.IsWorkerAttached)
             {
                 return false;
             }
@@ -208,27 +201,25 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records successful initialization on the current paired streams.
+    /// Records an accepted Runtime-facing FunctionRpc Link.
     /// </summary>
-    public bool OnWorkerInitialized(long sessionId)
+    public bool TryAcceptRuntimeLink()
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
-
         lock (_stateLock)
         {
             ExpireNeverLinkedLocked();
-            if (_state.RemovalRequested || sessionId != _lastSessionId)
+            if (_state.RemovalRequested)
             {
                 return false;
             }
 
-            if (_state.HasAcceptedLink)
+            if (_hasAcceptedRuntimeLink)
             {
                 return true;
             }
 
-            _state = _state with { HasAcceptedLink = true };
-            _linkAccepted.TrySetResult();
+            _hasAcceptedRuntimeLink = true;
+            _runtimeLinkAccepted.TrySetResult();
             return true;
         }
     }
@@ -242,7 +233,6 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireNeverLinkedLocked();
             if (sessionId < _lastSessionId)
             {
                 return false;
@@ -280,12 +270,6 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireNeverLinkedLocked();
-            if (_state.RemovalRequested)
-            {
-                return WorkerAssignmentResult.RemovalRequested;
-            }
-
             // Replay/conflict takes precedence over current readiness, including after the assigned stream terminates.
             if (_assignment is not null)
             {
@@ -339,7 +323,7 @@ internal sealed class WorkerPodStateManager
             lock (_stateLock)
             {
                 ExpireNeverLinkedLocked();
-                if (_state.HasAcceptedLink || _state.RemovalRequested)
+                if (_hasAcceptedRuntimeLink || _state.RemovalRequested)
                 {
                     return;
                 }
@@ -350,7 +334,7 @@ internal sealed class WorkerPodStateManager
             try
             {
                 TimeSpan delay = TimeSpan.FromMilliseconds(Math.Max(1, Math.Ceiling(remaining.TotalMilliseconds)));
-                await _linkAccepted.Task.WaitAsync(delay, _timeProvider, cancellationToken);
+                await _runtimeLinkAccepted.Task.WaitAsync(delay, _timeProvider, cancellationToken);
                 return;
             }
             catch (TimeoutException)
@@ -362,7 +346,7 @@ internal sealed class WorkerPodStateManager
 
     private void ExpireNeverLinkedLocked()
     {
-        if (!_state.HasAcceptedLink && !_state.RemovalRequested &&
+        if (!_hasAcceptedRuntimeLink && !_state.RemovalRequested &&
             _timeProvider.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
         {
             UpdateStateAndNotifyWaitersLocked(_state with

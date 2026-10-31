@@ -12,6 +12,5 @@ internal enum WorkerAssignmentResult
     AlreadyAssigned,
     WorkerNotReady,
     AssignmentConflict,
-    WorkerTerminated,
-    RemovalRequested
+    WorkerTerminated
 }

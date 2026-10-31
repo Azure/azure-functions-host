@@ -17,15 +17,6 @@ internal static class WorkerHttpForwardingTelemetry
     internal const string DestinationNotConfiguredResult = "DestinationNotConfigured";
     internal const string DestinationNotReadyResult = "DestinationNotReady";
     internal const string ForwarderErrorResult = "ForwarderError";
-    internal const string RemovalRequestedResult = "RemovalRequested";
-
-    /// <summary>
-    /// Records that lifecycle removal has closed HTTP admission.
-    /// </summary>
-    public static void RecordRemovalRequested()
-    {
-        RecordFailure(RemovalRequestedResult);
-    }
 
     /// <summary>
     /// Records that no worker HTTP destination was configured or advertised.
