@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -299,6 +300,7 @@ public sealed partial class WorkerChannelRegistryTests
         {
             await service.RunScaleInPassAsync(CancellationToken.None);
             await WaitUntilAsync(() => worker.DisposeCount == 1);
+            await WaitUntilAsync(() => hostStateCoordinator.Current.LinkedWorkerCount == 1);
             Assert.Equal(
                 [10L, 3L, 10L, 10L, 3L],
                 handler.PublishedStates.Select(state => state.HttpCapacity));
@@ -307,6 +309,113 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(0, alternateWorker.DisposeCount);
             return;
         }
+
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(registry, function);
+        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
+        await dispatcher.InvokeAsync(invocation);
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
+        Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
+    }
+
+    [Theory]
+    [InlineData(1, true, false)]
+    [InlineData(3, false, false)]
+    [InlineData(1, true, true)]
+    public async Task RunScaleInPassAsync_TransientRestoreRetriesAreBounded(
+        int transientRestoreFailures,
+        bool restoreApplied,
+        bool cancelPass)
+    {
+        ManualTimeProvider timeProvider = new();
+        RegistryHarness harness = new(timeProvider);
+        ChannelControl worker = CreateScaleInChannel("worker", maxHttpConcurrency: "7");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateScaleInHttpFunction();
+        await LinkAndLoadAsync(registry, function, worker);
+        HostStateSequenceHandler handler = new(requestIndex =>
+        {
+            if (requestIndex == 0)
+            {
+                return CreateAppliedResponse();
+            }
+
+            if (requestIndex == 1)
+            {
+                return cancelPass
+                    ? CreateAppliedResponse()
+                    : new(HttpStatusCode.PreconditionFailed);
+            }
+
+            return requestIndex - 2 < transientRestoreFailures
+                ? new(HttpStatusCode.ServiceUnavailable)
+                : CreateAppliedResponse();
+        });
+        using CancellationTokenSource passCancellation = new();
+        handler.BeforeResponseAsync = requestIndex =>
+        {
+            if (cancelPass && requestIndex == 1)
+            {
+                passCancellation.Cancel();
+            }
+
+            return Task.CompletedTask;
+        };
+        Mock<ILogger> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        Mock<ILoggerProvider> loggerProvider = new();
+        loggerProvider
+            .Setup(provider => provider.CreateLogger(It.IsAny<string>()))
+            .Returns(logger.Object);
+        using ILoggerFactory loggerFactory = LoggerFactory.Create(
+            builder => builder.AddProvider(loggerProvider.Object));
+        using HttpClient httpClient = new(handler);
+        HttpOnDemandWorkerScaleInService service = CreateScaleInService(
+            registry,
+            timeProvider,
+            httpClient,
+            loggerFactory.CreateLogger<HttpOnDemandWorkerScaleInService>());
+
+        Task pass = service.RunScaleInPassAsync(passCancellation.Token);
+        TimeSpan[] expectedRetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)];
+        int expectedRetryCount = restoreApplied
+            ? transientRestoreFailures
+            : HttpOnDemandWorkerScaleInService.RestoreRetryCount;
+        for (int retry = 0; retry < expectedRetryCount; retry++)
+        {
+            int expectedRequestCount = retry + 3;
+            await WaitUntilAsync(() =>
+                handler.RequestCount == expectedRequestCount &&
+                timeProvider.NextTimerDueTime.HasValue);
+            Assert.Equal(expectedRetryDelays[retry], timeProvider.NextTimerDueTime);
+            timeProvider.FireNextTimer();
+        }
+
+        if (cancelPass)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => pass.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            await pass.WaitAsync(TestTimeout);
+        }
+
+        int expectedRequestTotal = restoreApplied ? 4 : 5;
+        Assert.Equal(expectedRequestTotal, handler.RequestCount);
+        Assert.Equal(7, ((IHostStateCoordinator)registry).Current.HttpCapacity);
+        Assert.Equal(1, ((IHostStateCoordinator)registry).Current.LinkedWorkerCount);
+        Assert.Equal(
+            expectedRetryCount,
+            logger.Invocations.Count(call =>
+                string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal) &&
+                ((EventId)call.Arguments[1]).Id == 1107));
+        Assert.Equal(
+            restoreApplied ? 0 : 1,
+            logger.Invocations.Count(call =>
+                string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal) &&
+                ((EventId)call.Arguments[1]).Id == 1108));
 
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(registry, function);
         ScriptInvocationContext invocation = CreateScaleInInvocation(function);
@@ -361,8 +470,13 @@ public sealed partial class WorkerChannelRegistryTests
             await SendInvocationResponseAsync(worker, request.InvocationRequest.InvocationId);
             Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
 
-            HttpWorkerScaleInReservation postInvocationReservation =
-                Assert.IsType<HttpWorkerScaleInReservation>(scaleInManager.TryReserveWorker());
+            HttpWorkerScaleInReservation postInvocationReservation = null;
+            await WaitUntilAsync(() =>
+            {
+                postInvocationReservation = scaleInManager.TryReserveWorker();
+                return postInvocationReservation is not null;
+            });
+            Assert.IsType<HttpWorkerScaleInReservation>(postInvocationReservation);
             Assert.True(scaleInManager.CancelReservation(
                 postInvocationReservation,
                 out bool postInvocationAdmissionRestored));
@@ -595,14 +709,15 @@ public sealed partial class WorkerChannelRegistryTests
     private static HttpOnDemandWorkerScaleInService CreateScaleInService(
         WorkerChannelRegistry registry,
         TimeProvider timeProvider,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        ILogger<HttpOnDemandWorkerScaleInService> logger = null)
         => new(
             registry,
             registry,
             CreatePublicationCoordinator(registry, httpClient),
             timeProvider,
             Mock.Of<IHostApplicationLifetime>(),
-            NullLogger<HttpOnDemandWorkerScaleInService>.Instance);
+            logger ?? NullLogger<HttpOnDemandWorkerScaleInService>.Instance);
 
     private static HostStatePublicationCoordinator CreatePublicationCoordinator(
         WorkerChannelRegistry registry,
@@ -801,6 +916,8 @@ public sealed partial class WorkerChannelRegistryTests
 
         public List<AppServerHostStateClient.HostStateRequest> PublishedStates { get; } = [];
 
+        public int RequestCount => Volatile.Read(ref _requestCount);
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
@@ -827,7 +944,7 @@ public sealed partial class WorkerChannelRegistryTests
                 JsonSerializer.Deserialize(json, AppServerHostStateJsonContext.Default.HostStateRequest));
             PublishedStates.Add(state);
 
-            int requestIndex = _requestCount++;
+            int requestIndex = Interlocked.Increment(ref _requestCount) - 1;
             if (BeforeResponseAsync is not null)
             {
                 await BeforeResponseAsync(requestIndex);

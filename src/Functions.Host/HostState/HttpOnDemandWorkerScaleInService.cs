@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Retry;
 
 namespace Azure.Functions.Host.HostState;
 
@@ -21,6 +23,7 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
     IHostApplicationLifetime applicationLifetime,
     ILogger<HttpOnDemandWorkerScaleInService> logger) : BackgroundService
 {
+    internal const int RestoreRetryCount = 2;
     internal static readonly TimeSpan AttemptInterval = TimeSpan.FromMinutes(10);
 
     private readonly IHostApplicationLifetime _applicationLifetime =
@@ -171,7 +174,31 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
 
         try
         {
-            await _publicationCoordinator.PublishCurrentCapacityFenceUntilStableAsync(cancellationToken);
+            int attemptCount = 1;
+            AsyncRetryPolicy<(AppServerHostStatePublishResult Result, HostStateSnapshot State)> retryPolicy =
+                Policy
+                    .HandleResult<(AppServerHostStatePublishResult Result, HostStateSnapshot State)>(
+                        static outcome => outcome.Result is AppServerHostStatePublishResult.TransientFailure)
+                    .RetryAsync(
+                        RestoreRetryCount,
+                        async (outcome, retryAttempt) =>
+                        {
+                            attemptCount = retryAttempt + 1;
+                            TimeSpan delay = TimeSpan.FromSeconds(1 << retryAttempt);
+                            Log.RestoreRetry(
+                                _logger,
+                                outcome.Result.Result,
+                                retryAttempt,
+                                RestoreRetryCount,
+                                delay.TotalMilliseconds);
+                            await Task.Delay(delay, _timeProvider, cancellationToken);
+                        });
+            (AppServerHostStatePublishResult result, _) = await retryPolicy.ExecuteAsync(
+                () => _publicationCoordinator.PublishCurrentCapacityFenceUntilStableAsync(cancellationToken));
+            if (result is not AppServerHostStatePublishResult.Applied)
+            {
+                Log.RestoreResultFailed(_logger, result, attemptCount);
+            }
         }
         catch (Exception exception)
         {
@@ -222,5 +249,21 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
         [LoggerMessage(1106, LogLevel.Error,
             "The committed drain for HTTP on-demand worker {WorkerId} failed.")]
         public static partial void DrainFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(1107, LogLevel.Warning,
+            "Host capacity restoration returned {Result}; retry {RetryAttempt} of {RetryCount} after {DelayMilliseconds} ms.")]
+        public static partial void RestoreRetry(
+            ILogger logger,
+            AppServerHostStatePublishResult result,
+            int retryAttempt,
+            int retryCount,
+            double delayMilliseconds);
+
+        [LoggerMessage(1108, LogLevel.Warning,
+            "Failed to restore Host capacity after {AttemptCount} attempts: {Result}.")]
+        public static partial void RestoreResultFailed(
+            ILogger logger,
+            AppServerHostStatePublishResult result,
+            int attemptCount);
     }
 }
