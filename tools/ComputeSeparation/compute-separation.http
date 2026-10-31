@@ -10,6 +10,7 @@
 ###
 ### To add a second worker after the Host is serving, use `project-placeholder-manual-multiple-workers`.
 ### Complete steps 1 to 4 first, then steps 5 to 7. Both worker/proxy pairs start immediately, but links remain manual.
+### Complete each Link within five minutes of WorkerProxy startup, or set WorkerProxy__NeverLinkedTimeout before launch.
 ###
 ###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multiple-workers
 

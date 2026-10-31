@@ -127,10 +127,10 @@ internal sealed partial class FunctionRpcRelay(
 
         lock (_syncLock)
         {
-            if (_stopping)
+            if (_stopping || _stateManager.State.RemovalRequested)
             {
                 throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
-                    "The FunctionRpc relay is shutting down.");
+                    "The FunctionRpc relay is shutting down or the worker pod has requested removal.");
             }
 
             if (_currentSession?.IsTerminalAndReleased == true)

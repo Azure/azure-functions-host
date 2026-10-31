@@ -99,13 +99,13 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
-                SetAttachedLocked(side, value: true);
-                if (side == FunctionRpcRelaySide.Worker)
+                if (side == FunctionRpcRelaySide.Worker &&
+                    !stateManager.OnWorkerAttached(id) && stateManager.State.RemovalRequested)
                 {
-                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
-                    stateManager.OnWorkerAttached(id);
+                    return FunctionRpcRelayAttachResult.Terminated;
                 }
 
+                SetAttachedLocked(side, value: true);
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -248,7 +248,11 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId) &&
+                        stateManager.State.RemovalRequested)
+                    {
+                        return null;
+                    }
                 }
             }
 
@@ -279,7 +283,8 @@ internal sealed partial class FunctionRpcRelay
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
-                    if (_terminalState is not null)
+                    if (_terminalState is not null || !_runtimeAttached || !_workerAttached ||
+                        !stateManager.OnWorkerInitialized(id))
                     {
                         return null;
                     }

@@ -37,6 +37,8 @@ internal static class ManagementApiHandlers
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.AssignmentConflict, "The pod is already assigned to a different assignment."),
             WorkerAssignmentResult.WorkerTerminated => Error(
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.WorkerTerminated, "The assigned worker stream has terminated."),
+            WorkerAssignmentResult.RemovalRequested => Error(
+                StatusCodes.Status409Conflict, WorkerApiErrorCodes.RemovalRequested, "The worker pod has requested removal."),
             _ => throw new InvalidOperationException("Unexpected worker assignment result.")
         };
     }

@@ -21,8 +21,13 @@ internal sealed record WorkerPodState(
     bool? IsAlwaysReady,
     DateTimeOffset StartupTime)
 {
+    // Accepted Link history remains process-local until Runtime Link identity is published.
+    public bool HasAcceptedLink { get; init; }
+
+    public bool RemovalRequested { get; init; }
+
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
-    public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
+    public bool IsWorkerReady => !RemovalRequested && IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
     public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady

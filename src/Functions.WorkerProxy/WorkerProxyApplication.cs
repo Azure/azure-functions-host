@@ -30,10 +30,12 @@ internal static class WorkerProxyApplication
     /// Creates the configured WorkerProxy application.
     /// </summary>
     /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>
+    /// <param name="startupTime">Process startup captured before host and configuration construction.</param>
     /// <returns>The application ready to be started.</returns>
-    public static WebApplication Build(string[] args)
+    public static WebApplication Build(string[] args, WorkerProxyStartupTime startupTime)
     {
         ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(startupTime);
 
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
         // WorkerProxy owns all listener bindings and does not use the generic ASP.NET Core URL configuration.
@@ -47,7 +49,9 @@ internal static class WorkerProxyApplication
         builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        builder.Services.AddSingleton(startupTime);
         builder.Services.AddSingleton<WorkerPodStateManager>();
+        builder.Services.AddHostedService<NeverLinkedTimeoutService>();
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
