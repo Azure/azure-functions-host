@@ -124,7 +124,7 @@ public sealed partial class WorkerChannelRegistryTests
         ChannelControl selected = CreateClassifiedWorker("worker-a");
         await LinkAndReadyWorkersAsync(harness, registry, function, retained, selected);
 
-        ScriptInvocationContext committed = CreateScaleInInvocation(function);
+        ScriptInvocationContext committed = CreateNonHttpScaleInInvocation(function);
         Assert.True(selected.Channel.TryDispatchInvocation(committed));
         StreamingMessage request = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
@@ -135,7 +135,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
         Assert.False(committed.ResultSource.Task.IsCompleted);
         Assert.False(selected.Transport.DisposeStarted.IsCompleted);
-        Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
+        Assert.False(selected.Channel.TryDispatchInvocation(CreateNonHttpScaleInInvocation(function)));
         Assert.True(retained.Channel.IsReadyForInvocations);
 
         await selected.Transport.SendResponseAsync(new()
@@ -209,7 +209,7 @@ public sealed partial class WorkerChannelRegistryTests
         await WaitUntilAsync(() => workers.All(worker => worker.Channel.IsReadyForInvocations));
     }
 
-    private static ScriptInvocationContext CreateScaleInInvocation(FunctionMetadata function)
+    private static ScriptInvocationContext CreateNonHttpScaleInInvocation(FunctionMetadata function)
         => new()
         {
             FunctionMetadata = function,

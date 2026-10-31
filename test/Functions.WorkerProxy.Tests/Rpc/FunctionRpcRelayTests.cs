@@ -166,33 +166,6 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_WorkerPeerCloseStopsSiblingAndAllowsWholeSessionReplacement()
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-
-        await using (RelayClient firstRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
-        await using (RelayClient firstWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
-        {
-            await ExchangeAsync(firstRuntime, firstWorker, "first", timeout.Token);
-            await firstWorker.CompleteRequestAsync(timeout.Token);
-
-            StatusCode[] terminalStatuses = await Task.WhenAll(firstRuntime.WaitForTerminationAsync(timeout.Token),
-                firstWorker.WaitForTerminationAsync(timeout.Token));
-            Assert.All(terminalStatuses, static status => Assert.Equal(StatusCode.Unavailable, status));
-        }
-
-        await WaitForReleaseAsync(relay, timeout.Token);
-        Assert.Equal(FunctionRpcRelayTerminationReason.PeerClosed, relay.LastTerminalState?.Reason);
-        Assert.Equal(FunctionRpcRelaySide.Worker, relay.LastTerminalState?.Side);
-
-        await using RelayClient secondRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient secondWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(secondRuntime, secondWorker, "replacement", timeout.Token);
-    }
-
-    [Fact]
     public async Task Relay_ReconnectDuringSessionTeardownReturnsUnavailable()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);

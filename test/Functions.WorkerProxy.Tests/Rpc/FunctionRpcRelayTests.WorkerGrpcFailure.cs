@@ -148,19 +148,4 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.Unavailable, await client.WaitForTerminationAsync(cancellationToken));
     }
 
-    private static async Task<SplitWorkerOriginState> WaitForRemovalStateAsync(
-        HttpClient management,
-        CancellationToken cancellationToken)
-    {
-        while (true)
-        {
-            SplitWorkerOriginState state = await ReadSplitManagementStateAsync(management, cancellationToken);
-            if (state.Status == SplitWorkerStatus.RemovalRequested)
-            {
-                return state;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
-        }
-    }
 }

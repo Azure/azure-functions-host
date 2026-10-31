@@ -78,7 +78,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(
             SplitWorkerStatus.RemovalRequested,
             (await ReadSplitManagementStateAsync(management, timeout.Token)).Status);
-        await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.OK, timeout.Token);
+        await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
         using HttpResponseMessage replay = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",
@@ -88,7 +88,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task NeverLinkedDeadline_PublishesStickyRemovalAndRejectsOnlyLateRuntimeLink()
+    public async Task NeverLinkedDeadline_PublishesStickyRemovalAndRejectsLateRuntimeAndWorkerLinks()
     {
         LifecycleClock clock = new();
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
@@ -101,7 +101,6 @@ public partial class FunctionRpcRelayTests
         using HttpClient management = factory.CreateWorkerProxyClient();
         await using (RelayClient terminatingWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
         {
-            await terminatingWorker.WriteAsync(CreateStartStream("terminating-worker"), timeout.Token);
             await WaitForAttachmentAsync(
                 factory.Services.GetRequiredService<FunctionRpcRelay>(),
                 FunctionRpcRelaySide.Worker,
@@ -142,9 +141,10 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.Unavailable, runtimeRejection.StatusCode);
 
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await worker.WriteAsync(CreateStartStream(), timeout.Token);
-        await WaitForWorkerReadyAsync(manager, timeout.Token);
-        await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.OK, timeout.Token);
+        GrpcRpcException workerRejection = await worker.WriteAndReadRejectionAsync(
+            CreateStartStream(),
+            timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, workerRejection.StatusCode);
 
         clock.Advance(TimeSpan.FromHours(1));
         Assert.Equal(

@@ -125,7 +125,7 @@ public partial class FunctionRpcRelayTests
             ManagementAssignment,
             timeout.Token))
         {
-            await AssertManagementErrorAsync(assignment, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
+            await AssertManagementErrorAsync(assignment, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
         }
 
         using (HttpResponseMessage after = await http.GetAsync("/after-removal", timeout.Token))
