@@ -15,6 +15,5 @@ internal static class WorkerApiErrorCodes
     public const string InvalidRevision = "InvalidRevision";
     public const string WorkerNotReady = "WorkerNotReady";
     public const string WorkerTerminated = "WorkerTerminated";
-    public const string RemovalRequested = "RemovalRequested";
     public const string AssignmentConflict = "AssignmentConflict";
 }

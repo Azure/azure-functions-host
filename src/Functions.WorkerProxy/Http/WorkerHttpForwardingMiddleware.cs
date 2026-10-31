@@ -31,7 +31,6 @@ internal sealed class WorkerHttpForwardingMiddleware(
         if (stateManager.State.RemovalRequested)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            WorkerHttpForwardingTelemetry.RecordRemovalRequested();
             return;
         }
 

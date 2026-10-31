@@ -59,7 +59,7 @@ internal sealed partial class FunctionRpcRelay(
         {
             lock (_syncLock)
             {
-                return _stateManager.State.RemovalRequested ? null : _currentSession?.WorkerHttpDestination;
+                return _currentSession?.WorkerHttpDestination;
             }
         }
     }
@@ -175,9 +175,9 @@ internal sealed partial class FunctionRpcRelay(
         {
             if (!_stopping)
             {
-                _stopping = true;
                 session = _currentSession;
                 session?.MarkShutdownRequested();
+                _stopping = true;
                 initiateStop = true;
             }
         }

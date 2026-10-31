@@ -1,176 +1,106 @@
-# BYOC W2: established Runtime attachment loss
+# BYOC W2: Runtime EventStream loss
 
-> **Scope:** WorkerProxy behavior after an established Runtime attachment is terminally lost.
+> **Scope:** An admitted Runtime-facing FunctionRpc EventStream ends unexpectedly.
 >
-> **Review goal:** Verify that WorkerProxy makes one sticky removal decision, closes new work
-> admission, and gives a capable customer Worker one best-effort termination notification without
-> taking ownership of process or container deletion.
+> **Review goal:** Verify that the existing EventStream completion callback publishes one sticky
+> removal decision and closes new admission while WorkerProxy remains observable to Legion.
 
 ## Context
 
-WorkerProxy relays one Runtime-facing FunctionRpc stream to one customer-Worker-facing FunctionRpc
-stream. Once the paired streams complete a successful worker initialization, WorkerProxy treats that
-session as the locally accepted Runtime Link.
+WorkerProxy already awaits the read and write operations for each admitted FunctionRpc EventStream.
+W2 uses that existing handler completion path; it does not add a monitor, poller, timer, watchdog, or
+second accepted-Link state machine.
 
-W2 covers a later terminal outcome on the Runtime-facing stream:
+This matches the standard non-BYOC shape:
 
-- peer EOF or close;
-- call cancellation; or
-- a stream fault.
+- `FunctionRpcService.EventStream` observes stream EOF, cancellation, and faults through `MoveNext`
+  and handler completion.
+- Worker process death is a separate concern handled through `Process.Exited`.
+- WorkerProxy has no customer process to own, so it reacts only to its admitted Runtime EventStream
+  ending unexpectedly and leaves pod deletion to Legion.
 
-This is not the W1 never-linked timeout. There is no process-start clock, deadline service, or
-startup-lifetime policy in this change.
-
-## Ownership and scope
-
-```mermaid
-flowchart LR
-    Runtime[Functions Runtime] -->|Runtime FunctionRpc stream| Relay[WorkerProxy relay]
-    Relay -->|Worker FunctionRpc stream| Worker[Customer Worker]
-    Relay --> State[WorkerPodStateManager]
-    State -->|RemovalRequested| Legion[Legion cleanup]
-    State --> Admission[Worker readiness, assignment, gRPC, HTTP]
-```
-
-| Component | Owns in W2 | Does not own |
-| --- | --- | --- |
-| FunctionRpc relay | Runtime terminal classification and best-effort `WorkerTerminate` delivery | Runtime reconnection or invocation replay |
-| WorkerPodStateManager | Accepted Runtime session history and sticky `RemovalRequested` | Public Runtime identity publication |
-| WorkerProxy admission surfaces | Rejecting new worker readiness, assignment, gRPC, and HTTP admission | Draining already-admitted work |
-| Legion | Container deletion and forced stop | FunctionRpc message sequencing |
-
-The change intentionally excludes W1 timers, W3 customer-Worker health policy, W4 intentional
-removal, Runtime fallback or outbox work, Docker changes, and Legion changes.
-
-## Accepted-Link boundary
-
-WorkerProxy cannot publish or authenticate the platform's full Runtime identity. The local accepted
-Link milestone is the first successful `WorkerInitResponse` on the current live Runtime/Worker pair.
-The deployment is expected to authenticate the Runtime-facing connection before this point.
+## W2 flow
 
 ```mermaid
 sequenceDiagram
     participant Runtime
-    participant Relay as WorkerProxy relay
+    participant Handler as Runtime EventStream handler
     participant State as WorkerPodStateManager
-    participant Worker
-
-    Worker->>Relay: StartStream(workerId)
-    Runtime->>Relay: WorkerInitRequest
-    Relay->>Worker: WorkerInitRequest
-    Worker->>Relay: Successful WorkerInitResponse + capabilities
-    Relay->>State: Record accepted Runtime session ID
-    Relay-->>Runtime: Finalized WorkerInitResponse
-    Note over State: History is internal and does not imply a live attachment
-```
-
-The accepted Runtime session ID, worker ID, and assignment fields remain available as historical
-attribution after W2. The state simultaneously sets `IsWorkerAttached` and worker readiness to false,
-so retained identity is never presented as a usable live attachment.
-
-## Runtime terminal sequence
-
-Sticky removal is committed before WorkerProxy attempts customer-Worker notification.
-
-```mermaid
-sequenceDiagram
-    participant Runtime
-    participant Relay as WorkerProxy relay
-    participant State as WorkerPodStateManager
-    participant Worker
     participant Legion
 
-    Runtime--xRelay: EOF, cancellation, or fault
-    Relay->>State: End accepted Runtime session
-    State->>State: Withdraw readiness and set RemovalRequested
-    State-->>Legion: RemovalRequested visible through management polling
-    alt Worker advertised HandlesWorkerTerminateMessage
-        Relay-->>Worker: WorkerTerminate(gracePeriod = 5 seconds)
-        Note over Relay,Worker: Queue before closing; cancel a stuck stream after the grace period
-    else Unsupported or broken Worker stream
-        Relay->>Relay: Close without notification
-    end
+    Runtime->>Handler: EventStream admitted
+    Runtime--xHandler: EOF, cancellation, read fault, or write fault
+    Handler->>State: RequestRemoval()
+    State->>State: Publish sticky RemovalRequested
+    Legion->>State: Poll existing instance state
+    State-->>Legion: RemovalRequested
 ```
 
-`WorkerTerminate` is the existing protobuf message and uses the repository-standard five-second
-grace period. The Worker-facing stream remains open until the Worker closes it or that grace period
-expires. No acknowledgement is required. A failed queue, broken stream, or unresponsive Worker
-cannot roll back or delay `RemovalRequested`; a stuck Worker stream is canceled after the grace
-period.
+The admitted handler is the boundary. A duplicate or rejected Runtime stream never owns a relay
+session and therefore cannot select W2. If the relay cancels the Runtime handler because the Worker
+side ended first, or because WorkerProxy is shutting down, that completion is not W2.
 
-WorkerProxy does not kill a process, kill a container, replay an invocation, or accept a replacement
-Runtime. It keeps its management listener alive for Legion to observe removal.
+## State and admission
 
-## Admission after removal
+`WorkerPodStateManager.RequestRemoval` is the single sticky transition. It clears live Worker and
+assignment identity because removal state, not historical attribution, is the public contract.
 
 ```mermaid
 flowchart TD
-    Request[New request] --> Removed{RemovalRequested?}
-    Removed -->|No| Existing[Use existing admission behavior]
-    Removed -->|Yes| Surface{Surface}
-    Surface -->|Worker readiness| R503[503 Service Unavailable]
-    Surface -->|Assignment| A409[409 RemovalRequested]
-    Surface -->|Runtime or Worker FunctionRpc| G503[gRPC Unavailable]
-    Surface -->|HTTP forwarding| H503[503 Service Unavailable]
-    Surface -->|Management state| Report[Continue reporting RemovalRequested]
+    Terminal[Admitted Runtime handler ends] --> Shutdown{Application shutdown?}
+    Shutdown -->|Yes| Existing[Existing shutdown behavior]
+    Shutdown -->|No| Remove[RequestRemoval]
+    Remove --> State[RemovalRequested]
+    State --> Poll[Instance-state polling reports removal]
+    State --> Grpc[New FunctionRpc attachment rejected]
+    State --> Ready[Worker readiness remains unavailable]
+    State --> Assign[Assignment remains unavailable]
+    State --> Http[HTTP forwarding returns 503]
 ```
 
-`/admin/instance/ready` remains available because it represents the WorkerProxy management process,
-not customer-Worker admission. `/admin/worker/ready` returns 503 after removal.
-
-Requests admitted before the terminal outcome have no completion guarantee. W2 adds no drain,
-retry, or replay semantics.
+The checks use the same `RemovalRequested` state. `/admin/instance/ready` remains available because
+it reports the WorkerProxy management process, not customer invocation admission.
 
 ## Before and after
 
 | Scenario | Before | After |
 | --- | --- | --- |
-| Accepted Runtime stream closes | Both relay sides terminate, but the pod can appear replaceable | Worker readiness is withdrawn and sticky removal is published |
-| Worker supports termination | Relay closes both sides immediately | WorkerProxy queues one `WorkerTerminate` before closing the Worker side |
-| Worker does not support termination | Relay closes both sides | Removal proceeds without a new message or acknowledgement |
-| Replacement attachment or assignment | Existing relay/assignment rules apply | Runtime/Worker gRPC and assignment admission remain permanently closed |
-| Configured HTTP fallback exists | HTTP can still resolve the configured destination | New forwarding returns 503 before using any destination |
-| WorkerProxy application stops | Session terminates | Shutdown remains shutdown and does not select W2 removal |
-
-## Assumptions
-
-| Assumption | Reason |
-| --- | --- |
-| Runtime-facing transport authentication happens before local accepted Link | WorkerProxy does not add or replace the authentication contract |
-| Successful worker initialization is the local accepted-Link milestone | It is the shared protocol point visible to both relay sides |
-| Terminal Runtime EOF, cancellation, and fault are final for W2 | Broader transient connection policy is outside this PR |
-| Legion polls management state and owns deletion | WorkerProxy must remain alive and must not kill the container |
-| Five seconds is the standard Worker termination grace period | It matches the existing Functions worker shutdown contract |
-
-## Known limitations
-
-- Public `link.runtime` remains unset and the split link projection remains `Unlinked`. The last
-  accepted Runtime session ID is retained only inside WorkerProxy.
-- Local loopback tests do not prove deployed Runtime transport authentication or Legion deletion.
-- A Worker-side terminal outcome does not become W2. Customer-Worker health policy belongs to W3.
-- W2 does not settle, retry, or replay already-admitted invocations.
-- WorkerProxy reports the removal request; it cannot prove that Legion deleted the pod.
-- No Runtime-side fallback, trailer, outbox, or replacement coordination is added.
+| Admitted Runtime EventStream ends | Relay session terminates and may be replaced | Sticky `RemovalRequested` is published |
+| Runtime ends before Worker initialization | No special lifecycle outcome | W2 still applies because the Runtime handler was admitted |
+| Duplicate Runtime EventStream is rejected | Rejected as duplicate | Rejection does not request removal |
+| Worker side ends first | Session terminates | Existing replacement behavior remains; no W2 |
+| WorkerProxy shuts down | Session terminates | Shutdown remains shutdown; no W2 |
+| New gRPC, assignment, readiness, or HTTP work | Existing admission rules apply | Admission remains closed while state polling stays alive |
 
 ## Implementation map
 
 | Area | Files | Reviewer focus |
 | --- | --- | --- |
-| Accepted history and sticky state | `src/Functions.WorkerProxy/State/WorkerPodStateManager.cs`, `WorkerPodState.cs` | Session validation, retained identity, one-way removal |
-| Runtime terminal sequencing | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `FunctionRpcRelay.cs` | Runtime-only classification, notification before close, bounded stuck stream |
-| Management projection | `ManagementApiHandlers.cs`, `WorkerApiErrorCodes.cs`, `SplitWorkerOriginState.cs`, `WorkerAssignmentResult.cs` | Stable 409 error and `RemovalRequested` reporting |
-| HTTP admission | `WorkerHttpForwardingMiddleware.cs`, `WorkerHttpForwardingTelemetry.cs` | Configured fallback cannot bypass removal |
-| Behavioral coverage | `test/Functions.WorkerProxy.Tests/Rpc/FunctionRpcRelayTests.RuntimeLinkLoss.cs` | Five public-surface lifecycle scenarios |
+| Existing handler completion | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `FunctionRpcRelay.cs` | Runtime-side terminal classification, shutdown exclusion, no separate monitoring |
+| Sticky state | `src/Functions.WorkerProxy/State/WorkerPodStateManager.cs`, `WorkerPodState.cs` | One-way removal and cleared live identity |
+| Legion projection | `src/Functions.WorkerProxy/State/SplitWorkerOriginState.cs` | Existing polling reports `RemovalRequested` |
+| HTTP admission | `src/Functions.WorkerProxy/Http/WorkerHttpForwardingMiddleware.cs` | Configured fallback cannot bypass removal |
+| Behavioral coverage | `test/Functions.WorkerProxy.Tests/Rpc/FunctionRpcRelayTests.RuntimeLinkLoss.cs` | Five public-surface lifecycle methods |
 
 ## Behavioral tests
 
-The PR adds exactly five top-level behavioral test methods. They use real loopback gRPC and
-management or forwarding HTTP surfaces rather than isolated method-level unit tests.
+The five test methods use loopback gRPC, a deterministic Runtime writer failure, and existing HTTP
+and management APIs.
 
-| Test | Main behavior |
+| Test | Proves |
 | --- | --- |
-| `RuntimeLinkLoss_CapableWorkerReceivesTerminateAndHistoricalAttributionIsRetained` | One `WorkerTerminate`, five-second payload, removal, and retained non-live identity |
-| `RuntimeLinkLoss_UnsupportedWorkerRemovesWithoutTerminate` | Unsupported capability cannot delay removal |
-| `RuntimeLinkLoss_CancellationAndFaultPublishRemovalBeforeNotificationConsumption` | Cancellation and fault publish removal before the Worker consumes notification |
-| `RemovalRequested_ClosesGrpcAssignmentHttpAndWorkerReadinessAdmission` | Sticky rejection across gRPC, assignment, HTTP, and readiness while management stays alive |
-| `NonW2Termination_PreAcceptedRuntimeLossAndApplicationShutdownDoNotRequestRemoval` | W1 boundary, initialization-close race, and application-owned shutdown remain outside W2 |
+| `RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval` | An admitted Runtime EOF is W2 before customer Worker initialization |
+| `RuntimeEventStream_CancellationReadOrWriteFaultRequestsRemoval` | Cancellation and read/write failure paths use the same handler completion transition |
+| `RejectedOrRelayCanceledRuntimeHandler_DoesNotRequestRemoval` | Rejected duplicate and relay-owned cancellation do not select W2; replacement still works |
+| `ApplicationShutdown_DoesNotRequestRemoval` | Application-owned shutdown is excluded |
+| `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Polling remains alive while gRPC, assignment, readiness, and HTTP admission remain closed |
+
+## Assumptions and limitations
+
+- Runtime-facing transport authentication occurs before WorkerProxy admits the EventStream.
+- W1 owns any never-linked deadline and its Link-acceptance outcome; W2 does not duplicate that
+  state.
+- A terminal outcome on an admitted Runtime handler is final for this pod.
+- Worker-side health policy remains W3 and intentional removal remains W4.
+- WorkerProxy does not kill a process or container, replay invocations, or drain admitted work.
+- Local loopback tests do not prove deployed authentication or Legion deletion.
