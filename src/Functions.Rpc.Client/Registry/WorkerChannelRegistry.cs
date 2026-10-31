@@ -29,10 +29,12 @@ internal sealed partial class WorkerChannelRegistry :
     IWorkerChannelRegistry,
     IHostStateCoordinator,
     IHttpWorkerScaleInManager,
-    IRuntimeWorkerAdmissionGate
+    IRuntimeWorkerAdmissionGate,
+    IByocRuntimeDrainWorkerManager
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan GracefulUnlinkTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan RuntimeDrainGracePeriod = TimeSpan.FromMinutes(60);
 
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly Lock _disposeLock = new();
@@ -46,6 +48,7 @@ internal sealed partial class WorkerChannelRegistry :
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
+    private readonly TimeProvider _timeProvider;
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
@@ -85,7 +88,8 @@ internal sealed partial class WorkerChannelRegistry :
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _hostStateClock = new(timeProvider ?? TimeProvider.System);
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _hostStateClock = new(_timeProvider);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
@@ -150,14 +154,7 @@ internal sealed partial class WorkerChannelRegistry :
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_runtimeAdmissionClosed)
-            {
-                return false;
-            }
-
-            _runtimeAdmissionClosed = true;
-            SignalHostStateChangedLocked();
-            return true;
+            return TryCloseRuntimeAdmissionLocked();
         }
     }
 
@@ -388,18 +385,15 @@ internal sealed partial class WorkerChannelRegistry :
 
         lock (_stateLock)
         {
-            bool restoreInvocationAdmission = !_runtimeAdmissionClosed;
             if (_disposed ||
                 !_slots.TryGetValue(reservation.WorkerId, out WorkerSlot slot) ||
                 slot.Channel is not { } channel ||
-                !channel.CancelScaleInReservation(
-                    reservation.ReservationId,
-                    restoreInvocationAdmission))
+                !channel.CancelScaleInReservation(reservation.ReservationId))
             {
                 return false;
             }
 
-            invocationAdmissionRestored = restoreInvocationAdmission;
+            invocationAdmissionRestored = true;
             SignalReadyChannelsLocked();
             SignalHostStateChangedLocked();
             return true;
@@ -569,6 +563,100 @@ internal sealed partial class WorkerChannelRegistry :
         {
             return false;
         }
+    }
+
+    ByocRuntimeDrainStart IByocRuntimeDrainWorkerManager.CloseAdmission()
+    {
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!TryCloseRuntimeAdmissionLocked())
+            {
+                throw new InvalidOperationException("The Runtime drain admission fence is already closed.");
+            }
+            List<string> nonHttpWorkerIds = [];
+            List<string> httpWorkerIds = [];
+            foreach ((string workerId, WorkerSlot slot) in _slots)
+            {
+                if (slot.Channel is not { IsTerminated: false } channel)
+                {
+                    continue;
+                }
+
+                (channel.IsHttpFunctionGroup ? httpWorkerIds : nonHttpWorkerIds).Add(workerId);
+            }
+
+            return new(nonHttpWorkerIds, httpWorkerIds);
+        }
+    }
+
+    ByocRuntimeDrainSelection IByocRuntimeDrainWorkerManager.SelectWorkers(
+        IReadOnlyList<string> workerIds)
+    {
+        ArgumentNullException.ThrowIfNull(workerIds);
+
+        List<(string WorkerId, WorkerSlot Slot, RpcClientWorkerChannel Channel,
+            Task InvocationDrain, long SelectedTimestamp,
+            TaskCompletionSource<bool> Completion)> selections = [];
+        List<string> selectedWorkerIds = [];
+        HashSet<string> seenWorkerIds = new(StringComparer.Ordinal);
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_runtimeAdmissionClosed)
+            {
+                throw new InvalidOperationException("The Runtime drain admission fence is open.");
+            }
+
+            foreach (string workerId in workerIds)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+                if (!seenWorkerIds.Add(workerId))
+                {
+                    continue;
+                }
+
+                selectedWorkerIds.Add(workerId);
+                if (!_slots.TryGetValue(workerId, out WorkerSlot slot) ||
+                    slot.DrainTask is not null ||
+                    slot.Channel is not { } channel)
+                {
+                    continue;
+                }
+
+                Task invocationDrain = channel.BeginRuntimeDrain();
+                TaskCompletionSource<bool> completion =
+                    new(TaskCreationOptions.RunContinuationsAsynchronously);
+                slot.DrainTask = completion.Task;
+                selections.Add((
+                    workerId,
+                    slot,
+                    channel,
+                    invocationDrain,
+                    _timeProvider.GetTimestamp(),
+                    completion));
+            }
+
+            if (selections.Count > 0)
+            {
+                SignalReadyChannelsLocked();
+            }
+        }
+
+        foreach (var selection in selections)
+        {
+            _ = CompleteRuntimeDrainAsync(
+                selection.WorkerId,
+                selection.Slot,
+                selection.Channel,
+                selection.InvocationDrain,
+                selection.SelectedTimestamp,
+                selection.Completion);
+        }
+
+        return new(
+            selectedWorkerIds,
+            [.. selections.Select(static selection => selection.Completion.Task)]);
     }
 
     public bool TryGetInitializedChannel(string workerId, out WorkerChannel channel)
@@ -1207,6 +1295,18 @@ internal sealed partial class WorkerChannelRegistry :
         AdvanceHostStateLocked(httpCapacity, linkedWorkerCount);
     }
 
+    private bool TryCloseRuntimeAdmissionLocked()
+    {
+        if (_runtimeAdmissionClosed)
+        {
+            return false;
+        }
+
+        _runtimeAdmissionClosed = true;
+        SignalHostStateChangedLocked();
+        return true;
+    }
+
     private void AdvanceHostStateLocked(long httpCapacity, int linkedWorkerCount)
     {
         HostStateSnapshot state = _hostStateClock.Advance(httpCapacity, linkedWorkerCount);
@@ -1296,6 +1396,88 @@ internal sealed partial class WorkerChannelRegistry :
         }
 
         return disposalException;
+    }
+
+    private async Task CompleteRuntimeDrainAsync(
+        string workerId,
+        WorkerSlot slot,
+        RpcClientWorkerChannel channel,
+        Task invocationDrain,
+        long selectedTimestamp,
+        TaskCompletionSource<bool> completion)
+    {
+        using CancellationTokenSource deadlineSource =
+            CancellationTokenSource.CreateLinkedTokenSource(_shutdownSource.Token);
+        try
+        {
+            Task deadline = DelayFromSelectionAsync(
+                selectedTimestamp,
+                RuntimeDrainGracePeriod,
+                deadlineSource.Token);
+            Task completed = await Task.WhenAny(
+                invocationDrain,
+                channel.Completion,
+                deadline);
+            if (ReferenceEquals(completed, invocationDrain))
+            {
+                deadlineSource.Cancel();
+                await invocationDrain.WaitAsync(_shutdownSource.Token);
+            }
+            else if (ReferenceEquals(completed, deadline))
+            {
+                await deadline;
+                channel.ExpireRuntimeDrain(
+                    new TimeoutException(
+                        $"Worker '{workerId}' exceeded the BYOC Runtime drain grace period."));
+            }
+            else
+            {
+                deadlineSource.Cancel();
+                channel.ExpireRuntimeDrain(
+                    new IOException(
+                        $"Worker '{workerId}' disconnected while the BYOC Runtime drain was in progress."));
+            }
+
+            bool unlinked = await UnlinkAsync(workerId, _shutdownSource.Token);
+            completion.TrySetResult(
+                unlinked ||
+                IsChannelUnlinked(workerId, slot, channel));
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+            completion.TrySetResult(false);
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
+    }
+
+    private async Task DelayFromSelectionAsync(
+        long selectedTimestamp,
+        TimeSpan duration,
+        CancellationToken cancellationToken)
+    {
+        TimeSpan remaining = duration - _timeProvider.GetElapsedTime(
+            selectedTimestamp,
+            _timeProvider.GetTimestamp());
+        if (remaining > TimeSpan.Zero)
+        {
+            await Task.Delay(remaining, _timeProvider, cancellationToken);
+        }
+    }
+
+    private bool IsChannelUnlinked(
+        string workerId,
+        WorkerSlot slot,
+        RpcClientWorkerChannel channel)
+    {
+        lock (_stateLock)
+        {
+            return !_slots.TryGetValue(workerId, out WorkerSlot currentSlot) ||
+                !ReferenceEquals(currentSlot, slot) ||
+                !ReferenceEquals(slot.Channel, channel);
+        }
     }
 
     private sealed class WorkerSlot

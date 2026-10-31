@@ -30,8 +30,7 @@ public interface IHttpWorkerScaleInManager
     /// </summary>
     /// <param name="reservation">The reservation to cancel.</param>
     /// <param name="invocationAdmissionRestored">
-    /// <see langword="true"/> when invocation admission was restored; <see langword="false"/> when Runtime retirement
-    /// already owns the admission fence.
+    /// <see langword="true"/> when channel invocation admission was restored; otherwise, <see langword="false"/>.
     /// </param>
     /// <returns><see langword="true"/> when the reservation was canceled.</returns>
     bool CancelReservation(

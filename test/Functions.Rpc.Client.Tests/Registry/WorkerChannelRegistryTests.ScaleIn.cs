@@ -267,9 +267,24 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(3, hostStateCoordinator.Current.LinkedWorkerCount);
             Assert.Equal(0, worker.DisposeCount);
             Assert.Equal(0, alternateWorker.DisposeCount);
-            Assert.Same(
-                alternateWorker.Channel,
-                Assert.Single(await registry.GetReadyChannelsAsync()));
+            var readyChannels = await registry.GetReadyChannelsAsync();
+            Assert.Contains(worker.Channel, readyChannels);
+            Assert.Contains(alternateWorker.Channel, readyChannels);
+
+            ScriptInvocationContext canceledReservationInvocation =
+                CreateScaleInInvocation(function);
+            Assert.True(
+                worker.Channel.TryDispatchInvocation(
+                    canceledReservationInvocation));
+            StreamingMessage invocationRequest =
+                await worker.ReadRequestAsync(
+                    StreamingMessage.ContentOneofCase.InvocationRequest);
+            await SendInvocationResponseAsync(
+                worker,
+                invocationRequest.InvocationRequest.InvocationId);
+            Assert.NotNull(
+                await canceledReservationInvocation.ResultSource.Task.WaitAsync(
+                    TestTimeout));
 
             pendingWorker.AllowStart();
             await pendingWorker.DisposeStarted.WaitAsync(TestTimeout);
