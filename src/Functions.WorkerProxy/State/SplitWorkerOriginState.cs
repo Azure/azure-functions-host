@@ -40,7 +40,7 @@ internal sealed record SplitWorkerOriginState(
             ContentLastModifiedTime: 0,
             state.StartupTime,
             checked((int)state.Revision),
-            SplitWorkerStatus.Starting,
+            state.RemovalRequested ? SplitWorkerStatus.RemovalRequested : SplitWorkerStatus.Starting,
             Unlinked,
             state.AssignmentState == WorkerAssignmentState.Failed);
 }
