@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -1788,7 +1789,10 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(IMetricsLogger metricsLogger = null)
+    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(
+        IMetricsLogger metricsLogger = null,
+        IHttpProxyService httpProxyService = null,
+        TimeProvider timeProvider = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -1811,8 +1815,9 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
-            metricsLogger ?? Mock.Of<IMetricsLogger>());
+            httpProxyService ?? Mock.Of<IHttpProxyService>(),
+            metricsLogger ?? Mock.Of<IMetricsLogger>(),
+            timeProvider);
     }
 
     private sealed class RegistryHarness
@@ -1822,12 +1827,24 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly ConcurrentQueue<TestDuplexChannel<StreamingMessage>> _transports = new();
 
         public RegistryHarness()
-            : this(null)
+            : this(null, TimeProvider.System)
         {
         }
 
         public RegistryHarness(TimeSpan? linkTimeout)
+            : this(linkTimeout, TimeProvider.System)
         {
+        }
+
+        public RegistryHarness(TimeProvider timeProvider)
+            : this(null, timeProvider)
+        {
+        }
+
+        private RegistryHarness(TimeSpan? linkTimeout, TimeProvider timeProvider)
+        {
+            ArgumentNullException.ThrowIfNull(timeProvider);
+
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
                 {
@@ -1858,15 +1875,27 @@ public sealed partial class WorkerChannelRegistryTests
                         throw new InvalidOperationException($"No test channel was configured for worker '{workerId}'.");
                     }
 
-                    RpcClientWorkerChannel channel = CreateRealChannelFactory(control.MetricsLogger.Object)
+                    RpcClientWorkerChannel channel = CreateRealChannelFactory(
+                        control.MetricsLogger.Object,
+                        control.HttpProxyService,
+                        timeProvider)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
                     return channel;
                 });
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
-                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
+                ? new(
+                    DuplexFactory.Object,
+                    ChannelFactory.Object,
+                    NullLogger<WorkerChannelRegistry>.Instance,
+                    linkTimeout.Value,
+                    timeProvider)
+                : new(
+                    DuplexFactory.Object,
+                    ChannelFactory.Object,
+                    NullLogger<WorkerChannelRegistry>.Instance,
+                    timeProvider);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
@@ -1896,6 +1925,11 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly TaskCompletionSource _startRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _setupEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _setupRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly string _advertisedHttpUri;
+        private readonly bool _completeResponsesOnRequestCompletion;
+        private readonly string _functionGroupName;
+        private readonly string _isAlwaysReady;
+        private readonly string _maxHttpConcurrency;
         private readonly Exception _setupFailure;
         private int _remainingSetupFailures;
         private int _setupAttempts;
@@ -1908,10 +1942,22 @@ public sealed partial class WorkerChannelRegistryTests
             bool blockDisposal = false,
             bool blockSetup = false,
             int setupFailureCount = 0,
-            Exception setupFailure = null)
+            Exception setupFailure = null,
+            string functionGroupName = null,
+            string isAlwaysReady = null,
+            string maxHttpConcurrency = null,
+            IHttpProxyService httpProxyService = null,
+            bool completeResponsesOnRequestCompletion = false,
+            string advertisedHttpUri = null)
         {
             Id = id;
             Transport = new(blockDisposal);
+            HttpProxyService = httpProxyService ?? Mock.Of<IHttpProxyService>();
+            _advertisedHttpUri = advertisedHttpUri;
+            _functionGroupName = functionGroupName;
+            _isAlwaysReady = isAlwaysReady;
+            _maxHttpConcurrency = maxHttpConcurrency;
+            _completeResponsesOnRequestCompletion = completeResponsesOnRequestCompletion;
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
             if (!blockStart)
@@ -1958,6 +2004,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal Task DisposeStarted => Transport.DisposeStarted;
 
         internal string Id { get; }
+
+        internal IHttpProxyService HttpProxyService { get; }
 
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
 
@@ -2045,13 +2093,37 @@ public sealed partial class WorkerChannelRegistryTests
                     return;
                 }
 
-                await Transport.SendResponseAsync(new StreamingMessage
+                WorkerInitResponse initResponse = new()
                 {
-                    WorkerInitResponse = new WorkerInitResponse
-                    {
-                        Result = new() { Status = StatusResult.Types.Status.Success },
-                    },
-                });
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                };
+                if (_functionGroupName is not null)
+                {
+                    initResponse.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = _functionGroupName;
+                }
+
+                if (_isAlwaysReady is not null)
+                {
+                    initResponse.Capabilities[RpcClientWorkerChannel.IsAlwaysReadyCapability] = _isAlwaysReady;
+                }
+
+                if (_maxHttpConcurrency is not null)
+                {
+                    initResponse.Capabilities[RpcClientWorkerChannel.MaxHttpConcurrencyCapability] = _maxHttpConcurrency;
+                }
+
+                if (_advertisedHttpUri is not null)
+                {
+                    initResponse.Capabilities[RpcWorkerConstants.HttpUri] = _advertisedHttpUri;
+                }
+
+                await Transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+
+                if (_completeResponsesOnRequestCompletion)
+                {
+                    await Transport.Requests.Completion;
+                    Transport.CompleteResponses();
+                }
             }
             catch (ChannelClosedException)
             {

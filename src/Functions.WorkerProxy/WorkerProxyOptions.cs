@@ -28,6 +28,14 @@ internal sealed class WorkerProxyOptions
     public int ManagementPort { get; set; } = 80;
 
     /// <summary>
+    /// Gets or sets the platform-provided token required to authenticate worker assignment.
+    /// </summary>
+    /// <remarks>
+    /// When absent, assignment remains backward-compatible but autonomous Host scale-in metadata is not trusted or relayed.
+    /// </remarks>
+    public string? AssignmentAuthenticationToken { get; set; }
+
+    /// <summary>
     /// Gets or sets the runtime-facing HTTP/2 FunctionRpc listener port.
     /// </summary>
     public int RuntimeGrpcPort { get; set; } = 50053;

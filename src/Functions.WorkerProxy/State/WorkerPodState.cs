@@ -19,8 +19,11 @@ internal sealed record WorkerPodState(
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
-    DateTimeOffset StartupTime)
+    DateTimeOffset StartupTime,
+    int? MaxHttpConcurrency = null)
 {
+    internal bool IsScaleInMetadataAuthenticated { get; init; }
+
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
 
@@ -44,5 +47,6 @@ internal sealed record WorkerPodState(
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null,
-            StartupTime: startupTime);
+            StartupTime: startupTime,
+            MaxHttpConcurrency: null);
 }

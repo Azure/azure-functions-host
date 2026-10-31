@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
@@ -19,7 +20,34 @@ internal static class ManagementApiHandlers
     public static IResult GetWorkerReady(WorkerPodStateManager manager) =>
         manager.State.IsWorkerReady ? TypedResults.Ok() : TypedResults.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
-    public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
+    public static IResult AssignWorker(
+        HttpRequest httpRequest,
+        WorkerAssignRequest request,
+        WorkerPodStateManager manager,
+        IOptions<WorkerProxyOptions> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        WorkerAssignmentAuthenticationResult authentication =
+            WorkerAssignmentAuthentication.Authenticate(httpRequest, options.Value.AssignmentAuthenticationToken);
+        if (authentication is WorkerAssignmentAuthenticationResult.Rejected)
+        {
+            return Error(
+                StatusCodes.Status401Unauthorized,
+                WorkerApiErrorCodes.AssignmentAuthenticationFailed,
+                "The worker assignment request could not be authenticated.");
+        }
+
+        return AssignWorker(
+            request,
+            manager,
+            authentication is WorkerAssignmentAuthenticationResult.Authenticated);
+    }
+
+    public static IResult AssignWorker(
+        WorkerAssignRequest request,
+        WorkerPodStateManager manager,
+        bool scaleInMetadataAuthenticated = false)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
             request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
@@ -27,7 +55,7 @@ internal static class ManagementApiHandlers
             return ValidationError(errors);
         }
 
-        return manager.Assign(assignment) switch
+        return manager.Assign(assignment, scaleInMetadataAuthenticated) switch
         {
             WorkerAssignmentResult.Created => TypedResults.Created("/admin/worker/assignment"),
             WorkerAssignmentResult.AlreadyAssigned => TypedResults.NoContent(),

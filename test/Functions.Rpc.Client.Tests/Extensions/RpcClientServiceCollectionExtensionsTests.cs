@@ -32,7 +32,9 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
-        AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertSingletonFactory<IWorkerChannelRegistry>(services);
+        AssertSingletonFactory<IHttpWorkerScaleInManager>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostedService));
@@ -53,7 +55,9 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientWebHostServices(_ => scriptHost);
 
         Assert.Same(services, result);
-        AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertSingletonFactory<IWorkerChannelRegistry>(services);
+        AssertSingletonFactory<IHttpWorkerScaleInManager>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         AssertSingleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>(services);
         ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));
@@ -141,6 +145,13 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(TService)));
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
         Assert.Equal(typeof(TImplementation), descriptor.ImplementationType);
+    }
+
+    private static void AssertSingletonFactory<TService>(IServiceCollection services)
+    {
+        ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(TService)));
+        Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+        Assert.NotNull(descriptor.ImplementationFactory);
     }
 
     private static void AssertSingleton(IServiceCollection services, Type serviceType, string implementationTypeName)

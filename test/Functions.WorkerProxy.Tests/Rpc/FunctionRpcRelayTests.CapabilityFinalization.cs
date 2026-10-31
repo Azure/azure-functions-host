@@ -3,8 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
@@ -18,6 +22,8 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
+    private const string IsAlwaysReadyCapability = "IsAlwaysReady";
+    private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
     [Theory]
     [InlineData(true)]
@@ -156,22 +162,70 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(null, "assigned-group", "assigned-group")]
-    [InlineData("worker-group", "assigned-group", "assigned-group")]
-    [InlineData(null, null, null)]
-    [InlineData("worker-group", null, null)]
-    public async Task Relay_Initialization_AdvertisesOnlyAssignedFunctionGroup(string? workerSuppliedGroup,
-        string? platformSuppliedGroup, string? expectedAdvertisedGroup)
+    [InlineData("worker-group", "true", "999", true, true, "assigned-group", false, 7, "assigned-group", "False", "7")]
+    [InlineData(null, null, null, true, true, "assigned-group", true, 13, "assigned-group", "True", "13")]
+    [InlineData("worker-group", "true", "999", true, true, "assigned-group", false, 0, "assigned-group", "False", null)]
+    [InlineData("worker-group", "true", "999", true, false, "assigned-group", false, 7, "assigned-group", null, null)]
+    [InlineData("worker-group", "true", "999", false, false, null, false, 0, null, null, null)]
+    public async Task Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities(
+        string? workerSuppliedGroup,
+        string? workerSuppliedAlwaysReady,
+        string? workerSuppliedMaxHttpConcurrency,
+        bool hasAssignment,
+        bool authenticateAssignment,
+        string? platformSuppliedGroup,
+        bool platformSuppliedAlwaysReady,
+        int platformSuppliedMaxHttpConcurrency,
+        string? expectedAdvertisedGroup,
+        string? expectedAdvertisedAlwaysReady,
+        string? expectedAdvertisedMaxHttpConcurrency)
     {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        const string assignmentToken = "platform-assignment-token";
+        Dictionary<string, string?> configuration = authenticateAssignment
+            ? new()
+            {
+                [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.AssignmentAuthenticationToken)}"] = assignmentToken
+            }
+            : [];
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
-        if (platformSuppliedGroup is not null)
+        if (hasAssignment)
         {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(platformSuppliedGroup)));
+            using HttpClient management = factory.CreateWorkerProxyClient();
+            WorkerAssignRequest assignment = new()
+            {
+                StartupMode = WorkerStartupMode.Preconfigured.ToString(),
+                FunctionAppName = "test-app",
+                FunctionGroupName = platformSuppliedGroup,
+                IsAlwaysReady = platformSuppliedAlwaysReady,
+                MaxHttpConcurrency = platformSuppliedMaxHttpConcurrency,
+                Environment = [],
+                FunctionAppDirectory = string.Empty
+            };
+            if (authenticateAssignment)
+            {
+                using HttpResponseMessage missingAuthentication =
+                    await SendAssignmentAsync(management, assignment, authenticationToken: null, timeout.Token);
+                Assert.Equal(HttpStatusCode.Unauthorized, missingAuthentication.StatusCode);
+                Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+
+                using HttpResponseMessage invalidAuthentication =
+                    await SendAssignmentAsync(management, assignment, authenticationToken: "invalid-token", timeout.Token);
+                Assert.Equal(HttpStatusCode.Unauthorized, invalidAuthentication.StatusCode);
+                Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+            }
+
+            using HttpResponseMessage accepted = await SendAssignmentAsync(
+                management,
+                assignment,
+                authenticateAssignment ? assignmentToken : null,
+                timeout.Token);
+            Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+            Assert.Equal(authenticateAssignment, manager.State.IsScaleInMetadataAuthenticated);
         }
 
         StreamingMessage response = CreateInitResponse("init", null);
@@ -180,15 +234,54 @@ public partial class FunctionRpcRelayTests
             response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
         }
 
+        if (workerSuppliedAlwaysReady is not null)
+        {
+            response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = workerSuppliedAlwaysReady;
+        }
+
+        if (workerSuppliedMaxHttpConcurrency is not null)
+        {
+            response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = workerSuppliedMaxHttpConcurrency;
+        }
+
         StreamingMessage expected = CreateInitResponse("init", null);
         if (expectedAdvertisedGroup is not null)
         {
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
         }
 
+        if (expectedAdvertisedAlwaysReady is not null)
+        {
+            expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = expectedAdvertisedAlwaysReady;
+        }
+
+        if (expectedAdvertisedMaxHttpConcurrency is not null)
+        {
+            expected.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] =
+                expectedAdvertisedMaxHttpConcurrency;
+        }
+
         await worker.WriteAsync(response, timeout.Token);
 
         Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+    }
+
+    private static async Task<HttpResponseMessage> SendAssignmentAsync(
+        HttpClient client,
+        WorkerAssignRequest assignment,
+        string? authenticationToken,
+        CancellationToken cancellationToken)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Put, "/admin/worker/assignment")
+        {
+            Content = JsonContent.Create(assignment)
+        };
+        if (authenticationToken is not null)
+        {
+            request.Headers.Add(WorkerAssignmentAuthentication.HeaderName, authenticationToken);
+        }
+
+        return await client.SendAsync(request, cancellationToken);
     }
 
     [Fact]
