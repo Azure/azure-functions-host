@@ -190,8 +190,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         try
         {
             await drainTask.WaitAsync(_shutdownSource.Token);
-            await UnlinkAsync(workerId, _shutdownSource.Token);
-            Log.ScaleInDrainCompleted(_logger, workerId);
+            if (await UnlinkAsync(workerId, _shutdownSource.Token))
+            {
+                Log.ScaleInDrainCompleted(_logger, workerId);
+            }
+            else
+            {
+                Log.ScaleInDrainAlreadyDetached(_logger, workerId);
+            }
         }
         catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
         {
@@ -908,10 +914,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
 
-        [LoggerMessage(6, LogLevel.Information, "Worker {WorkerId} completed scale-in drain and closed its runtime link.")]
+        [LoggerMessage(6, LogLevel.Information, "Worker {WorkerId} completed scale-in drain and closed its Runtime link.")]
         public static partial void ScaleInDrainCompleted(ILogger logger, string workerId);
 
         [LoggerMessage(7, LogLevel.Error, "Worker {WorkerId} failed while completing scale-in drain.")]
         public static partial void ScaleInDrainFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(8, LogLevel.Information,
+            "Worker {WorkerId} completed scale-in drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
+        public static partial void ScaleInDrainAlreadyDetached(ILogger logger, string workerId);
     }
 }

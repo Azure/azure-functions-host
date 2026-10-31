@@ -117,8 +117,10 @@ public sealed partial class WorkerChannelRegistryTests
         await startingLink.WaitAsync(TestTimeout);
     }
 
-    [Fact]
-    public async Task PostScaleIn_SelectedBusyWorkerWithdrawsIntakeAndClosesAfterCommittedWork()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PostScaleIn_SelectedBusyWorkerLogsWhetherRuntimeLinkWasClosed(bool unlinkBeforeDrainCompletes)
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -141,24 +143,37 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
         Assert.True(retained.Channel.IsReadyForInvocations);
 
-        await selected.Transport.SendResponseAsync(new()
+        if (unlinkBeforeDrainCompletes)
         {
-            InvocationResponse = new()
+            Assert.True(await registry.UnlinkAsync(selected.Id));
+            committed.ResultSource.TrySetCanceled();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            await selected.Transport.SendResponseAsync(new()
             {
-                InvocationId = request.InvocationRequest.InvocationId,
-                Result = new()
+                InvocationResponse = new()
                 {
-                    Status = StatusResult.Types.Status.Failure,
-                    Exception = new()
+                    InvocationId = request.InvocationRequest.InvocationId,
+                    Result = new()
                     {
-                        Message = "Invocation failed.",
+                        Status = StatusResult.Types.Status.Failure,
+                        Exception = new()
+                        {
+                            Message = "Invocation failed.",
+                        },
                     },
                 },
-            },
-        });
-        await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
-            () => committed.ResultSource.Task.WaitAsync(TestTimeout));
-        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+            });
+            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
+                () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+            await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+        }
+
+        int expectedEventId = unlinkBeforeDrainCompletes ? 8 : 6;
+        await WaitUntilAsync(() => HasInformationLog(harness.RegistryLogger, expectedEventId));
     }
 
     [Fact]
@@ -293,6 +308,15 @@ public sealed partial class WorkerChannelRegistryTests
         using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return body.RootElement.GetProperty("newlyDrainingWorkerCount").GetInt32();
     }
+
+    private static bool HasInformationLog(
+        Mock<ILogger<WorkerChannelRegistry>> logger,
+        int expectedEventId)
+        => logger.Invocations.Any(invocation =>
+            invocation.Arguments.Count > 1 &&
+            invocation.Arguments[0] is LogLevel.Information &&
+            invocation.Arguments[1] is EventId eventId &&
+            eventId.Id == expectedEventId);
 
     private sealed class ScaleInApiHost : IAsyncDisposable
     {
