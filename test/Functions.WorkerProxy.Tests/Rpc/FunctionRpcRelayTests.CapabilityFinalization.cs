@@ -19,6 +19,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
+    private const string IsAlwaysReadyCapability = "IsAlwaysReady";
 
     [Theory]
     [InlineData(0)]
@@ -211,7 +212,7 @@ public partial class FunctionRpcRelayTests
     [InlineData("worker-group", "assigned-group", "assigned-group")]
     [InlineData(null, null, null)]
     [InlineData("worker-group", null, null)]
-    public async Task Relay_Initialization_AdvertisesOnlyAssignedFunctionGroup(string? workerSuppliedGroup,
+    public async Task Relay_Initialization_AdvertisesOnlyAssignedWorkerClassification(string? workerSuppliedGroup,
         string? platformSuppliedGroup, string? expectedAdvertisedGroup)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -231,10 +232,12 @@ public partial class FunctionRpcRelayTests
             response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
         }
 
+        response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.TrueString;
         StreamingMessage expected = CreateInitResponse("init", null);
         if (expectedAdvertisedGroup is not null)
         {
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
+            expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
         }
 
         await worker.WriteAsync(response, timeout.Token);
@@ -243,7 +246,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_RepeatedInitialization_KeepsAssignedFunctionGroup()
+    public async Task Relay_RepeatedInitialization_KeepsAssignedWorkerClassification()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -257,8 +260,10 @@ public partial class FunctionRpcRelayTests
         await runtime.ReadAsync(timeout.Token);
         StreamingMessage repeated = CreateInitResponse("repeated-init", null);
         repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
+        repeated.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.TrueString;
         StreamingMessage expected = repeated.Clone();
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
+        expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = assignment.IsAlwaysReady.ToString();
 
         await worker.WriteAsync(repeated, timeout.Token);
 
