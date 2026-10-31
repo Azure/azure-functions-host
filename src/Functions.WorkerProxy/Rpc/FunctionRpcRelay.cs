@@ -169,31 +169,14 @@ internal sealed partial class FunctionRpcRelay(
     }
 
     /// <summary>
-    /// Terminates the active relay after the worker establishment deadline commits sticky removal.
-    /// </summary>
-    internal void RequestWorkerRemoval()
-    {
-        FunctionRpcRelaySession? session;
-        lock (_syncLock)
-        {
-            if (_stopping)
-            {
-                return;
-            }
-
-            session = _currentSession;
-        }
-
-        session?.RequestWorkerRemoval();
-    }
-
-    /// <summary>
     /// Prevents new attachments and terminates the active relay session.
     /// </summary>
     /// <param name="cancellationToken">A token that bounds the wait for all attachments to release.</param>
     /// <returns>A task that completes when the active session has been cleared.</returns>
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        _stateManager.OnApplicationStopping();
+
         FunctionRpcRelaySession? session = null;
         bool initiateStop = false;
 

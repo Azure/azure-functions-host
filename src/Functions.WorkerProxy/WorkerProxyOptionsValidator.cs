@@ -29,11 +29,6 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);
         ValidatePort(options.HttpPort, nameof(options.HttpPort), failures);
-        if (options.WorkerGrpcEstablishmentTimeout != WorkerProxyOptions.RequiredWorkerGrpcEstablishmentTimeout)
-        {
-            failures.Add($"{nameof(options.WorkerGrpcEstablishmentTimeout)} must be exactly "
-                + $"{WorkerProxyOptions.RequiredWorkerGrpcEstablishmentTimeout}.");
-        }
 
         HashSet<int> configuredPorts = [];
         AddDistinctPort(options.ManagementPort, nameof(options.ManagementPort), configuredPorts, failures);

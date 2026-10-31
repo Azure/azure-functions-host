@@ -64,8 +64,6 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
                 new Status(StatusCode.Cancelled, "The FunctionRpc relay session was canceled."),
             FunctionRpcRelayTerminationReason.Faulted =>
                 new Status(StatusCode.Unavailable, "A FunctionRpc relay stream operation failed."),
-            FunctionRpcRelayTerminationReason.RemovalRequested =>
-                new Status(StatusCode.Unavailable, "The worker pod requested removal after worker gRPC establishment failed."),
             FunctionRpcRelayTerminationReason.Shutdown =>
                 new Status(StatusCode.Unavailable, "The FunctionRpc relay is shutting down."),
             _ => new Status(StatusCode.Unknown, "The FunctionRpc relay session terminated.")

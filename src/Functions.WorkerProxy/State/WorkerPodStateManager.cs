@@ -25,13 +25,8 @@ internal sealed class WorkerPodStateManager
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
     private readonly TimeProvider _timeProvider;
-    private readonly TimeSpan _workerGrpcEstablishmentTimeout;
-    private readonly TaskCompletionSource<WorkerGrpcEstablishmentCompletion> _workerGrpcEstablishmentCompletion =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
-    private long? _workerGrpcListenerReadyTimestamp;
     private bool _applicationStopping;
 
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
@@ -50,19 +45,10 @@ internal sealed class WorkerPodStateManager
 
         _timeProvider = timeProvider;
         _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
-        _workerGrpcEstablishmentTimeout = options.Value.WorkerGrpcEstablishmentTimeout;
-    }
-
-    private enum WorkerGrpcEstablishmentCompletion
-    {
-        Established,
-        RemovalRequested,
-        TimedOut,
-        ApplicationStopping
     }
 
     /// <summary>
-    /// Gets the current immutable state after applying the fixed Worker gRPC establishment deadline.
+    /// Gets the current immutable state without incrementing its revision.
     /// </summary>
     public WorkerPodState State
     {
@@ -70,7 +56,6 @@ internal sealed class WorkerPodStateManager
         {
             lock (_stateLock)
             {
-                ExpireWorkerGrpcEstablishmentLocked();
                 return _state;
             }
         }
@@ -105,7 +90,6 @@ internal sealed class WorkerPodStateManager
         TaskCompletionSource<WorkerPodState> waiter;
         lock (_stateLock)
         {
-            ExpireWorkerGrpcEstablishmentLocked();
             ArgumentOutOfRangeException.ThrowIfGreaterThan(lastKnownRevision, _state.Revision);
             if (lastKnownRevision < _state.Revision)
             {
@@ -150,7 +134,6 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireWorkerGrpcEstablishmentLocked();
             // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
             if (sessionId <= _lastSessionId ||
                 _state.AssignmentState == WorkerAssignmentState.Failed ||
@@ -190,7 +173,6 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireWorkerGrpcEstablishmentLocked();
             if (_state.SessionId != sessionId || !_state.IsWorkerAttached || _state.RemovalRequested)
             {
                 return false;
@@ -207,7 +189,6 @@ internal sealed class WorkerPodStateManager
             }
 
             UpdateStateAndNotifyWaitersLocked(_state with { Revision = checked(_state.Revision + 1), WorkerId = workerId });
-            _workerGrpcEstablishmentCompletion.TrySetResult(WorkerGrpcEstablishmentCompletion.Established);
             return true;
         }
     }
@@ -219,7 +200,7 @@ internal sealed class WorkerPodStateManager
         => OnSessionTerminated(sessionId, workerTerminated: false);
 
     /// <summary>
-    /// Also commits sticky removal when the worker-facing stream is terminal outside application shutdown.
+    /// Also commits sticky removal when an established worker-facing stream is terminal outside application shutdown.
     /// </summary>
     public bool OnSessionTerminated(long sessionId, bool workerTerminated)
     {
@@ -244,7 +225,7 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            bool commitWorkerRemoval = workerTerminated && !_applicationStopping;
+            bool commitWorkerRemoval = workerTerminated && _state.WorkerId is not null && !_applicationStopping;
             bool removalRequested = _state.RemovalRequested || commitWorkerRemoval;
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -254,11 +235,6 @@ internal sealed class WorkerPodStateManager
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
-            if (commitWorkerRemoval)
-            {
-                _workerGrpcEstablishmentCompletion.TrySetResult(WorkerGrpcEstablishmentCompletion.RemovalRequested);
-            }
-
             return true;
         }
     }
@@ -272,7 +248,6 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            ExpireWorkerGrpcEstablishmentLocked();
             if (_state.RemovalRequested)
             {
                 return WorkerAssignmentResult.RemovalRequested;
@@ -320,99 +295,14 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Waits from worker-listener readiness until valid StartStream, sticky removal, or application shutdown.
-    /// </summary>
-    /// <returns><see langword="true"/> when this watcher committed the W3 establishment timeout.</returns>
-    public async Task<bool> WatchWorkerGrpcEstablishmentAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        lock (_stateLock)
-        {
-            if (_workerGrpcListenerReadyTimestamp is not null)
-            {
-                throw new InvalidOperationException("The worker gRPC establishment deadline can start only once.");
-            }
-
-            _workerGrpcListenerReadyTimestamp = _timeProvider.GetTimestamp();
-            if (_state.WorkerId is not null)
-            {
-                _workerGrpcEstablishmentCompletion.TrySetResult(WorkerGrpcEstablishmentCompletion.Established);
-            }
-
-            if (_applicationStopping)
-            {
-                _workerGrpcEstablishmentCompletion.TrySetResult(WorkerGrpcEstablishmentCompletion.ApplicationStopping);
-            }
-        }
-
-        while (true)
-        {
-            TimeSpan remaining;
-            lock (_stateLock)
-            {
-                if (_workerGrpcEstablishmentCompletion.Task.IsCompleted)
-                {
-                    return _workerGrpcEstablishmentCompletion.Task.GetAwaiter().GetResult() ==
-                        WorkerGrpcEstablishmentCompletion.TimedOut;
-                }
-
-                if (ExpireWorkerGrpcEstablishmentLocked())
-                {
-                    return true;
-                }
-
-                long listenerReadyTimestamp = _workerGrpcListenerReadyTimestamp
-                    ?? throw new InvalidOperationException("The worker gRPC listener-ready timestamp was not captured.");
-                remaining = _workerGrpcEstablishmentTimeout - _timeProvider.GetElapsedTime(listenerReadyTimestamp);
-            }
-
-            try
-            {
-                TimeSpan delay = TimeSpan.FromMilliseconds(Math.Max(1, Math.Ceiling(remaining.TotalMilliseconds)));
-                WorkerGrpcEstablishmentCompletion completion =
-                    await _workerGrpcEstablishmentCompletion.Task.WaitAsync(delay, _timeProvider, cancellationToken);
-                return completion == WorkerGrpcEstablishmentCompletion.TimedOut;
-            }
-            catch (TimeoutException)
-            {
-                // Recheck the original monotonic deadline; never grant a new establishment window.
-            }
-        }
-    }
-
-    /// <summary>
-    /// Disables the W3 establishment deadline when intentional application shutdown begins.
+    /// Prevents intentional application shutdown from being classified as worker loss.
     /// </summary>
     public void OnApplicationStopping()
     {
         lock (_stateLock)
         {
             _applicationStopping = true;
-            _workerGrpcEstablishmentCompletion.TrySetResult(WorkerGrpcEstablishmentCompletion.ApplicationStopping);
         }
-    }
-
-    private bool ExpireWorkerGrpcEstablishmentLocked()
-    {
-        if (_workerGrpcListenerReadyTimestamp is not { } listenerReadyTimestamp ||
-            _workerGrpcEstablishmentCompletion.Task.IsCompleted ||
-            _applicationStopping ||
-            _state.RemovalRequested ||
-            _state.WorkerId is not null ||
-            _timeProvider.GetElapsedTime(listenerReadyTimestamp) < _workerGrpcEstablishmentTimeout)
-        {
-            return false;
-        }
-
-        UpdateStateAndNotifyWaitersLocked(_state with
-        {
-            Revision = checked(_state.Revision + 1),
-            IsWorkerAttached = false,
-            RemovalRequested = true,
-            AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
-        });
-        _workerGrpcEstablishmentCompletion.TrySetResult(WorkerGrpcEstablishmentCompletion.TimedOut);
-        return true;
     }
 
     /// <summary>

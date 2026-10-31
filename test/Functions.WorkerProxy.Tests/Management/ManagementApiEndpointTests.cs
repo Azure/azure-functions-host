@@ -432,24 +432,16 @@ public class ManagementApiEndpointTests
     public async Task ExplicitZeroRevisionPollReturnsNoContentAtDeadline(string revision)
     {
         Mock<TimeProvider> clock = new();
-        clock.SetupGet(provider => provider.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
-        Mock<ITimer> workerDeadlineTimer = new();
         Mock<ITimer> timer = new();
         TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
         TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        int timerCount = 0;
         clock.Setup(provider => provider.CreateTimer(
             It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
             .Returns((TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
             {
                 Assert.Equal(TimeSpan.FromSeconds(60), dueTime);
                 Assert.Equal(Timeout.InfiniteTimeSpan, period);
-                if (Interlocked.Increment(ref timerCount) == 1)
-                {
-                    return workerDeadlineTimer.Object;
-                }
-
                 expire.TrySetResult(() => callback(state));
                 return timer.Object;
             });
@@ -475,13 +467,10 @@ public class ManagementApiEndpointTests
     public async Task InfraState_UnchangedCheckpoint_ReturnsNoContentAtDeadline()
     {
         Mock<TimeProvider> clock = new();
-        clock.SetupGet(provider => provider.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
-        Mock<ITimer> workerDeadlineTimer = new();
         Mock<ITimer> timer = new();
         TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
         TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        int timerCount = 0;
         clock.Setup(provider => provider.CreateTimer(
                 It.IsAny<TimerCallback>(),
                 It.IsAny<object?>(),
@@ -489,11 +478,6 @@ public class ManagementApiEndpointTests
                 It.IsAny<TimeSpan>()))
             .Returns((TimerCallback callback, object? state, TimeSpan _, TimeSpan _) =>
             {
-                if (Interlocked.Increment(ref timerCount) == 1)
-                {
-                    return workerDeadlineTimer.Object;
-                }
-
                 expire.TrySetResult(() => callback(state));
                 return timer.Object;
             });

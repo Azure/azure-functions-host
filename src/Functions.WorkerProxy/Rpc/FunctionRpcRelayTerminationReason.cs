@@ -24,11 +24,6 @@ internal enum FunctionRpcRelayTerminationReason
     Faulted,
 
     /// <summary>
-    /// The customer worker did not establish its FunctionRpc stream before the fixed deadline.
-    /// </summary>
-    RemovalRequested,
-
-    /// <summary>
     /// The WorkerProxy application requested shutdown.
     /// </summary>
     Shutdown

@@ -73,7 +73,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_FinalizerFailureTerminatesAssignedWorkerWithoutForwardingResponse()
+    public async Task Relay_EstablishedReadFaultRequestsStickyRemovalWithoutForwardingResponse()
     {
         InvalidOperationException failure = new("Injected finalization failure.");
         TestCapabilityFinalizer finalizer = new(capabilities =>
@@ -97,6 +97,7 @@ public partial class FunctionRpcRelayTests
 
         Grpc.Core.RpcException exception = await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => runtime.ReadAsync(timeout.Token));
         Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
+        AssertRemovalTrailer(exception);
         Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
         await WaitForReleaseAsync(relay, timeout.Token);
         WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);

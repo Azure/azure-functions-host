@@ -204,19 +204,6 @@ internal sealed partial class FunctionRpcRelay
                 RemovalRequested: false));
         }
 
-        /// <summary>
-        /// Completes both relay sides after the worker establishment deadline requests removal.
-        /// </summary>
-        public void RequestWorkerRemoval()
-        {
-            TryTerminate(new FunctionRpcRelayTerminalState(
-                id,
-                FunctionRpcRelayTerminationReason.RemovalRequested,
-                FunctionRpcRelaySide.Worker,
-                Exception: null,
-                RemovalRequested: true));
-        }
-
         private static Channel<StreamingMessage> CreateChannel()
         {
             return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions

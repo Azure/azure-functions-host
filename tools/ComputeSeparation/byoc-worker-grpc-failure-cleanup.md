@@ -1,147 +1,134 @@
-# BYOC W3 customer Worker gRPC failure cleanup
+# BYOC W3 established customer Worker gRPC loss cleanup
 
 ## Context
 
-WorkerProxy has two FunctionRpc listeners:
+WorkerProxy has separate Runtime-facing and customer Worker-facing FunctionRpc listeners. This change covers one W3 rule only:
 
-- The Runtime-facing listener relays Host traffic.
-- The Worker-facing listener accepts the customer Worker EventStream.
+> After the customer Worker sends a valid first `StartStream` with a nonempty Worker ID, terminal loss of that established Worker-facing stream requests sticky pod removal.
 
-This change covers only W3: the customer Worker-facing gRPC stream never establishes, or an established customer Worker stream terminates. WorkerProxy then publishes sticky `RemovalRequested` state and waits for Legion to delete the pod.
+There is no Worker establishment deadline. No Worker connection, a connection that never sends `StartStream`, an invalid first message, and any pre-establishment EOF, cancellation, read fault, or write fault retain the existing replacement behavior.
 
-W1 authenticated Runtime Link timing, W2 Runtime-side loss handling, W4 graceful removal, HTTP health thresholds, customer invocation failures, Docker, and Legion are intentionally outside this change.
+W1 authenticated Runtime Link timing, W2 Runtime-side loss handling, W4 graceful removal, HTTP health thresholds, customer invocation failures, `WorkerTerminate`, invocation drain/replay/retry, Docker, and Legion are outside this change.
 
 ## Before and after
 
 | Scenario | Before | After |
 |---|---|---|
-| No valid Worker `StartStream` after the listener is ready | The pod could remain available indefinitely. | A fixed 60-second monotonic deadline commits `RemovalRequested`. |
-| Worker stream closes before valid `StartStream` | The relay ended, but a replacement Worker could reconnect. | The first terminal Worker outcome commits sticky removal immediately. |
-| Valid Worker stream later reaches EOF, cancellation, or a read/write fault | Readiness was withdrawn, but replacement was still possible in some states. | Removal is sticky and every late admission surface rejects the pod. |
-| WorkerProxy application intentionally stops | Relay shutdown could look similar to a transport failure. | Shutdown disables the W3 deadline and never creates a W3 removal decision. |
-| WorkerProxy after W3 | Relay teardown completed, but management state did not carry removal ownership. | Management stays alive and continues reporting `RemovalRequested` until pod deletion. |
+| No customer Worker connection | WorkerProxy waits for a Worker. | Unchanged; no deadline or removal decision. |
+| Invalid or incomplete pre-establishment Worker stream | The relay ends and a replacement session can establish. | Unchanged; no sticky removal is selected. |
+| Established Worker stream reaches EOF, cancellation, read fault, or write fault | Readiness was withdrawn, but replacement could remain possible in some states. | WorkerProxy commits sticky `RemovalRequested` and permanently closes pod admission. |
+| Runtime-facing stream terminates | Existing Runtime-side behavior applies. | Unchanged; Runtime loss is not W3. |
+| WorkerProxy intentionally stops | The relay closes as application shutdown. | Shutdown remains non-W3 and does not publish `RemovalRequested`. |
 
-## Establishment deadline
-
-The deadline starts once from the hosted `StartedAsync` lifecycle phase, after the application listeners are started. It uses `TimeProvider` and a captured timestamp, so wall-clock changes do not extend or shorten the window.
+## Establishment boundary
 
 ```mermaid
 sequenceDiagram
-    participant Host as Hosted application
-    participant Deadline as W3 deadline service
+    participant Worker as Customer Worker
+    participant Relay as WorkerProxy FunctionRpc relay
     participant State as WorkerPodStateManager
-    participant Relay as FunctionRpcRelay
-    participant Platform as Legion polling
 
-    Host->>Deadline: StartedAsync (listeners ready)
-    Deadline->>State: WatchWorkerGrpcEstablishmentAsync()
-    State->>State: Capture monotonic start timestamp once
-    Note over State: No Worker connection or valid StartStream
-    State->>State: 60 seconds elapsed
-    State->>State: Atomically set RemovalRequested
-    State-->>Deadline: Timeout selected
-    Deadline->>Relay: RequestWorkerRemoval()
-    Relay->>Relay: Complete active Runtime relay with removal trailer
-    Platform->>State: POST /admin/infra/instanceState
-    State-->>Platform: Status = RemovalRequested
+    Worker->>Relay: Open Worker-facing EventStream
+    Note over Relay,State: Attached transport is not established W3 state
+    Worker->>Relay: First message
+    alt Valid StartStream with nonempty Worker ID
+        Relay->>State: Record Worker ID
+        State-->>Relay: Worker-facing gRPC established
+    else Invalid first message or stream terminates
+        Relay->>State: Detach without RemovalRequested
+        Note over Relay,State: Replacement session remains eligible
+    end
 ```
 
-Connection attempts, invalid messages, disconnects, and replacement attempts do not reset the timestamp. If a valid first `StartStream` wins the lifecycle lock before expiry, the establishment waiter completes and its timer is disposed.
+W3 begins only after `WorkerPodStateManager` has accepted the Worker ID from a valid first `StartStream`.
 
-## Worker-side terminal cleanup
-
-Only the Worker-facing side selects W3. Runtime-side terminal outcomes remain their existing behavior and do not request W3 removal.
+## Established Worker loss
 
 ```mermaid
 flowchart TD
-    A[Relay operation completes] --> B{Which side selected termination?}
-    B -->|Runtime| C[Existing Runtime-side behavior]
-    B -->|Application shutdown| D[Normal shutdown, no W3 removal]
-    B -->|Worker| E{Reason}
-    E -->|EOF / peer close| F[Commit sticky RemovalRequested]
-    E -->|Cancellation| F
-    E -->|Read or write fault| F
-    F --> G[Withdraw Worker readiness]
-    G --> H[Fail assignment when one exists]
-    H --> I[Complete Runtime-facing relay]
-    I --> J[Add x-ms-functions-worker-removal-requested: true trailer]
-    J --> K[Keep management endpoint alive]
+    A[Relay terminal outcome] --> B{Worker-facing side?}
+    B -->|No| C[Existing Runtime-side behavior]
+    B -->|Yes| D{Valid StartStream previously accepted?}
+    D -->|No| E[Detach without sticky removal]
+    D -->|Yes| F{Intentional application shutdown?}
+    F -->|Yes| G[Normal shutdown]
+    F -->|No| H[Commit sticky RemovalRequested]
+    H --> I[Withdraw readiness and invocation admission]
+    I --> J[Mark assignment failed when present]
+    J --> K[Complete Runtime-facing relay with removal trailer]
+    K --> L[Keep management endpoint alive]
+    L --> M[Legion deletes the pod]
 ```
 
-An invalid first Worker message is a Worker read fault. A Worker stream that reaches EOF before valid `StartStream` is a Worker peer-close. Both are immediate W3 failures; neither receives another deadline or replacement opportunity.
+EOF/peer close, cancellation, read fault, and write fault all use the same established-Worker terminal rule.
 
 ## Sticky lifecycle state
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WaitingForWorker: Worker listener ready
+    [*] --> WaitingForWorker
+    WaitingForWorker --> WaitingForWorker: No connection
+    WaitingForWorker --> WaitingForWorker: Invalid/incomplete stream ends
     WaitingForWorker --> WorkerEstablished: Valid first StartStream
-    WaitingForWorker --> RemovalRequested: 60-second deadline
-    WaitingForWorker --> RemovalRequested: Invalid first message
-    WaitingForWorker --> RemovalRequested: Worker EOF/cancel/fault
-    WaitingForWorker --> Stopping: Intentional application shutdown
-    WorkerEstablished --> RemovalRequested: Worker EOF/cancel/fault
+    WorkerEstablished --> RemovalRequested: Worker EOF/cancel/read fault/write fault
     WorkerEstablished --> Stopping: Intentional application shutdown
     RemovalRequested --> RemovalRequested: Late Worker / Runtime / assignment / HTTP
     RemovalRequested --> [*]: Legion deletes pod
     Stopping --> [*]
 ```
 
-The `RemovalRequested` transition and valid `StartStream` transition share the lifecycle state lock. Exactly one wins. Once removal wins:
+Once removal is committed:
 
 - `/admin/worker/ready` returns HTTP 503.
 - New Worker-facing and Runtime-facing EventStreams return gRPC `Unavailable`.
 - Worker assignment returns HTTP 409 with `RemovalRequested`.
 - New HTTP invocation forwarding returns HTTP 503.
-- The split instance-state projection reports `RemovalRequested` and unhealthy.
-- The WorkerProxy process and management endpoint remain available.
+- The split instance-state projection repeatedly reports `RemovalRequested` and unhealthy.
+- The active Runtime-facing EventStream receives `x-ms-functions-worker-removal-requested: true`.
+- WorkerProxy and its management endpoint stay alive until pod deletion.
 
 ## Implementation map
 
 | Area | Files | Purpose |
 |---|---|---|
-| Configuration | `WorkerProxyOptions.cs`, `WorkerProxyOptionsValidator.cs` | Adds the validated 60-second `WorkerGrpcEstablishmentTimeout`. |
-| Listener-ready deadline | `WorkerGrpcEstablishmentDeadlineService.cs`, `WorkerProxyApplication.cs` | Starts the one-shot W3 watcher from hosted listener readiness and disables it during shutdown. |
-| Sticky state | `WorkerPodState.cs`, `WorkerPodStateManager.cs`, `SplitWorkerOriginState.cs` | Serializes deadline, valid `StartStream`, terminal Worker outcomes, readiness, assignment, and removal publication. |
-| Relay classification | `FunctionRpcRelay.cs`, `FunctionRpcRelay.Session.cs` | Classifies Worker-side EOF/cancellation/fault as W3 and keeps Runtime-side outcomes outside W3. |
+| Sticky state | `WorkerPodState.cs`, `WorkerPodStateManager.cs`, `SplitWorkerOriginState.cs` | Requires an accepted Worker ID before Worker terminal loss can commit sticky removal. |
+| Relay classification | `FunctionRpcRelay.cs`, `FunctionRpcRelay.Session.cs` | Distinguishes established Worker loss from pre-establishment and Runtime-side outcomes. |
 | Runtime indication | `FunctionRpcRelayService.cs`, `FunctionRpcRelayConstants.cs`, terminal-state types | Completes the Runtime-facing relay with the removal trailer after sticky removal is committed. |
-| Admission closure | management and HTTP forwarding handlers | Rejects assignment and HTTP forwarding after removal while preserving management availability. |
+| Admission closure | management and HTTP forwarding handlers | Rejects assignment, streams, and HTTP forwarding while preserving management availability. |
 
-No `WorkerTerminate`, process kill, container kill, invocation drain, replay, or retry behavior is added.
+No deadline option, timer, lifecycle watcher, `WorkerTerminate`, process/container kill, invocation drain, replay, or retry behavior is added.
 
 ## Behavioral scenarios
 
-The change adds five test methods that use the hosted WorkerProxy and public gRPC, HTTP, readiness, assignment, and management surfaces:
+Five hosted public-surface methods cover the contract:
 
-1. `WorkerGrpcDeadline_NoConnectionRequestsStickyRemovalAndClosesAdmissions`
-   - Starts a Runtime EventStream with no Worker connection.
-   - Advances the exact 60-second timer.
-   - Verifies the Runtime removal trailer, repeated `RemovalRequested` publication, readiness 503, assignment rejection, HTTP rejection, late Runtime rejection, and late Worker rejection.
-2. `WorkerGrpcDeadline_AttachedStreamWithoutStartStreamExpiresAndCannotReconnect`
-   - Opens the Worker EventStream without sending a first message.
-   - Verifies deadline removal and permanent reconnect rejection.
-3. `WorkerGrpcDeadline_ValidStartStreamCancelsEstablishmentTimeout`
-   - Sends valid `StartStream` before expiry.
-   - Verifies the deadline timer is disposed, readiness and assignment remain available, and Runtime relay traffic is admitted.
-4. `WorkerGrpcTerminalOutcome_RequestsStickyRemoval`
-   - Covers invalid first message, pre-`StartStream` EOF, established EOF, and established cancellation.
-   - Verifies sticky removal, Runtime trailer signaling, identity attribution, readiness withdrawal, assignment rejection, and reconnect rejection.
-5. `WorkerGrpcDeadline_ApplicationShutdownDoesNotPublishRemoval`
-   - Stops the hosted application with established Worker and Runtime EventStreams.
-   - Verifies the timer is disposed and shutdown does not publish `RemovalRequested`.
+1. `WorkerGrpc_PreEstablishmentTerminalOutcomesAllowReplacement`
+   - Covers invalid first message, pre-`StartStream` EOF, and pre-`StartStream` cancellation.
+   - Verifies no removal trailer/state, assignment remains not-ready rather than terminal, and a replacement Worker can establish.
+2. `WorkerGrpc_EstablishedEofRequestsStickyRemovalAndClosesAdmissions`
+   - Establishes and assigns the Worker, then closes the Worker request stream.
+   - Verifies repeated removal publication, Runtime trailer, readiness/assignment/HTTP closure, and late stream rejection.
+3. `WorkerGrpc_EstablishedCancellationRequestsStickyRemoval`
+   - Cancels an established Worker EventStream and verifies sticky removal.
+4. `Relay_EstablishedReadFaultRequestsStickyRemovalWithoutForwardingResponse`
+   - Forces a read-path capability-finalization fault after valid `StartStream` and verifies sticky removal without forwarding a partial response.
+5. `WorkerGrpc_ApplicationShutdownDoesNotPublishRemoval`
+   - Stops WorkerProxy with established Worker and Runtime EventStreams and verifies shutdown is not W3.
 
-These are in-memory hosted public-surface scenarios. They do not claim deployed Legion validation.
+The existing relay termination scenario also exercises an established Worker write fault and verifies the same sticky removal transition.
+
+These are in-memory hosted public-surface scenarios except the existing focused write-fault relay scenario. They do not claim deployed Legion validation.
 
 ## Assumptions
 
-- `IHostedLifecycleService.StartedAsync` runs after Kestrel has started the configured listeners.
-- Legion treats `RemovalRequested` as the authoritative request to delete the Worker pod.
+- A valid first `StartStream` with a nonempty Worker ID is the authoritative establishment boundary.
+- Legion treats `RemovalRequested` as the request to delete the Worker pod.
 - Existing Runtime channel completion removes Worker capacity and fails unresolved committed invocations according to current Host behavior.
 - Source-specific invocation retry behavior remains outside WorkerProxy.
 
 ## Known limitations
 
-- This independent base has no public split-state field for historical Runtime identity. The projection remains `Unlinked`; the change does not widen that protocol.
-- Worker and assignment identity remain internally available as historical attribution, but they do not imply a live Worker or Runtime Link after removal.
-- The removal trailer is emitted by WorkerProxy. This PR does not add new Host-side W2 handling; existing channel completion behavior remains authoritative.
+- This independent base has no public split-state field for historical Runtime identity. The projection remains `Unlinked`; this change does not widen that protocol.
+- Worker and assignment identity remain historical attribution after removal and do not imply a live Worker or Runtime Link.
+- The removal trailer is emitted by WorkerProxy. This PR adds no new Host-side W2 handling.
 - The tests do not exercise a deployed Legion stamp or physical pod deletion.

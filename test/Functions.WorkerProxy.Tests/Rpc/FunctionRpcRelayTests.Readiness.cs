@@ -142,6 +142,7 @@ public partial class FunctionRpcRelayTests
     [InlineData("worker-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed))]
     [InlineData("runtime-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed))]
     [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted))]
+    [InlineData("worker-write-fault", nameof(FunctionRpcRelayTerminationReason.Faulted))]
     [InlineData("worker-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled))]
     [InlineData("runtime-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled))]
     [InlineData("shutdown", nameof(FunctionRpcRelayTerminationReason.Shutdown))]
@@ -156,10 +157,18 @@ public partial class FunctionRpcRelayTests
         Channel<StreamingMessage> runtimeInbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> workerInbound = Channel.CreateUnbounded<StreamingMessage>();
         BlockingServerStreamWriter blockingWriter = new();
+        Mock<IServerStreamWriter<StreamingMessage>> faultingWorkerWriter = new();
+        faultingWorkerWriter
+            .Setup(writer => writer.WriteAsync(It.IsAny<StreamingMessage>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("Injected worker write failure."));
+        IServerStreamWriter<StreamingMessage> workerWriter = string.Equals(
+            trigger, "worker-write-fault", StringComparison.Ordinal)
+            ? faultingWorkerWriter.Object
+            : new TestServerStreamWriter();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             CreateMessageReader(runtimeInbound.Reader), blockingWriter, runtimeCancellation.Token);
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
-            CreateMessageReader(workerInbound.Reader), new TestServerStreamWriter(), workerCancellation.Token);
+            CreateMessageReader(workerInbound.Reader), workerWriter, workerCancellation.Token);
         Task stopTask = Task.CompletedTask;
 
         try
@@ -181,6 +190,9 @@ public partial class FunctionRpcRelayTests
                     break;
                 case "worker-fault":
                     workerInbound.Writer.Complete(new IOException("Injected worker failure."));
+                    break;
+                case "worker-write-fault":
+                    await runtimeInbound.Writer.WriteAsync(CreateMessage("worker-write-fault"), timeout.Token);
                     break;
                 case "worker-cancel":
                     workerCancellation.Cancel();
