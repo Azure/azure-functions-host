@@ -83,7 +83,7 @@ public sealed partial class WorkerChannelRegistryTests
             worker.AllowDispose();
         }
 
-        await manager.WaitForRetirementAsync().WaitAsync(TestTimeout);
+        await manager.WaitForSelectedWorkerDrainAsync().WaitAsync(TestTimeout);
     }
 
     [Fact]
@@ -98,34 +98,107 @@ public sealed partial class WorkerChannelRegistryTests
             new("http-1", blockDisposal: true, functionGroupName: FunctionGroups.Http),
             new("http-2", blockDisposal: true, functionGroupName: FunctionGroups.Http),
         ];
-        foreach (ChannelControl worker in workers)
+        ChannelControl closingWorker = new(
+            "closing",
+            blockDisposal: true,
+            functionGroupName: "timer");
+        ChannelControl initializingWorker = new(
+            "initializing",
+            blockStart: true,
+            blockDisposal: true,
+            functionGroupName: "timer");
+        foreach (ChannelControl worker in workers
+            .Append(closingWorker)
+            .Append(initializingWorker))
         {
             harness.Enqueue(worker);
         }
 
         await using WorkerChannelRegistry registry = harness.Registry;
-        foreach (ChannelControl worker in workers)
+        try
         {
-            await LinkAsync(registry, worker.Id);
+            IHostStateCoordinator stateProvider = registry;
+            IRuntimeWorkerAdmissionGate admissionGate = registry;
+            foreach (ChannelControl worker in workers.Append(closingWorker))
+            {
+                await LinkAsync(registry, worker.Id);
+            }
+
+            Task<WorkerLinkResult> initializingLink = registry.LinkAsync(
+                initializingWorker.Id,
+                CreateEndpoint(initializingWorker.Id));
+            await initializingWorker.StartEntered.WaitAsync(TestTimeout);
+            Task<bool> closingUnlink = registry.UnlinkAsync(closingWorker.Id);
+            await closingWorker.DisposeStarted.WaitAsync(TestTimeout);
+            HostStateSnapshot initialState = stateProvider.Current;
+            Assert.Equal(workers.Length + 2, initialState.LinkedWorkerCount);
+            ByocRuntimeDrainManager manager = new(
+                registry,
+                timeProvider,
+                NullLogger<ByocRuntimeDrainManager>.Instance);
+            manager.Accept(ByocDrainModel.Immediate);
+
+            await AssertSelectedAsync(workers);
+            WorkerLinkException rejection = await Assert.ThrowsAsync<WorkerLinkException>(
+                () => registry.LinkAsync("late-worker", CreateEndpoint("late-worker")));
+            Assert.Equal(WorkerLinkFailureReason.RuntimeStopping, rejection.Reason);
+
+            HostStateSnapshot admissionState = stateProvider.Current;
+            Assert.True(admissionGate.IsClosed);
+            Assert.Equal(workers.Length + 2, admissionState.LinkedWorkerCount);
+            Assert.Equal(0, admissionState.HttpCapacity);
+            Assert.True(admissionState.Version > initialState.Version);
+            Assert.True(admissionState.CreatedTime > initialState.CreatedTime);
+
+            initializingWorker.AllowStart();
+            await initializingWorker.DisposeStarted.WaitAsync(TestTimeout);
+            ChannelControl[] closingOrder =
+                [closingWorker, initializingWorker, .. workers];
+            HostStateSnapshot previousState = admissionState;
+            for (int index = 0; index < closingOrder.Length; index++)
+            {
+                long version = stateProvider.Current.Version;
+                Task<long> stateChanged = stateProvider.WaitForChangeAsync(version);
+                closingOrder[index].AllowDispose();
+                await stateChanged.WaitAsync(TestTimeout);
+
+                HostStateSnapshot linkClosedState = stateProvider.Current;
+                Assert.Equal(
+                    closingOrder.Length - index - 1,
+                    linkClosedState.LinkedWorkerCount);
+                Assert.True(linkClosedState.Version > version);
+                Assert.True(
+                    linkClosedState.CreatedTime > previousState.CreatedTime);
+                previousState = linkClosedState;
+            }
+
+            Assert.True(await closingUnlink.WaitAsync(TestTimeout));
+            WorkerLinkException initializingRejection =
+                await Assert.ThrowsAsync<WorkerLinkException>(
+                    () => initializingLink.WaitAsync(TestTimeout));
+            Assert.Equal(
+                WorkerLinkFailureReason.RuntimeStopping,
+                initializingRejection.Reason);
+            await manager.WaitForSelectedWorkerDrainAsync().WaitAsync(TestTimeout);
+            HostStateSnapshot finalState = stateProvider.Current;
+            Assert.True(admissionGate.IsClosed);
+            Assert.Equal(0, finalState.LinkedWorkerCount);
+            Assert.Equal(0, finalState.HttpCapacity);
+            Assert.True(
+                finalState.Version - initialState.Version >=
+                    closingOrder.Length + 1);
+            Assert.True(finalState.CreatedTime > initialState.CreatedTime);
         }
-
-        ByocRuntimeDrainManager manager = new(
-            registry,
-            timeProvider,
-            NullLogger<ByocRuntimeDrainManager>.Instance);
-        manager.Accept(ByocDrainModel.Immediate);
-
-        await AssertSelectedAsync(workers);
-        WorkerLinkException rejection = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync("late-worker", CreateEndpoint("late-worker")));
-        Assert.Equal(WorkerLinkFailureReason.RuntimeStopping, rejection.Reason);
-
-        foreach (ChannelControl worker in workers)
+        finally
         {
-            worker.AllowDispose();
+            initializingWorker.AllowStart();
+            foreach (ChannelControl worker in workers
+                .Append(closingWorker)
+                .Append(initializingWorker))
+            {
+                worker.AllowDispose();
+            }
         }
-
-        await manager.WaitForRetirementAsync().WaitAsync(TestTimeout);
     }
 
     [Fact]
@@ -149,7 +222,8 @@ public sealed partial class WorkerChannelRegistryTests
             "http",
             blockDisposal: true,
             functionGroupName: FunctionGroups.Http,
-            httpProxyService: httpProxy.Object);
+            httpProxyService: httpProxy.Object,
+            advertisedHttpUri: "http://http.test:8080");
         ChannelControl queuedWorker = new(
             "queued",
             blockDisposal: true,
@@ -225,7 +299,7 @@ public sealed partial class WorkerChannelRegistryTests
         await worker.DisposeStarted.WaitAsync(TestTimeout);
         worker.AllowDispose();
         queuedWorker.AllowDispose();
-        await manager.WaitForRetirementAsync().WaitAsync(TestTimeout);
+        await manager.WaitForSelectedWorkerDrainAsync().WaitAsync(TestTimeout);
         httpProxy.VerifyAll();
     }
 
@@ -293,7 +367,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         httpWorker.AllowDispose();
         nonHttpWorker.AllowDispose();
-        await manager.WaitForRetirementAsync().WaitAsync(TestTimeout);
+        await manager.WaitForSelectedWorkerDrainAsync().WaitAsync(TestTimeout);
 
         WorkerLinkException rejection = await Assert.ThrowsAsync<WorkerLinkException>(
             () => registry.LinkAsync("replacement", CreateEndpoint("replacement")));

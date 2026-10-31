@@ -225,9 +225,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             set => _state = value;
         }
 
-        protected string GetWorkerCapability(string capability)
-            => _workerCapabilities.GetCapabilityState(capability);
-
         internal virtual void DisposeWorkerResources() { }
 
         protected string GetWorkerCapabilityState(string capabilityName)

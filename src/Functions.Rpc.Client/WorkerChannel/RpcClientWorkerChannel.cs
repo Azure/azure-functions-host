@@ -45,6 +45,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
+    private readonly Dictionary<Guid, ScriptInvocationContext> _pendingInvocations = [];
     private readonly HashSet<string> _pendingScaleInFunctionLoads = new(StringComparer.OrdinalIgnoreCase);
     private readonly ChannelWriter<StreamingMessage> _requestWriter;
     private readonly TaskCompletionSource _drainCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -199,11 +200,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                     $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
             }
 
+            Guid invocationId = context.ExecutionContext.InvocationId;
+            if (_pendingInvocations.ContainsKey(invocationId) ||
+                _committedInvocations.ContainsKey(invocationId))
+            {
+                throw new InvalidOperationException(
+                    $"Invocation '{invocationId}' is already owned by worker '{Id}'.");
+            }
+
             if (!inputBuffer.Post(context))
             {
                 return false;
             }
 
+            _pendingInvocations.Add(invocationId, context);
             return true;
         }
     }
@@ -279,15 +289,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         InvocationPermit permit = null;
         lock (_invocationAdmissionLock)
         {
-            if (CanAdmitInvocationLocked())
+            Guid invocationId = context.ExecutionContext.InvocationId;
+            if (_pendingInvocations.Remove(
+                    invocationId,
+                    out ScriptInvocationContext pendingInvocation) &&
+                ReferenceEquals(pendingInvocation, context) &&
+                !_terminalAdmissionClosed)
             {
                 permit = new(this, context, usesHttpProxy);
                 if (!_committedInvocations.TryAdd(
-                    context.ExecutionContext.InvocationId,
+                    invocationId,
                     permit))
                 {
                     throw new InvalidOperationException(
-                        $"Invocation '{context.ExecutionContext.InvocationId}' is already committed to worker '{Id}'.");
+                        $"Invocation '{invocationId}' is already committed to worker '{Id}'.");
                 }
             }
         }
@@ -327,7 +342,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         permit?.ObserveHttpForwarding(httpForwardingTask);
     }
 
-    internal bool CancelScaleInReservation(Guid reservationId, bool restoreInvocationAdmission)
+    internal bool CancelScaleInReservation(Guid reservationId)
     {
         lock (_invocationAdmissionLock)
         {
@@ -337,11 +352,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
 
             _scaleInReservationId = null;
-            if (!restoreInvocationAdmission)
-            {
-                _invocationAdmissionEnabled = false;
-            }
-
             return true;
         }
     }
@@ -395,12 +405,14 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal void FailCommittedInvocations(Exception exception)
     {
         InvocationPermit[] failures;
+        ScriptInvocationContext[] pendingInvocations;
         lock (_invocationAdmissionLock)
         {
             _terminalAdmissionClosed = true;
             _scaleInReservationId = null;
             _draining = true;
             failures = [.. _committedInvocations.Values];
+            pendingInvocations = WithdrawPendingInvocationsLocked();
             CompleteDrainIfReadyLocked();
         }
 
@@ -411,6 +423,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             shutdownException = new FunctionTimeoutAbortException(
                 "Worker channel is shutting down. Aborting function." + suffix,
                 exception);
+        }
+
+        foreach (ScriptInvocationContext invocation in pendingInvocations)
+        {
+            invocation.ResultSource.TrySetException(shutdownException);
         }
 
         foreach (InvocationPermit permit in failures)
@@ -465,6 +482,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 _maxHttpConcurrency is not > 0 ||
                 !_scaleInReady ||
                 !CanAdmitInvocationLocked() ||
+                _pendingInvocations.Count != 0 ||
                 _committedInvocations.Count != 0)
             {
                 reservationId = default;
@@ -495,27 +513,15 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task BeginRuntimeDrain()
     {
-        List<ScriptInvocationContext> queuedInvocations = [];
+        ScriptInvocationContext[] pendingInvocations;
         lock (_invocationAdmissionLock)
         {
-            if (_draining)
-            {
-                return _drainCompletion.Task;
-            }
-
             Volatile.Write(ref _draining, true);
-            foreach (BufferBlock<ScriptInvocationContext> inputBuffer in FunctionInputBuffers.Values)
-            {
-                while (inputBuffer.TryReceive(out ScriptInvocationContext invocation))
-                {
-                    queuedInvocations.Add(invocation);
-                }
-            }
-
+            pendingInvocations = WithdrawPendingInvocationsLocked();
             CompleteDrainIfReadyLocked();
         }
 
-        foreach (ScriptInvocationContext invocation in queuedInvocations)
+        foreach (ScriptInvocationContext invocation in pendingInvocations)
         {
             invocation.ResultSource.TrySetException(
                 new InvalidOperationException($"Worker '{Id}' was selected for Runtime drain before the invocation committed."));
@@ -602,10 +608,37 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     private void CompleteDrainIfReadyLocked()
     {
-        if (_draining && _committedInvocations.Count == 0)
+        if (_draining &&
+            _pendingInvocations.Count == 0 &&
+            _committedInvocations.Count == 0)
         {
             _drainCompletion.TrySetResult();
         }
+    }
+
+    private ScriptInvocationContext[] WithdrawPendingInvocationsLocked()
+    {
+        List<ScriptInvocationContext> pendingInvocations =
+            [.. _pendingInvocations.Values];
+        HashSet<Guid> invocationIds = [];
+        foreach (ScriptInvocationContext invocation in pendingInvocations)
+        {
+            invocationIds.Add(invocation.ExecutionContext.InvocationId);
+        }
+
+        _pendingInvocations.Clear();
+        foreach (BufferBlock<ScriptInvocationContext> inputBuffer in FunctionInputBuffers.Values)
+        {
+            while (inputBuffer.TryReceive(out ScriptInvocationContext invocation))
+            {
+                if (invocationIds.Add(invocation.ExecutionContext.InvocationId))
+                {
+                    pendingInvocations.Add(invocation);
+                }
+            }
+        }
+
+        return [.. pendingInvocations];
     }
 
     private void ReleaseInvocation(Guid invocationId, InvocationPermit permit)

@@ -98,16 +98,17 @@ internal sealed partial class ByocRuntimeDrainManager : IByocRuntimeDrainManager
         }
     }
 
-    internal Task WaitForRetirementAsync(CancellationToken cancellationToken = default)
+    internal Task WaitForSelectedWorkerDrainAsync(
+        CancellationToken cancellationToken = default)
     {
-        Task retirement;
+        Task selectedWorkerDrain;
         lock (_operationLock)
         {
-            retirement = _operation?.Retirement.Task
+            selectedWorkerDrain = _operation?.SelectedWorkerDrain.Task
                 ?? throw new InvalidOperationException("The Runtime drain has not been accepted.");
         }
 
-        return retirement.WaitAsync(cancellationToken);
+        return selectedWorkerDrain.WaitAsync(cancellationToken);
     }
 
     private async Task RunPhasedScheduleAsync(DrainOperation operation)
@@ -166,7 +167,7 @@ internal sealed partial class ByocRuntimeDrainManager : IByocRuntimeDrainManager
         {
             lock (_operationLock)
             {
-                operation.Retirement.TrySetException(exception);
+                operation.SelectedWorkerDrain.TrySetException(exception);
             }
 
             Log.ScheduleFailed(_logger, exception);
@@ -226,22 +227,22 @@ internal sealed partial class ByocRuntimeDrainManager : IByocRuntimeDrainManager
             operation.ScheduleCancellation.Cancel();
         }
 
-        TryCompleteRetirementLocked(operation);
+        TryCompleteSelectedWorkerDrainLocked(operation);
     }
 
     private void OnDrainCompleted(DrainOperation operation)
     {
         lock (_operationLock)
         {
-            TryCompleteRetirementLocked(operation);
+            TryCompleteSelectedWorkerDrainLocked(operation);
         }
     }
 
-    private void TryCompleteRetirementLocked(DrainOperation operation)
+    private void TryCompleteSelectedWorkerDrainLocked(DrainOperation operation)
     {
         if (!ReferenceEquals(_operation, operation) ||
             !operation.SelectionFinalized ||
-            operation.Retirement.Task.IsCompleted ||
+            operation.SelectedWorkerDrain.Task.IsCompleted ||
             operation.DrainTasks.Any(static task => !task.IsCompleted))
         {
             return;
@@ -253,12 +254,12 @@ internal sealed partial class ByocRuntimeDrainManager : IByocRuntimeDrainManager
         {
             Exception failure = failedTask.Exception?.GetBaseException()
                 ?? new InvalidOperationException("A selected Worker did not complete its Runtime drain.");
-            operation.Retirement.TrySetException(failure);
+            operation.SelectedWorkerDrain.TrySetException(failure);
             return;
         }
 
-        operation.Retirement.TrySetResult();
-        Log.Retired(_logger, operation.AcceptedAtUtc);
+        operation.SelectedWorkerDrain.TrySetResult();
+        Log.SelectedWorkerDrainCompleted(_logger, operation.AcceptedAtUtc);
     }
 
     private async Task DelayFromStartAsync(
@@ -305,7 +306,7 @@ internal sealed partial class ByocRuntimeDrainManager : IByocRuntimeDrainManager
 
         public int NonHttpBatchSize { get; }
 
-        public TaskCompletionSource Retirement { get; } =
+        public TaskCompletionSource SelectedWorkerDrain { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public CancellationTokenSource ScheduleCancellation { get; } = new();
@@ -335,8 +336,8 @@ internal sealed partial class ByocRuntimeDrainManager : IByocRuntimeDrainManager
             DateTimeOffset acceptedAtUtc);
 
         [LoggerMessage(2, LogLevel.Information,
-            "BYOC Runtime retirement completed without an empty-reuse grace period; accepted at {AcceptedAtUtc}.")]
-        public static partial void Retired(
+            "All selected BYOC Runtime Worker drains completed; accepted at {AcceptedAtUtc}.")]
+        public static partial void SelectedWorkerDrainCompleted(
             ILogger logger,
             DateTimeOffset acceptedAtUtc);
 

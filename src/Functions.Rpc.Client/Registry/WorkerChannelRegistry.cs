@@ -154,14 +154,7 @@ internal sealed partial class WorkerChannelRegistry :
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_runtimeAdmissionClosed)
-            {
-                return false;
-            }
-
-            _runtimeAdmissionClosed = true;
-            SignalHostStateChangedLocked();
-            return true;
+            return TryCloseRuntimeAdmissionLocked();
         }
     }
 
@@ -299,18 +292,15 @@ internal sealed partial class WorkerChannelRegistry :
 
         lock (_stateLock)
         {
-            bool restoreInvocationAdmission = !_runtimeAdmissionClosed;
             if (_disposed ||
                 !_slots.TryGetValue(reservation.WorkerId, out WorkerSlot slot) ||
                 slot.Channel is not { } channel ||
-                !channel.CancelScaleInReservation(
-                    reservation.ReservationId,
-                    restoreInvocationAdmission))
+                !channel.CancelScaleInReservation(reservation.ReservationId))
             {
                 return false;
             }
 
-            invocationAdmissionRestored = restoreInvocationAdmission;
+            invocationAdmissionRestored = true;
             SignalReadyChannelsLocked();
             SignalHostStateChangedLocked();
             return true;
@@ -487,13 +477,10 @@ internal sealed partial class WorkerChannelRegistry :
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_runtimeAdmissionClosed)
+            if (!TryCloseRuntimeAdmissionLocked())
             {
                 throw new InvalidOperationException("The Runtime drain admission fence is already closed.");
             }
-
-            _runtimeAdmissionClosed = true;
-            SignalHostStateChangedLocked();
             List<string> nonHttpWorkerIds = [];
             List<string> httpWorkerIds = [];
             foreach ((string workerId, WorkerSlot slot) in _slots)
@@ -1213,6 +1200,18 @@ internal sealed partial class WorkerChannelRegistry :
     {
         (long httpCapacity, int linkedWorkerCount) = ComputeHostStateLocked();
         AdvanceHostStateLocked(httpCapacity, linkedWorkerCount);
+    }
+
+    private bool TryCloseRuntimeAdmissionLocked()
+    {
+        if (_runtimeAdmissionClosed)
+        {
+            return false;
+        }
+
+        _runtimeAdmissionClosed = true;
+        SignalHostStateChangedLocked();
+        return true;
     }
 
     private void AdvanceHostStateLocked(long httpCapacity, int linkedWorkerCount)
