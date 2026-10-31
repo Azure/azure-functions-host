@@ -2,11 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -29,9 +33,17 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    internal const string FunctionGroupNameCapability = "FunctionGroupName";
+    internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
+
+    private readonly Dictionary<Guid, Task> _committedInvocations = [];
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private bool _draining;
+    private string _functionGroupName;
+    private bool? _isAlwaysReady;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -84,7 +96,89 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
+    internal bool IsReadyForInvocations
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return IsUsableForInvocationsLocked();
+            }
+        }
+    }
+
+    internal bool TryDispatchInvocation(ScriptInvocationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        Guid invocationId = context.ExecutionContext.InvocationId;
+        lock (_invocationAdmissionLock)
+        {
+            if (!IsUsableForInvocationsLocked())
+            {
+                return false;
+            }
+
+            string functionId = context.FunctionMetadata.GetFunctionId();
+            if (!FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
+            {
+                throw new InvalidOperationException(
+                    $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
+            }
+
+            if (!_committedInvocations.TryAdd(invocationId, context.ResultSource.Task))
+            {
+                throw new InvalidOperationException(
+                    $"Invocation '{invocationId}' is already committed to worker '{Id}'.");
+            }
+
+            if (!inputBuffer.Post(context))
+            {
+                _committedInvocations.Remove(invocationId);
+                return false;
+            }
+        }
+
+        _ = context.ResultSource.Task.ContinueWith(
+            static (_, state) =>
+            {
+                (RpcClientWorkerChannel channel, Guid id) = ((RpcClientWorkerChannel, Guid))state;
+                channel.ReleaseCommittedInvocation(id);
+            },
+            (this, invocationId),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+        return true;
+    }
+
+    internal bool IsScaleInCandidate(string functionGroup, bool isAlwaysReady)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            return IsScaleInEligibleLocked(functionGroup, isAlwaysReady);
+        }
+    }
+
+    internal Task TryBeginScaleIn(string functionGroup, bool isAlwaysReady)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            if (!IsScaleInEligibleLocked(functionGroup, isAlwaysReady))
+            {
+                return null;
+            }
+
+            _draining = true;
+            return Task.WhenAll(_committedInvocations.Values.Select(
+                static task => task.ContinueWith(
+                    static _ => { },
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default)));
+        }
+    }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -153,6 +247,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
+            _functionGroupName = GetWorkerCapabilityState(FunctionGroupNameCapability);
+            string isAlwaysReady = GetWorkerCapabilityState(IsAlwaysReadyCapability);
+            _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
+                ? parsedIsAlwaysReady
+                : null;
+
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)
@@ -174,4 +274,22 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         return startStreamTimeout;
     }
+
+    private void ReleaseCommittedInvocation(Guid invocationId)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            _committedInvocations.Remove(invocationId);
+        }
+    }
+
+    private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
+        => IsUsableForInvocationsLocked() &&
+            string.Equals(_functionGroupName, functionGroup, StringComparison.Ordinal) &&
+            _isAlwaysReady == isAlwaysReady;
+
+    private bool IsUsableForInvocationsLocked()
+        => !_draining &&
+            !IsTerminated &&
+            IsChannelReadyForInvocations();
 }

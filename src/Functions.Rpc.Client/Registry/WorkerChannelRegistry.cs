@@ -115,6 +115,99 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
         => new(await link.ConfigureAwait(false), isNewLink);
 
+    public WorkerScaleInResult ScaleInWorkers(
+        string functionGroup,
+        bool isAlwaysReady,
+        int desiredWorkerCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
+        ArgumentOutOfRangeException.ThrowIfNegative(desiredWorkerCount);
+
+        List<WorkerScaleInSelection> selections = [];
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            List<WorkerScaleInCandidate> candidates = [];
+            foreach ((string workerId, WorkerSlot slot) in _slots)
+            {
+                if (_activeSetupContext is null ||
+                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
+                    slot.SetupException is not null ||
+                    slot.Channel is not { } channel)
+                {
+                    continue;
+                }
+
+                candidates.Add(new(workerId, channel));
+            }
+
+            WorkerScaleInCandidate[] orderedCandidates = [.. candidates
+                .Where(candidate => candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady))
+                .OrderBy(static candidate => candidate.WorkerId, StringComparer.Ordinal)];
+            int remainingRemoveCount = Math.Max(0, orderedCandidates.Length - desiredWorkerCount);
+
+            foreach (WorkerScaleInCandidate candidate in orderedCandidates)
+            {
+                if (remainingRemoveCount == 0)
+                {
+                    break;
+                }
+
+                if (candidate.Channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
+                {
+                    selections.Add(new(candidate.WorkerId, drainTask));
+                    remainingRemoveCount--;
+                    continue;
+                }
+
+                remainingRemoveCount = Math.Max(
+                    0,
+                    CountScaleInCandidates(orderedCandidates, functionGroup, isAlwaysReady) - desiredWorkerCount);
+            }
+
+            if (selections.Count > 0)
+            {
+                SignalReadyChannelsLocked();
+            }
+        }
+
+        foreach (WorkerScaleInSelection selection in selections)
+        {
+            _ = DrainAndUnlinkAsync(selection.WorkerId, selection.DrainTask);
+        }
+
+        return new(selections.Count);
+    }
+
+    private static int CountScaleInCandidates(
+        IEnumerable<WorkerScaleInCandidate> candidates,
+        string functionGroup,
+        bool isAlwaysReady)
+        => candidates.Count(candidate => candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady));
+
+    private async Task DrainAndUnlinkAsync(string workerId, Task drainTask)
+    {
+        try
+        {
+            await drainTask.WaitAsync(_shutdownSource.Token);
+            if (await UnlinkAsync(workerId, _shutdownSource.Token))
+            {
+                Log.ScaleInDrainCompleted(_logger, workerId);
+            }
+            else
+            {
+                Log.ScaleInDrainAlreadyDetached(_logger, workerId);
+            }
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Log.ScaleInDrainFailed(_logger, exception, workerId);
+        }
+    }
+
     private async Task LinkAndCompleteAsync(string workerId, Uri grpcEndpoint, WorkerSlot slot, TaskCompletionSource<WorkerChannel> linkCompletion,
         CancellationToken cancellationToken)
     {
@@ -795,6 +888,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ManagedDependencyOptions ManagedDependencyOptions,
         TimeSpan? FunctionTimeout);
 
+    private sealed record WorkerScaleInCandidate(
+        string WorkerId,
+        RpcClientWorkerChannel Channel);
+
+    private sealed record WorkerScaleInSelection(string WorkerId, Task DrainTask);
+
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Debug, "FunctionRpc channel for worker {WorkerId} completed and was removed.")]
@@ -814,5 +913,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(6, LogLevel.Information, "Worker {WorkerId} completed scale-in drain and closed its Runtime link.")]
+        public static partial void ScaleInDrainCompleted(ILogger logger, string workerId);
+
+        [LoggerMessage(7, LogLevel.Error, "Worker {WorkerId} failed while completing scale-in drain.")]
+        public static partial void ScaleInDrainFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(8, LogLevel.Information,
+            "Worker {WorkerId} completed scale-in drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
+        public static partial void ScaleInDrainAlreadyDetached(ILogger logger, string workerId);
     }
 }
