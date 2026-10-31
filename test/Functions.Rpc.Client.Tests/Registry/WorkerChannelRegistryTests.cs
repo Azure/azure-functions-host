@@ -21,7 +21,6 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -1829,7 +1828,6 @@ public sealed partial class WorkerChannelRegistryTests
 
         public RegistryHarness(TimeSpan? linkTimeout)
         {
-            RegistryLogger.Setup(logger => logger.IsEnabled(LogLevel.Information)).Returns(true);
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
                 {
@@ -1867,15 +1865,13 @@ public sealed partial class WorkerChannelRegistryTests
                     return channel;
                 });
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object, linkTimeout.Value)
-                : new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object);
+                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
+                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
 
         internal Mock<IDuplexChannelFactory<StreamingMessage>> DuplexFactory { get; } = new();
-
-        internal Mock<ILogger<WorkerChannelRegistry>> RegistryLogger { get; } = new();
 
         internal WorkerChannelRegistry Registry { get; }
 
