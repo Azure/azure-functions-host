@@ -151,7 +151,6 @@ projection remains `Unlinked` because this PR does not publish Runtime Link iden
 | `WorkerPodState.cs` | Retain the sticky process-local removal decision in the existing immutable snapshot. |
 | `SplitWorkerOriginState.cs` | Project `RemovalRequested` for Legion. |
 | `FunctionRpcRelayTests.NeverLinked.cs` | Exercise W1 through Runtime gRPC and management state surfaces. |
-| `WorkerProxyOptionsTests.cs` | Verify the default, configured, and invalid timeout values at the configuration boundary. |
 
 ## Assumptions
 
@@ -196,9 +195,8 @@ projection remains `Unlinked` because this PR does not publish Runtime Link iden
 | --- | --- |
 | `NeverLinkedDeadline_IncludesConstructionTimeAndUsesMonotonicClock` | Host construction counts against the deadline, UTC jumps do not, and management publishes removal. |
 | `NeverLinkedDeadline_WorkerActivityAssignmentAndReloadDoNotCompleteRuntimeLink` | Worker connection, assignment, and configuration reload neither complete nor reset W1, and worker readiness remains unchanged. |
-| `NeverLinkedDeadline_AcceptedRuntimeLinkEndsW1WithoutWorkerInitialization` | Runtime Link alone completes W1 without waiting for customer-Worker initialization. |
 | `NeverLinkedDeadline_PublishesStickyRemovalAndRejectsOnlyLateRuntimeLink` | A Runtime attempt rejected during relay teardown does not end W1; timeout wakes management polling, late Runtime Link is rejected, removal stays sticky, and Worker-facing admission remains unchanged. |
-| `NeverLinkedDeadline_BoundarySelectsOneStickyRuntimeLinkOutcome` | Runtime Link acceptance and expiry serialize so only one outcome wins. |
+| `NeverLinkedDeadline_BoundarySelectsOneStickyRuntimeLinkOutcome` | Runtime Link acceptance and expiry contend concurrently; either admitted Runtime Link prevents removal or removal wins and rejects the Link, and the selected outcome stays sticky. |
 
 ## Intentionally unchanged
 

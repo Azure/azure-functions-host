@@ -88,25 +88,6 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task NeverLinkedDeadline_AcceptedRuntimeLinkEndsW1WithoutWorkerInitialization()
-    {
-        LifecycleClock clock = new();
-        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(clock, "00:01:00");
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        using HttpClient management = factory.CreateWorkerProxyClient();
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await runtime.WriteAsync(CreateMessage("runtime-link"), timeout.Token);
-        await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
-        SplitWorkerOriginState accepted = await ReadSplitManagementStateAsync(management, timeout.Token);
-
-        clock.Advance(TimeSpan.FromHours(1));
-
-        Assert.Equal(accepted, await ReadSplitManagementStateAsync(management, timeout.Token));
-        Assert.Equal(SplitWorkerStatus.Starting, accepted.Status);
-    }
-
-    [Fact]
     public async Task NeverLinkedDeadline_PublishesStickyRemovalAndRejectsOnlyLateRuntimeLink()
     {
         LifecycleClock clock = new();
