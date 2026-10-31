@@ -936,6 +936,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
+            OnFunctionLoadResponse(loadResponse);
         }
 
         internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
@@ -1498,6 +1499,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         protected virtual void OnFunctionLoadError(Exception exception)
         {
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exception));
+        }
+
+        /// <summary>
+        /// Allows derived channels to observe one processed function-load response.
+        /// </summary>
+        /// <param name="loadResponse">The processed function-load response.</param>
+        protected virtual void OnFunctionLoadResponse(FunctionLoadResponse loadResponse)
+        {
         }
 
         /// <summary>

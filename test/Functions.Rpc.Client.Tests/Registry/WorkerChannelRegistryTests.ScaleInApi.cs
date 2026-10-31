@@ -74,7 +74,7 @@ public sealed partial class WorkerChannelRegistryTests
             "starting",
             blockStart: true,
             functionGroupName: FunctionGroups.Durable,
-            isAlwaysReady: false);
+            isAlwaysReady: bool.FalseString);
         await LinkAndReadyWorkersAsync(
             harness,
             registry,
@@ -91,7 +91,7 @@ public sealed partial class WorkerChannelRegistryTests
             "readiness-pending",
             setupFailureCount: 1,
             functionGroupName: FunctionGroups.Durable,
-            isAlwaysReady: false);
+            isAlwaysReady: bool.FalseString);
         harness.Enqueue(readinessPending);
         await LinkAsync(registry, readinessPending.Id);
         await readinessPending.SetupEntered.WaitAsync(TestTimeout);
@@ -124,7 +124,7 @@ public sealed partial class WorkerChannelRegistryTests
         ChannelControl selected = CreateClassifiedWorker("worker-a");
         await LinkAndReadyWorkersAsync(harness, registry, function, retained, selected);
 
-        ScriptInvocationContext committed = CreateScaleInInvocation(function);
+        ScriptInvocationContext committed = CreateNonHttpScaleInInvocation(function);
         Assert.True(selected.Channel.TryDispatchInvocation(committed));
         StreamingMessage request = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
@@ -135,7 +135,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
         Assert.False(committed.ResultSource.Task.IsCompleted);
         Assert.False(selected.Transport.DisposeStarted.IsCompleted);
-        Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
+        Assert.False(selected.Channel.TryDispatchInvocation(CreateNonHttpScaleInInvocation(function)));
         Assert.True(retained.Channel.IsReadyForInvocations);
 
         await selected.Transport.SendResponseAsync(new()
@@ -178,7 +178,7 @@ public sealed partial class WorkerChannelRegistryTests
         string id,
         string functionGroup = FunctionGroups.Durable,
         bool isAlwaysReady = false)
-        => new(id, functionGroupName: functionGroup, isAlwaysReady: isAlwaysReady);
+        => new(id, functionGroupName: functionGroup, isAlwaysReady: isAlwaysReady.ToString());
 
     private static async Task LinkAndReadyWorkersAsync(
         RegistryHarness harness,
@@ -209,7 +209,7 @@ public sealed partial class WorkerChannelRegistryTests
         await WaitUntilAsync(() => workers.All(worker => worker.Channel.IsReadyForInvocations));
     }
 
-    private static ScriptInvocationContext CreateScaleInInvocation(FunctionMetadata function)
+    private static ScriptInvocationContext CreateNonHttpScaleInInvocation(FunctionMetadata function)
         => new()
         {
             FunctionMetadata = function,

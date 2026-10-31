@@ -92,7 +92,7 @@ public sealed class RpcClientHttpInvocationTests
         FunctionMetadata function = await LoadFunctionAsync(worker, "timerTrigger");
         ScriptInvocationContext invocation = CreateInvocation(function);
 
-        Assert.True(await worker.Channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation));
+        Assert.True(worker.Channel.TryDispatchInvocation(invocation));
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
 
@@ -122,7 +122,7 @@ public sealed class RpcClientHttpInvocationTests
         httpRequest.ContentType = "text/plain";
         invocation.Inputs = [("req", DataType.String, httpRequest)];
 
-        Assert.True(await worker.Channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation));
+        Assert.True(worker.Channel.TryDispatchInvocation(invocation));
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
         Assert.Equal(new RpcHttp(), Assert.Single(request.InvocationRequest.InputData).Data.Http);
@@ -148,7 +148,7 @@ public sealed class RpcClientHttpInvocationTests
         httpRequest.ContentLength = body.Length;
         invocation.Inputs = [("req", DataType.String, httpRequest)];
 
-        Assert.True(await worker.Channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation));
+        Assert.True(worker.Channel.TryDispatchInvocation(invocation));
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         RpcHttp http = Assert.Single(request.InvocationRequest.InputData).Data.Http;
 

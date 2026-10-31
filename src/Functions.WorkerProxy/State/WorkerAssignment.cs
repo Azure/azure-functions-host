@@ -29,7 +29,8 @@ internal sealed class WorkerAssignment
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
-        string functionAppDirectory)
+        string functionAppDirectory,
+        int? maxHttpConcurrency = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -55,6 +56,7 @@ internal sealed class WorkerAssignment
         FunctionAppName = functionAppName;
         FunctionGroupName = functionGroupName;
         IsAlwaysReady = isAlwaysReady;
+        MaxHttpConcurrency = maxHttpConcurrency is > 0 ? maxHttpConcurrency : null;
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
@@ -71,6 +73,8 @@ internal sealed class WorkerAssignment
 
     public bool IsAlwaysReady { get; }
 
+    public int? MaxHttpConcurrency { get; }
+
     public FrozenDictionary<string, string> Environment { get; }
 
     public string FunctionAppDirectory { get; }
@@ -86,6 +90,7 @@ internal sealed class WorkerAssignment
             || !string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
+            || MaxHttpConcurrency != other.MaxHttpConcurrency
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
             || Environment.Count != other.Environment.Count)
         {

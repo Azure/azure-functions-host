@@ -19,6 +19,9 @@ public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
     private const string IsAlwaysReadyCapability = "IsAlwaysReady";
+    private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+    private const string WorkerAssignmentMetadataVersionCapability = "WorkerAssignmentMetadataVersion";
+    private const string WorkerAssignmentMetadataVersion = "1";
 
     [Theory]
     [InlineData(true)]
@@ -157,12 +160,21 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(null, "assigned-group", "assigned-group")]
-    [InlineData("worker-group", "assigned-group", "assigned-group")]
-    [InlineData(null, null, null)]
-    [InlineData("worker-group", null, null)]
-    public async Task Relay_Initialization_AdvertisesOnlyAssignedWorkerClassification(string? workerSuppliedGroup,
-        string? platformSuppliedGroup, string? expectedAdvertisedGroup)
+    [InlineData("worker-group", "true", "999", true, "assigned-group", false, 7, "assigned-group", "False", "7")]
+    [InlineData(null, null, null, true, "assigned-group", true, 13, "assigned-group", "True", "13")]
+    [InlineData("worker-group", "true", "999", true, "assigned-group", false, 0, "assigned-group", "False", null)]
+    [InlineData("worker-group", "true", "999", false, null, false, 0, null, null, null)]
+    public async Task Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities(
+        string? workerSuppliedGroup,
+        string? workerSuppliedAlwaysReady,
+        string? workerSuppliedMaxHttpConcurrency,
+        bool hasAssignment,
+        string? platformSuppliedGroup,
+        bool platformSuppliedAlwaysReady,
+        int platformSuppliedMaxHttpConcurrency,
+        string? expectedAdvertisedGroup,
+        string? expectedAdvertisedAlwaysReady,
+        string? expectedAdvertisedMaxHttpConcurrency)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -170,9 +182,14 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
-        if (platformSuppliedGroup is not null)
+        if (hasAssignment)
         {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(platformSuppliedGroup)));
+            Assert.Equal(
+                WorkerAssignmentResult.Created,
+                manager.Assign(CreateWorkerAssignment(
+                    platformSuppliedGroup!,
+                    platformSuppliedAlwaysReady,
+                    platformSuppliedMaxHttpConcurrency)));
         }
 
         StreamingMessage response = CreateInitResponse("init", null);
@@ -181,12 +198,34 @@ public partial class FunctionRpcRelayTests
             response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
         }
 
-        response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.TrueString;
+        if (workerSuppliedAlwaysReady is not null)
+        {
+            response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = workerSuppliedAlwaysReady;
+        }
+
+        if (workerSuppliedMaxHttpConcurrency is not null)
+        {
+            response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = workerSuppliedMaxHttpConcurrency;
+        }
+
         StreamingMessage expected = CreateInitResponse("init", null);
         if (expectedAdvertisedGroup is not null)
         {
+            expected.WorkerInitResponse.Capabilities[WorkerAssignmentMetadataVersionCapability] =
+                WorkerAssignmentMetadataVersion;
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
             expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
+        }
+
+        if (expectedAdvertisedAlwaysReady is not null)
+        {
+            expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = expectedAdvertisedAlwaysReady;
+        }
+
+        if (expectedAdvertisedMaxHttpConcurrency is not null)
+        {
+            expected.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] =
+                expectedAdvertisedMaxHttpConcurrency;
         }
 
         await worker.WriteAsync(response, timeout.Token);
@@ -211,6 +250,8 @@ public partial class FunctionRpcRelayTests
         repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
         repeated.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.TrueString;
         StreamingMessage expected = repeated.Clone();
+        expected.WorkerInitResponse.Capabilities[WorkerAssignmentMetadataVersionCapability] =
+            WorkerAssignmentMetadataVersion;
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
         expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = assignment.IsAlwaysReady.ToString();
 

@@ -19,7 +19,8 @@ internal sealed record WorkerPodState(
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
-    DateTimeOffset StartupTime)
+    DateTimeOffset StartupTime,
+    int? MaxHttpConcurrency = null)
 {
     public bool RemovalRequested { get; init; }
 
@@ -46,5 +47,6 @@ internal sealed record WorkerPodState(
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null,
-            StartupTime: startupTime);
+            StartupTime: startupTime,
+            MaxHttpConcurrency: null);
 }
