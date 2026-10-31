@@ -260,7 +260,7 @@ public partial class FunctionRpcRelayTests
             await worker.WriteAsync(first, timeout.Token);
             await runtime.ReadAsync(timeout.Token);
             Assert.Equal(new Uri("http://localhost:1234"), relay.WorkerHttpDestination);
-            await runtime.CompleteRequestAsync(timeout.Token);
+            await worker.CompleteRequestAsync(timeout.Token);
             await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
         }
 

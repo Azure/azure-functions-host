@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -27,9 +28,11 @@ internal sealed partial class FunctionRpcRelay
         WorkerPodStateManager stateManager)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
+        private const string HandlesWorkerTerminateMessageCapability = "HandlesWorkerTerminateMessage";
+        private const int WorkerTerminateGracePeriodInSeconds = 5;
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
-        private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
+        private readonly Channel<StreamingMessage> _toWorker = CreateChannel(singleWriter: false);
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -39,8 +42,11 @@ internal sealed partial class FunctionRpcRelay
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
+        private Task? _runtimeReadTask;
+        private Task? _runtimeWriteTask;
         private bool _runtimeAttached;
         private bool _workerAttached;
+        private int _shutdownRequested;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -151,6 +157,15 @@ internal sealed partial class FunctionRpcRelay
 
             Task readTask = ReadInboundAsync(side, requestStream, destination, linkedSource.Token);
             Task writeTask = WriteOutboundAsync(source, responseStream, linkedSource.Token);
+            if (side == FunctionRpcRelaySide.Runtime)
+            {
+                lock (_stateLock)
+                {
+                    _runtimeReadTask = readTask;
+                    _runtimeWriteTask = writeTask;
+                }
+            }
+
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
@@ -192,20 +207,29 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
+        /// Marks application shutdown before host cancellation can race with terminal classification.
+        /// </summary>
+        public void MarkShutdownRequested()
+        {
+            Interlocked.Exchange(ref _shutdownRequested, 1);
+        }
+
+        /// <summary>
         /// Records application shutdown as the terminal state for this session.
         /// </summary>
         public void RequestShutdown()
         {
+            MarkShutdownRequested();
             TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
-        private static Channel<StreamingMessage> CreateChannel()
+        private static Channel<StreamingMessage> CreateChannel(bool singleWriter = true)
         {
             return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
-                SingleWriter = true
+                SingleWriter = singleWriter
             });
         }
 
@@ -262,7 +286,9 @@ internal sealed partial class FunctionRpcRelay
             FrozenDictionary<string, string>? capabilities;
             lock (_stateLock)
             {
-                if (_terminalState is not null)
+                if (_terminalState is not null || !_runtimeAttached || !_workerAttached ||
+                    _runtimeReadTask is null || _runtimeWriteTask is null ||
+                    _runtimeReadTask.IsCompleted || _runtimeWriteTask.IsCompleted)
                 {
                     return null;
                 }
@@ -279,11 +305,14 @@ internal sealed partial class FunctionRpcRelay
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
-                    if (_terminalState is not null)
+                    if (_terminalState is not null || !_runtimeAttached || !_workerAttached ||
+                        _runtimeReadTask is null || _runtimeWriteTask is null ||
+                        _runtimeReadTask.IsCompleted || _runtimeWriteTask.IsCompleted)
                     {
                         return null;
                     }
 
+                    _ = stateManager.TryRecordRuntimeLinkAccepted(id);
                     // Publish the real destination before the rewritten response can reach the runtime.
                     _capabilities = capabilities;
                     _workerHttpDestination = destination;
@@ -368,6 +397,7 @@ internal sealed partial class FunctionRpcRelay
 
         private bool TryTerminate(FunctionRpcRelayTerminalState terminalState)
         {
+            bool workerTerminateQueued;
             lock (_stateLock)
             {
                 if (_terminalState is not null)
@@ -375,9 +405,23 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
-                _terminalState = terminalState;
+                bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
+                    terminalState.Side == FunctionRpcRelaySide.Runtime &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                if (runtimePeerTerminated)
+                {
+                    stateManager.OnRuntimeLinkTerminated(id);
+                }
+                else
+                {
+                    stateManager.OnSessionTerminated(id);
+                }
+
+                workerTerminateQueued = stateManager.State.RemovalRequested && TryQueueWorkerTerminateLocked();
+                _terminalState = terminalState;
                 _completion.SetResult(terminalState);
             }
 
@@ -388,7 +432,10 @@ internal sealed partial class FunctionRpcRelay
                 _ => null
             };
             _toRuntime.Writer.TryComplete(completionException);
-            _toWorker.Writer.TryComplete(completionException);
+            if (!workerTerminateQueued)
+            {
+                _toWorker.Writer.TryComplete(completionException);
+            }
 
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
@@ -401,7 +448,14 @@ internal sealed partial class FunctionRpcRelay
 
             try
             {
-                _terminationSource.Cancel();
+                if (workerTerminateQueued)
+                {
+                    _ = EndWorkerTerminateGracePeriodAsync(completionException);
+                }
+                else
+                {
+                    _terminationSource.Cancel();
+                }
             }
             finally
             {
@@ -412,6 +466,50 @@ internal sealed partial class FunctionRpcRelay
             }
 
             return true;
+        }
+
+        private bool TryQueueWorkerTerminateLocked()
+        {
+            if (!_workerAttached || _capabilities is null ||
+                !_capabilities.TryGetValue(HandlesWorkerTerminateMessageCapability, out string? capabilityState) ||
+                string.IsNullOrEmpty(capabilityState))
+            {
+                return false;
+            }
+
+            bool queued = _toWorker.Writer.TryWrite(new StreamingMessage
+            {
+                WorkerTerminate = new WorkerTerminate
+                {
+                    GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(WorkerTerminateGracePeriodInSeconds))
+                }
+            });
+            if (!queued)
+            {
+                Log.WorkerTerminateNotQueued(logger, id);
+            }
+
+            return queued;
+        }
+
+        private async Task EndWorkerTerminateGracePeriodAsync(Exception? completionException)
+        {
+            Task gracePeriod = Task.Delay(TimeSpan.FromSeconds(WorkerTerminateGracePeriodInSeconds));
+            Task completed = await Task.WhenAny(_released.Task, gracePeriod);
+            if (completed == gracePeriod)
+            {
+                Log.WorkerTerminateGracePeriodExpired(logger, id, WorkerTerminateGracePeriodInSeconds);
+            }
+
+            _toWorker.Writer.TryComplete(completionException);
+            try
+            {
+                await _terminationSource.CancelAsync();
+            }
+            catch (Exception exception)
+            {
+                Log.WorkerTerminateCancellationFailed(logger, exception, id);
+            }
         }
 
         private async Task ObserveStreamOperationAfterTerminationAsync(FunctionRpcRelaySide side, string operationName, Task operationTask)
@@ -490,5 +588,17 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+
+        [LoggerMessage(4, LogLevel.Debug,
+            "FunctionRpc relay session {SessionId} could not queue WorkerTerminate on the worker stream.")]
+        public static partial void WorkerTerminateNotQueued(ILogger logger, long sessionId);
+
+        [LoggerMessage(5, LogLevel.Debug,
+            "FunctionRpc relay session {SessionId} is canceling the worker stream after the {GracePeriodSeconds}-second WorkerTerminate grace period.")]
+        public static partial void WorkerTerminateGracePeriodExpired(ILogger logger, long sessionId, int gracePeriodSeconds);
+
+        [LoggerMessage(6, LogLevel.Warning,
+            "FunctionRpc relay session {SessionId} failed to cancel the worker stream after WorkerTerminate.")]
+        public static partial void WorkerTerminateCancellationFailed(ILogger logger, Exception exception, long sessionId);
     }
 }

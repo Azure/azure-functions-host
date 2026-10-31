@@ -29,6 +29,7 @@ internal sealed class WorkerPodStateManager
     private WorkerAssignment? _assignment;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
+    private long? _lastAcceptedRuntimeSessionId;
     private int _assignmentClaimed;
 
     public WorkerPodStateManager(
@@ -66,6 +67,17 @@ internal sealed class WorkerPodStateManager
             lock (_stateLock)
             {
                 return _waiters.Count;
+            }
+        }
+    }
+
+    internal long? LastAcceptedRuntimeSessionId
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _lastAcceptedRuntimeSessionId;
             }
         }
     }
@@ -133,7 +145,7 @@ internal sealed class WorkerPodStateManager
         lock (_stateLock)
         {
             // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed || _state.RemovalRequested)
             {
                 return false;
             }
@@ -169,7 +181,7 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (_state.SessionId != sessionId || !_state.IsWorkerAttached)
+            if (_state.SessionId != sessionId || !_state.IsWorkerAttached || _state.RemovalRequested)
             {
                 return false;
             }
@@ -190,9 +202,35 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Records successful initialization as the accepted Runtime Link for this session.
+    /// </summary>
+    public bool TryRecordRuntimeLinkAccepted(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (_state.SessionId != sessionId || !_state.IsWorkerReady || _state.RemovalRequested)
+            {
+                return false;
+            }
+
+            _lastAcceptedRuntimeSessionId = sessionId;
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
-    public bool OnSessionTerminated(long sessionId)
+    public bool OnSessionTerminated(long sessionId) => OnSessionTerminatedCore(sessionId, requestRemoval: false);
+
+    /// <summary>
+    /// Withdraws readiness and requests removal when this is the accepted Runtime Link.
+    /// </summary>
+    public bool OnRuntimeLinkTerminated(long sessionId) => OnSessionTerminatedCore(sessionId, requestRemoval: true);
+
+    private bool OnSessionTerminatedCore(long sessionId, bool requestRemoval)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -219,6 +257,8 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
+                RemovalRequested = _state.RemovalRequested ||
+                    (requestRemoval && _lastAcceptedRuntimeSessionId == sessionId),
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
@@ -235,7 +275,12 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            // Replay/conflict takes precedence over current readiness, including after the assigned stream terminates.
+            if (_state.RemovalRequested)
+            {
+                return WorkerAssignmentResult.RemovalRequested;
+            }
+
+            // After removal is excluded, replay/conflict takes precedence over current readiness.
             if (_assignment is not null)
             {
                 if (!_assignment.IsEquivalentTo(assignment))

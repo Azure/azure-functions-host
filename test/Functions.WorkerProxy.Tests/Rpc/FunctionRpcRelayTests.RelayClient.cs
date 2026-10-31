@@ -80,6 +80,25 @@ public partial class FunctionRpcRelayTests
             }
         }
 
+        public async Task<(IReadOnlyList<StreamingMessage> Messages, StatusCode StatusCode)> ReadUntilTerminationAsync(
+            CancellationToken cancellationToken)
+        {
+            List<StreamingMessage> messages = [];
+            try
+            {
+                while (await _call.ResponseStream.MoveNext(cancellationToken))
+                {
+                    messages.Add(_call.ResponseStream.Current);
+                }
+
+                return (messages, StatusCode.OK);
+            }
+            catch (GrpcRpcException exception)
+            {
+                return (messages, exception.StatusCode);
+            }
+        }
+
         public async Task<GrpcRpcException> WriteAndReadRejectionAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             try

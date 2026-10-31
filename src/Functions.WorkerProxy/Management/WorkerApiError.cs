@@ -11,7 +11,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// <remarks>
 /// WorkerNotReady (503) permits retry after readiness. WorkerTerminated (409) is terminal for the
 /// assigned session; retrying the same assignment on this pod cannot recover it.
+/// RemovalRequested (409) is terminal for every assignment on the pod.
 /// AssignmentConflict (409) rejects a different assignment; do not retry that request unchanged.
-/// Clients must inspect Code to distinguish the two 409 outcomes and handle unknown codes gracefully.
+/// Clients must inspect Code to distinguish 409 outcomes and handle unknown codes gracefully.
 /// </remarks>
 internal sealed record WorkerApiError(string Code, string? Detail = null);

@@ -18,7 +18,8 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// <remarks>
 /// A relay session admits one stream per <see cref="FunctionRpcRelaySide"/>. The first peer close,
 /// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
-/// session is created only after both attachments from the previous session have released.
+/// session is created only after both attachments from the previous session have released and removal
+/// has not been requested.
 /// Locks are acquired in relay, session, then pod-state order; the state manager never calls back into the relay.
 /// </remarks>
 internal sealed partial class FunctionRpcRelay(
@@ -58,7 +59,7 @@ internal sealed partial class FunctionRpcRelay(
         {
             lock (_syncLock)
             {
-                return _currentSession?.WorkerHttpDestination;
+                return _stateManager.State.RemovalRequested ? null : _currentSession?.WorkerHttpDestination;
             }
         }
     }
@@ -127,10 +128,10 @@ internal sealed partial class FunctionRpcRelay(
 
         lock (_syncLock)
         {
-            if (_stopping)
+            if (_stopping || _stateManager.State.RemovalRequested)
             {
                 throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
-                    "The FunctionRpc relay is shutting down.");
+                    "The FunctionRpc relay is shutting down or the worker pod has requested removal.");
             }
 
             if (_currentSession?.IsTerminalAndReleased == true)
@@ -176,6 +177,7 @@ internal sealed partial class FunctionRpcRelay(
             {
                 _stopping = true;
                 session = _currentSession;
+                session?.MarkShutdownRequested();
                 initiateStop = true;
             }
         }
