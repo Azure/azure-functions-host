@@ -80,6 +80,22 @@ public partial class FunctionRpcRelayTests
             }
         }
 
+        public async Task<GrpcRpcException> WaitForTerminationExceptionAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (await _call.ResponseStream.MoveNext(cancellationToken))
+                {
+                }
+            }
+            catch (GrpcRpcException exception)
+            {
+                return exception;
+            }
+
+            throw new InvalidOperationException("The FunctionRpc stream completed without a terminal gRPC error.");
+        }
+
         public async Task<GrpcRpcException> WriteAndReadRejectionAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             try

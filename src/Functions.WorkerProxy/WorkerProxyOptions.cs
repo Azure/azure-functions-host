@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
@@ -8,6 +10,8 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal sealed class WorkerProxyOptions
 {
+    internal static readonly TimeSpan RequiredWorkerGrpcEstablishmentTimeout = TimeSpan.FromSeconds(60);
+
     /// <summary>
     /// The configuration section containing WorkerProxy settings.
     /// </summary>
@@ -36,6 +40,11 @@ internal sealed class WorkerProxyOptions
     /// Gets or sets the worker-facing HTTP/2 FunctionRpc listener port.
     /// </summary>
     public int WorkerGrpcPort { get; set; } = 50054;
+
+    /// <summary>
+    /// Gets or sets the fixed deadline for the customer worker to establish its FunctionRpc stream.
+    /// </summary>
+    public TimeSpan WorkerGrpcEstablishmentTimeout { get; set; } = RequiredWorkerGrpcEstablishmentTimeout;
 
     /// <summary>
     /// Gets or sets the runtime-facing HTTP/1 forwarding listener port.

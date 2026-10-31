@@ -37,6 +37,8 @@ internal static class ManagementApiHandlers
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.AssignmentConflict, "The pod is already assigned to a different assignment."),
             WorkerAssignmentResult.WorkerTerminated => Error(
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.WorkerTerminated, "The assigned worker stream has terminated."),
+            WorkerAssignmentResult.RemovalRequested => Error(
+                StatusCodes.Status409Conflict, WorkerApiErrorCodes.RemovalRequested, "The worker pod has requested removal."),
             _ => throw new InvalidOperationException("Unexpected worker assignment result.")
         };
     }
@@ -62,7 +64,7 @@ internal static class ManagementApiHandlers
         CancellationToken cancellationToken = request.HttpContext.RequestAborted;
         cancellationToken.ThrowIfCancellationRequested();
         SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
-        if (previousState is null || previousState != current)
+        if (current.Status == SplitWorkerStatus.RemovalRequested || previousState is null || previousState != current)
         {
             return SplitStateResponse(current);
         }

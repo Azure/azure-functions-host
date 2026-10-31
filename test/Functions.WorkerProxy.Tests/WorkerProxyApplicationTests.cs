@@ -49,6 +49,7 @@ public class WorkerProxyApplicationTests
     public async Task StateManager_UsesTimeProviderFromContainer()
     {
         Mock<TimeProvider> provider = new();
+        provider.SetupGet(clock => clock.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
         Mock<ITimer> timer = new();
         TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
@@ -64,7 +65,7 @@ public class WorkerProxyApplicationTests
 
         Assert.False(poll.IsCompleted);
         provider.Verify(clock => clock.CreateTimer(
-            It.IsAny<TimerCallback>(), It.IsAny<object?>(), TimeSpan.FromSeconds(60), Timeout.InfiniteTimeSpan), Times.Once());
+            It.IsAny<TimerCallback>(), It.IsAny<object?>(), TimeSpan.FromSeconds(60), Timeout.InfiniteTimeSpan), Times.Exactly(2));
         manager.OnWorkerAttached(1);
         Assert.True((await poll).HasChanged);
         await disposed.Task.WaitAsync(timeout.Token);

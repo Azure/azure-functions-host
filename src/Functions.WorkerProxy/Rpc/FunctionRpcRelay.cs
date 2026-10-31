@@ -58,7 +58,7 @@ internal sealed partial class FunctionRpcRelay(
         {
             lock (_syncLock)
             {
-                return _currentSession?.WorkerHttpDestination;
+                return _stateManager.State.RemovalRequested ? null : _currentSession?.WorkerHttpDestination;
             }
         }
     }
@@ -133,6 +133,12 @@ internal sealed partial class FunctionRpcRelay(
                     "The FunctionRpc relay is shutting down.");
             }
 
+            if (_stateManager.State.RemovalRequested)
+            {
+                throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.RemovalRequested,
+                    "The worker pod has requested removal.");
+            }
+
             if (_currentSession?.IsTerminalAndReleased == true)
             {
                 ClearCurrentSessionLocked();
@@ -148,6 +154,8 @@ internal sealed partial class FunctionRpcRelay(
                 {
                     FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
                         $"A {side} FunctionRpc stream is already attached."),
+                    FunctionRpcRelayAttachResult.Terminated when _stateManager.State.RemovalRequested =>
+                        (FunctionRpcRelayAttachmentFailure.RemovalRequested, "The worker pod has requested removal."),
                     FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
                         "The previous FunctionRpc relay session is still tearing down."),
                     _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
@@ -158,6 +166,25 @@ internal sealed partial class FunctionRpcRelay(
         }
 
         return RunAttachmentAsync(session, side, requestStream, responseStream, cancellationToken);
+    }
+
+    /// <summary>
+    /// Terminates the active relay after the worker establishment deadline commits sticky removal.
+    /// </summary>
+    internal void RequestWorkerRemoval()
+    {
+        FunctionRpcRelaySession? session;
+        lock (_syncLock)
+        {
+            if (_stopping)
+            {
+                return;
+            }
+
+            session = _currentSession;
+        }
+
+        session?.RequestWorkerRemoval();
     }
 
     /// <summary>

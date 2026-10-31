@@ -14,5 +14,8 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// The side that observed the terminal condition, or <see langword="null"/> for application shutdown.
 /// </param>
 /// <param name="Exception">The originating exception, when the terminal condition was cancellation or a stream failure.</param>
+/// <param name="RemovalRequested">
+/// Whether WorkerProxy committed sticky removal ownership before completing the relay stream.
+/// </param>
 internal sealed record FunctionRpcRelayTerminalState(long SessionId, FunctionRpcRelayTerminationReason Reason,
-    FunctionRpcRelaySide? Side, Exception? Exception);
+    FunctionRpcRelaySide? Side, Exception? Exception, bool RemovalRequested);

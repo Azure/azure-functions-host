@@ -99,13 +99,13 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
-                SetAttachedLocked(side, value: true);
-                if (side == FunctionRpcRelaySide.Worker)
+                if (side == FunctionRpcRelaySide.Worker &&
+                    !stateManager.OnWorkerAttached(id) && stateManager.State.RemovalRequested)
                 {
-                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
-                    stateManager.OnWorkerAttached(id);
+                    return FunctionRpcRelayAttachResult.Terminated;
                 }
 
+                SetAttachedLocked(side, value: true);
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -196,7 +196,25 @@ internal sealed partial class FunctionRpcRelay
         /// </summary>
         public void RequestShutdown()
         {
-            TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
+            TryTerminate(new FunctionRpcRelayTerminalState(
+                id,
+                FunctionRpcRelayTerminationReason.Shutdown,
+                Side: null,
+                Exception: null,
+                RemovalRequested: false));
+        }
+
+        /// <summary>
+        /// Completes both relay sides after the worker establishment deadline requests removal.
+        /// </summary>
+        public void RequestWorkerRemoval()
+        {
+            TryTerminate(new FunctionRpcRelayTerminalState(
+                id,
+                FunctionRpcRelayTerminationReason.RemovalRequested,
+                FunctionRpcRelaySide.Worker,
+                Exception: null,
+                RemovalRequested: true));
         }
 
         private static Channel<StreamingMessage> CreateChannel()
@@ -248,7 +266,10 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId))
+                    {
+                        throw new InvalidDataException("The worker StartStream arrived after worker admission closed.");
+                    }
                 }
             }
 
@@ -345,7 +366,12 @@ internal sealed partial class FunctionRpcRelay
             {
                 await completedTask;
 
-                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.PeerClosed, side, Exception: null);
+                return new FunctionRpcRelayTerminalState(
+                    id,
+                    FunctionRpcRelayTerminationReason.PeerClosed,
+                    side,
+                    Exception: null,
+                    RemovalRequested: false);
             }
             catch (OperationCanceledException exception)
             {
@@ -354,15 +380,30 @@ internal sealed partial class FunctionRpcRelay
                     return await _completion.Task;
                 }
 
-                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
+                return new FunctionRpcRelayTerminalState(
+                    id,
+                    FunctionRpcRelayTerminationReason.Canceled,
+                    side,
+                    exception,
+                    RemovalRequested: false);
             }
             catch (Exception exception) when (callCancellationToken.IsCancellationRequested)
             {
-                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
+                return new FunctionRpcRelayTerminalState(
+                    id,
+                    FunctionRpcRelayTerminationReason.Canceled,
+                    side,
+                    exception,
+                    RemovalRequested: false);
             }
             catch (Exception exception)
             {
-                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Faulted, side, exception);
+                return new FunctionRpcRelayTerminalState(
+                    id,
+                    FunctionRpcRelayTerminationReason.Faulted,
+                    side,
+                    exception,
+                    RemovalRequested: false);
             }
         }
 
@@ -375,9 +416,15 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
+                bool workerTerminated = terminalState.Side == FunctionRpcRelaySide.Worker &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
                 _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                stateManager.OnSessionTerminated(id, workerTerminated);
+                terminalState = terminalState with { RemovalRequested = stateManager.State.RemovalRequested };
+                _terminalState = terminalState;
                 _completion.SetResult(terminalState);
             }
 

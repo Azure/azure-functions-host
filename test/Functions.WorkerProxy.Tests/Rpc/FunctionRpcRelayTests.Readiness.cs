@@ -201,7 +201,11 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
             Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
-            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
+            bool workerTerminated = trigger.StartsWith("worker", StringComparison.Ordinal);
+            Assert.Equal(workerTerminated, failed.RemovalRequested);
+            Assert.Equal(
+                workerTerminated ? WorkerAssignmentResult.RemovalRequested : WorkerAssignmentResult.WorkerTerminated,
+                manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
             Assert.True(relay.IsAttached(FunctionRpcRelaySide.Runtime));
         }
@@ -219,7 +223,7 @@ public partial class FunctionRpcRelayTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Relay_ReplacementReadinessRespectsTerminalAssignment(bool assigned)
+    public async Task Relay_WorkerTerminationRejectsReplacementRegardlessOfAssignment(bool assigned)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -241,23 +245,18 @@ public partial class FunctionRpcRelayTests
         await WaitForReleaseAsync(relay, timeout.Token);
         WorkerPodState terminated = manager.State;
         Assert.False(terminated.IsWorkerReady);
+        Assert.True(terminated.RemovalRequested);
 
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
-
-        if (assigned)
-        {
-            Assert.Same(terminated, manager.State);
-            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
-        }
-        else
-        {
-            Assert.True(manager.State.IsWorkerReady);
-            Assert.True(manager.State.SessionId > terminated.SessionId);
-            Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
+        Grpc.Core.RpcException runtimeException =
+            await replacementRuntime.WriteAndReadRejectionAsync(CreateMessage("replacement-runtime"), timeout.Token);
+        Grpc.Core.RpcException workerException =
+            await replacementWorker.WriteAndReadRejectionAsync(CreateStartStream("replacement-worker"), timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, runtimeException.StatusCode);
+        Assert.Equal(StatusCode.Unavailable, workerException.StatusCode);
+        Assert.Same(terminated, manager.State);
+        Assert.Equal(WorkerAssignmentResult.RemovalRequested, manager.Assign(assignment));
     }
 
     [Fact]
