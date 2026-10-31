@@ -18,7 +18,7 @@ internal static class AppServerHostStateServiceCollectionExtensions
         services.AddHttpClient(
             AppServerHostStateClient.HttpClientName,
             client => client.Timeout = RequestTimeout);
-        services.AddSingleton<AppServerHostStateClient>();
+        services.AddSingleton<HostStatePublicationCoordinator>();
         services.AddSingleton<IHostedService, HttpOnDemandWorkerScaleInService>();
 
         return services;

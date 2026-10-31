@@ -11,27 +11,29 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Host.HostState;
 
 /// <summary>
-/// Publishes Host capacity and irreversibly drains grant-safe idle HTTP on-demand workers.
+/// Periodically publishes Host capacity and drains one grant-safe HTTP on-demand worker.
 /// </summary>
 internal sealed partial class HttpOnDemandWorkerScaleInService(
     IHttpWorkerScaleInManager scaleInManager,
-    AppServerHostStateClient appServerClient,
+    IRuntimeWorkerAdmissionGate runtimeAdmissionGate,
+    HostStatePublicationCoordinator publicationCoordinator,
     TimeProvider timeProvider,
     IHostApplicationLifetime applicationLifetime,
     ILogger<HttpOnDemandWorkerScaleInService> logger) : BackgroundService
 {
-    internal static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(1);
-    internal static readonly TimeSpan IdleDuration = TimeSpan.FromMinutes(10);
-    private const int MaxStablePublishAttempts = 3;
-
-    private readonly AppServerHostStateClient _appServerClient =
-        appServerClient ?? throw new ArgumentNullException(nameof(appServerClient));
+    internal static readonly TimeSpan AttemptInterval = TimeSpan.FromMinutes(10);
 
     private readonly IHostApplicationLifetime _applicationLifetime =
         applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
 
     private readonly ILogger<HttpOnDemandWorkerScaleInService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
+
+    private readonly HostStatePublicationCoordinator _publicationCoordinator =
+        publicationCoordinator ?? throw new ArgumentNullException(nameof(publicationCoordinator));
+
+    private readonly IRuntimeWorkerAdmissionGate _runtimeAdmissionGate =
+        runtimeAdmissionGate ?? throw new ArgumentNullException(nameof(runtimeAdmissionGate));
 
     private readonly IHttpWorkerScaleInManager _scaleInManager =
         scaleInManager ?? throw new ArgumentNullException(nameof(scaleInManager));
@@ -43,10 +45,23 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            long waitVersion = _scaleInManager.Version;
             try
             {
-                waitVersion = await RunScaleInPassAsync(stoppingToken);
+                await Task.Delay(AttemptInterval, _timeProvider, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (_runtimeAdmissionGate.IsClosed)
+            {
+                return;
+            }
+
+            try
+            {
+                await RunScaleInPassAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -56,42 +71,44 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
             {
                 Log.PassFailed(_logger, exception);
             }
-
-            await WaitForChangeOrIntervalAsync(waitVersion, stoppingToken);
         }
     }
 
-    internal async Task<long> RunScaleInPassAsync(CancellationToken cancellationToken)
+    internal async Task RunScaleInPassAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_applicationLifetime.ApplicationStopping.IsCancellationRequested)
+        if (_applicationLifetime.ApplicationStopping.IsCancellationRequested ||
+            _runtimeAdmissionGate.IsClosed)
         {
-            return _scaleInManager.Version;
+            return;
         }
 
-        (AppServerHostStatePublishResult currentResult, HttpWorkerScaleInState publishedState) =
-            await PublishCurrentUntilStableAsync(cancellationToken);
+        (AppServerHostStatePublishResult currentResult, _) =
+            await _publicationCoordinator.PublishCurrentCapacityFenceUntilStableAsync(cancellationToken);
         if (currentResult is not AppServerHostStatePublishResult.Applied)
         {
             Log.PublicationUnavailable(_logger, currentResult);
-            return publishedState.Version;
+            return;
         }
 
-        if (_applicationLifetime.ApplicationStopping.IsCancellationRequested)
+        if (_applicationLifetime.ApplicationStopping.IsCancellationRequested ||
+            _runtimeAdmissionGate.IsClosed)
         {
-            return publishedState.Version;
+            return;
         }
 
-        HttpWorkerScaleInReservation reservation = _scaleInManager.TryReserveIdleWorker(IdleDuration);
+        HttpWorkerScaleInReservation reservation = _scaleInManager.TryReserveWorker();
         if (reservation is null)
         {
-            return publishedState.Version;
+            return;
         }
 
         AppServerHostStatePublishResult projectedResult;
         try
         {
-            projectedResult = await _appServerClient.PublishAsync(reservation.ProjectedState, cancellationToken);
+            projectedResult = await _publicationCoordinator.PublishCapacityFenceAsync(
+                reservation.ProjectedState,
+                cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -101,16 +118,14 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
         }
         catch (Exception exception)
         {
-            (_, HttpWorkerScaleInState restoredState) =
-                await CancelAndRestoreAsync(reservation, CancellationToken.None);
+            await CancelAndRestoreAsync(reservation, CancellationToken.None);
             Log.PassFailed(_logger, exception);
-            return restoredState.Version;
+            return;
         }
 
         if (projectedResult is not AppServerHostStatePublishResult.Applied)
         {
-            (_, HttpWorkerScaleInState restoredState) =
-                await CancelAndRestoreAsync(reservation, CancellationToken.None);
+            await CancelAndRestoreAsync(reservation, CancellationToken.None);
             if (projectedResult is AppServerHostStatePublishResult.CapacityBlocked)
             {
                 Log.CapacityBlocked(_logger, reservation.WorkerId, reservation.ProjectedState.HttpCapacity);
@@ -120,68 +135,48 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
                 Log.PublicationUnavailable(_logger, projectedResult);
             }
 
-            return restoredState.Version;
+            return;
         }
 
-        if (_applicationLifetime.ApplicationStopping.IsCancellationRequested)
+        if (_applicationLifetime.ApplicationStopping.IsCancellationRequested ||
+            _runtimeAdmissionGate.IsClosed)
         {
-            (_, HttpWorkerScaleInState restoredState) =
-                await CancelAndRestoreAsync(reservation, CancellationToken.None);
-            return restoredState.Version;
+            await CancelAndRestoreAsync(reservation, CancellationToken.None);
+            return;
         }
 
         if (!_scaleInManager.TryCommitReservation(reservation, out Task<bool> drainCompletion) ||
             drainCompletion is null)
         {
-            (_, HttpWorkerScaleInState restoredState) =
-                await CancelAndRestoreAsync(reservation, CancellationToken.None);
-            return restoredState.Version;
+            await CancelAndRestoreAsync(reservation, CancellationToken.None);
+            return;
         }
 
         Log.WorkerSelected(_logger, reservation.WorkerId, reservation.ProjectedState.HttpCapacity);
         _ = ObserveDrainAsync(reservation.WorkerId, drainCompletion);
-
-        return reservation.ProjectedState.Version;
     }
 
-    private async Task<(AppServerHostStatePublishResult Result, HttpWorkerScaleInState State)> CancelAndRestoreAsync(
+    private async Task CancelAndRestoreAsync(
         HttpWorkerScaleInReservation reservation,
         CancellationToken cancellationToken)
     {
-        _scaleInManager.CancelReservation(reservation);
-        return await PublishCurrentBestEffortAsync(cancellationToken);
-    }
+        bool canceled = _scaleInManager.CancelReservation(
+            reservation,
+            out bool invocationAdmissionRestored);
+        if (_runtimeAdmissionGate.IsClosed ||
+            (canceled && !invocationAdmissionRestored))
+        {
+            return;
+        }
 
-    private async Task<(AppServerHostStatePublishResult Result, HttpWorkerScaleInState State)> PublishCurrentBestEffortAsync(
-        CancellationToken cancellationToken)
-    {
         try
         {
-            return await PublishCurrentUntilStableAsync(cancellationToken);
+            await _publicationCoordinator.PublishCurrentCapacityFenceUntilStableAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             Log.RestoreFailed(_logger, exception);
-            return (AppServerHostStatePublishResult.TransientFailure, _scaleInManager.Current);
         }
-    }
-
-    private async Task<(AppServerHostStatePublishResult Result, HttpWorkerScaleInState State)> PublishCurrentUntilStableAsync(
-        CancellationToken cancellationToken)
-    {
-        for (int attempt = 0; attempt < MaxStablePublishAttempts; attempt++)
-        {
-            HttpWorkerScaleInState state = _scaleInManager.Current;
-            AppServerHostStatePublishResult result =
-                await _appServerClient.PublishAsync(state, cancellationToken);
-            if (result is not AppServerHostStatePublishResult.Applied ||
-                _scaleInManager.Version == state.Version)
-            {
-                return (result, state);
-            }
-        }
-
-        return (AppServerHostStatePublishResult.TransientFailure, _scaleInManager.Current);
     }
 
     private async Task ObserveDrainAsync(string workerId, Task<bool> drainCompletion)
@@ -199,28 +194,14 @@ internal sealed partial class HttpOnDemandWorkerScaleInService(
         }
     }
 
-    private async Task WaitForChangeOrIntervalAsync(long observedVersion, CancellationToken cancellationToken)
-    {
-        using CancellationTokenSource intervalSource = new(CheckInterval, _timeProvider);
-        using CancellationTokenSource waitSource =
-            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, intervalSource.Token);
-        try
-        {
-            await _scaleInManager.WaitForChangeAsync(observedVersion, waitSource.Token);
-        }
-        catch (OperationCanceledException) when (intervalSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-        {
-        }
-    }
-
     private static partial class Log
     {
         [LoggerMessage(1100, LogLevel.Information,
-            "Selected idle HTTP on-demand worker {WorkerId} for drain after publishing projected capacity {HttpCapacity}.")]
+            "Selected HTTP on-demand worker {WorkerId} for drain after publishing projected capacity {HttpCapacity}.")]
         public static partial void WorkerSelected(ILogger logger, string workerId, long httpCapacity);
 
         [LoggerMessage(1101, LogLevel.Debug,
-            "Idle HTTP worker {WorkerId} was retained because projected capacity {HttpCapacity} does not cover Frontend slot obligations.")]
+            "HTTP on-demand worker {WorkerId} was retained because projected capacity {HttpCapacity} does not cover Frontend slot obligations.")]
         public static partial void CapacityBlocked(ILogger logger, string workerId, long httpCapacity);
 
         [LoggerMessage(1102, LogLevel.Warning,

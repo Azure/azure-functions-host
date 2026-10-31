@@ -1,353 +1,414 @@
-# BYOC HTTP on-demand idle Worker scale-in
+# BYOC HTTP on-demand Worker scale-in
 
 ## Context
 
-The split Functions Host can link more HTTP Workers than current Frontend allocations require. Before this change, the Host keeps every linked Worker until another lifecycle flow removes it. That leaves an on-demand Worker running even after it has been continuously idle.
+The split Functions Host can keep more HTTP on-demand Workers linked than current Frontend allocations require. Before this change, the Host has no autonomous path that safely removes one of those Workers.
 
-This change adds the smallest Host-side R2 flow:
+This PR adds the smallest R2 Host flow:
 
-- WorkerProxy relays trusted Legion assignment metadata to the Host.
-- The Host measures continuous idle time with a monotonic clock.
-- Once per minute, the Host may select one eligible Worker that has been idle for ten minutes.
-- The Host first reserves that exact Worker locally.
-- AppServer must explicitly apply a capacity fence before the Host commits the drain.
-- The Host waits for committed work, gracefully closes the Runtime-facing Worker link, and leaves WorkerProxy cleanup to W2.
+- WorkerProxy relays trusted Legion assignment metadata.
+- The Host runs one R2 attempt every ten minutes. The first attempt is delayed by ten minutes after Host startup.
+- Each attempt looks only at current channel state. It keeps no idle timestamps, pool history, or candidate cursor.
+- The Host selects the eligible Worker with the lexicographically lowest Worker ID using ordinal comparison.
+- The exact Worker is reserved against invocation admission.
+- AppServer must explicitly apply a projected-capacity fence before the Host commits the drain.
+- The Host waits for committed work, gracefully closes the Runtime-facing FunctionRpc link, and leaves WorkerProxy cleanup to W2.
 
-The implementation does not delete a Runtime, kill a customer process, or add a new scale-in endpoint.
+Here, **idle** means that the Worker has no committed RPC or proxied HTTP work at the selection instant. It does not mean that the Worker has remained idle for a historical duration.
 
 ## Before and after
 
 | Area | Before | After |
 |---|---|---|
-| Worker assignment metadata | Host receives trusted `FunctionGroupName` only | Host also receives trusted `IsAlwaysReady` and optional positive `MaxHttpConcurrency` |
-| Idle tracking | No autonomous idle interval | Each ready channel tracks a continuous monotonic idle interval |
-| Invocation race | Ready-channel selection and posting are separate from scale-in | Invocation admission and exact Worker reservation use the same channel lock |
-| Capacity safety | No R2 capacity transaction | Host publishes current capacity, then requires explicit acknowledgement of projected lower capacity |
-| Failure behavior | Not applicable | Every missing, stale, rejected, timed-out, or failed fence retains the Worker |
-| Worker removal | External lifecycle only | One acknowledged idle Worker can gracefully drain and unlink |
+| Assignment metadata | Host receives trusted `FunctionGroupName` | WorkerProxy marks one sanitized assignment-metadata version and the Host also receives trusted `IsAlwaysReady` and positive `MaxHttpConcurrency` when Legion supplies them |
+| R2 cadence | No autonomous R2 attempt | One attempt every ten minutes, with no startup attempt |
+| Candidate state | No R2 candidate policy | Current state only; no idle or selection history |
+| Candidate order | Not applicable | Lowest eligible Worker ID using `StringComparer.Ordinal` |
+| Invocation race | Dispatch and removal are not coordinated | Invocation commitment and exact reservation use the same channel lock |
+| Capacity safety | No R2 capacity transaction | Current and projected capacity use one authoritative Host snapshot generation |
+| AppServer safety | No R2 fence | Projected capacity requires an explicit applied acknowledgement |
+| Physical link count | Registry presence can fall before disposal finishes | Accepted links remain counted through initialization and detached disposal |
+| Runtime retirement | No shared R2 suppression gate | Runtime admission closure prevents new R2 reservation, commit, rollback restoration, and restored-capacity publication |
+| Worker removal | External lifecycle only | One acknowledged Worker per attempt can drain and unlink |
 
 ## Ownership
 
 | Component | Owns | Does not own |
 |---|---|---|
-| Legion assignment producer | Supplies `IsAlwaysReady` and authoritative `MaxHttpConcurrency` | Host admission or AppServer allocation decisions |
-| WorkerProxy | Removes worker-supplied values and publishes Legion assignment-owned capabilities | Choosing an idle Worker or calculating aggregate Host capacity |
-| Functions Host channel | Invocation admission, committed-work permits, monotonic idle interval, reversible reservation | Frontend slot allocations |
-| Functions Host registry | Aggregate usable HTTP capacity, Host-local version, exact reservation commit, graceful unlink | Runtime deletion or customer-process termination |
-| Functions Host R2 service | One-minute checks and two-phase capacity-fence orchestration | AppServer slot-ledger mutation |
-| AppServer companion | Atomic Frontend-allocation comparison and applied acknowledgement | Host-local invocation state |
-| WorkerProxy W2 | Expected post-unlink Worker cleanup | R2 fence decision |
-| Ordinary R1 | Runtime-empty cleanup after the last Worker disappears | Selecting an idle Worker in this PR |
+| Legion assignment producer | `IsAlwaysReady` and authoritative `MaxHttpConcurrency` | Host invocation admission or AppServer allocations |
+| WorkerProxy | Removes worker-supplied trusted keys and version marker, then publishes one sanitized assignment-metadata version with Legion-owned values | Candidate selection or Host capacity |
+| Functions Host channel | Function-load readiness, invocation permits, exact reservation, committed-work drain | Frontend slot allocations |
+| Functions Host registry | Ordinal selection, aggregate capacity, physical link ownership, reservation commit/cancel, graceful unlink, Runtime admission gate | P2/P3 scheduling |
+| `IHostStateCoordinator` | One `CreatedTime`, version, snapshot, and change notification stream | AppServer HTTP transport |
+| `HostStatePublicationCoordinator` | The single serialized `/admin/infra/host/state` publisher | Host-local channel transitions |
+| Functions Host R2 service | Ten-minute cadence and two-phase capacity-fence orchestration | Runtime retirement scheduling |
+| AppServer companion | Atomic Frontend-allocation comparison and applied fence acknowledgement | Host invocation state |
+| WorkerProxy W2 | Expected cleanup after FunctionRpc unlink | R2 fence decision |
+| Ordinary R1 | Runtime-empty cleanup after the last Worker disappears | Selecting an R2 Worker |
 
 ## Trusted metadata
 
-WorkerProxy treats the following FunctionRpc capabilities as platform-owned:
+WorkerProxy treats the existing Legion assignment contract as the platform trust boundary.
 
-| Capability | Source | Host use |
-|---|---|---|
-| `FunctionGroupName` | Existing assignment state | Only trusted HTTP Workers are candidates |
-| `IsAlwaysReady` | Existing assignment/prelaunch state | Only explicit `false` is eligible |
-| `MaxHttpConcurrency` | New optional assignment receiver field | Authoritative per-Worker contribution to Host HTTP capacity |
+For each FunctionRpc initialization:
 
-WorkerProxy removes conflicting worker-supplied values before adding Legion assignment-owned values. It follows the existing trusted `FunctionGroupName` boundary rather than trusting customer Worker capabilities.
+1. Remove worker-supplied `WorkerAssignmentMetadataVersion`, `FunctionGroupName`, `IsAlwaysReady`, and `MaxHttpConcurrency`.
+2. Add `WorkerAssignmentMetadataVersion=1` only for the live assigned relay session.
+3. Relay assignment-owned `FunctionGroupName`.
+4. Relay assignment-owned `IsAlwaysReady`.
+5. Relay `MaxHttpConcurrency` only when the assignment value is positive.
 
-Missing or invalid values do not break assignment, linking, initialization, or invocation. They only make the Worker ineligible for autonomous R2. The Host does not infer a default and does not use a hard-coded concurrency value.
+The Host trusts the three assignment values only when the protected version marker is present. A revised Host paired with a legacy WorkerProxy therefore ignores worker-supplied copies and fails closed for R2. Missing, invalid, or legacy metadata does not break ordinary linking or invocation. It only makes the Worker ineligible for autonomous R2 and excludes unknown capacity from the R2 capacity model.
 
 ```mermaid
 flowchart LR
-    P[Legion assignment producer] -->|IsAlwaysReady + MaxHttpConcurrency| WP[WorkerProxy assignment state]
-    CW[Customer Worker capabilities] -->|may contain spoofed values| WP
-    WP --> R[Remove FunctionGroupName / IsAlwaysReady / MaxHttpConcurrency]
-    R --> A[Add live assignment-owned values]
-    A --> H[Functions Host WorkerInitResponse]
-    H --> E{All trusted R2 metadata valid?}
-    E -->|Yes| C[Worker may become an R2 candidate]
-    E -->|No| K[Keep Worker; ordinary invocation still works]
+    L[Legion assignment] -->|platform-owned values| P[WorkerProxy]
+    W[Worker FunctionRpc capabilities] -->|untrusted copies| P
+    P -->|strip conflicting keys and add version marker| S[Sanitized capabilities]
+    S --> H[Functions Host channel]
+    H -->|valid values| R[R2 eligibility and capacity]
+    H -->|missing or invalid values| K[Keep Worker]
 ```
 
-## Eligibility
+## Stateless periodic policy
 
-A Worker is eligible only when every condition below is true:
+The hosted service delays for ten minutes before its first pass. After each pass, it delays for another ten minutes.
 
-1. `FunctionGroupName` is trusted HTTP classification.
-2. `IsAlwaysReady` is explicitly `false`.
-3. `MaxHttpConcurrency` is a trusted positive integer.
-4. The Worker is initialized and every expected function-load response for the active ScriptHost setup has completed successfully.
-5. It has no committed invocation.
-6. It has been continuously idle for at least ten monotonic minutes.
-7. It is not already reserved, draining, terminal, or excluded from invocation admission.
-8. The Host is not stopping.
+Channel changes do not wake R2 early. The generic Host-state change notification remains available for Runtime-drain publication, but R2 does not use it as a scheduling trigger.
 
-The check runs every minute and handles at most one Worker per pass.
+At each pass:
+
+1. Stop if Host shutdown or Runtime admission closure has started.
+2. Publish the current authoritative Host snapshot with capacity-fence semantics.
+3. Inspect current channel state.
+4. Reserve the lowest ordinal eligible Worker ID.
+5. Publish the projected lower capacity and require an explicit applied fence acknowledgement.
+6. Recheck shutdown, Runtime admission ownership, exact reservation, and exact Host-state generation.
+7. Commit the drain or cancel safely.
+
+No per-Worker idle timestamp, pool timestamp, last-activity state, candidate cursor, fairness rotation, creation-time ranking, or random selection is retained.
 
 ```mermaid
 flowchart TD
-    S[Worker snapshot] --> H{Trusted HTTP?}
-    H -->|No| K[Retain]
-    H -->|Yes| A{IsAlwaysReady explicitly false?}
-    A -->|No or missing| K
-    A -->|Yes| M{Positive trusted MaxHttpConcurrency?}
-    M -->|No| K
-    M -->|Yes| R{All function loads succeeded and channel is not terminal?}
-    R -->|No| K
-    R -->|Yes| W{No committed work and idle >= 10 minutes?}
-    W -->|No| K
-    W -->|Yes| X{Not reserved or draining?}
-    X -->|No| K
-    X -->|Yes| C[Candidate for one reservation]
+    A[Host service starts] --> B[Wait 10 minutes]
+    B --> C{Host stopping or Runtime admission closed?}
+    C -->|Yes| Z[Stop R2]
+    C -->|No| D[Run one R2 pass]
+    D --> E[Wait 10 minutes]
+    E --> C
 ```
 
-## Continuous idle interval
+## Current-state eligibility
 
-The interval uses `TimeProvider.GetTimestamp()` and `GetElapsedTime`; wall-clock changes cannot make a Worker appear older.
+A Worker is eligible only when all conditions are true at reservation time:
 
-- It starts after every expected function-load response succeeds and the eligible channel has no committed work.
-- A newly committed invocation clears it immediately.
-- It restarts only after the final committed invocation fully completes.
-- For proxied HTTP, completion means both the Function RPC result and HTTP forwarding completion.
+1. Trusted `FunctionGroupName` classifies it as HTTP.
+2. Trusted `IsAlwaysReady` is explicitly `false`.
+3. Trusted `MaxHttpConcurrency` is positive.
+4. The channel initialized successfully.
+5. Every expected function load for the active ScriptHost setup completed successfully.
+6. Invocation admission is open.
+7. No RPC or proxied HTTP invocation is committed.
+8. The Worker is not reserved, draining, terminal, or terminated.
+9. Host shutdown has not started.
+10. Runtime admission closure has not started.
+
+`MaxHttpConcurrency` affects current and projected aggregate capacity only. It never affects candidate order.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> NotReady
-    NotReady --> Idle: all active setup function loads succeeded
-    Idle --> Busy: invocation permit committed
-    Busy --> Busy: additional invocation committed
-    Busy --> Idle: final permit released after full result completion
-    Idle --> Reserved: continuous idle >= 10 minutes
-    Reserved --> Idle: fence fails or reservation is canceled
-    Reserved --> Draining: applied fence + exact state revalidation
-    Draining --> Unlinked: final committed work completes and gRPC link closes
-    NotReady --> Terminal
-    Idle --> Terminal
-    Busy --> Terminal
+flowchart TD
+    S[Current channel] --> H{Trusted HTTP?}
+    H -->|No| K[Keep]
+    H -->|Yes| O{IsAlwaysReady is false?}
+    O -->|No| K
+    O -->|Yes| M{Positive MaxHttpConcurrency?}
+    M -->|No| K
+    M -->|Yes| F{All expected function loads succeeded?}
+    F -->|No| K
+    F -->|Yes| W{Admission open and no committed work?}
+    W -->|No| K
+    W -->|Yes| T{Reserved, draining, or terminal?}
+    T -->|Yes| K
+    T -->|No| E[Eligible]
 ```
 
-## Invocation admission versus reservation
+## Lowest ordinal Worker selection
 
-The channel uses one lock for both operations.
+The registry sorts current Worker IDs with `StringComparer.Ordinal` and tries them in that order.
+
+The channel rechecks eligibility while holding the same lock used by invocation admission. If the lowest ID loses eligibility before reservation, the registry continues to the next current eligible ID in the same pass.
+
+Selection does not use:
+
+- `MaxHttpConcurrency`
+- creation time
+- link or admission order
+- prior fence failures
+- candidate rotation
+- randomness
+
+If a fence fails, retrying the same lowest Worker on the next ten-minute pass is expected.
+
+## Invocation versus reservation
+
+Invocation commitment and R2 reservation share `_invocationAdmissionLock`.
 
 An invocation winner:
 
-1. verifies admission remains open;
-2. creates a committed-work permit;
-3. posts the invocation while still holding the admission lock;
-4. clears the idle interval.
+1. verifies admission;
+2. creates the committed-work permit;
+3. posts the invocation while still holding the lock.
 
 A reservation winner:
 
-1. verifies all eligibility and idle conditions;
-2. records the exact reservation identifier while holding the same lock;
-3. immediately prevents new invocation admission;
-4. disappears from ready-channel selection and usable HTTP capacity.
+1. rechecks all current eligibility;
+2. verifies there is no committed work;
+3. records the exact reservation identifier while holding the same lock;
+4. immediately disappears from ready-channel selection and usable HTTP capacity.
 
-There is no state where the same Worker is both newly reserved and newly assigned the racing invocation.
-Disabling admission during replacement setup does not discard committed work; Host shutdown drains every initialized client channel.
+Only one side can win.
 
 ```mermaid
 sequenceDiagram
-    participant D as Invocation dispatcher
-    participant C as Worker channel lock
-    participant R as R2 registry
+    participant D as Dispatcher
+    participant C as Worker channel
+    participant R as Registry
 
     par Invocation path
         D->>C: TryDispatchInvocation
-        C->>C: Check admission
-        C->>C: Commit invocation permit
-        C->>C: Post invocation and clear idle time
+        C->>C: Lock admission
+        C->>C: Commit permit and post
         C-->>D: Accepted
-    and Reservation path
-        R->>C: TryReserveIdleScaleIn
-        C->>C: Check no committed work
+    and R2 path
+        R->>C: TryReserveScaleIn
+        C->>C: Lock admission
+        C->>C: Verify no committed work
         C->>C: Record exact reservation
-        C-->>R: Reserved or rejected
+        C-->>R: Reserved or ineligible
     end
-
-    Note over C: The lock serializes the two winners.
 ```
 
-## Capacity model
+## One authoritative Host snapshot
 
-Usable Host HTTP capacity is the sum of each trusted HTTP Worker's positive assignment-owned `MaxHttpConcurrency` only after initialization and every expected function-load response succeed.
+`IHostStateCoordinator` is the shared Host-local snapshot contract for R2 and P2/P3:
 
-```text
-Host HTTP capacity = Σ ready trusted HTTP Worker MaxHttpConcurrency
-```
+- `Current` returns one immutable `HostStateSnapshot`.
+- `Version` is the exact Host-local generation.
+- `CreatedTime` is generated by one monotonic UTC clock contract.
+- `WaitForChangeAsync` exposes changes for the shared publication path without changing R2 cadence.
+- Final function-load readiness and every physical link transition wake existing waiters.
 
-A reservation immediately removes the exact Worker from the usable sum. The Worker remains linked until the reservation commits and the graceful drain finishes.
+The snapshot contains:
 
-Always-ready HTTP Workers contribute usable capacity after successful function loading but are never autonomous R2 candidates. Pending or failed function loading, missing classification, or missing capacity contributes no capacity and cannot be selected.
+- usable HTTP capacity;
+- physical linked-Worker count;
+- `CreatedTime`;
+- Host-local version.
 
-## Two-phase scale-in flow
+Every relevant state transition advances the same generation. PR #19 must consume this coordinator instead of generating another timestamp or snapshot.
 
-### Phase 1: reversible reservation
+## Physical linked-Worker count
 
-1. Read and publish a stable Host capacity/version snapshot, bounded to three attempts under concurrent state changes.
-2. Publish current capacity to AppServer.
-3. Require explicit `applied` capacity-fence acknowledgement.
-4. Reserve one eligible Worker locally, starting after the prior candidate so a repeatedly blocked Worker cannot starve another safe candidate.
-5. Publish the projected lower capacity.
-6. Require explicit `applied` acknowledgement for that exact projected state.
+`LinkedWorkerCount` represents accepted physical link ownership, not only channels currently present in invocation selection.
 
-### Phase 2: irreversible drain
+The count increments exactly once when a new `LinkAsync` request is accepted. Exact retries do not increment it.
 
-1. Revalidate the exact reservation.
-2. Revalidate the Host-local state version, linked count, and projected capacity.
-3. Commit the channel drain.
-4. Wait for all committed invocation permits.
-5. Complete the Host-to-Worker FunctionRpc request stream.
-6. Wait for peer closure, then dispose the channel.
+The count remains present while:
+
+- transport connection or Worker initialization is in progress;
+- a channel is active;
+- a channel has detached from admission and registry selection;
+- graceful or forced disposal is still running.
+
+It decrements only after failed initialization or channel disposal returns or throws.
 
 ```mermaid
-sequenceDiagram
-    participant S as Host R2 service
-    participant R as Host registry
-    participant A as AppServer
-    participant W as Runtime-facing Worker link
-    participant P as WorkerProxy W2
-
-    S->>R: Read current capacity/version
-    S->>A: PUT current Host state, fence=required
-    A-->>S: fence=applied
-    S->>R: Reserve one exact idle Worker
-    R-->>S: Reservation + projected state/version
-    S->>A: PUT projected lower capacity, fence=required
-    A->>A: Compare against Frontend allocations under slot-ledger lock
-    alt safe and committed
-        A-->>S: 2xx + fence=applied
-        S->>R: Commit exact reservation/version
-        R->>W: Stop new admission and wait for committed work
-        R->>W: Complete request stream
-        W-->>R: Peer closes
-        R->>R: Dispose and remove channel
-        P->>P: W2 performs expected Worker cleanup
-    else unsafe or not applied
-        A-->>S: 412, missing acknowledgement, rejection, timeout, or failure
-        S->>R: Cancel reservation
-        R->>R: Restore invocation admission
-        S->>A: Best-effort publish current capacity
-    end
+stateDiagram-v2
+    [*] --> Accepted: new LinkAsync accepted
+    Accepted --> Initializing: connect and WorkerInit
+    Initializing --> Active: initialization registered
+    Initializing --> Cleaning: initialization fails or Runtime gate closes
+    Active --> Detached: unlink, terminal completion, R2, or shutdown
+    Detached --> Cleaning: dispose channel
+    Cleaning --> [*]: cleanup returns or throws\nthen decrement count
 ```
 
-## AppServer capacity-fence contract
+This prevents a premature zero-link snapshot while an accepted or detached link still owns physical cleanup.
 
-This PR uses the existing `PUT admin/infra/host/state` endpoint.
+## Shared Runtime admission gate
 
-Request requirements:
+`IRuntimeWorkerAdmissionGate` is the narrow landing contract shared with PR #19.
 
-- Header `x-ms-functions-host-state-capacity-fence: required`
-- Body fields:
-  - `createdTime`
-  - `linkedWorkerCount`
-  - `httpCapacity`
+Closing it is irreversible and:
 
-Applied response requirement:
+- rejects new Worker links;
+- rejects a link that finishes initialization after closure;
+- publishes zero authoritative usable HTTP capacity while retaining physical linked-count ownership;
+- prevents new R2 reservation;
+- prevents R2 commit;
+- causes R2 cancellation to clear its reservation without restoring invocation admission;
+- prevents restored usable-capacity publication after Runtime retirement won the registry lock.
 
-- successful HTTP status; and
-- header `x-ms-functions-host-state-capacity-fence: applied`
+The ordering is lock-linearized:
 
-Every other response is non-applied.
+```mermaid
+flowchart LR
+    A[R2 cancellation] --> L{Registry lock winner}
+    R[Runtime admission closure] --> L
+    L -->|R2 first| O[Restore admission before Runtime closure]
+    L -->|Runtime first| D[Keep admission closed and preserve Runtime ownership]
+```
+
+This PR does not import the P2/P3 phased or immediate schedule.
+
+## Shared AppServer publication
+
+`HostStatePublicationCoordinator` is the single serialized publisher for `/admin/infra/host/state`. It supports two explicit operation modes over one client:
+
+| Mode | Request/response contract | Consumer |
+|---|---|---|
+| Authoritative publication | Existing Host-state request; successful 2xx means applied | Runtime-drain state publication |
+| Capacity fence | Request includes `x-ms-functions-host-state-capacity-fence: required`; success also requires response `...: applied` | R2 current/projected capacity transaction |
+
+R2 never treats an ordinary 2xx as fence success.
 
 The required Docker/AppServer companion must:
 
-1. atomically compare the projected Host capacity against AppServer-owned Frontend allocations;
-2. perform that comparison while holding the AppServer slot-ledger lock;
-3. return HTTP 412 when the projected capacity cannot cover existing allocations;
-4. commit the lower Host capacity under the same slot-ledger lock when safe; and
-5. return the explicit `applied` acknowledgement only after the lower capacity is committed.
+1. take the AppServer-owned slot-ledger lock;
+2. compare projected Host capacity with current Frontend allocations;
+3. return HTTP 412 when projected capacity is unsafe;
+4. commit the lower capacity under the same ledger lock when safe;
+5. return `x-ms-functions-host-state-capacity-fence: applied` only after that commit.
 
-The Host must not treat a generic 2xx response as fence success.
+This PR does not implement that companion.
+
+## Exact two-phase R2 flow
+
+```mermaid
+sequenceDiagram
+    participant S as R2 service
+    participant P as Shared publication coordinator
+    participant R as Registry
+    participant C as Exact Worker channel
+    participant A as AppServer
+    participant X as Runtime FunctionRpc peer
+
+    S->>P: Publish current snapshot, fence required
+    P->>A: PUT current state
+    A-->>P: applied
+    S->>R: Reserve lowest ordinal eligible Worker
+    R->>C: Reserve under invocation lock
+    C-->>R: Exact reservation
+    R-->>S: Reservation + projected snapshot
+    S->>P: Publish projected snapshot, fence required
+    P->>A: PUT projected lower capacity
+    alt unsafe, missing acknowledgement, timeout, cancellation, stale state, or Runtime closure
+        A-->>P: 412, no applied header, or failure
+        S->>R: Cancel exact reservation
+        alt Runtime admission remains open
+            R->>C: Restore invocation admission
+            S->>P: Republish current capacity best effort
+        else Runtime admission closed first
+            R->>C: Clear R2 reservation; keep admission closed
+        end
+    else applied and exact state still current
+        A-->>P: applied
+        S->>R: Commit exact reservation and version
+        R->>C: Begin irreversible drain
+        C->>C: Wait for committed RPC and HTTP forwarding completion
+        R->>X: Gracefully close FunctionRpc requests
+        R->>R: Dispose link; decrement physical count after completion
+    end
+```
+
+## Proxied HTTP drain
+
+For a proxied HTTP invocation, the committed-work permit is released only after both:
+
+1. the FunctionRpc invocation result completes; and
+2. HTTP response forwarding completes.
+
+Either completion order is valid. R2 cannot unlink while either side still owns work.
 
 ## Failure behavior
 
-| Failure | Host behavior |
-|---|---|
-| Missing current-state acknowledgement | Do not reserve a Worker |
-| HTTP 412 for projected capacity | Cancel reservation and retain Worker |
-| Projected 2xx without `applied` | Cancel reservation and retain Worker |
-| Rejection, timeout, cancellation, or publication exception | Cancel reservation and retain Worker |
-| Host-local version/state changed after publication | Reject commit and retain Worker |
-| Exact reservation no longer exists | Reject commit |
-| Replacement setup disables admission | Keep draining already committed invocations during Host shutdown |
-| Graceful peer close times out | Log incomplete drain; do not kill the process |
-| Pending or failed function loading | Contribute no R2 capacity and retain Worker |
-| Missing/invalid trusted metadata | Keep Worker eligible for ordinary invocation, but not R2 |
-| Host stopping | Do not begin or commit a new R2 drain |
+The Worker is retained when:
 
-After any reversible failure, the Host restores invocation admission and republishes current capacity best effort with an uncanceled token. Stable publication is bounded to three attempts so perpetual Host-local churn cannot prevent shutdown. It never substitutes a success-shaped fallback.
+- the current Host snapshot cannot be published with fence acknowledgement;
+- AppServer returns HTTP 412;
+- AppServer returns 2xx without the explicit fence-applied header;
+- publication times out, is canceled, or fails;
+- Host state changes after projected publication;
+- the reservation identity or projected generation is stale;
+- shutdown starts;
+- Runtime admission closure starts;
+- trusted classification or capacity is missing or invalid;
+- expected function loads are pending or failed;
+- the Worker is currently busy.
 
-```mermaid
-flowchart TD
-    P[Projected capacity publication] --> A{Explicit applied acknowledgement?}
-    A -->|No| C[Cancel exact reservation]
-    C --> R[Restore ready selection and invocation admission]
-    R --> B[Best-effort republish current capacity]
-    A -->|Yes| V{Exact reservation and Host version still match?}
-    V -->|No| C
-    V -->|Yes| D[Commit irreversible drain]
-```
+Rollback restores invocation admission only when the Runtime gate remains open. Restored-capacity publication is best effort and is skipped when Runtime retirement owns the gate.
 
 ## Assumptions
 
-1. `MaxHttpConcurrency` is assigned by the platform and represents the protected per-Worker HTTP concurrency limit used for Frontend capacity decisions.
-2. WorkerProxy receives Legion assignment before forwarding the successful Worker initialization response.
-3. Host application stopping is the available retirement signal on this independent foundation; the hosted service checks it before reservation and before commit.
-4. Completing the Runtime-facing FunctionRpc request stream is the correct graceful unlink signal.
-5. WorkerProxy W2 observes the closed link and performs its existing cleanup.
-6. Ordinary R1 observes an empty Runtime later and owns Runtime-empty cleanup.
+- The existing Legion WorkerProxy assignment contract is the trusted platform boundary.
+- `WorkerAssignmentMetadataVersion=1` proves the revised WorkerProxy sanitized the assignment-owned values before the Host consumes them.
+- Legion supplies a protected positive `MaxHttpConcurrency`.
+- Worker IDs are stable strings and ordinal comparison is the required deterministic order.
+- AppServer rejects stale `CreatedTime` generations.
+- AppServer implements the capacity-fence companion contract above.
+- W2 observes the graceful FunctionRpc unlink and performs WorkerProxy cleanup.
+- P2/P3 PR #19 consumes the shared coordinator, publisher, physical count, and Runtime gate.
 
-## Known limitations and deployment companions
+## Known limitations and landing dependency
 
-1. **AppServer companion is required.** Until AppServer implements the atomic slot-ledger comparison and explicit acknowledgement contract, the Host fails closed and retains Workers.
-2. **Legion assignment producer is required.** The producer outside this repository must populate optional `maxHttpConcurrency` with the authoritative value. Missing or nonpositive values disable R2 for that Worker.
-3. **Retirement signal scope is Host application stopping.** This foundation does not expose PR #13's broader runtime-retirement manager. If a future deployment retires a Runtime without stopping this Host process, that lifecycle must expose a narrow suppression signal before enabling R2 there.
-4. **Mixed-version logging.** An AppServer without the explicit fence acknowledgement keeps every Worker, but the hosted service may log a publication warning on each pass until the companion is deployed.
-5. **No forced unlink fallback.** A peer-close timeout is logged; this PR does not kill a customer process, delete a Runtime, or add an outbox/removal fallback.
-6. **One Worker per pass.** The service intentionally does not batch or use utilization percentages.
-7. **No scale-out.** Replenishment and stale-grant cleanup remain outside this PR.
+- The AppServer capacity-fence companion is required but is not implemented here.
+- The upstream producer of `MaxHttpConcurrency` may be outside this repository.
+- R2 retries only on the next ten-minute pass.
+- Repeated 412 responses can retain the same lowest Worker indefinitely.
+- R2 removes at most one Worker per pass.
+- Host shutdown remains the local shutdown suppression signal.
+- This PR does not delete the Runtime or kill the customer process.
+- PR #19 must rebase or stack on this PR and remove any temporary parallel Host-state publisher, timestamp generator, physical-link counter, or Runtime admission owner.
+- The required landing order is PR #18 first, then PR #19 after integration with these shared contracts.
 
 ## Non-goals
 
-- Runtime retirement implementation
-- Runtime deletion
-- customer-process termination
-- utilization percentages
-- 25% scale-in batches
-- a separate probation pool
-- non-HTTP autonomous idle scale-in
-- scale-out or replenishment
-- stale-grant cleanup
-- replay or migration
-- a new scale-in endpoint
-- count-based scale-in
-- WorkerProxy lifecycle changes beyond trusted metadata relay
+- utilization percentages;
+- 25% batches;
+- a probation pool;
+- non-HTTP autonomous scale-in;
+- P2/P3 phased or immediate scheduling;
+- stale-grant cleanup;
+- scale-out or replenishment;
+- Runtime deletion;
+- customer-process kill;
+- replay or migration;
+- a removal outbox;
+- a new scale-in endpoint.
 
 ## File map
 
 | File | Review purpose |
 |---|---|
-| `src/Functions.WorkerProxy/Management/WorkerAssignRequest.cs` | Optional assignment receiver for authoritative `MaxHttpConcurrency` |
-| `src/Functions.WorkerProxy/State/WorkerAssignment.cs` | Immutable normalized assignment identity |
-| `src/Functions.WorkerProxy/State/WorkerPodState.cs` | Live relay state for trusted metadata |
-| `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs` | Removes spoofed values and publishes assignment-owned capabilities |
-| `src/Functions.Rpc.Client/WorkerChannel/RpcClientWorkerChannel.cs` | Metadata parsing, successful function-load gating, candidate-only invocation permits, monotonic idle tracking, reservation, and drain state |
-| `src/Functions.Rpc.Client/Dispatcher/RpcClientFunctionInvocationDispatcher.cs` | Atomic channel admission with safe retry |
-| `src/Functions.Rpc.Client/Registry/WorkerChannelRegistry.cs` | Capacity snapshots, versioning, fair candidate rotation, exact reservation commit, and graceful unlink |
-| `src/Functions.Rpc.Client/ScaleIn/IHttpWorkerScaleInManager.cs` | Narrow Host-local transaction contract |
-| `src/Functions.Host/HostState/AppServerHostStateClient.cs` | Explicit AppServer fence protocol |
-| `src/Functions.Host/HostState/HttpOnDemandWorkerScaleInService.cs` | One-minute, one-Worker two-phase orchestration |
-| `test/Functions.WorkerProxy.Tests/Rpc/FunctionRpcRelayTests.CapabilityFinalization.cs` | Trusted metadata replacement behavior |
-| `test/Functions.Rpc.Client.Tests/Registry/WorkerChannelRegistryTests.ScaleIn.cs` | Public/hosted R2 behavior coverage |
+| `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs` | Removes worker-supplied trusted values/version and relays one versioned assignment-owned capability set |
+| `src/Functions.Rpc.Client/WorkerChannel/RpcClientWorkerChannel.cs` | Versioned trusted metadata parsing, capacity-change notification, current eligibility, invocation permits, reservation, and drain |
+| `src/Functions.Rpc.Client/Dispatcher/RpcClientFunctionInvocationDispatcher.cs` | Atomic dispatch and shutdown drain behavior |
+| `src/Functions.Rpc.Client/Registry/WorkerChannelRegistry.cs` | Lowest-ID selection, physical link ownership, Host snapshots, Runtime gate, commit/cancel, and unlink |
+| `src/Functions.Rpc.Client/HostState/IHostStateCoordinator.cs` | Shared snapshot, generation, clock, and change-notification contract |
+| `src/Functions.Rpc.Client/Retirement/IRuntimeWorkerAdmissionGate.cs` | Shared irreversible Runtime admission fence |
+| `src/Functions.Rpc.Client/ScaleIn/IHttpWorkerScaleInManager.cs` | Narrow R2 reservation transaction |
+| `src/Functions.Host/HostState/AppServerHostStateClient.cs` | One HTTP client with authoritative and capacity-fence modes |
+| `src/Functions.Host/HostState/HostStatePublicationCoordinator.cs` | Single serialized Host-state publisher |
+| `src/Functions.Host/HostState/HttpOnDemandWorkerScaleInService.cs` | Delayed ten-minute, one-Worker-per-pass orchestration |
 
 ## Behavioral test matrix
 
-Exactly five behavior-level test methods cover this change. Theory rows exercise multiple public outcomes without adding implementation-detail tests.
+The PR keeps exactly five public R2 behavioral test methods.
 
-| # | Behavior method | What it proves |
+| # | Test method | Behavior covered |
 |---|---|---|
-| 1 | `Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities` | WorkerProxy overwrites spoofed metadata, relays Legion assignment values, and omits invalid/missing assignment capacity |
-| 2 | `RunScaleInPassAsync_AppliedFence_WaitsForHttpCompletionAndDrainsOneWorkerExactlyOnce` | Authoritative capacity is summed, the applied fence commits one drain, and proxied HTTP waits for RPC and forwarding completion in both orders |
-| 3 | `RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission` | Missing acknowledgement and HTTP 412 roll back, candidate rotation prevents starvation, stale Host state rejects commit, and a real invocation remains dispatchable |
-| 4 | `InvocationAdmissionAndIdleReservation_RaceHasOneSafeWinner` | The shared admission lock permits only one winner and preserves the losing operation safely |
-| 5 | `IdleScaleIn_IneligibleOrUnreadyWorkerIsRetained` | Always-ready, non-HTTP, missing-trust, invalid-capacity, pending-load, and failed-load Workers are retained without breaking ordinary invocation |
-
-No isolated scale-in unit tests were added.
+| 1 | `Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities` | WorkerProxy overwrites spoofed metadata/version, marks the sanitized assignment, relays Legion values, and omits invalid or missing assignment capacity |
+| 2 | `ExecuteAsync_TenMinuteCadenceSelectsLowestOrdinalWorkerAndWaitsForHttpCompletion` | No startup pass, ten-minute cadence, lowest ordinal selection independent of insertion/capacity, one Worker per pass, physical post-disposal count, and both proxied HTTP completion orders |
+| 3 | `RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission` | Missing acknowledgement, 412, stale generation, same-lowest retry, Runtime-closure rollback, accepted initializing-link count, post-disposal notification, and real invocation after ordinary rollback |
+| 4 | `InvocationAdmissionAndScaleInReservation_RaceHasOneSafeWinner` | Invocation commitment and reservation have one lock-linearized winner |
+| 5 | `ScaleIn_IneligibleUnreadyOrBusyWorkerIsRetained` | Always-ready, non-HTTP, missing/legacy trust, invalid capacity, pending/failed loads, and current committed work are retained; final function-load readiness wakes Host-state waiters |

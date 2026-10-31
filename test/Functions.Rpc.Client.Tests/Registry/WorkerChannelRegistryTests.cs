@@ -1791,8 +1791,7 @@ public sealed partial class WorkerChannelRegistryTests
 
     private static RpcClientWorkerChannelFactory CreateRealChannelFactory(
         IMetricsLogger metricsLogger = null,
-        IHttpProxyService httpProxyService = null,
-        TimeProvider timeProvider = null)
+        IHttpProxyService httpProxyService = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -1816,8 +1815,7 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
             httpProxyService ?? Mock.Of<IHttpProxyService>(),
-            metricsLogger ?? Mock.Of<IMetricsLogger>(),
-            timeProvider);
+            metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 
     private sealed class RegistryHarness
@@ -1877,8 +1875,7 @@ public sealed partial class WorkerChannelRegistryTests
 
                     RpcClientWorkerChannel channel = CreateRealChannelFactory(
                         control.MetricsLogger.Object,
-                        control.HttpProxyService,
-                        timeProvider)
+                        control.HttpProxyService)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
@@ -1931,6 +1928,7 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly string _isAlwaysReady;
         private readonly string _maxHttpConcurrency;
         private readonly Exception _setupFailure;
+        private readonly bool _trustedAssignmentMetadata;
         private int _remainingSetupFailures;
         private int _setupAttempts;
         private Exception _startFailure;
@@ -1948,7 +1946,8 @@ public sealed partial class WorkerChannelRegistryTests
             string maxHttpConcurrency = null,
             IHttpProxyService httpProxyService = null,
             bool completeResponsesOnRequestCompletion = false,
-            string advertisedHttpUri = null)
+            string advertisedHttpUri = null,
+            bool trustedAssignmentMetadata = true)
         {
             Id = id;
             Transport = new(blockDisposal);
@@ -1957,6 +1956,7 @@ public sealed partial class WorkerChannelRegistryTests
             _functionGroupName = functionGroupName;
             _isAlwaysReady = isAlwaysReady;
             _maxHttpConcurrency = maxHttpConcurrency;
+            _trustedAssignmentMetadata = trustedAssignmentMetadata;
             _completeResponsesOnRequestCompletion = completeResponsesOnRequestCompletion;
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
@@ -2097,6 +2097,12 @@ public sealed partial class WorkerChannelRegistryTests
                 {
                     Result = new() { Status = StatusResult.Types.Status.Success },
                 };
+                if (_trustedAssignmentMetadata && _functionGroupName is not null)
+                {
+                    initResponse.Capabilities[RpcClientWorkerChannel.WorkerAssignmentMetadataVersionCapability] =
+                        RpcClientWorkerChannel.WorkerAssignmentMetadataVersion;
+                }
+
                 if (_functionGroupName is not null)
                 {
                     initResponse.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = _functionGroupName;

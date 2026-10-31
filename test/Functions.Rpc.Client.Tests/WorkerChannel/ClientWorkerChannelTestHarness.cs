@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -36,8 +37,12 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
-    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
-        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null)
+    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(
+        string workerId,
+        IScriptEventManager eventManager = null,
+        string advertisedHttpUri = null,
+        IHttpProxyService httpProxyService = null,
+        bool trustedScaleInMetadata = false)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
         RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
@@ -62,6 +67,22 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         if (advertisedHttpUri is not null)
         {
             initResponse.Capabilities.Add(RpcWorkerConstants.HttpUri, advertisedHttpUri);
+        }
+
+        if (trustedScaleInMetadata)
+        {
+            initResponse.Capabilities.Add(
+                RpcClientWorkerChannel.WorkerAssignmentMetadataVersionCapability,
+                RpcClientWorkerChannel.WorkerAssignmentMetadataVersion);
+            initResponse.Capabilities.Add(
+                RpcClientWorkerChannel.FunctionGroupNameCapability,
+                FunctionGroups.Http);
+            initResponse.Capabilities.Add(
+                RpcClientWorkerChannel.IsAlwaysReadyCapability,
+                bool.FalseString);
+            initResponse.Capabilities.Add(
+                RpcClientWorkerChannel.MaxHttpConcurrencyCapability,
+                "7");
         }
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });

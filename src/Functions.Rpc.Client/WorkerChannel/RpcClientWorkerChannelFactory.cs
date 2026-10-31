@@ -32,8 +32,7 @@ internal sealed class RpcClientWorkerChannelFactory(
     IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
     IAppCapabilitiesStore appCapabilitiesStore,
     IHttpProxyService httpProxyService,
-    IMetricsLogger metricsLogger,
-    TimeProvider timeProvider = null) : IRpcClientWorkerChannelFactory
+    IMetricsLogger metricsLogger) : IRpcClientWorkerChannelFactory
 {
     private readonly IAppCapabilitiesStore _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
     private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
@@ -45,7 +44,6 @@ internal sealed class RpcClientWorkerChannelFactory(
     private readonly ILoggerFactory _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly IMetricsLogger _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
     private readonly ISharedMemoryManager _sharedMemoryManager = sharedMemoryManager ?? throw new ArgumentNullException(nameof(sharedMemoryManager));
-    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions = workerConcurrencyOptions ?? throw new ArgumentNullException(nameof(workerConcurrencyOptions));
 
     public RpcClientWorkerChannel Create(string workerId, DuplexChannel<StreamingMessage> ownedChannel)
@@ -78,7 +76,6 @@ internal sealed class RpcClientWorkerChannelFactory(
             _workerConcurrencyOptions,
             _hostingConfigOptions,
             _appCapabilitiesStore,
-            _httpProxyService,
-            _timeProvider);
+            _httpProxyService);
     }
 }

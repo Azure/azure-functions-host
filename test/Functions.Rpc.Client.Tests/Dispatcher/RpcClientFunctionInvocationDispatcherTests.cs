@@ -383,7 +383,9 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     [Fact]
     public async Task ShutdownAsync_DrainsInitializedChannelSnapshot()
     {
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker",
+            trustedScaleInMetadata: true);
         FunctionMetadata function = CreateFunction();
         await PrepareReadyChannelAsync(worker, function);
         PublishReady(worker.Channel);
@@ -391,11 +393,11 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await dispatcher.InitializeAsync([function]);
         ScriptInvocationContext invocation = CreateInvocation(function);
         await dispatcher.InvokeAsync(invocation);
-        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
         Task shutdown = dispatcher.ShutdownAsync();
         Assert.False(shutdown.IsCompleted);
 
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
         await invocation.ResultSource.Task.WaitAsync(TestTimeout);
         await shutdown.WaitAsync(TestTimeout);
@@ -413,7 +415,9 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         bool readinessPending,
         bool admissionDisabled)
     {
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker",
+            trustedScaleInMetadata: true);
         await using ClientWorkerChannelTestHarness otherWorker = await ClientWorkerChannelTestHarness.CreateAsync("other-worker");
         FunctionMetadata function = CreateFunction();
         await PrepareReadyChannelAsync(worker, function);

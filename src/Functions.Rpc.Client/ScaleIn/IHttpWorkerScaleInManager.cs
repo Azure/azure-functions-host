@@ -2,40 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Provides Host-local HTTP worker capacity and idle scale-in reservations.
+/// Provides Host-local HTTP worker scale-in reservations.
 /// </summary>
 public interface IHttpWorkerScaleInManager
 {
     /// <summary>
-    /// Gets the current linked-worker and usable HTTP-capacity snapshot.
+    /// Reserves the currently eligible HTTP on-demand worker with the lowest ordinal Worker ID.
     /// </summary>
-    HttpWorkerScaleInState Current { get; }
-
-    /// <summary>
-    /// Gets the current state version.
-    /// </summary>
-    long Version { get; }
-
-    /// <summary>
-    /// Waits until the scale-in state changes from the supplied version.
-    /// </summary>
-    /// <param name="version">The last observed state version.</param>
-    /// <param name="cancellationToken">A token that cancels only this wait.</param>
-    /// <returns>The newer state version.</returns>
-    Task<long> WaitForChangeAsync(long version, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Reserves one invocation-ready HTTP on-demand worker that has remained idle for the supplied duration.
-    /// </summary>
-    /// <param name="minimumIdleDuration">The required continuous idle duration.</param>
     /// <returns>A reservation and projected capacity snapshot, or <see langword="null"/> when no worker is eligible.</returns>
-    HttpWorkerScaleInReservation TryReserveIdleWorker(TimeSpan minimumIdleDuration);
+    HttpWorkerScaleInReservation TryReserveWorker();
 
     /// <summary>
     /// Converts a reservation into the irreversible worker drain operation.
@@ -46,25 +26,18 @@ public interface IHttpWorkerScaleInManager
     bool TryCommitReservation(HttpWorkerScaleInReservation reservation, out Task<bool> drainCompletion);
 
     /// <summary>
-    /// Cancels an uncommitted reservation and restores invocation admission.
+    /// Cancels an uncommitted reservation.
     /// </summary>
     /// <param name="reservation">The reservation to cancel.</param>
+    /// <param name="invocationAdmissionRestored">
+    /// <see langword="true"/> when invocation admission was restored; <see langword="false"/> when Runtime retirement
+    /// already owns the admission fence.
+    /// </param>
     /// <returns><see langword="true"/> when the reservation was canceled.</returns>
-    bool CancelReservation(HttpWorkerScaleInReservation reservation);
+    bool CancelReservation(
+        HttpWorkerScaleInReservation reservation,
+        out bool invocationAdmissionRestored);
 }
-
-/// <summary>
-/// Represents one immutable Host capacity snapshot.
-/// </summary>
-/// <param name="CreatedTime">The UTC creation time used by the AppServer publication contract.</param>
-/// <param name="HttpCapacity">The total usable HTTP request-slot capacity.</param>
-/// <param name="LinkedWorkerCount">The number of initialized linked workers.</param>
-/// <param name="Version">The Host-local generation used to validate reservation commit.</param>
-public sealed record HttpWorkerScaleInState(
-    DateTimeOffset CreatedTime,
-    long HttpCapacity,
-    int LinkedWorkerCount,
-    long Version);
 
 /// <summary>
 /// Represents one reversible Host-local reservation made before AppServer accepts the capacity reduction.
@@ -74,7 +47,7 @@ public sealed class HttpWorkerScaleInReservation
     internal HttpWorkerScaleInReservation(
         string workerId,
         Guid reservationId,
-        HttpWorkerScaleInState projectedState)
+        HostStateSnapshot projectedState)
     {
         WorkerId = workerId;
         ReservationId = reservationId;
@@ -89,7 +62,7 @@ public sealed class HttpWorkerScaleInReservation
     /// <summary>
     /// Gets the capacity snapshot projected after removing the reserved worker from usable capacity.
     /// </summary>
-    public HttpWorkerScaleInState ProjectedState { get; }
+    public HostStateSnapshot ProjectedState { get; }
 
     internal Guid ReservationId { get; }
 }

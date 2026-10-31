@@ -169,9 +169,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         List<Task> drainTasks = [];
         foreach (WorkerChannel channel in _channelRegistry.GetInitializedChannels())
         {
-            if (channel is RpcClientWorkerChannel)
+            if (channel is RpcClientWorkerChannel clientChannel)
             {
-                drainTasks.Add(channel.DrainInvocationsAsync());
+                drainTasks.Add(Task.WhenAll(
+                    clientChannel.BeginShutdownDrain(),
+                    channel.DrainInvocationsAsync()));
             }
         }
 

@@ -24,6 +24,12 @@ internal enum AppServerHostStatePublishResult
     Rejected,
 }
 
+internal enum AppServerHostStatePublishMode
+{
+    Authoritative,
+    CapacityFence,
+}
+
 /// <summary>
 /// Publishes Host capacity through AppServer's existing Host-state transaction.
 /// </summary>
@@ -44,7 +50,8 @@ internal sealed class AppServerHostStateClient(
         httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
 
     public async Task<AppServerHostStatePublishResult> PublishAsync(
-        HttpWorkerScaleInState state,
+        HostStateSnapshot state,
+        AppServerHostStatePublishMode mode,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -60,29 +67,52 @@ internal sealed class AppServerHostStateClient(
                 AppServerHostStateJsonContext.Default.HostStateRequest),
         };
         request.Headers.Add(ScriptConstants.ContainerInstanceHeader, _containerName);
-        request.Headers.Add(CapacityFenceHeader, CapacityFenceRequired);
-
-        using HttpResponseMessage response = await _httpClientFactory.CreateClient(HttpClientName).SendAsync(
-            request,
-            cancellationToken);
-
-        if (response.StatusCode is HttpStatusCode.PreconditionFailed)
+        if (mode is AppServerHostStatePublishMode.CapacityFence)
         {
-            return AppServerHostStatePublishResult.CapacityBlocked;
+            request.Headers.Add(CapacityFenceHeader, CapacityFenceRequired);
         }
 
-        if (response.IsSuccessStatusCode)
+        HttpResponseMessage response;
+        try
         {
-            return response.Headers.TryGetValues(CapacityFenceHeader, out var values) &&
-                values.Any(value => string.Equals(value, CapacityFenceApplied, StringComparison.OrdinalIgnoreCase))
-                    ? AppServerHostStatePublishResult.Applied
-                    : AppServerHostStatePublishResult.Unsupported;
+            response = await _httpClientFactory.CreateClient(HttpClientName).SendAsync(
+                request,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return AppServerHostStatePublishResult.TransientFailure;
+        }
+        catch (HttpRequestException)
+        {
+            return AppServerHostStatePublishResult.TransientFailure;
         }
 
-        return response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden ||
-            (int)response.StatusCode >= 500
-                ? AppServerHostStatePublishResult.TransientFailure
-                : AppServerHostStatePublishResult.Rejected;
+        using (response)
+        {
+            if (response.StatusCode is HttpStatusCode.PreconditionFailed)
+            {
+                return AppServerHostStatePublishResult.CapacityBlocked;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                if (mode is AppServerHostStatePublishMode.Authoritative)
+                {
+                    return AppServerHostStatePublishResult.Applied;
+                }
+
+                return response.Headers.TryGetValues(CapacityFenceHeader, out var values) &&
+                    values.Any(value => string.Equals(value, CapacityFenceApplied, StringComparison.OrdinalIgnoreCase))
+                        ? AppServerHostStatePublishResult.Applied
+                        : AppServerHostStatePublishResult.Unsupported;
+            }
+
+            return response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden ||
+                (int)response.StatusCode >= 500
+                    ? AppServerHostStatePublishResult.TransientFailure
+                    : AppServerHostStatePublishResult.Rejected;
+        }
     }
 
     private Uri GetHostStateUri()

@@ -38,6 +38,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+    internal const string WorkerAssignmentMetadataVersionCapability = "WorkerAssignmentMetadataVersion";
+    internal const string WorkerAssignmentMetadataVersion = "1";
 
     private readonly Dictionary<Guid, InvocationPermit> _committedInvocations = [];
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -47,10 +49,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly ChannelWriter<StreamingMessage> _requestWriter;
     private readonly TaskCompletionSource _drainCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TimeProvider _timeProvider;
     private bool _draining;
     private string _functionGroupName;
-    private long? _idleSinceTimestamp;
+    private TaskCompletionSource<long> _hostCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private long _hostCapacityVersion;
     private bool _invocationAdmissionEnabled = true;
     private bool? _isAlwaysReady;
     private LifecycleState _lifecycleState;
@@ -76,8 +78,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService,
-        TimeProvider timeProvider = null)
+        IHttpProxyService httpProxyService)
         : base(
             workerId,
             ownedChannel,
@@ -96,7 +97,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         _requestWriter = ownedChannel.Writer;
-        _timeProvider = timeProvider ?? TimeProvider.System;
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -128,6 +128,17 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     }
 
     internal int? MaxHttpConcurrency => _maxHttpConcurrency;
+
+    internal long HostCapacityVersion
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return _hostCapacityVersion;
+            }
+        }
+    }
 
     internal bool ScaleInFunctionLoadsComplete
     {
@@ -195,8 +206,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 {
                     return false;
                 }
-
-                _idleSinceTimestamp = null;
             }
 
             permit.ObserveResult(context.ResultSource.Task);
@@ -263,7 +272,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 _scaleInFunctionLoadFailed = true;
             }
 
-            UpdateScaleInReadinessLocked();
+            if (UpdateScaleInReadinessLocked())
+            {
+                SignalHostCapacityChangedLocked();
+            }
         }
     }
 
@@ -271,7 +283,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
 
-    internal bool CancelScaleInReservation(Guid reservationId)
+    internal bool CancelScaleInReservation(Guid reservationId, bool restoreInvocationAdmission)
     {
         lock (_invocationAdmissionLock)
         {
@@ -281,6 +293,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
 
             _scaleInReservationId = null;
+            if (!restoreInvocationAdmission)
+            {
+                _invocationAdmissionEnabled = false;
+            }
+
             return true;
         }
     }
@@ -298,6 +315,36 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             _draining = true;
             CompleteDrainIfReadyLocked();
             return _drainCompletion.Task;
+        }
+    }
+
+    internal Task BeginShutdownDrain()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            _invocationAdmissionEnabled = false;
+            _scaleInReady = false;
+            _scaleInReservationId = null;
+            _draining = true;
+            CompleteDrainIfReadyLocked();
+            return _drainCompletion.Task;
+        }
+    }
+
+    internal Task<long> WaitForHostCapacityChangeAsync(
+        long version,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_invocationAdmissionLock)
+        {
+            if (_hostCapacityVersion != version)
+            {
+                return Task.FromResult(_hostCapacityVersion);
+            }
+
+            return _hostCapacityChanged.Task.WaitAsync(cancellationToken);
         }
     }
 
@@ -337,7 +384,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             {
                 _scaleInReady = false;
                 _scaleInReservationId = null;
-                _idleSinceTimestamp = null;
             }
             else
             {
@@ -363,25 +409,19 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             _scaleInFunctionLoadsTracked = true;
             _scaleInReady = false;
             _scaleInReservationId = null;
-            _idleSinceTimestamp = null;
         }
     }
 
-    internal bool TryReserveIdleScaleIn(TimeSpan minimumIdleDuration, out Guid reservationId)
+    internal bool TryReserveScaleIn(out Guid reservationId)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(minimumIdleDuration, TimeSpan.Zero);
-
         lock (_invocationAdmissionLock)
         {
-            long now = _timeProvider.GetTimestamp();
             if (!IsHttpFunctionGroup ||
                 _isAlwaysReady is not false ||
                 _maxHttpConcurrency is not > 0 ||
                 !_scaleInReady ||
                 !CanAdmitInvocationLocked() ||
-                _committedInvocations.Count != 0 ||
-                _idleSinceTimestamp is not { } idleSince ||
-                _timeProvider.GetElapsedTime(idleSince, now) < minimumIdleDuration)
+                _committedInvocations.Count != 0)
             {
                 reservationId = default;
                 return false;
@@ -418,17 +458,24 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
-            _functionGroupName = GetWorkerCapabilityState(FunctionGroupNameCapability);
-            string isAlwaysReady = GetWorkerCapabilityState(IsAlwaysReadyCapability);
-            _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
-                ? parsedIsAlwaysReady
-                : null;
-            string maxHttpConcurrency = GetWorkerCapabilityState(MaxHttpConcurrencyCapability);
-            _maxHttpConcurrency =
-                int.TryParse(maxHttpConcurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int parsedMaxHttpConcurrency) &&
-                parsedMaxHttpConcurrency > 0
-                    ? parsedMaxHttpConcurrency
+            bool trustedAssignmentMetadata = string.Equals(
+                GetWorkerCapabilityState(WorkerAssignmentMetadataVersionCapability),
+                WorkerAssignmentMetadataVersion,
+                StringComparison.Ordinal);
+            if (trustedAssignmentMetadata)
+            {
+                _functionGroupName = GetWorkerCapabilityState(FunctionGroupNameCapability);
+                string isAlwaysReady = GetWorkerCapabilityState(IsAlwaysReadyCapability);
+                _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
+                    ? parsedIsAlwaysReady
                     : null;
+                string maxHttpConcurrency = GetWorkerCapabilityState(MaxHttpConcurrencyCapability);
+                _maxHttpConcurrency =
+                    int.TryParse(maxHttpConcurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int parsedMaxHttpConcurrency) &&
+                    parsedMaxHttpConcurrency > 0
+                        ? parsedMaxHttpConcurrency
+                        : null;
+            }
 
             _startCompletion.TrySetResult();
         }
@@ -481,40 +528,32 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 ReferenceEquals(current, permit))
             {
                 _committedInvocations.Remove(invocationId);
-                if (_committedInvocations.Count == 0 &&
-                    _scaleInReady &&
-                    !_draining &&
-                    _scaleInReservationId is null &&
-                    !_terminalAdmissionClosed)
-                {
-                    _idleSinceTimestamp ??= _timeProvider.GetTimestamp();
-                }
-
                 CompleteDrainIfReadyLocked();
             }
         }
     }
 
-    private void UpdateScaleInReadinessLocked()
+    private bool UpdateScaleInReadinessLocked()
     {
         bool ready = _invocationAdmissionEnabled &&
             (!_scaleInFunctionLoadsTracked ||
                 (!_scaleInFunctionLoadFailed && _pendingScaleInFunctionLoads.Count == 0));
+        bool changed = _scaleInReady != ready;
         _scaleInReady = ready;
         if (!ready)
         {
             _scaleInReservationId = null;
-            _idleSinceTimestamp = null;
-            return;
         }
 
-        if (_committedInvocations.Count == 0 &&
-            !_draining &&
-            _scaleInReservationId is null &&
-            !_terminalAdmissionClosed)
-        {
-            _idleSinceTimestamp ??= _timeProvider.GetTimestamp();
-        }
+        return changed;
+    }
+
+    private void SignalHostCapacityChangedLocked()
+    {
+        long version = ++_hostCapacityVersion;
+        TaskCompletionSource<long> changed = _hostCapacityChanged;
+        _hostCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult(version);
     }
 
     private sealed class InvocationPermit : IDisposable

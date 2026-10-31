@@ -30,6 +30,8 @@ internal sealed partial class FunctionRpcRelay
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private const string IsAlwaysReadyCapability = "IsAlwaysReady";
         private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+        private const string WorkerAssignmentMetadataVersionCapability = "WorkerAssignmentMetadataVersion";
+        private const string WorkerAssignmentMetadataVersion = "1";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
@@ -314,11 +316,13 @@ internal sealed partial class FunctionRpcRelay
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(IsAlwaysReadyCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
+            capabilities.Remove(WorkerAssignmentMetadataVersionCapability);
 
             WorkerPodState state = stateManager.State;
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {
+                capabilities[WorkerAssignmentMetadataVersionCapability] = WorkerAssignmentMetadataVersion;
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
                 if (state.IsAlwaysReady is { } isAlwaysReady)
                 {

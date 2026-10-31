@@ -20,6 +20,8 @@ public partial class FunctionRpcRelayTests
     private const string FunctionGroupNameCapability = "FunctionGroupName";
     private const string IsAlwaysReadyCapability = "IsAlwaysReady";
     private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+    private const string WorkerAssignmentMetadataVersionCapability = "WorkerAssignmentMetadataVersion";
+    private const string WorkerAssignmentMetadataVersion = "1";
 
     [Theory]
     [InlineData(true)]
@@ -209,6 +211,8 @@ public partial class FunctionRpcRelayTests
         StreamingMessage expected = CreateInitResponse("init", null);
         if (expectedAdvertisedGroup is not null)
         {
+            expected.WorkerInitResponse.Capabilities[WorkerAssignmentMetadataVersionCapability] =
+                WorkerAssignmentMetadataVersion;
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
         }
 
@@ -244,6 +248,8 @@ public partial class FunctionRpcRelayTests
         StreamingMessage repeated = CreateInitResponse("repeated-init", null);
         repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
         StreamingMessage expected = repeated.Clone();
+        expected.WorkerInitResponse.Capabilities[WorkerAssignmentMetadataVersionCapability] =
+            WorkerAssignmentMetadataVersion;
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
         expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = assignment.IsAlwaysReady.ToString();
 
