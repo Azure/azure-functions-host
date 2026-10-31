@@ -367,7 +367,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.FunctionGroup, terminated.FunctionGroup);
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
-        Assert.Equal(SplitWorkerStatus.Starting, terminated.Status);
+        Assert.Equal(SplitWorkerStatus.RemovalRequested, terminated.Status);
         Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), terminated.Link);
         Assert.True(terminated.IsUnhealthy);
     }

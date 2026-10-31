@@ -134,6 +134,12 @@ internal sealed partial class FunctionRpcRelay(
                     "The FunctionRpc relay is shutting down or the worker pod has requested removal.");
             }
 
+            if (_stateManager.State.RemovalRequested)
+            {
+                throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
+                    "The worker pod is no longer accepting FunctionRpc streams.");
+            }
+
             if (_currentSession?.IsTerminalAndReleased == true)
             {
                 ClearCurrentSessionLocked();
@@ -171,6 +177,8 @@ internal sealed partial class FunctionRpcRelay(
     /// <returns>A task that completes when the active session has been cleared.</returns>
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        _stateManager.OnApplicationStopping();
+
         FunctionRpcRelaySession? session = null;
         bool initiateStop = false;
 

@@ -223,50 +223,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(4, manager.State.Revision);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_ReplacementReadinessRespectsTerminalAssignment(bool assigned)
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerAssignment assignment = CreateWorkerAssignment();
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "original", timeout.Token);
-        Assert.True(manager.State.IsWorkerReady);
-
-        if (assigned)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-
-        await worker.CompleteRequestAsync(timeout.Token);
-        await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
-        await WaitForReleaseAsync(relay, timeout.Token);
-        WorkerPodState terminated = manager.State;
-        Assert.False(terminated.IsWorkerReady);
-
-        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
-
-        if (assigned)
-        {
-            Assert.Same(terminated, manager.State);
-            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
-        }
-        else
-        {
-            Assert.True(manager.State.IsWorkerReady);
-            Assert.True(manager.State.SessionId > terminated.SessionId);
-            Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-    }
-
     [Fact]
     public async Task Relay_RuntimeOnlyTerminationRequestsRemovalAndRejectsNextWorkerSession()
     {
