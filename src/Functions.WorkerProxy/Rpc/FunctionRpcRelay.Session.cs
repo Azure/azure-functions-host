@@ -41,6 +41,7 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+        private int _shutdownRequested;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -197,10 +198,19 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
+        /// Marks application shutdown before host cancellation can race with terminal classification.
+        /// </summary>
+        public void MarkShutdownRequested()
+        {
+            Interlocked.Exchange(ref _shutdownRequested, 1);
+        }
+
+        /// <summary>
         /// Records application shutdown as the terminal state for this session.
         /// </summary>
         public void RequestShutdown()
         {
+            MarkShutdownRequested();
             TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
@@ -380,9 +390,22 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
-                _terminalState = terminalState;
+                bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
+                    terminalState.Side == FunctionRpcRelaySide.Runtime &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                if (runtimePeerTerminated)
+                {
+                    stateManager.RequestRemoval();
+                }
+                else
+                {
+                    stateManager.OnSessionTerminated(id);
+                }
+
+                _terminalState = terminalState;
                 _completion.SetResult(terminalState);
             }
 

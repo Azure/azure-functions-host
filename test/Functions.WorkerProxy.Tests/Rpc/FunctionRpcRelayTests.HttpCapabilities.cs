@@ -242,46 +242,6 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("http://localhost:5678")]
-    public async Task Relay_ReplacementSession_DoesNotReusePreviousDestination(string? replacementEndpoint)
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory("http://worker-pod:28080/");
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-
-        await using (RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
-        await using (RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
-        {
-            await ExchangeAsync(runtime, worker, "first", timeout.Token);
-            StreamingMessage first = CreateInitResponse("first-init", "http://localhost:1234");
-            first.WorkerInitResponse.Capabilities["original-only"] = "true";
-            await worker.WriteAsync(first, timeout.Token);
-            await runtime.ReadAsync(timeout.Token);
-            Assert.Equal(new Uri("http://localhost:1234"), relay.WorkerHttpDestination);
-            await runtime.CompleteRequestAsync(timeout.Token);
-            await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
-        }
-
-        await WaitForReleaseAsync(relay, timeout.Token);
-        Assert.Null(relay.WorkerHttpDestination);
-        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
-        Assert.Null(relay.WorkerHttpDestination);
-
-        StreamingMessage replacement = CreateInitResponse("replacement-init", replacementEndpoint);
-        replacement.WorkerInitResponse.Capabilities["replacement-only"] = "true";
-        await replacementWorker.WriteAsync(replacement, timeout.Token);
-        StreamingMessage response = await replacementRuntime.ReadAsync(timeout.Token);
-
-        Assert.Equal(replacementEndpoint is null ? null : new Uri(replacementEndpoint), relay.WorkerHttpDestination);
-        Assert.Equal(replacementEndpoint is not null, response.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
-        Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("original-only"));
-        Assert.Equal("true", response.WorkerInitResponse.Capabilities["replacement-only"]);
-    }
-
     [Fact]
     public async Task Relay_TerminalSession_MakesHttpUnavailableBeforeAttachmentsRelease()
     {
