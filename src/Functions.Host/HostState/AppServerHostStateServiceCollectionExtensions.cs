@@ -20,6 +20,7 @@ internal static class AppServerHostStateServiceCollectionExtensions
             client => client.Timeout = RequestTimeout);
         services.AddSingleton<HostStatePublicationCoordinator>();
         services.AddSingleton<IHostedService, HttpOnDemandWorkerScaleInService>();
+        services.AddSingleton<IHostedService, ByocRuntimeDrainHostStateObserver>();
 
         return services;
     }
