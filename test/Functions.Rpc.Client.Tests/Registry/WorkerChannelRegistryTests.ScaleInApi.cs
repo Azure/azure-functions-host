@@ -38,14 +38,14 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed partial class WorkerChannelRegistryTests
 {
     [Fact]
-    public async Task PostScaleIn_AbsoluteRetainedCount_ReturnsNewDrainCountAndRepeatIsNoOp()
+    public async Task PostScaleIn_AbsoluteRetainedCount_SelectsLowestWorkerIdAndRepeatIsNoOp()
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("DurableFunction");
-        ChannelControl oldest = CreateClassifiedWorker("oldest");
-        ChannelControl newest = CreateClassifiedWorker("newest");
-        await LinkAndReadyWorkersAsync(harness, registry, function, oldest, newest);
+        ChannelControl higherId = CreateClassifiedWorker("worker-z");
+        ChannelControl lowerId = CreateClassifiedWorker("worker-a");
+        await LinkAndReadyWorkersAsync(harness, registry, function, higherId, lowerId);
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
 
         using HttpResponseMessage retained = await host.PostAsync(
@@ -58,9 +58,9 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(0, await ReadNewlyDrainingWorkerCountAsync(retained));
         Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(reduced));
         Assert.Equal(0, await ReadNewlyDrainingWorkerCountAsync(repeated));
-        await oldest.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        Assert.Equal(0, newest.DisposeCount);
-        Assert.Same(newest.Channel, Assert.Single(registry.GetInitializedChannels()));
+        await lowerId.Transport.DisposeStarted.WaitAsync(TestTimeout);
+        Assert.Equal(0, higherId.DisposeCount);
+        Assert.Same(higherId.Channel, Assert.Single(registry.GetInitializedChannels()));
     }
 
     [Fact]
@@ -118,103 +118,81 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task PostScaleIn_SelectionUsesIdleThenOldestOrderAndBusyFallback()
+    public async Task PostScaleIn_SelectedBusyWorkerWithdrawsIntakeAndClosesAfterCommittedWork()
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("DurableFunction");
-        ChannelControl oldestIdle = CreateClassifiedWorker("oldest-idle");
-        ChannelControl secondIdle = CreateClassifiedWorker("second-idle");
-        ChannelControl newestIdle = CreateClassifiedWorker("newest-idle");
-        ChannelControl oldestBusy = CreateClassifiedWorker("oldest-busy");
-        ChannelControl newestBusy = CreateClassifiedWorker("newest-busy");
-        ChannelControl[] workers = [oldestIdle, secondIdle, newestIdle, oldestBusy, newestBusy];
-        await LinkAndReadyWorkersAsync(harness, registry, function, workers);
-        IReadOnlyList<WorkerChannel> staleReadyChannels = await registry.GetReadyChannelsAsync();
+        ChannelControl retained = CreateClassifiedWorker("worker-z");
+        ChannelControl selected = CreateClassifiedWorker("worker-a");
+        await LinkAndReadyWorkersAsync(harness, registry, function, retained, selected);
 
-        ScriptInvocationContext oldestBusyInvocation = CreateScaleInInvocation(function);
-        ScriptInvocationContext newestBusyInvocation = CreateScaleInInvocation(function);
-        Assert.True(oldestBusy.Channel.TryDispatchInvocation(oldestBusyInvocation));
-        Assert.True(newestBusy.Channel.TryDispatchInvocation(newestBusyInvocation));
-        StreamingMessage oldestBusyRequest =
-            await oldestBusy.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        await newestBusy.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        ScriptInvocationContext committed = CreateScaleInInvocation(function);
+        Assert.True(selected.Channel.TryDispatchInvocation(committed));
+        StreamingMessage request = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
-        using HttpResponseMessage idleOnly = await host.PostAsync(
-            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":3}""");
-        Assert.Equal(2, await ReadNewlyDrainingWorkerCountAsync(idleOnly));
-        await oldestIdle.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        await secondIdle.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        Assert.Equal(0, newestIdle.DisposeCount);
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":1}""");
+
+        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
+        Assert.False(committed.ResultSource.Task.IsCompleted);
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+        Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
+        Assert.True(retained.Channel.IsReadyForInvocations);
+
+        await selected.Transport.SendResponseAsync(new()
+        {
+            InvocationResponse = new()
+            {
+                InvocationId = request.InvocationRequest.InvocationId,
+                Result = new()
+                {
+                    Status = StatusResult.Types.Status.Failure,
+                    Exception = new()
+                    {
+                        Message = "Invocation failed.",
+                    },
+                },
+            },
+        });
+        await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
+            () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task PostScaleIn_ScaleInWinsStaleSnapshotRaceAndDispatcherUsesRetainedWorker()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        ChannelControl selected = CreateClassifiedWorker("worker-a");
+        ChannelControl retained = CreateClassifiedWorker("worker-z");
+        await LinkAndReadyWorkersAsync(harness, registry, function, selected, retained);
+        IReadOnlyList<WorkerChannel> staleReadyChannels = await registry.GetReadyChannelsAsync();
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
+
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":1}""");
+
+        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
 
         Mock<IWorkerChannelRegistry> staleRegistry = new(MockBehavior.Strict);
         staleRegistry
             .Setup(registry => registry.GetReadyChannelsAsync())
             .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>(staleReadyChannels));
-        using (RpcClientFunctionInvocationDispatcher dispatcher = new(
+        using RpcClientFunctionInvocationDispatcher dispatcher = new(
             staleRegistry.Object,
-            NullLogger<RpcClientFunctionInvocationDispatcher>.Instance))
-        {
-            await dispatcher.InitializeAsync([function]);
-            ScriptInvocationContext fallbackInvocation = CreateScaleInInvocation(function);
-            await dispatcher.InvokeAsync(fallbackInvocation);
-            StreamingMessage fallbackRequest =
-                await newestIdle.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-            await newestIdle.Transport.SendResponseAsync(new()
-            {
-                InvocationResponse = new()
-                {
-                    InvocationId = fallbackRequest.InvocationRequest.InvocationId,
-                    Result = new() { Status = StatusResult.Types.Status.Success },
-                },
-            });
-            await fallbackInvocation.ResultSource.Task.WaitAsync(TestTimeout);
-        }
+            NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
 
-        using HttpResponseMessage withBusyFallback = await host.PostAsync(
-            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":1}""");
-        Assert.Equal(2, await ReadNewlyDrainingWorkerCountAsync(withBusyFallback));
-        await newestIdle.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        Assert.False(oldestBusy.Transport.DisposeStarted.IsCompleted);
-        Assert.Equal(0, newestBusy.DisposeCount);
-        Assert.True(newestBusy.Channel.IsReadyForInvocations);
+        await dispatcher.InvokeAsync(invocation);
 
-        await oldestBusy.Transport.SendResponseAsync(new()
-        {
-            InvocationResponse = new()
-            {
-                InvocationId = oldestBusyRequest.InvocationRequest.InvocationId,
-                Result = new() { Status = StatusResult.Types.Status.Success },
-            },
-        });
-        await oldestBusyInvocation.ResultSource.Task.WaitAsync(TestTimeout);
-        await oldestBusy.Transport.DisposeStarted.WaitAsync(TestTimeout);
-    }
-
-    [Fact]
-    public async Task PostScaleIn_WithdrawsIntakeBeforeResponseAndClosesLinkAfterDrain()
-    {
-        RegistryHarness harness = new();
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateFunction("DurableFunction");
-        ChannelControl worker = CreateClassifiedWorker("worker");
-        await LinkAndReadyWorkersAsync(harness, registry, function, worker);
-
-        ScriptInvocationContext committed = CreateScaleInInvocation(function);
-        Assert.True(worker.Channel.TryDispatchInvocation(committed));
-        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
-
-        using HttpResponseMessage response = await host.PostAsync(
-            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
-
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
-        Assert.False(committed.ResultSource.Task.IsCompleted);
-        Assert.False(worker.Transport.DisposeStarted.IsCompleted);
-        Assert.False(worker.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
-
-        await worker.Transport.SendResponseAsync(new()
+        StreamingMessage request = await retained.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await retained.Transport.SendResponseAsync(new()
         {
             InvocationResponse = new()
             {
@@ -222,15 +200,16 @@ public sealed partial class WorkerChannelRegistryTests
                 Result = new() { Status = StatusResult.Types.Status.Success },
             },
         });
-        await committed.ResultSource.Task.WaitAsync(TestTimeout);
-        await worker.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        await WaitUntilAsync(() => !registry.TryGetInitializedChannel(worker.Id, out _));
+        await invocation.ResultSource.Task.WaitAsync(TestTimeout);
+        Assert.False(selected.Transport.Requests.TryRead(out _));
     }
 
     [Theory]
     [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""", false, HttpStatusCode.Unauthorized, null)]
     [InlineData("""{"functionGroup":"http","isAlwaysReady":false,"desiredWorkerCount":0}""", true, HttpStatusCode.BadRequest, "functionGroup")]
     [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":-1}""", true, HttpStatusCode.BadRequest, "desiredWorkerCount")]
+    [InlineData("""{"isAlwaysReady":false,"desiredWorkerCount":0}""", true, HttpStatusCode.BadRequest, "functionGroup")]
+    [InlineData("""{"functionGroup":"durable","desiredWorkerCount":0}""", true, HttpStatusCode.BadRequest, "isAlwaysReady")]
     [InlineData("""{"functionGroup":"durable","isAlwaysReady":false}""", true, HttpStatusCode.BadRequest, "desiredWorkerCount")]
     [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":"invalid"}""", true, HttpStatusCode.BadRequest, "request")]
     public async Task PostScaleIn_InvalidHttpAndAuthenticationFailuresFailClosed(
