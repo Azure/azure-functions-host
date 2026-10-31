@@ -74,7 +74,7 @@ public sealed partial class WorkerChannelRegistryTests
             "starting",
             blockStart: true,
             functionGroupName: FunctionGroups.Durable,
-            isAlwaysReady: false);
+            isAlwaysReady: bool.FalseString);
         await LinkAndReadyWorkersAsync(
             harness,
             registry,
@@ -91,7 +91,7 @@ public sealed partial class WorkerChannelRegistryTests
             "readiness-pending",
             setupFailureCount: 1,
             functionGroupName: FunctionGroups.Durable,
-            isAlwaysReady: false);
+            isAlwaysReady: bool.FalseString);
         harness.Enqueue(readinessPending);
         await LinkAsync(registry, readinessPending.Id);
         await readinessPending.SetupEntered.WaitAsync(TestTimeout);
@@ -178,7 +178,7 @@ public sealed partial class WorkerChannelRegistryTests
         string id,
         string functionGroup = FunctionGroups.Durable,
         bool isAlwaysReady = false)
-        => new(id, functionGroupName: functionGroup, isAlwaysReady: isAlwaysReady);
+        => new(id, functionGroupName: functionGroup, isAlwaysReady: isAlwaysReady.ToString());
 
     private static async Task LinkAndReadyWorkersAsync(
         RegistryHarness harness,

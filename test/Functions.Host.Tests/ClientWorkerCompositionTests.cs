@@ -71,7 +71,7 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.FunctionRpcDuplexChannelFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IRpcClientWorkerChannelFactory",
             "Azure.Functions.Rpc.Client.RpcClientWorkerChannelFactory");
-        AssertSingleton(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry",
+        AssertSingleton(services, "Azure.Functions.Rpc.Client.WorkerChannelRegistry",
             "Azure.Functions.Rpc.Client.WorkerChannelRegistry");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IWorkerFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");

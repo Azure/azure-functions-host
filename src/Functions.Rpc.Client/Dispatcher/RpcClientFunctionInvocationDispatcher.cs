@@ -171,9 +171,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         List<Task> drainTasks = [];
         foreach (WorkerChannel channel in _channelRegistry.GetInitializedChannels())
         {
-            if (IsReadyForInvocations(channel))
+            if (channel is RpcClientWorkerChannel clientChannel)
             {
-                drainTasks.Add(channel.DrainInvocationsAsync());
+                drainTasks.Add(Task.WhenAll(
+                    clientChannel.BeginShutdownDrain(),
+                    channel.DrainInvocationsAsync()));
             }
         }
 
@@ -250,8 +252,6 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new TimeoutException($"No client-backed worker channel became ready within {_channelWaitTimeout}.");
         }
     }
-
-    private static bool IsReadyForInvocations(WorkerChannel channel) => channel is RpcClientWorkerChannel { IsReadyForInvocations: true };
 
     private static partial class Log
     {

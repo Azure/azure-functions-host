@@ -353,7 +353,8 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                MaxHttpConcurrency = assignment.MaxHttpConcurrency
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
