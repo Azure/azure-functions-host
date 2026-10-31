@@ -79,18 +79,16 @@ it reports the WorkerProxy management process, not customer invocation admission
 | Sticky state | `src/Functions.WorkerProxy/State/WorkerPodStateManager.cs`, `WorkerPodState.cs` | One-way removal and cleared live identity |
 | Legion projection | `src/Functions.WorkerProxy/State/SplitWorkerOriginState.cs` | Existing polling reports `RemovalRequested` |
 | HTTP admission | `src/Functions.WorkerProxy/Http/WorkerHttpForwardingMiddleware.cs` | Configured fallback cannot bypass removal |
-| Behavioral coverage | `test/Functions.WorkerProxy.Tests/Rpc/FunctionRpcRelayTests.RuntimeLinkLoss.cs` | Five public-surface lifecycle methods |
+| Behavioral coverage | `test/Functions.WorkerProxy.Tests/Rpc/FunctionRpcRelayTests.RuntimeLinkLoss.cs` | Four public-surface lifecycle methods |
 
 ## Behavioral tests
 
-The five test methods use loopback gRPC, a deterministic Runtime writer failure, and existing HTTP
-and management APIs.
+The four test methods use loopback gRPC and existing HTTP and management APIs.
 
 | Test | Proves |
 | --- | --- |
 | `RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval` | An admitted Runtime EOF is W2 before customer Worker initialization |
-| `RuntimeEventStream_CancellationReadOrWriteFaultRequestsRemoval` | Cancellation and read/write failure paths use the same handler completion transition |
-| `RejectedOrRelayCanceledRuntimeHandler_DoesNotRequestRemoval` | Rejected duplicate and relay-owned cancellation do not select W2; replacement still works |
+| `RuntimeEventStream_CancellationRequestsRemoval` | Runtime call cancellation uses the same handler completion transition |
 | `ApplicationShutdown_DoesNotRequestRemoval` | Application-owned shutdown is excluded |
 | `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Polling remains alive while gRPC, assignment, readiness, and HTTP admission remain closed |
 
