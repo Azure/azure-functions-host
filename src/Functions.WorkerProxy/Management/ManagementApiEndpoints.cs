@@ -6,7 +6,6 @@ using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
@@ -27,9 +26,7 @@ internal static class ManagementApiEndpoints
         endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
         endpoints.MapPut("/admin/worker/assignment",
-            (HttpRequest httpRequest, WorkerAssignRequest request, WorkerPodStateManager manager, IOptions<WorkerProxyOptions> options) =>
-                ManagementApiHandlers.AssignWorker(httpRequest, request, manager, options))
-            .AddEndpointFilter(DisableResponseCaching)
+            (WorkerAssignRequest request, WorkerPodStateManager manager) => ManagementApiHandlers.AssignWorker(request, manager))
             .AllowAnonymous();
         endpoints.MapGet("/admin/worker/state", ManagementApiHandlers.GetWorkerStateAsync)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();

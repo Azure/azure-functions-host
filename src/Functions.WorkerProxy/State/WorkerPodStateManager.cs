@@ -229,7 +229,7 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Records or replays assignment atomically with worker readiness and terminal state.
     /// </summary>
-    public WorkerAssignmentResult Assign(WorkerAssignment assignment, bool scaleInMetadataAuthenticated = false)
+    public WorkerAssignmentResult Assign(WorkerAssignment assignment)
     {
         ArgumentNullException.ThrowIfNull(assignment);
 
@@ -262,8 +262,7 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady,
-                MaxHttpConcurrency = assignment.MaxHttpConcurrency,
-                IsScaleInMetadataAuthenticated = scaleInMetadataAuthenticated
+                MaxHttpConcurrency = assignment.MaxHttpConcurrency
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

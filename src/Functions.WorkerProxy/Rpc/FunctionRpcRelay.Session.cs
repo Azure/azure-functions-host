@@ -306,8 +306,8 @@ internal sealed partial class FunctionRpcRelay
         /// </summary>
         /// <remarks>
         /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
-        /// The platform assigns the worker before the runtime initializes it. Autonomous scale-in metadata is relayed
-        /// only from an authenticated assignment; otherwise it is omitted so the runtime fails closed.
+        /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
+        /// the capabilities are omitted so the runtime never receives unassigned or stale scale-in metadata.
         /// </remarks>
         private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities)
         {
@@ -320,14 +320,12 @@ internal sealed partial class FunctionRpcRelay
                 && state.SessionId == id)
             {
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
-                if (state.IsScaleInMetadataAuthenticated &&
-                    state.IsAlwaysReady is { } isAlwaysReady)
+                if (state.IsAlwaysReady is { } isAlwaysReady)
                 {
                     capabilities[IsAlwaysReadyCapability] = isAlwaysReady.ToString();
                 }
 
-                if (state.IsScaleInMetadataAuthenticated &&
-                    state.MaxHttpConcurrency is > 0 and { } maxHttpConcurrency)
+                if (state.MaxHttpConcurrency is > 0 and { } maxHttpConcurrency)
                 {
                     capabilities[MaxHttpConcurrencyCapability] =
                         maxHttpConcurrency.ToString(CultureInfo.InvariantCulture);

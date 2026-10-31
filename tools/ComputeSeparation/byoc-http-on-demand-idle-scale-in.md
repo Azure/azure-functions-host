@@ -6,7 +6,7 @@ The split Functions Host can link more HTTP Workers than current Frontend alloca
 
 This change adds the smallest Host-side R2 flow:
 
-- WorkerProxy authenticates the platform assignment and relays trusted metadata to the Host.
+- WorkerProxy relays trusted Legion assignment metadata to the Host.
 - The Host measures continuous idle time with a monotonic clock.
 - Once per minute, the Host may select one eligible Worker that has been idle for ten minutes.
 - The Host first reserves that exact Worker locally.
@@ -19,7 +19,7 @@ The implementation does not delete a Runtime, kill a customer process, or add a 
 
 | Area | Before | After |
 |---|---|---|
-| Worker assignment metadata | Host receives assignment-owned `FunctionGroupName` only | Host also receives `IsAlwaysReady` and optional positive `MaxHttpConcurrency`, but only from an authenticated assignment |
+| Worker assignment metadata | Host receives trusted `FunctionGroupName` only | Host also receives trusted `IsAlwaysReady` and optional positive `MaxHttpConcurrency` |
 | Idle tracking | No autonomous idle interval | Each ready channel tracks a continuous monotonic idle interval |
 | Invocation race | Ready-channel selection and posting are separate from scale-in | Invocation admission and exact Worker reservation use the same channel lock |
 | Capacity safety | No R2 capacity transaction | Host publishes current capacity, then requires explicit acknowledgement of projected lower capacity |
@@ -30,8 +30,8 @@ The implementation does not delete a Runtime, kill a customer process, or add a 
 
 | Component | Owns | Does not own |
 |---|---|---|
-| Platform assignment producer | Supplies `IsAlwaysReady`, authoritative `MaxHttpConcurrency`, and the assignment authentication header | Host admission or AppServer allocation decisions |
-| WorkerProxy | Authenticates assignment, removes worker-supplied values, and publishes assignment-owned capabilities | Choosing an idle Worker or calculating aggregate Host capacity |
+| Legion assignment producer | Supplies `IsAlwaysReady` and authoritative `MaxHttpConcurrency` | Host admission or AppServer allocation decisions |
+| WorkerProxy | Removes worker-supplied values and publishes Legion assignment-owned capabilities | Choosing an idle Worker or calculating aggregate Host capacity |
 | Functions Host channel | Invocation admission, committed-work permits, monotonic idle interval, reversible reservation | Frontend slot allocations |
 | Functions Host registry | Aggregate usable HTTP capacity, Host-local version, exact reservation commit, graceful unlink | Runtime deletion or customer-process termination |
 | Functions Host R2 service | One-minute checks and two-phase capacity-fence orchestration | AppServer slot-ledger mutation |
@@ -41,7 +41,7 @@ The implementation does not delete a Runtime, kill a customer process, or add a 
 
 ## Trusted metadata
 
-WorkerProxy treats the following FunctionRpc capabilities as platform-owned only after assignment authentication succeeds:
+WorkerProxy treats the following FunctionRpc capabilities as platform-owned:
 
 | Capability | Source | Host use |
 |---|---|---|
@@ -49,30 +49,16 @@ WorkerProxy treats the following FunctionRpc capabilities as platform-owned only
 | `IsAlwaysReady` | Existing assignment/prelaunch state | Only explicit `false` is eligible |
 | `MaxHttpConcurrency` | New optional assignment receiver field | Authoritative per-Worker contribution to Host HTTP capacity |
 
-WorkerProxy removes conflicting worker-supplied values before adding assignment-owned values. It follows the existing `FunctionGroupName` assignment boundary rather than trusting FunctionRpc capabilities sent by the customer Worker.
+WorkerProxy removes conflicting worker-supplied values before adding Legion assignment-owned values. It follows the existing trusted `FunctionGroupName` boundary rather than trusting customer Worker capabilities.
 
-The narrow authentication contract is:
-
-- WorkerProxy configuration: `WorkerProxy:AssignmentAuthenticationToken`
-- Assignment request header: `x-ms-functions-worker-assignment-token`
-- Missing or incorrect header when a token is configured: HTTP 401 and no assignment state change
-- Missing WorkerProxy token configuration: preserve ordinary assignment, but do not relay `IsAlwaysReady` or `MaxHttpConcurrency`
-- Valid header: accept assignment and mark its R2 metadata trusted for the current WorkerProxy process
-
-The token comparison uses fixed-time comparison of SHA-256 digests. The token is not included in assignment JSON, pod state, FunctionRpc capabilities, or diagnostic output.
-
-Missing authentication or missing/invalid metadata does not break ordinary assignment, linking, initialization, or invocation. It only makes the Worker ineligible for autonomous R2. The Host does not infer a default and does not use a hard-coded concurrency value.
+Missing or invalid values do not break assignment, linking, initialization, or invocation. They only make the Worker ineligible for autonomous R2. The Host does not infer a default and does not use a hard-coded concurrency value.
 
 ```mermaid
 flowchart LR
-    P[Platform assignment producer] -->|Assignment + authentication header| AU{Token matches configured secret?}
-    AU -->|No| U[401; assignment state unchanged]
-    AU -->|Yes| WP[Authenticated WorkerProxy assignment state]
-    AU -->|No token configured| C[Accept assignment for compatibility; R2 metadata untrusted]
+    P[Legion assignment producer] -->|IsAlwaysReady + MaxHttpConcurrency| WP[WorkerProxy assignment state]
     CW[Customer Worker capabilities] -->|may contain spoofed values| WP
-    C --> R
     WP --> R[Remove FunctionGroupName / IsAlwaysReady / MaxHttpConcurrency]
-    R --> A[Add FunctionGroupName; add R2 metadata only when assignment authenticated]
+    R --> A[Add live assignment-owned values]
     A --> H[Functions Host WorkerInitResponse]
     H --> E{All trusted R2 metadata valid?}
     E -->|Yes| C[Worker may become an R2 candidate]
@@ -84,14 +70,13 @@ flowchart LR
 A Worker is eligible only when every condition below is true:
 
 1. `FunctionGroupName` is trusted HTTP classification.
-2. The assignment that supplied the R2 metadata was authenticated by WorkerProxy.
-3. `IsAlwaysReady` is explicitly `false`.
-4. `MaxHttpConcurrency` is a trusted positive integer.
-5. The Worker is initialized and every expected function-load response for the active ScriptHost setup has completed successfully.
-6. It has no committed invocation.
-7. It has been continuously idle for at least ten monotonic minutes.
-8. It is not already reserved, draining, terminal, or excluded from invocation admission.
-9. The Host is not stopping.
+2. `IsAlwaysReady` is explicitly `false`.
+3. `MaxHttpConcurrency` is a trusted positive integer.
+4. The Worker is initialized and every expected function-load response for the active ScriptHost setup has completed successfully.
+5. It has no committed invocation.
+6. It has been continuously idle for at least ten monotonic minutes.
+7. It is not already reserved, draining, terminal, or excluded from invocation admission.
+8. The Host is not stopping.
 
 The check runs every minute and handles at most one Worker per pass.
 
@@ -99,9 +84,7 @@ The check runs every minute and handles at most one Worker per pass.
 flowchart TD
     S[Worker snapshot] --> H{Trusted HTTP?}
     H -->|No| K[Retain]
-    H -->|Yes| T{Assignment-authenticated R2 metadata?}
-    T -->|No| K
-    T -->|Yes| A{IsAlwaysReady explicitly false?}
+    H -->|Yes| A{IsAlwaysReady explicitly false?}
     A -->|No or missing| K
     A -->|Yes| M{Positive trusted MaxHttpConcurrency?}
     M -->|No| K
@@ -158,6 +141,7 @@ A reservation winner:
 4. disappears from ready-channel selection and usable HTTP capacity.
 
 There is no state where the same Worker is both newly reserved and newly assigned the racing invocation.
+Disabling admission during replacement setup does not discard committed work; Host shutdown drains every initialized client channel.
 
 ```mermaid
 sequenceDiagram
@@ -283,9 +267,9 @@ The Host must not treat a generic 2xx response as fence success.
 | Rejection, timeout, cancellation, or publication exception | Cancel reservation and retain Worker |
 | Host-local version/state changed after publication | Reject commit and retain Worker |
 | Exact reservation no longer exists | Reject commit |
+| Replacement setup disables admission | Keep draining already committed invocations during Host shutdown |
 | Graceful peer close times out | Log incomplete drain; do not kill the process |
 | Pending or failed function loading | Contribute no R2 capacity and retain Worker |
-| Missing/invalid assignment authentication | Keep ordinary assignment/invocation compatibility, but omit R2 metadata |
 | Missing/invalid trusted metadata | Keep Worker eligible for ordinary invocation, but not R2 |
 | Host stopping | Do not begin or commit a new R2 drain |
 
@@ -305,24 +289,21 @@ flowchart TD
 ## Assumptions
 
 1. `MaxHttpConcurrency` is assigned by the platform and represents the protected per-Worker HTTP concurrency limit used for Frontend capacity decisions.
-2. The platform injects `WorkerProxy:AssignmentAuthenticationToken` only into WorkerProxy and sends the matching header on assignment without exposing the token to the customer Worker.
-3. WorkerProxy receives authenticated assignment before forwarding the successful Worker initialization response.
-4. Host application stopping is the available retirement signal on this independent foundation; the hosted service checks it before reservation and before commit.
-5. Completing the Runtime-facing FunctionRpc request stream is the correct graceful unlink signal.
-6. WorkerProxy W2 observes the closed link and performs its existing cleanup.
-7. Ordinary R1 observes an empty Runtime later and owns Runtime-empty cleanup.
+2. WorkerProxy receives Legion assignment before forwarding the successful Worker initialization response.
+3. Host application stopping is the available retirement signal on this independent foundation; the hosted service checks it before reservation and before commit.
+4. Completing the Runtime-facing FunctionRpc request stream is the correct graceful unlink signal.
+5. WorkerProxy W2 observes the closed link and performs its existing cleanup.
+6. Ordinary R1 observes an empty Runtime later and owns Runtime-empty cleanup.
 
 ## Known limitations and deployment companions
 
 1. **AppServer companion is required.** Until AppServer implements the atomic slot-ledger comparison and explicit acknowledgement contract, the Host fails closed and retains Workers.
-2. **Platform assignment producer is required.** The producer outside this repository must populate optional `maxHttpConcurrency` with the authoritative value, configure the WorkerProxy assignment token, and send the matching header. Missing authentication or nonpositive capacity disables R2 for that Worker.
-3. **Token distribution is external.** This repository receives and verifies the token but does not provision, rotate, or transport it. The deployment must keep it out of the customer Worker environment and logs.
-4. **Management endpoints remain anonymous at the ASP.NET authorization layer.** The assignment endpoint enforces the explicit token itself so existing readiness/state endpoints and unconfigured assignment remain compatible. The external producer must adopt the header before configuring the token.
-5. **Retirement signal scope is Host application stopping.** This foundation does not expose PR #13's broader runtime-retirement manager. If a future deployment retires a Runtime without stopping this Host process, that lifecycle must expose a narrow suppression signal before enabling R2 there.
-6. **Mixed-version logging.** An AppServer without the explicit fence acknowledgement keeps every Worker, but the hosted service may log a publication warning on each pass until the companion is deployed.
-7. **No forced unlink fallback.** A peer-close timeout is logged; this PR does not kill a customer process, delete a Runtime, or add an outbox/removal fallback.
-8. **One Worker per pass.** The service intentionally does not batch or use utilization percentages.
-9. **No scale-out.** Replenishment and stale-grant cleanup remain outside this PR.
+2. **Legion assignment producer is required.** The producer outside this repository must populate optional `maxHttpConcurrency` with the authoritative value. Missing or nonpositive values disable R2 for that Worker.
+3. **Retirement signal scope is Host application stopping.** This foundation does not expose PR #13's broader runtime-retirement manager. If a future deployment retires a Runtime without stopping this Host process, that lifecycle must expose a narrow suppression signal before enabling R2 there.
+4. **Mixed-version logging.** An AppServer without the explicit fence acknowledgement keeps every Worker, but the hosted service may log a publication warning on each pass until the companion is deployed.
+5. **No forced unlink fallback.** A peer-close timeout is logged; this PR does not kill a customer process, delete a Runtime, or add an outbox/removal fallback.
+6. **One Worker per pass.** The service intentionally does not batch or use utilization percentages.
+7. **No scale-out.** Replenishment and stale-grant cleanup remain outside this PR.
 
 ## Non-goals
 
@@ -345,11 +326,9 @@ flowchart TD
 | File | Review purpose |
 |---|---|
 | `src/Functions.WorkerProxy/Management/WorkerAssignRequest.cs` | Optional assignment receiver for authoritative `MaxHttpConcurrency` |
-| `src/Functions.WorkerProxy/Management/WorkerAssignmentAuthentication.cs` | Fixed-time assignment token verification and fail-closed authentication result |
 | `src/Functions.WorkerProxy/State/WorkerAssignment.cs` | Immutable normalized assignment identity |
 | `src/Functions.WorkerProxy/State/WorkerPodState.cs` | Live relay state for trusted metadata |
 | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs` | Removes spoofed values and publishes assignment-owned capabilities |
-| `src/Functions.WorkerProxy/Management/ManagementApiHandlers.cs` | Enforces assignment authentication before state mutation |
 | `src/Functions.Rpc.Client/WorkerChannel/RpcClientWorkerChannel.cs` | Metadata parsing, successful function-load gating, candidate-only invocation permits, monotonic idle tracking, reservation, and drain state |
 | `src/Functions.Rpc.Client/Dispatcher/RpcClientFunctionInvocationDispatcher.cs` | Atomic channel admission with safe retry |
 | `src/Functions.Rpc.Client/Registry/WorkerChannelRegistry.cs` | Capacity snapshots, versioning, fair candidate rotation, exact reservation commit, and graceful unlink |
@@ -365,7 +344,7 @@ Exactly five behavior-level test methods cover this change. Theory rows exercise
 
 | # | Behavior method | What it proves |
 |---|---|---|
-| 1 | `Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities` | WorkerProxy rejects missing/invalid configured tokens, accepts the matching token, overwrites spoofed metadata, and withholds R2 metadata for unauthenticated compatibility assignments |
+| 1 | `Relay_Initialization_AdvertisesOnlyTrustedAssignmentCapabilities` | WorkerProxy overwrites spoofed metadata, relays Legion assignment values, and omits invalid/missing assignment capacity |
 | 2 | `RunScaleInPassAsync_AppliedFence_WaitsForHttpCompletionAndDrainsOneWorkerExactlyOnce` | Authoritative capacity is summed, the applied fence commits one drain, and proxied HTTP waits for RPC and forwarding completion in both orders |
 | 3 | `RunScaleInPassAsync_UnappliedOrStaleFence_RestoresCapacityAndInvocationAdmission` | Missing acknowledgement and HTTP 412 roll back, candidate rotation prevents starvation, stale Host state rejects commit, and a real invocation remains dispatchable |
 | 4 | `InvocationAdmissionAndIdleReservation_RaceHasOneSafeWinner` | The shared admission lock permits only one winner and preserves the losing operation safely |

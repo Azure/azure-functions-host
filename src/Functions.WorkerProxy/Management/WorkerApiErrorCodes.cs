@@ -16,5 +16,4 @@ internal static class WorkerApiErrorCodes
     public const string WorkerNotReady = "WorkerNotReady";
     public const string WorkerTerminated = "WorkerTerminated";
     public const string AssignmentConflict = "AssignmentConflict";
-    public const string AssignmentAuthenticationFailed = "AssignmentAuthenticationFailed";
 }
