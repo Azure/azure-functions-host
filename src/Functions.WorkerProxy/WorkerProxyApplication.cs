@@ -27,6 +27,16 @@ internal static class WorkerProxyApplication
     private const string ReadyPath = "/admin/instance/ready";
 
     /// <summary>
+    /// Creates the configured WorkerProxy application with startup captured at this entry point.
+    /// </summary>
+    /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>
+    /// <returns>The application ready to be started.</returns>
+    public static WebApplication Build(string[] args)
+    {
+        return Build(args, WorkerProxyStartupTime.Capture(TimeProvider.System));
+    }
+
+    /// <summary>
     /// Creates the configured WorkerProxy application.
     /// </summary>
     /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>

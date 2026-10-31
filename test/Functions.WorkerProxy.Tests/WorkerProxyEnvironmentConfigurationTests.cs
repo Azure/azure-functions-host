@@ -28,7 +28,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope explicitIdentity = new("WORKERPROXY__PODNAME", explicitPodName);
         using EnvironmentVariableScope platformIdentity = new("WEBSITE_POD_NAME", platformPodName);
         using EnvironmentVariableScope containerIdentity = new("CONTAINER_NAME", containerName);
-        await using WebApplication app = WorkerProxyApplication.Build([], WorkerProxyStartupTime.Capture(TimeProvider.System));
+        await using WebApplication app = WorkerProxyApplication.Build([]);
 
         Assert.Equal(expectedPodName, app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
     }
@@ -52,7 +52,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", "environment-worker-pod");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
-        await using WebApplication app = WorkerProxyApplication.Build([], WorkerProxyStartupTime.Capture(TimeProvider.System));
+        await using WebApplication app = WorkerProxyApplication.Build([]);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         await app.StartAsync(timeout.Token);
 

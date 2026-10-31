@@ -16,7 +16,7 @@ public partial class WorkerPodStateManagerTests
     [Fact]
     public void InitialState_IsUnassignedAtRevisionZero()
     {
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         WorkerPodState state = manager.State;
 
         Assert.Equal("pod", state.PodName);
@@ -40,7 +40,7 @@ public partial class WorkerPodStateManagerTests
     public void Lifecycle_PublishesImmutableMonotonicSnapshots(bool specializationRequired)
     {
         WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
         Assert.True(manager.OnWorkerAttached(1));
         WorkerPodState attached = manager.State;
@@ -82,7 +82,7 @@ public partial class WorkerPodStateManagerTests
     [Fact]
     public void NotReadyAssignment_DoesNotClaimIdentityOrChangeRevision()
     {
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
         Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("rejected")));
         Assert.Same(initial, manager.State);
@@ -153,7 +153,7 @@ public partial class WorkerPodStateManagerTests
     [Fact]
     public void RuntimeOnlyTermination_PreventsLateWorkerAttachmentForThatSession()
     {
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
 
         Assert.False(manager.OnSessionTerminated(1));
@@ -192,7 +192,7 @@ public partial class WorkerPodStateManagerTests
     [InlineData(null)]
     public void InvalidWorkerIdentity_DoesNotEnableReadiness(string? workerId)
     {
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         manager.OnWorkerAttached(1);
         WorkerPodState attached = manager.State;
 
@@ -206,7 +206,7 @@ public partial class WorkerPodStateManagerTests
     [InlineData(-1)]
     public void InvalidSessionIdentity_IsRejected(long sessionId)
     {
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnWorkerAttached(sessionId));
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnWorkerStartStream(sessionId, "worker"));
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnSessionTerminated(sessionId));
@@ -219,27 +219,26 @@ public partial class WorkerPodStateManagerTests
     [InlineData(null)]
     public void MissingPodIdentity_IsRejected(string? podName)
     {
-        Assert.ThrowsAny<ArgumentException>(() => CreateManager(CreateOptions(podName!), TimeProvider.System));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerPodStateManager(CreateOptions(podName!), TimeProvider.System));
     }
 
     [Fact]
     public void NullTimeProvider_IsRejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new WorkerPodStateManager(
-            CreateOptions(), null!, WorkerProxyStartupTime.Capture(TimeProvider.System)));
+        Assert.Throws<ArgumentNullException>(() => new WorkerPodStateManager(CreateOptions(), null!));
     }
 
     [Fact]
     public void NullOptions_IsRejected()
     {
-        Assert.Throws<ArgumentNullException>(() => CreateManager(null!, TimeProvider.System));
+        Assert.Throws<ArgumentNullException>(() => new WorkerPodStateManager(null!, TimeProvider.System));
     }
 
     [Fact]
     public void PodIdentity_IsCapturedDuringConstruction()
     {
         WorkerProxyOptions options = new() { PodName = "original-pod" };
-        WorkerPodStateManager manager = CreateManager(Options.Create(options), TimeProvider.System);
+        WorkerPodStateManager manager = new(Options.Create(options), TimeProvider.System);
 
         options.PodName = "different-pod";
         manager.OnWorkerAttached(1);
@@ -361,7 +360,7 @@ public partial class WorkerPodStateManagerTests
 
     private static WorkerPodStateManager CreateReadyManager()
     {
-        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "worker");
         return manager;
@@ -372,7 +371,4 @@ public partial class WorkerPodStateManagerTests
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });
-
-    private static WorkerPodStateManager CreateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
-        => new(options, timeProvider, WorkerProxyStartupTime.Capture(timeProvider));
 }

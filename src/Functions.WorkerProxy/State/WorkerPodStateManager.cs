@@ -25,15 +25,20 @@ internal sealed class WorkerPodStateManager
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
     private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _neverLinkedClock;
     private readonly TimeSpan _neverLinkedTimeout;
     private readonly long _startupTimestamp;
-    private readonly TaskCompletionSource _runtimeLinkAccepted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
-    private bool _hasAcceptedRuntimeLink;
+    private NeverLinkedOutcome _neverLinkedOutcome;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
     private int _assignmentClaimed;
+
+    public WorkerPodStateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
+        : this(options, timeProvider, WorkerProxyStartupTime.Capture(timeProvider))
+    {
+    }
 
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
@@ -48,13 +53,21 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
+        _neverLinkedClock = startupTime.Clock;
         _neverLinkedTimeout = options.Value.NeverLinkedTimeout;
         _startupTimestamp = startupTime.Timestamp;
         _state = WorkerPodState.CreateUnassigned(podName, startupTime.UtcTime);
     }
 
+    private enum NeverLinkedOutcome
+    {
+        Pending,
+        RuntimeLinkAccepted,
+        RemovalRequested
+    }
+
     /// <summary>
-    /// Gets the current immutable state after applying the fixed never-linked deadline.
+    /// Gets the current immutable state without incrementing its revision.
     /// </summary>
     public WorkerPodState State
     {
@@ -62,7 +75,6 @@ internal sealed class WorkerPodStateManager
         {
             lock (_stateLock)
             {
-                ExpireNeverLinkedLocked();
                 return _state;
             }
         }
@@ -97,7 +109,6 @@ internal sealed class WorkerPodStateManager
         TaskCompletionSource<WorkerPodState> waiter;
         lock (_stateLock)
         {
-            ExpireNeverLinkedLocked();
             ArgumentOutOfRangeException.ThrowIfGreaterThan(lastKnownRevision, _state.Revision);
             if (lastKnownRevision < _state.Revision)
             {
@@ -119,7 +130,6 @@ internal sealed class WorkerPodStateManager
             // A transition may have won the publication lock just as the timer expired.
             lock (_stateLock)
             {
-                ExpireNeverLinkedLocked();
                 return _state.Revision > lastKnownRevision
                     ? new WorkerStatePollResult(_state)
                     : WorkerStatePollResult.NoChange;
@@ -207,20 +217,18 @@ internal sealed class WorkerPodStateManager
     {
         lock (_stateLock)
         {
-            ExpireNeverLinkedLocked();
-            if (_state.RemovalRequested)
+            if (_neverLinkedOutcome == NeverLinkedOutcome.Pending &&
+                _neverLinkedClock.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
             {
-                return false;
+                SelectRemovalRequestedLocked();
             }
 
-            if (_hasAcceptedRuntimeLink)
+            if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
             {
-                return true;
+                _neverLinkedOutcome = NeverLinkedOutcome.RuntimeLinkAccepted;
             }
 
-            _hasAcceptedRuntimeLink = true;
-            _runtimeLinkAccepted.TrySetResult();
-            return true;
+            return _neverLinkedOutcome == NeverLinkedOutcome.RuntimeLinkAccepted;
         }
     }
 
@@ -312,43 +320,47 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Waits for accepted Link, the fixed monotonic deadline, or application shutdown.
+    /// Waits once for the remaining process-start deadline, then attempts removal.
     /// </summary>
     public async Task WatchNeverLinkedAsync(CancellationToken cancellationToken)
     {
-        while (true)
+        cancellationToken.ThrowIfCancellationRequested();
+        TimeSpan remaining;
+        lock (_stateLock)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            TimeSpan remaining;
-            lock (_stateLock)
+            if (_neverLinkedOutcome != NeverLinkedOutcome.Pending)
             {
-                ExpireNeverLinkedLocked();
-                if (_hasAcceptedRuntimeLink || _state.RemovalRequested)
-                {
-                    return;
-                }
-
-                remaining = _neverLinkedTimeout - _timeProvider.GetElapsedTime(_startupTimestamp);
-            }
-
-            try
-            {
-                TimeSpan delay = TimeSpan.FromMilliseconds(Math.Max(1, Math.Ceiling(remaining.TotalMilliseconds)));
-                await _runtimeLinkAccepted.Task.WaitAsync(delay, _timeProvider, cancellationToken);
                 return;
             }
-            catch (TimeoutException)
+
+            remaining = _neverLinkedTimeout - _neverLinkedClock.GetElapsedTime(_startupTimestamp);
+        }
+
+        if (remaining > TimeSpan.Zero)
+        {
+            long delayMilliseconds = Math.DivRem(
+                remaining.Ticks,
+                TimeSpan.TicksPerMillisecond,
+                out long remainingTicks);
+            if (remainingTicks > 0)
             {
-                // Re-arm against the original process deadline.
+                delayMilliseconds++;
             }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(delayMilliseconds), _neverLinkedClock, cancellationToken);
+        }
+
+        lock (_stateLock)
+        {
+            SelectRemovalRequestedLocked();
         }
     }
 
-    private void ExpireNeverLinkedLocked()
+    private void SelectRemovalRequestedLocked()
     {
-        if (!_hasAcceptedRuntimeLink && !_state.RemovalRequested &&
-            _timeProvider.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
+        if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
         {
+            _neverLinkedOutcome = NeverLinkedOutcome.RemovalRequested;
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),

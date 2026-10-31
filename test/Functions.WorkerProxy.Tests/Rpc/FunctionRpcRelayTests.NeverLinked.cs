@@ -26,7 +26,7 @@ public partial class FunctionRpcRelayTests
     {
         LifecycleClock clock = new();
         DateTimeOffset processStart = clock.GetUtcNow();
-        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(clock, "00:02:00");
+        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(clock, "00:02:00.0000001");
         clock.Advance(TimeSpan.FromSeconds(90));
         clock.AdjustUtc(TimeSpan.FromDays(1));
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -36,8 +36,8 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(processStart, initial.StartupTime);
         Assert.Equal(SplitWorkerStatus.Starting, initial.Status);
-        await clock.WaitForTimerAsync(TimeSpan.FromSeconds(30), timeout.Token);
-        clock.Advance(TimeSpan.FromSeconds(30) - TimeSpan.FromMilliseconds(1));
+        await clock.WaitForTimerAsync(TimeSpan.FromSeconds(30) + TimeSpan.FromMilliseconds(1), timeout.Token);
+        clock.Advance(TimeSpan.FromSeconds(30));
         Assert.Equal(initial, await ReadSplitManagementStateAsync(management, timeout.Token));
 
         clock.Advance(TimeSpan.FromMilliseconds(1));
@@ -88,7 +88,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task NeverLinkedDeadline_AcceptedRuntimeLinkCancelsExpiryWithoutWorkerInitialization()
+    public async Task NeverLinkedDeadline_AcceptedRuntimeLinkEndsW1WithoutWorkerInitialization()
     {
         LifecycleClock clock = new();
         await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(clock, "00:01:00");
@@ -110,10 +110,39 @@ public partial class FunctionRpcRelayTests
     public async Task NeverLinkedDeadline_PublishesStickyRemovalAndRejectsOnlyLateRuntimeLink()
     {
         LifecycleClock clock = new();
-        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(clock);
+        using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
+        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(
+            clock,
+            configureServices: services =>
+                services.AddSingleton<Microsoft.Extensions.Logging.ILogger<FunctionRpcRelay>>(logger));
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
         using HttpClient management = factory.CreateWorkerProxyClient();
+        await using (RelayClient terminatingWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
+        {
+            await terminatingWorker.WriteAsync(CreateStartStream("terminating-worker"), timeout.Token);
+            await WaitForAttachmentAsync(
+                factory.Services.GetRequiredService<FunctionRpcRelay>(),
+                FunctionRpcRelaySide.Worker,
+                timeout.Token);
+            await terminatingWorker.CompleteRequestAsync(timeout.Token);
+            try
+            {
+                await logger.LogEntered.WaitAsync(timeout.Token);
+                await using RelayClient rejectedRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+                GrpcRpcException rejection = await rejectedRuntime.WriteAndReadRejectionAsync(
+                    CreateMessage("runtime-during-teardown"),
+                    timeout.Token);
+                Assert.Equal(StatusCode.Unavailable, rejection.StatusCode);
+            }
+            finally
+            {
+                logger.Release();
+            }
+
+            Assert.Equal(StatusCode.Unavailable, await terminatingWorker.WaitForTerminationAsync(timeout.Token));
+        }
+
         SplitWorkerOriginState initial = await ReadSplitManagementStateAsync(management, timeout.Token);
         Task<HttpResponseMessage> poll = PollSplitManagementStateAsync(management, initial, timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
@@ -180,7 +209,8 @@ public partial class FunctionRpcRelayTests
 
     private static WorkerProxyWebApplicationFactory CreateTimeoutFactory(
         LifecycleClock clock,
-        string? duration = null)
+        string? duration = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         Dictionary<string, string?> configuration = [];
         if (duration is not null)
@@ -193,6 +223,7 @@ public partial class FunctionRpcRelayTests
         {
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock));
             services.Replace(ServiceDescriptor.Singleton(startupTime));
+            configureServices?.Invoke(services);
         });
     }
 

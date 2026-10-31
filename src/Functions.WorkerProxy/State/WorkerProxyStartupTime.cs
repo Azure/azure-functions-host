@@ -8,12 +8,12 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <summary>
 /// Captures process startup before host and configuration construction.
 /// </summary>
-internal sealed record WorkerProxyStartupTime(DateTimeOffset UtcTime, long Timestamp)
+internal sealed record WorkerProxyStartupTime(DateTimeOffset UtcTime, long Timestamp, TimeProvider Clock)
 {
     public static WorkerProxyStartupTime Capture(TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
 
-        return new(timeProvider.GetUtcNow(), timeProvider.GetTimestamp());
+        return new(timeProvider.GetUtcNow(), timeProvider.GetTimestamp(), timeProvider);
     }
 }

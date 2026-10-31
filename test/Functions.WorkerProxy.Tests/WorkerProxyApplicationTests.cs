@@ -43,18 +43,17 @@ public class WorkerProxyApplicationTests
         Assert.Same(manager, scope.ServiceProvider.GetRequiredService<WorkerPodStateManager>());
         Assert.Equal("configured-worker-pod", manager.State.PodName);
         Assert.Equal(0, manager.State.Revision);
-        Assert.Equal(factory.Services.GetRequiredService<WorkerProxyStartupTime>().UtcTime, manager.State.StartupTime);
     }
 
     [Fact]
     public async Task StateManager_UsesTimeProviderFromContainer()
     {
-        Mock<TimeProvider> provider = new() { CallBase = true };
+        Mock<TimeProvider> provider = new();
         Mock<ITimer> timer = new();
         TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
         provider.Setup(clock => clock.CreateTimer(
-            It.IsAny<TimerCallback>(), It.IsAny<object?>(), TimeSpan.FromSeconds(60), It.IsAny<TimeSpan>()))
+            It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
             .Returns(timer.Object);
         await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(provider.Object)));

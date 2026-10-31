@@ -3,7 +3,6 @@
 
 using System;
 using Azure.Functions.WorkerProxy.Http;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -44,8 +43,7 @@ public class WorkerEndpointReadinessProbeOptionsTests
 
     private static WorkerEndpointReadinessProbeOptions GetOptions(params string[] args)
     {
-        using WebApplication app = WorkerProxyApplication.Build(
-            ["--WEBSITE_POD_NAME", "test-worker-pod", .. args], WorkerProxyStartupTime.Capture(TimeProvider.System));
+        using WebApplication app = WorkerProxyApplication.Build(["--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerEndpointReadinessProbeOptions>>().Value;
     }

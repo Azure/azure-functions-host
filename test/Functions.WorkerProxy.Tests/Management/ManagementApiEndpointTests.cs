@@ -431,13 +431,13 @@ public class ManagementApiEndpointTests
     [InlineData("0%00")]
     public async Task ExplicitZeroRevisionPollReturnsNoContentAtDeadline(string revision)
     {
-        Mock<TimeProvider> clock = new() { CallBase = true };
+        Mock<TimeProvider> clock = new();
         Mock<ITimer> timer = new();
         TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
         TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
         clock.Setup(provider => provider.CreateTimer(
-            It.IsAny<TimerCallback>(), It.IsAny<object?>(), TimeSpan.FromSeconds(60), It.IsAny<TimeSpan>()))
+            It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
             .Returns((TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
             {
                 Assert.Equal(TimeSpan.FromSeconds(60), dueTime);
@@ -466,7 +466,7 @@ public class ManagementApiEndpointTests
     [Fact]
     public async Task InfraState_UnchangedCheckpoint_ReturnsNoContentAtDeadline()
     {
-        Mock<TimeProvider> clock = new() { CallBase = true };
+        Mock<TimeProvider> clock = new();
         Mock<ITimer> timer = new();
         TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
@@ -474,7 +474,7 @@ public class ManagementApiEndpointTests
         clock.Setup(provider => provider.CreateTimer(
                 It.IsAny<TimerCallback>(),
                 It.IsAny<object?>(),
-                TimeSpan.FromSeconds(60),
+                It.IsAny<TimeSpan>(),
                 It.IsAny<TimeSpan>()))
             .Returns((TimerCallback callback, object? state, TimeSpan _, TimeSpan _) =>
             {

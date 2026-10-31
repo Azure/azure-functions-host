@@ -619,15 +619,8 @@ public class ManagementApiHandlersTests
         Assert.Empty(clock.Timers);
     }
 
-    private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null)
-    {
-        timeProvider ??= TimeProvider.System;
-
-        return new(
-            Options.Create(new WorkerProxyOptions { PodName = "pod" }),
-            timeProvider,
-            WorkerProxyStartupTime.Capture(timeProvider));
-    }
+    private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null) =>
+        new(Options.Create(new WorkerProxyOptions { PodName = "pod" }), timeProvider ?? TimeProvider.System);
 
     private static WorkerPodStateManager CreateReadyManager(TimeProvider? timeProvider = null)
     {
@@ -688,7 +681,7 @@ public class ManagementApiHandlersTests
     {
         public PollClock()
         {
-            Mock<TimeProvider> provider = new() { CallBase = true };
+            Mock<TimeProvider> provider = new();
             provider.Setup(clock => clock.CreateTimer(
                 It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
                 .Returns((TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>

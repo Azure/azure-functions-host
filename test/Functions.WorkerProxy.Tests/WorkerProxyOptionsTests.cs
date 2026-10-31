@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,6 +20,7 @@ public class WorkerProxyOptionsTests
         Assert.Equal(50053, options.RuntimeGrpcPort);
         Assert.Equal(50054, options.WorkerGrpcPort);
         Assert.Equal(28080, options.HttpPort);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.NeverLinkedTimeout);
         Assert.Null(options.WorkerHttpEndpoint);
         Assert.Null(options.HttpProxyEndpoint);
     }
@@ -34,6 +34,7 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:RuntimeGrpcPort", "41001",
             "--WorkerProxy:WorkerGrpcPort", "41002",
             "--WorkerProxy:HttpPort", "41003",
+            "--WorkerProxy:NeverLinkedTimeout", "00:07:00",
             "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004",
             "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801");
 
@@ -42,6 +43,7 @@ public class WorkerProxyOptionsTests
         Assert.Equal(41001, options.RuntimeGrpcPort);
         Assert.Equal(41002, options.WorkerGrpcPort);
         Assert.Equal(41003, options.HttpPort);
+        Assert.Equal(TimeSpan.FromMinutes(7), options.NeverLinkedTimeout);
         Assert.Equal("http://localhost:41004", options.WorkerHttpEndpoint);
         Assert.Equal("https://worker-pod.example:48801", options.HttpProxyEndpoint);
     }
@@ -90,6 +92,8 @@ public class WorkerProxyOptionsTests
     [InlineData(nameof(WorkerProxyOptions.ManagementPort), "-1")]
     [InlineData(nameof(WorkerProxyOptions.RuntimeGrpcPort), "65536")]
     [InlineData(nameof(WorkerProxyOptions.HttpPort), "-1")]
+    [InlineData(nameof(WorkerProxyOptions.NeverLinkedTimeout), "00:00:00")]
+    [InlineData(nameof(WorkerProxyOptions.NeverLinkedTimeout), "50.00:00:00")]
     public void Options_RejectOutOfRangeValues(string propertyName, string value)
     {
         string key = $"--{WorkerProxyOptions.SectionName}:{propertyName}";
@@ -128,8 +132,7 @@ public class WorkerProxyOptionsTests
 
     private static WorkerProxyOptions GetOptions(params string[] args)
     {
-        using WebApplication app = WorkerProxyApplication.Build(
-            ["--WEBSITE_POD_NAME", "test-worker-pod", .. args], WorkerProxyStartupTime.Capture(TimeProvider.System));
+        using WebApplication app = WorkerProxyApplication.Build(["--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }

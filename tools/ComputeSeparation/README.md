@@ -96,8 +96,6 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 
 > [!NOTE]
 > In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 4) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* can be sent at any time.
-> Complete the Link step within five minutes of WorkerProxy startup. For longer debugging sessions,
-> set `WorkerProxy__NeverLinkedTimeout` before starting the profile.
 
 ### Add a second worker after startup
 
@@ -115,9 +113,7 @@ Select `project-placeholder-manual-multiple-workers`, then use the same `compute
 
 The runtime gRPC, worker gRPC, and proxy HTTP ports are allocated independently by Aspire. Nothing is assigned or linked
 automatically in this profile, and both worker/proxy pairs are available for independent inspection in the dashboard.
-Complete each worker's Link within five minutes of WorkerProxy startup, or set
-`WorkerProxy__NeverLinkedTimeout` before starting the profile. Repeated link requests reuse the
-matching linked channel.
+Repeated link requests reuse the matching linked channel.
 
 For example, both requests go to the same fake platform; only the selected proxy name changes:
 

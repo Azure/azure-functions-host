@@ -123,8 +123,8 @@ stateDiagram-v2
     RemovalRequested --> RemovalRequested: All later observations
 ```
 
-Accepted Runtime Link history is process-local and does not create a public state revision. The
-public Link projection remains `Unlinked` because this PR does not publish Runtime Link identity.
+An accepted Runtime Link ends W1; only timeout publishes a public state change. The public Link
+projection remains `Unlinked` because this PR does not publish Runtime Link identity.
 
 ## Public behavior
 
@@ -144,11 +144,14 @@ public Link projection remains `Unlinked` because this PR does not publish Runti
 | --- | --- |
 | `Program.cs` and `WorkerProxyStartupTime.cs` | Capture process startup before host/configuration construction. |
 | `WorkerProxyOptions*` | Add the default five-minute positive duration and timer-range validation. |
+| `WorkerProxyApplication.cs` | Register the captured startup origin, state manager, and one timeout service. |
 | `NeverLinkedTimeoutService.cs` | Wait once against the original process deadline. |
 | `WorkerPodStateManager.cs` | Serialize Runtime Link acceptance versus expiry and publish sticky removal. |
-| `FunctionRpcRelay*.cs` | Record accepted Runtime-side attachment and reject only a late Runtime attachment. |
+| `FunctionRpcRelay.cs` and `FunctionRpcRelay.Session.cs` | Record Link success only after Runtime reserves a live relay session, and reject a late Runtime attachment. |
+| `WorkerPodState.cs` | Retain the sticky process-local removal decision in the existing immutable snapshot. |
 | `SplitWorkerOriginState.cs` | Project `RemovalRequested` for Legion. |
 | `FunctionRpcRelayTests.NeverLinked.cs` | Exercise W1 through Runtime gRPC and management state surfaces. |
+| `WorkerProxyOptionsTests.cs` | Verify the default, configured, and invalid timeout values at the configuration boundary. |
 
 ## Assumptions
 
@@ -170,7 +173,7 @@ public Link projection remains `Unlinked` because this PR does not publish Runti
 - Authentication must be supplied by Azure/azure-functions-host#12103 or equivalent platform
   behavior.
 - The timeout is process-local and is not persisted across a WorkerProxy restart.
-- The public Link field remains `Unlinked`; this PR stores only process-local acceptance history.
+- The public Link field remains `Unlinked`; successful Link acceptance is used only to end W1.
 - W1 does not change assignment, customer-Worker gRPC, readiness, HTTP invocation, or drain behavior.
 
 ## Compatibility and rollout
@@ -193,8 +196,8 @@ public Link projection remains `Unlinked` because this PR does not publish Runti
 | --- | --- |
 | `NeverLinkedDeadline_IncludesConstructionTimeAndUsesMonotonicClock` | Host construction counts against the deadline, UTC jumps do not, and management publishes removal. |
 | `NeverLinkedDeadline_WorkerActivityAssignmentAndReloadDoNotCompleteRuntimeLink` | Worker connection, assignment, and configuration reload neither complete nor reset W1, and worker readiness remains unchanged. |
-| `NeverLinkedDeadline_AcceptedRuntimeLinkCancelsExpiryWithoutWorkerInitialization` | Runtime Link alone completes W1 without waiting for customer-Worker initialization. |
-| `NeverLinkedDeadline_PublishesStickyRemovalAndRejectsOnlyLateRuntimeLink` | Timeout wakes management polling, late Runtime Link is rejected, removal stays sticky, and Worker-facing admission remains unchanged. |
+| `NeverLinkedDeadline_AcceptedRuntimeLinkEndsW1WithoutWorkerInitialization` | Runtime Link alone completes W1 without waiting for customer-Worker initialization. |
+| `NeverLinkedDeadline_PublishesStickyRemovalAndRejectsOnlyLateRuntimeLink` | A Runtime attempt rejected during relay teardown does not end W1; timeout wakes management polling, late Runtime Link is rejected, removal stays sticky, and Worker-facing admission remains unchanged. |
 | `NeverLinkedDeadline_BoundarySelectsOneStickyRuntimeLinkOutcome` | Runtime Link acceptance and expiry serialize so only one outcome wins. |
 
 ## Intentionally unchanged
