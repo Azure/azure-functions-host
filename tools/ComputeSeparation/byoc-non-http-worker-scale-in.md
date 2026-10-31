@@ -212,7 +212,7 @@ instruction.
 | Trusted classification | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `src/WebJobs.Script.Grpc/Channel/WorkerChannel.cs` | Adds trusted always-ready capability beside the existing group capability and lets derived channels use existing capability state |
 | Selection | `src/Functions.Rpc.Client/Registry/IWorkerChannelRegistry.cs`, `src/Functions.Rpc.Client/Registry/WorkerChannelRegistry.cs` | One-shot count calculation, ordinal Worker ID selection, and asynchronous unlink |
 | Admission and drain | `src/Functions.Rpc.Client/WorkerChannel/RpcClientWorkerChannel.cs`, `src/Functions.Rpc.Client/Dispatcher/RpcClientFunctionInvocationDispatcher.cs` | Shared dispatch/scale-in fence and committed-work tracking |
-| Behavioral coverage | `test/Functions.Rpc.Client.Tests/Registry/WorkerChannelRegistryTests.ScaleInApi.cs` | Five hosted public API methods |
+| Behavioral coverage | `test/Functions.Rpc.Client.Tests/Registry/WorkerChannelRegistryTests.ScaleInApi.cs` | Four hosted public API methods |
 
 ## Behavioral test matrix
 
@@ -221,8 +221,7 @@ instruction.
 | `PostScaleIn_AbsoluteRetainedCount_SelectsLowestWorkerIdAndRepeatIsNoOp` | Absolute retained count, lowest ordinal Worker ID selection, numerical response, and repeat no-op |
 | `PostScaleIn_ExactGroupClassAndUsablePopulation_ExcludesOtherAndDrainingWorkers` | Exact group/class isolation plus starting, readiness-pending, and already-draining exclusions |
 | `PostScaleIn_SelectedBusyWorkerWithdrawsIntakeAndClosesAfterCommittedWork` | Busy selection by Worker ID, immediate intake withdrawal, non-blocking response, committed completion, and later link close |
-| `PostScaleIn_ScaleInWinsStaleSnapshotRaceAndDispatcherUsesRetainedWorker` | Atomic dispatch-versus-drain winner and dispatcher fallback from a stale ready snapshot |
-| `PostScaleIn_InvalidHttpAndAuthenticationFailuresFailClosed` | Missing authentication, HTTP rejection, malformed body, missing count, and negative count |
+| `PostScaleIn_HttpFunctionGroupIsRejected` | HTTP function-group requests fail closed before any scale-in action |
 
 ## Explicit non-goals
 

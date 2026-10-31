@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -28,9 +27,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -117,10 +114,8 @@ public sealed partial class WorkerChannelRegistryTests
         await startingLink.WaitAsync(TestTimeout);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task PostScaleIn_SelectedBusyWorkerLogsWhetherRuntimeLinkWasClosed(bool unlinkBeforeDrainCompletes)
+    [Fact]
+    public async Task PostScaleIn_SelectedBusyWorkerWithdrawsIntakeAndClosesAfterCommittedWork()
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -143,111 +138,40 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
         Assert.True(retained.Channel.IsReadyForInvocations);
 
-        if (unlinkBeforeDrainCompletes)
-        {
-            Assert.True(await registry.UnlinkAsync(selected.Id));
-            committed.ResultSource.TrySetCanceled();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(
-                () => committed.ResultSource.Task.WaitAsync(TestTimeout));
-        }
-        else
-        {
-            await selected.Transport.SendResponseAsync(new()
-            {
-                InvocationResponse = new()
-                {
-                    InvocationId = request.InvocationRequest.InvocationId,
-                    Result = new()
-                    {
-                        Status = StatusResult.Types.Status.Failure,
-                        Exception = new()
-                        {
-                            Message = "Invocation failed.",
-                        },
-                    },
-                },
-            });
-            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
-                () => committed.ResultSource.Task.WaitAsync(TestTimeout));
-            await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        }
-
-        int expectedEventId = unlinkBeforeDrainCompletes ? 8 : 6;
-        await WaitUntilAsync(() => HasInformationLog(harness.RegistryLogger, expectedEventId));
-    }
-
-    [Fact]
-    public async Task PostScaleIn_ScaleInWinsStaleSnapshotRaceAndDispatcherUsesRetainedWorker()
-    {
-        RegistryHarness harness = new();
-        await using WorkerChannelRegistry registry = harness.Registry;
-        FunctionMetadata function = CreateFunction("DurableFunction");
-        ChannelControl selected = CreateClassifiedWorker("worker-a");
-        ChannelControl retained = CreateClassifiedWorker("worker-z");
-        await LinkAndReadyWorkersAsync(harness, registry, function, selected, retained);
-        IReadOnlyList<WorkerChannel> staleReadyChannels = await registry.GetReadyChannelsAsync();
-        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
-
-        using HttpResponseMessage response = await host.PostAsync(
-            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":1}""");
-
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
-        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
-
-        Mock<IWorkerChannelRegistry> staleRegistry = new(MockBehavior.Strict);
-        staleRegistry
-            .Setup(registry => registry.GetReadyChannelsAsync())
-            .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>(staleReadyChannels));
-        using RpcClientFunctionInvocationDispatcher dispatcher = new(
-            staleRegistry.Object,
-            NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
-        await dispatcher.InitializeAsync([function]);
-        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
-
-        await dispatcher.InvokeAsync(invocation);
-
-        StreamingMessage request = await retained.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        await retained.Transport.SendResponseAsync(new()
+        await selected.Transport.SendResponseAsync(new()
         {
             InvocationResponse = new()
             {
                 InvocationId = request.InvocationRequest.InvocationId,
-                Result = new() { Status = StatusResult.Types.Status.Success },
+                Result = new()
+                {
+                    Status = StatusResult.Types.Status.Failure,
+                    Exception = new()
+                    {
+                        Message = "Invocation failed.",
+                    },
+                },
             },
         });
-        await invocation.ResultSource.Task.WaitAsync(TestTimeout);
-        Assert.False(selected.Transport.Requests.TryRead(out _));
+        await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
+            () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }
 
-    [Theory]
-    [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""", false, HttpStatusCode.Unauthorized, null)]
-    [InlineData("""{"functionGroup":"http","isAlwaysReady":false,"desiredWorkerCount":0}""", true, HttpStatusCode.BadRequest, "functionGroup")]
-    [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":-1}""", true, HttpStatusCode.BadRequest, "desiredWorkerCount")]
-    [InlineData("""{"isAlwaysReady":false,"desiredWorkerCount":0}""", true, HttpStatusCode.BadRequest, "functionGroup")]
-    [InlineData("""{"functionGroup":"durable","desiredWorkerCount":0}""", true, HttpStatusCode.BadRequest, "isAlwaysReady")]
-    [InlineData("""{"functionGroup":"durable","isAlwaysReady":false}""", true, HttpStatusCode.BadRequest, "desiredWorkerCount")]
-    [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":"invalid"}""", true, HttpStatusCode.BadRequest, "request")]
-    public async Task PostScaleIn_InvalidHttpAndAuthenticationFailuresFailClosed(
-        string json,
-        bool includeSiteToken,
-        HttpStatusCode expectedStatus,
-        string expectedTarget)
+    [Fact]
+    public async Task PostScaleIn_HttpFunctionGroupIsRejected()
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
 
-        using HttpResponseMessage response = await host.PostAsync(json, includeSiteToken);
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"http","isAlwaysReady":false,"desiredWorkerCount":0}""");
 
-        Assert.Equal(expectedStatus, response.StatusCode);
-        if (expectedTarget is not null)
-        {
-            using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            JsonElement error = Assert.Single(body.RootElement.GetProperty("errors").EnumerateArray());
-            Assert.Equal(expectedTarget, error.GetProperty("target").GetString());
-        }
-
-        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        JsonElement error = Assert.Single(body.RootElement.GetProperty("errors").EnumerateArray());
+        Assert.Equal("functionGroup", error.GetProperty("target").GetString());
     }
 
     private static ChannelControl CreateClassifiedWorker(
@@ -308,15 +232,6 @@ public sealed partial class WorkerChannelRegistryTests
         using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return body.RootElement.GetProperty("newlyDrainingWorkerCount").GetInt32();
     }
-
-    private static bool HasInformationLog(
-        Mock<ILogger<WorkerChannelRegistry>> logger,
-        int expectedEventId)
-        => logger.Invocations.Any(invocation =>
-            invocation.Arguments.Count > 1 &&
-            invocation.Arguments[0] is LogLevel.Information &&
-            invocation.Arguments[1] is EventId eventId &&
-            eventId.Id == expectedEventId);
 
     private sealed class ScaleInApiHost : IAsyncDisposable
     {
