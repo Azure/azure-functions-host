@@ -8,8 +8,7 @@
 ## Context
 
 WorkerProxy already awaits the read and write operations for each admitted FunctionRpc EventStream.
-W2 uses that existing handler completion path; it does not add a monitor, poller, timer, watchdog, or
-second accepted-Link state machine.
+W2 uses that existing handler completion path directly.
 
 This matches the standard non-BYOC shape:
 
@@ -43,7 +42,7 @@ side ended first, or because WorkerProxy is shutting down, that completion is no
 ## State and admission
 
 `WorkerPodStateManager.RequestRemoval` is the single sticky transition. It clears live Worker and
-assignment identity because removal state, not historical attribution, is the public contract.
+assignment identity because `RemovalRequested` is the public contract.
 
 ```mermaid
 flowchart TD
@@ -76,7 +75,7 @@ it reports the WorkerProxy management process, not customer invocation admission
 
 | Area | Files | Reviewer focus |
 | --- | --- | --- |
-| Existing handler completion | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `FunctionRpcRelay.cs` | Runtime-side terminal classification, shutdown exclusion, no separate monitoring |
+| Existing handler completion | `src/Functions.WorkerProxy/Rpc/FunctionRpcRelay.Session.cs`, `FunctionRpcRelay.cs` | Runtime-side terminal classification and shutdown exclusion |
 | Sticky state | `src/Functions.WorkerProxy/State/WorkerPodStateManager.cs`, `WorkerPodState.cs` | One-way removal and cleared live identity |
 | Legion projection | `src/Functions.WorkerProxy/State/SplitWorkerOriginState.cs` | Existing polling reports `RemovalRequested` |
 | HTTP admission | `src/Functions.WorkerProxy/Http/WorkerHttpForwardingMiddleware.cs` | Configured fallback cannot bypass removal |
