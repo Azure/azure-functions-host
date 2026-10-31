@@ -177,32 +177,56 @@ public partial class FunctionRpcRelayTests
     public async Task NeverLinkedDeadline_BoundarySelectsOneStickyRuntimeLinkOutcome(bool runtimeLinkWins)
     {
         LifecycleClock clock = new();
-        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(clock, "00:01:00");
+        await using WorkerProxyWebApplicationFactory factory = CreateTimeoutFactory(
+            clock,
+            "00:01:00",
+            replaceTimeProvider: false);
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using CancellationTokenSource timeout = new(TestTimeout);
         using HttpClient management = factory.CreateWorkerProxyClient();
+        SplitWorkerOriginState initial = await ReadSplitManagementStateAsync(management, timeout.Token);
+        await clock.WaitForTimerAsync(TimeSpan.FromMinutes(1), timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        LifecycleClock.BoundaryRace race = clock.ArmBoundaryRace(TimeSpan.FromMinutes(1), runtimeLinkWins);
 
+        Task? acceptedRuntime = null;
+        Task<GrpcRpcException>? rejectedRuntime = null;
         if (runtimeLinkWins)
         {
-            await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-            await runtime.WriteAsync(CreateMessage("accepted-runtime-link"), timeout.Token);
-            await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
-            clock.Advance(TimeSpan.FromMinutes(1));
+            acceptedRuntime = runtime.WriteAsync(CreateMessage("accepted-runtime-link"), timeout.Token);
         }
         else
         {
-            clock.Advance(TimeSpan.FromMinutes(1));
-            await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-            GrpcRpcException rejection = await runtime.WriteAndReadRejectionAsync(
+            rejectedRuntime = runtime.WriteAndReadRejectionAsync(
                 CreateMessage("late-runtime-link"),
                 timeout.Token);
-            Assert.Equal(StatusCode.Unavailable, rejection.StatusCode);
         }
 
+        await race.WaitForRuntimeAsync(timeout.Token);
+        Task expiry = Task.Run(() => clock.Advance(TimeSpan.FromMinutes(1)));
+        await race.WaitForTimerAsync(timeout.Token);
+        Assert.False(expiry.IsCompleted);
+
+        race.Release();
+        await expiry.WaitAsync(timeout.Token);
+
         SplitWorkerOriginState selected = await ReadSplitManagementStateAsync(management, timeout.Token);
-        Assert.Equal(
-            runtimeLinkWins ? SplitWorkerStatus.Starting : SplitWorkerStatus.RemovalRequested,
-            selected.Status);
+        if (runtimeLinkWins)
+        {
+            await acceptedRuntime!;
+            Assert.Equal(initial, selected);
+            await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
+            Assert.True(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+        }
+        else
+        {
+            GrpcRpcException rejection = await rejectedRuntime!;
+            Assert.Equal(StatusCode.Unavailable, rejection.StatusCode);
+            Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+            Assert.Equal(SplitWorkerStatus.RemovalRequested, selected.Status);
+            Assert.Equal(initial.RevisionId + 1, selected.RevisionId);
+        }
+
         clock.Advance(TimeSpan.FromHours(1));
         Assert.Equal(selected, await ReadSplitManagementStateAsync(management, timeout.Token));
     }
@@ -210,7 +234,8 @@ public partial class FunctionRpcRelayTests
     private static WorkerProxyWebApplicationFactory CreateTimeoutFactory(
         LifecycleClock clock,
         string? duration = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        bool replaceTimeProvider = true)
     {
         Dictionary<string, string?> configuration = [];
         if (duration is not null)
@@ -221,7 +246,11 @@ public partial class FunctionRpcRelayTests
         WorkerProxyStartupTime startupTime = WorkerProxyStartupTime.Capture(clock);
         return new(configuration, services =>
         {
-            services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock));
+            if (replaceTimeProvider)
+            {
+                services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock));
+            }
+
             services.Replace(ServiceDescriptor.Singleton(startupTime));
             configureServices?.Invoke(services);
         });
@@ -232,6 +261,8 @@ public partial class FunctionRpcRelayTests
         private readonly Lock _sync = new();
         private readonly List<ScheduledTimer> _timers = [];
         private readonly DateTimeOffset _origin = new(2026, 10, 28, 0, 0, 0, TimeSpan.Zero);
+        private TaskCompletionSource _timerChanged = CreateSignal();
+        private BoundaryRace? _boundaryRace;
         private TimeSpan _elapsed;
         private TimeSpan _utcAdjustment;
 
@@ -247,6 +278,30 @@ public partial class FunctionRpcRelayTests
 
         public override long GetTimestamp()
         {
+            BoundaryRace? race = null;
+            long timestamp;
+            lock (_sync)
+            {
+                timestamp = _elapsed.Ticks;
+                if (_boundaryRace is { TimestampClaimed: false } boundaryRace)
+                {
+                    boundaryRace.TimestampClaimed = true;
+                    race = boundaryRace;
+                }
+            }
+
+            if (race is null)
+            {
+                return timestamp;
+            }
+
+            race.TimestampEntered.TrySetResult();
+            race.SignalAndWait();
+            if (race.RuntimeLinkWins)
+            {
+                return timestamp;
+            }
+
             lock (_sync)
             {
                 return _elapsed.Ticks;
@@ -265,6 +320,7 @@ public partial class FunctionRpcRelayTests
             {
                 _timers.Add(timer);
                 ChangeTimerLocked(timer, dueTime, period);
+                NotifyTimerChangedLocked();
             }
 
             return timer;
@@ -292,6 +348,23 @@ public partial class FunctionRpcRelayTests
 
             foreach (ScheduledTimer timer in due)
             {
+                BoundaryRace? race = null;
+                lock (_sync)
+                {
+                    if (_boundaryRace is { TimerClaimed: false } boundaryRace &&
+                        boundaryRace.IsTimer(timer))
+                    {
+                        boundaryRace.TimerClaimed = true;
+                        race = boundaryRace;
+                    }
+                }
+
+                if (race is not null)
+                {
+                    race.TimerEntered.TrySetResult();
+                    race.SignalAndWait();
+                }
+
                 timer.Callback(timer.State);
             }
         }
@@ -308,15 +381,34 @@ public partial class FunctionRpcRelayTests
         {
             while (true)
             {
+                Task timerChanged;
                 lock (_sync)
                 {
                     if (_timers.Exists(timer => timer.Due - _elapsed == delay))
                     {
                         return;
                     }
+
+                    timerChanged = _timerChanged.Task;
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
+                await timerChanged.WaitAsync(cancellationToken);
+            }
+        }
+
+        public BoundaryRace ArmBoundaryRace(TimeSpan delay, bool runtimeLinkWins)
+        {
+            lock (_sync)
+            {
+                if (_boundaryRace is not null)
+                {
+                    throw new InvalidOperationException("A boundary race is already armed.");
+                }
+
+                ScheduledTimer timer = _timers.Find(timer => timer.Due - _elapsed == delay)
+                    ?? throw new InvalidOperationException($"No timer is scheduled for {delay}.");
+                _boundaryRace = new(timer, runtimeLinkWins);
+                return _boundaryRace;
             }
         }
 
@@ -330,6 +422,7 @@ public partial class FunctionRpcRelayTests
                 }
 
                 ChangeTimerLocked(timer, dueTime, period);
+                NotifyTimerChangedLocked();
                 return true;
             }
         }
@@ -340,6 +433,16 @@ public partial class FunctionRpcRelayTests
             timer.Period = period;
         }
 
+        private void NotifyTimerChangedLocked()
+        {
+            TaskCompletionSource timerChanged = _timerChanged;
+            _timerChanged = CreateSignal();
+            timerChanged.TrySetResult();
+        }
+
+        private static TaskCompletionSource CreateSignal() =>
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         private void DisposeTimer(ScheduledTimer timer)
         {
             lock (_sync)
@@ -349,7 +452,41 @@ public partial class FunctionRpcRelayTests
             }
         }
 
-        private sealed class ScheduledTimer(
+        public sealed class BoundaryRace
+        {
+            private readonly Barrier _barrier = new(participantCount: 3);
+            private readonly ScheduledTimer _timer;
+
+            internal BoundaryRace(ScheduledTimer timer, bool runtimeLinkWins)
+            {
+                _timer = timer;
+                RuntimeLinkWins = runtimeLinkWins;
+            }
+
+            public bool RuntimeLinkWins { get; }
+
+            internal TaskCompletionSource TimestampEntered { get; } = CreateSignal();
+
+            internal TaskCompletionSource TimerEntered { get; } = CreateSignal();
+
+            internal bool TimestampClaimed { get; set; }
+
+            internal bool TimerClaimed { get; set; }
+
+            internal bool IsTimer(ScheduledTimer timer) => ReferenceEquals(_timer, timer);
+
+            public Task WaitForRuntimeAsync(CancellationToken cancellationToken) =>
+                TimestampEntered.Task.WaitAsync(cancellationToken);
+
+            public Task WaitForTimerAsync(CancellationToken cancellationToken) =>
+                TimerEntered.Task.WaitAsync(cancellationToken);
+
+            public void Release() => _barrier.SignalAndWait();
+
+            internal void SignalAndWait() => _barrier.SignalAndWait();
+        }
+
+        internal sealed class ScheduledTimer(
             LifecycleClock owner,
             TimerCallback callback,
             object? state) : ITimer
