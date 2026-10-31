@@ -95,7 +95,7 @@ Every changed production file is required for one of the four W3 responsibilitie
 | `src/Functions.WorkerProxy/State/SplitWorkerOriginState.cs` | Projects sticky removal through the existing Legion instance-state contract. |
 | `src/Functions.WorkerProxy/Management/ManagementApiHandlers.cs` | Returns the same removal projection on every long-poll so Legion continues seeing the deletion request. |
 
-The four new hosted scenario methods are in `FunctionRpcRelayTests.WorkerGrpcFailure.cs`. Existing readiness, management, and capability-finalization tests receive only the expectation changes required by sticky removal, including direct read/write fault coverage.
+The four new hosted scenario methods are in `FunctionRpcRelayTests.WorkerGrpcFailure.cs`. One existing management scenario updates its public status expectation to `RemovalRequested`; low-level capability and relay-state coverage is not expanded.
 
 ## Behavioral scenarios
 
@@ -105,13 +105,13 @@ Four new hosted public-surface methods cover the focused contract:
    - Covers invalid first message, pre-`StartStream` EOF, and pre-`StartStream` cancellation.
    - Verifies no removal state and successful replacement.
 2. `WorkerGrpc_EstablishedEofRequestsStickyRemovalAndClosesAdmissions`
-   - Verifies repeated instance-state publication plus readiness, assignment, HTTP, Runtime stream, and Worker stream admission closure.
+   - Verifies repeated instance-state publication plus readiness, assignment, Runtime stream, and Worker stream admission closure.
 3. `WorkerGrpc_EstablishedCancellationRequestsStickyRemoval`
    - Verifies an admitted handler cancellation uses the same sticky removal path.
 4. `WorkerGrpc_ApplicationShutdownDoesNotPublishRemoval`
    - Verifies intentional shutdown does not become W3.
 
-Existing relay scenarios cover admitted Worker read and write faults through the same terminal callback. These are hosted or in-memory public relay surfaces, not isolated state-manager unit tests.
+These are hosted public gRPC and management surfaces, not isolated state-manager unit tests.
 
 ## Assumptions
 

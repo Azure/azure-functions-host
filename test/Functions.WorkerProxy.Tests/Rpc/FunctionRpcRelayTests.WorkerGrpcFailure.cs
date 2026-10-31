@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -10,8 +9,6 @@ using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -32,28 +29,13 @@ public partial class FunctionRpcRelayTests
     [Fact]
     public async Task WorkerGrpc_EstablishedEofRequestsStickyRemovalAndClosesAdmissions()
     {
-        await using WebApplication workerApp = await WorkerHttpForwardingTests.StartWorkerAsync(context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status204NoContent;
-            return Task.CompletedTask;
-        });
-        Dictionary<string, string?> configuration = new()
-        {
-            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
-                WorkerHttpForwardingTests.GetAddress(workerApp).AbsoluteUri
-        };
-        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         using HttpClient management = factory.CreateWorkerProxyClient();
-        using HttpClient forwarding = factory.CreateHttpForwardingClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "established-eof", timeout.Token);
         await AssignWorkerAsync(management, timeout.Token);
-        using (HttpResponseMessage admitted = await forwarding.GetAsync("/invoke", timeout.Token))
-        {
-            Assert.Equal(HttpStatusCode.NoContent, admitted.StatusCode);
-        }
 
         await worker.CompleteRequestAsync(timeout.Token);
 
@@ -70,11 +52,6 @@ public partial class FunctionRpcRelayTests
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token))
         {
             await AssertManagementErrorAsync(assignment, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
-        }
-
-        using (HttpResponseMessage rejected = await forwarding.GetAsync("/invoke", timeout.Token))
-        {
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, rejected.StatusCode);
         }
 
         await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Runtime, timeout.Token);

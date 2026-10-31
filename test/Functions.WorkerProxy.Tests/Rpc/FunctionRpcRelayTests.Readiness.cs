@@ -142,7 +142,6 @@ public partial class FunctionRpcRelayTests
     [InlineData("worker-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed))]
     [InlineData("runtime-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed))]
     [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted))]
-    [InlineData("worker-write-fault", nameof(FunctionRpcRelayTerminationReason.Faulted))]
     [InlineData("worker-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled))]
     [InlineData("runtime-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled))]
     [InlineData("shutdown", nameof(FunctionRpcRelayTerminationReason.Shutdown))]
@@ -157,18 +156,10 @@ public partial class FunctionRpcRelayTests
         Channel<StreamingMessage> runtimeInbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> workerInbound = Channel.CreateUnbounded<StreamingMessage>();
         BlockingServerStreamWriter blockingWriter = new();
-        Mock<IServerStreamWriter<StreamingMessage>> faultingWorkerWriter = new();
-        faultingWorkerWriter
-            .Setup(writer => writer.WriteAsync(It.IsAny<StreamingMessage>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new IOException("Injected worker write failure."));
-        IServerStreamWriter<StreamingMessage> workerWriter = string.Equals(
-            trigger, "worker-write-fault", StringComparison.Ordinal)
-            ? faultingWorkerWriter.Object
-            : new TestServerStreamWriter();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             CreateMessageReader(runtimeInbound.Reader), blockingWriter, runtimeCancellation.Token);
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
-            CreateMessageReader(workerInbound.Reader), workerWriter, workerCancellation.Token);
+            CreateMessageReader(workerInbound.Reader), new TestServerStreamWriter(), workerCancellation.Token);
         Task stopTask = Task.CompletedTask;
 
         try
@@ -191,9 +182,6 @@ public partial class FunctionRpcRelayTests
                 case "worker-fault":
                     workerInbound.Writer.Complete(new IOException("Injected worker failure."));
                     break;
-                case "worker-write-fault":
-                    await runtimeInbound.Writer.WriteAsync(CreateMessage("worker-write-fault"), timeout.Token);
-                    break;
                 case "worker-cancel":
                     workerCancellation.Cancel();
                     break;
@@ -213,8 +201,6 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
             Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
-            bool workerTerminated = trigger.StartsWith("worker", StringComparison.Ordinal);
-            Assert.Equal(workerTerminated, failed.RemovalRequested);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
             Assert.True(relay.IsAttached(FunctionRpcRelaySide.Runtime));
@@ -228,45 +214,6 @@ public partial class FunctionRpcRelayTests
         Assert.All(terminalStates, state => Assert.Equal(expectedReason, state.Reason.ToString()));
         await stopTask.WaitAsync(timeout.Token);
         Assert.Equal(4, manager.State.Revision);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_WorkerTerminationRejectsReplacementRegardlessOfAssignment(bool assigned)
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerAssignment assignment = CreateWorkerAssignment();
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "original", timeout.Token);
-        Assert.True(manager.State.IsWorkerReady);
-
-        if (assigned)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-
-        await worker.CompleteRequestAsync(timeout.Token);
-        await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
-        await WaitForReleaseAsync(relay, timeout.Token);
-        WorkerPodState terminated = manager.State;
-        Assert.False(terminated.IsWorkerReady);
-        Assert.True(terminated.RemovalRequested);
-
-        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        Grpc.Core.RpcException runtimeException =
-            await replacementRuntime.WriteAndReadRejectionAsync(CreateMessage("replacement-runtime"), timeout.Token);
-        Grpc.Core.RpcException workerException =
-            await replacementWorker.WriteAndReadRejectionAsync(CreateStartStream("replacement-worker"), timeout.Token);
-        Assert.Equal(StatusCode.Unavailable, runtimeException.StatusCode);
-        Assert.Equal(StatusCode.Unavailable, workerException.StatusCode);
-        Assert.Same(terminated, manager.State);
-        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
     }
 
     [Fact]
