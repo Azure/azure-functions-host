@@ -27,96 +27,6 @@ public sealed class WorkerLinkEndpointIntegrationTests
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Put_LegacyAndCurrentRoutes_LinkTheSameWorkerIdentity(bool legacyFirst)
-    {
-        using var timeout = new CancellationTokenSource(TestTimeout);
-        _registry.SetupSequence(value => value.LinkAsync(WorkerId, Endpoint, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true))
-            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: false));
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
-        string legacyJson = JsonSerializer.Serialize(new
-        {
-            WorkerPodName = WorkerId,
-            WorkerGrpcEndpoint = Endpoint.AbsoluteUri,
-            RuntimeAccessKey = "reserved-legacy-test-value"
-        });
-
-        using HttpResponseMessage first = legacyFirst
-            ? await host.PutLegacyAsync(legacyJson, timeout.Token)
-            : await host.PutAsync(LinkJson(), timeout.Token);
-        using HttpResponseMessage retry = legacyFirst
-            ? await host.PutAsync(LinkJson(), timeout.Token)
-            : await host.PutLegacyAsync(legacyJson, timeout.Token);
-
-        await AssertLinkResponseAsync(first, HttpStatusCode.Created, timeout.Token);
-        await AssertLinkResponseAsync(retry, HttpStatusCode.OK, timeout.Token);
-        _registry.Verify(value => value.LinkAsync(WorkerId, Endpoint, It.IsAny<CancellationToken>()), Times.Exactly(2));
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("null")]
-    [InlineData("\"\"")]
-    [InlineData("\" \\t \"")]
-    public async Task PutLegacy_MissingWorkerPodName_IsRejected(string? workerPodNameJson)
-    {
-        using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
-        string json = workerPodNameJson is null
-            ? JsonSerializer.Serialize(new { WorkerGrpcEndpoint = Endpoint.AbsoluteUri, workerId = WorkerId })
-            : $$"""{"WorkerPodName":{{workerPodNameJson}},"WorkerGrpcEndpoint":"{{Endpoint.AbsoluteUri}}"}""";
-
-        using HttpResponseMessage response = await host.PutLegacyAsync(json, timeout.Token);
-        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
-
-        Assert.Equal("Required", error.GetProperty("code").GetString());
-        Assert.Equal("workerPodName", error.GetProperty("target").GetString());
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("null")]
-    [InlineData("[]")]
-    [InlineData("{")]
-    [InlineData("""{"WorkerPodName":"worker-pod-abc123","RuntimeAccessKey":{"private":"do-not-echo"}}""")]
-    public async Task PutLegacy_InvalidBody_ReturnsSafeValidationError(string? json)
-    {
-        using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
-
-        using HttpResponseMessage response = await host.PutLegacyAsync(json, timeout.Token);
-        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
-
-        Assert.Equal("InvalidBody", error.GetProperty("code").GetString());
-        Assert.Equal("request", error.GetProperty("target").GetString());
-        Assert.DoesNotContain("do-not-echo", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Theory]
-    [InlineData(null, "Required")]
-    [InlineData("relative/path", "InvalidEndpoint")]
-    [InlineData("http://worker-proxy:50053/private", "InvalidEndpoint")]
-    public async Task PutLegacy_InvalidEndpoint_UsesExistingValidation(string? endpoint, string code)
-    {
-        using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
-        string json = JsonSerializer.Serialize(new { WorkerPodName = WorkerId, WorkerGrpcEndpoint = endpoint });
-
-        using HttpResponseMessage response = await host.PutLegacyAsync(json, timeout.Token);
-        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
-
-        Assert.Equal(code, error.GetProperty("code").GetString());
-        Assert.Equal("workerGrpcEndpoint", error.GetProperty("target").GetString());
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Theory]
     [InlineData(true, HttpStatusCode.Created)]
     [InlineData(false, HttpStatusCode.OK)]
     public async Task Put_ValidRequest_UsesRegistryCreationResult(bool isNewLink, HttpStatusCode status)
@@ -385,8 +295,9 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     [Theory]
+    [InlineData("/admin/workers")]
     [InlineData("/admin/workers/worker-pod-abc123/extra")]
-    public async Task Put_ExtraIdentityPathSegment_DoesNotMatch(string path)
+    public async Task Put_MissingOrExtraIdentityPathSegment_DoesNotMatch(string path)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
@@ -413,17 +324,13 @@ public sealed class WorkerLinkEndpointIntegrationTests
         _registry.VerifyNoOtherCalls();
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Put_WithoutComputeComposition_DoesNotExposeWorkerRoute(bool legacy)
+    [Fact]
+    public async Task Put_WithoutComputeComposition_DoesNotExposeWorkerRoute()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object, includeCompute: false);
 
-        using HttpResponseMessage response = legacy
-            ? await host.PutLegacyAsync(LinkJson(), timeout.Token)
-            : await host.PutAsync(LinkJson(), timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync(LinkJson(), timeout.Token);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         _registry.VerifyNoOtherCalls();
@@ -500,7 +407,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
             Assert.Equal(new[] { "code", "target" },
                 error.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
             Assert.Contains(error.GetProperty("code").GetString(), new[] { "Required", "InvalidEndpoint", "InvalidBody" });
-            Assert.Contains(error.GetProperty("target").GetString(), new[] { "request", "workerId", "workerPodName", "workerGrpcEndpoint" });
+            Assert.Contains(error.GetProperty("target").GetString(), new[] { "request", "workerId", "workerGrpcEndpoint" });
         });
         return errors;
     }
