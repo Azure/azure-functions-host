@@ -431,6 +431,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(ScriptHost.Version, initRequest.HostVersion);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task SendWorkerInitRequest_PreservesSharedCapabilitiesWithoutHostConfiguration(bool v2CompatibilityMode)
+        {
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey,
+                v2CompatibilityMode ? "true" : "false");
+            TaskCompletionSource<WorkerInitRequest> requestSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.WorkerInitRequest,
+                message => requestSource.TrySetResult(message.WorkerInitRequest));
+
+            await CreateDefaultWorkerChannel();
+            WorkerInitRequest request = await requestSource.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.False(request.Capabilities.ContainsKey("HostConfiguration"));
+            Assert.Equal("10", request.Capabilities[RpcWorkerConstants.MultiStream]);
+            Assert.Equal(v2CompatibilityMode, request.Capabilities.ContainsKey(RpcWorkerConstants.V2Compatable));
+            if (v2CompatibilityMode)
+            {
+                Assert.Equal("true", request.Capabilities[RpcWorkerConstants.V2Compatable]);
+            }
+        }
+
         [Fact]
         public async Task SendWorkerInitRequest_PublishesOutboundEvent_V2Compatable()
         {

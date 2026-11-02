@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
@@ -25,7 +26,8 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
-    WorkerPodStateManager stateManager)
+    WorkerPodStateManager stateManager,
+    TokenServiceProxyService? tokenServiceProxy = null)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
@@ -146,7 +148,8 @@ internal sealed partial class FunctionRpcRelay(
                     Interlocked.Increment(ref _nextSessionId),
                     logger,
                     _capabilityFinalizer,
-                    _stateManager);
+                    _stateManager,
+                    tokenServiceProxy);
 
                 FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
                 if (attachResult != FunctionRpcRelayAttachResult.Attached)

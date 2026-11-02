@@ -526,6 +526,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // plumbing to make sure we don't process everything N times
             initRequest.Capabilities.Add(RpcWorkerConstants.MultiStream, "10"); // TODO: make this configurable
 
+            OnWorkerInitRequest(initRequest);
+
             SendStreamingMessage(new StreamingMessage
             {
                 WorkerInitRequest = initRequest
@@ -540,6 +542,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 WorkerDirectory = _workerConfig.Description.WorkerDirectory,
                 FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
             };
+        }
+
+        /// <summary>
+        /// Customizes initialization after shared capabilities are added and before the request is sent.
+        /// </summary>
+        /// <param name="request">The initialization request.</param>
+        protected virtual void OnWorkerInitRequest(WorkerInitRequest request)
+        {
+        }
+
+        /// <summary>
+        /// Captures topology-specific data from a successful initialization response.
+        /// </summary>
+        /// <param name="response">The successful worker initialization response.</param>
+        protected virtual void OnWorkerInitResponse(WorkerInitResponse response)
+        {
         }
 
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
@@ -594,6 +612,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
+            OnWorkerInitResponse(_initMessage);
             _state = _state | RpcWorkerChannelState.Initialized;
 
             if (!_environment.IsLogicApp())
