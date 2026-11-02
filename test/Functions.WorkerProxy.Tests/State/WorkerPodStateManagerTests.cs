@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -16,7 +17,7 @@ public partial class WorkerPodStateManagerTests
     [Fact]
     public void InitialState_IsUnassignedAtRevisionZero()
     {
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         WorkerPodState state = manager.State;
 
         Assert.Equal("pod", state.PodName);
@@ -40,7 +41,7 @@ public partial class WorkerPodStateManagerTests
     public void Lifecycle_PublishesImmutableMonotonicSnapshots(bool specializationRequired)
     {
         WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
         Assert.True(manager.OnWorkerAttached(1));
         WorkerPodState attached = manager.State;
@@ -82,7 +83,7 @@ public partial class WorkerPodStateManagerTests
     [Fact]
     public void NotReadyAssignment_DoesNotClaimIdentityOrChangeRevision()
     {
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
         Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("rejected")));
         Assert.Same(initial, manager.State);
@@ -109,6 +110,49 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.Same(state, manager.State);
+    }
+
+    [Fact]
+    public void AcceptedAssignment_ReplacesEffectiveHttpProxyEndpointBeforePublishingState()
+    {
+        WorkerProxyOptions options = new() { PodName = "pod" };
+        IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
+        WorkerHttpProxyEndpointState endpointState = new();
+        WorkerPodStateManager manager = new(configuredOptions, endpointState, TimeProvider.System);
+
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment(httpProxyEndpoint: "mapped.example:48801")));
+        Assert.Null(endpointState.Value);
+
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        WorkerAssignment assignment = CreateAssignment(httpProxyEndpoint: "mapped.example:48801");
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
+        WorkerPodState assigned = manager.State;
+
+        Assert.Equal("http://mapped.example:48801/", endpointState.Value);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(assignment));
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment(httpProxyEndpoint: "mapped.example:48802")));
+        Assert.Same(assigned, manager.State);
+        Assert.Equal("http://mapped.example:48801/", endpointState.Value);
+
+        manager.OnSessionTerminated(1);
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
+        Assert.Equal("http://mapped.example:48801/", endpointState.Value);
+    }
+
+    [Fact]
+    public void AcceptedAssignmentWithoutHttpProxyEndpoint_LeavesEffectiveEndpointUnset()
+    {
+        WorkerProxyOptions options = new() { PodName = "pod" };
+        IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
+        WorkerHttpProxyEndpointState endpointState = new();
+        WorkerPodStateManager manager = new(configuredOptions, endpointState, TimeProvider.System);
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+
+        Assert.Null(endpointState.Value);
     }
 
     [Fact]
@@ -153,7 +197,7 @@ public partial class WorkerPodStateManagerTests
     [Fact]
     public void RuntimeOnlyTermination_PreventsLateWorkerAttachmentForThatSession()
     {
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
 
         Assert.False(manager.OnSessionTerminated(1));
@@ -192,7 +236,7 @@ public partial class WorkerPodStateManagerTests
     [InlineData(null)]
     public void InvalidWorkerIdentity_DoesNotEnableReadiness(string? workerId)
     {
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         manager.OnWorkerAttached(1);
         WorkerPodState attached = manager.State;
 
@@ -206,7 +250,7 @@ public partial class WorkerPodStateManagerTests
     [InlineData(-1)]
     public void InvalidSessionIdentity_IsRejected(long sessionId)
     {
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnWorkerAttached(sessionId));
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnWorkerStartStream(sessionId, "worker"));
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnSessionTerminated(sessionId));
@@ -219,26 +263,33 @@ public partial class WorkerPodStateManagerTests
     [InlineData(null)]
     public void MissingPodIdentity_IsRejected(string? podName)
     {
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerPodStateManager(CreateOptions(podName!), TimeProvider.System));
+        IOptions<WorkerProxyOptions> options = CreateOptions(podName!);
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new WorkerPodStateManager(options, new WorkerHttpProxyEndpointState(), TimeProvider.System));
     }
 
     [Fact]
     public void NullTimeProvider_IsRejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new WorkerPodStateManager(CreateOptions(), null!));
+        IOptions<WorkerProxyOptions> options = CreateOptions();
+        Assert.Throws<ArgumentNullException>(() =>
+            new WorkerPodStateManager(options, new WorkerHttpProxyEndpointState(), null!));
     }
 
     [Fact]
     public void NullOptions_IsRejected()
     {
-        Assert.Throws<ArgumentNullException>(() => new WorkerPodStateManager(null!, TimeProvider.System));
+        IOptions<WorkerProxyOptions> options = CreateOptions();
+        Assert.Throws<ArgumentNullException>(() =>
+            new WorkerPodStateManager(null!, new WorkerHttpProxyEndpointState(), TimeProvider.System));
     }
 
     [Fact]
     public void PodIdentity_IsCapturedDuringConstruction()
     {
         WorkerProxyOptions options = new() { PodName = "original-pod" };
-        WorkerPodStateManager manager = new(Options.Create(options), TimeProvider.System);
+        IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
+        WorkerPodStateManager manager = CreateManager(configuredOptions, TimeProvider.System);
 
         options.PodName = "different-pod";
         manager.OnWorkerAttached(1);
@@ -358,16 +409,23 @@ public partial class WorkerPodStateManagerTests
         }
     }
 
+    private static WorkerPodStateManager CreateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
+        => new(options, new WorkerHttpProxyEndpointState(), timeProvider);
+
     private static WorkerPodStateManager CreateReadyManager()
     {
-        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "worker");
         return manager;
     }
 
-    private static WorkerAssignment CreateAssignment(string appName = "app", WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured)
-        => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot");
+    private static WorkerAssignment CreateAssignment(
+        string appName = "app",
+        WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured,
+        string? httpProxyEndpoint = null)
+        => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot",
+            httpProxyEndpoint: httpProxyEndpoint);
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });

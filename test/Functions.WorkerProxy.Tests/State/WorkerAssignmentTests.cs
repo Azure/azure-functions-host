@@ -180,6 +180,49 @@ public class WorkerAssignmentTests
         Assert.False(different.IsEquivalentTo(omitted));
     }
 
+    [Fact]
+    public void Equality_PreservesOriginalHttpProxyAuthority()
+    {
+        WorkerAssignment first = Create(new Dictionary<string, string>(), "worker-pod:28080");
+        WorkerAssignment same = Create(new Dictionary<string, string>(), "worker-pod:28080");
+        WorkerAssignment differentAuthority = Create(new Dictionary<string, string>(), "worker-pod:28081");
+        WorkerAssignment differentCasing = Create(new Dictionary<string, string>(), "Worker-Pod:28080");
+
+        Assert.True(first.IsEquivalentTo(same));
+        Assert.False(first.IsEquivalentTo(differentAuthority));
+        Assert.False(first.IsEquivalentTo(differentCasing));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("worker-pod")]
+    [InlineData("127.0.0.1")]
+    [InlineData("[::1]")]
+    [InlineData("https://worker-pod:28080")]
+    [InlineData("worker-pod:28080/path")]
+    [InlineData("worker-pod:0")]
+    [InlineData("user@worker-pod:28080")]
+    public void Construction_RejectsInvalidHttpProxyAuthority(string endpoint)
+    {
+        Assert.Throws<ArgumentException>(() => Create(new Dictionary<string, string>(), endpoint));
+    }
+
+    [Theory]
+    [InlineData("worker-pod:28080")]
+    [InlineData("127.0.0.1:28080")]
+    [InlineData("[::1]:28080")]
+    public void Construction_AcceptsMappedHttpProxyAuthority(string endpoint)
+    {
+        WorkerAssignment assignment = Create(new Dictionary<string, string>(), endpoint);
+
+        Assert.Equal(endpoint, assignment.HttpProxyEndpoint);
+    }
+
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment)
-        => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot");
+        => Create(environment, null);
+
+    private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment, string? httpProxyEndpoint)
+        => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot",
+            httpProxyEndpoint: httpProxyEndpoint);
 }

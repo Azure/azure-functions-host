@@ -65,7 +65,8 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16,
+        HttpProxyEndpoint: workerProxy.HttpProxyEndpoint.Authority);
     using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -171,6 +172,8 @@ internal partial class Program
 
         public required Uri ManagementUri { get; init; }
 
+        public required Uri HttpProxyEndpoint { get; init; }
+
         public required Uri WorkerGrpcEndpoint { get; init; }
 
         public required string WorkerId { get; init; }
@@ -181,7 +184,8 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency,
+        string? HttpProxyEndpoint);
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
 

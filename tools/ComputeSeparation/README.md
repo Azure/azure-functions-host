@@ -121,9 +121,11 @@ In project mode, the `fake-platform` resource is a local stand-in for the platfo
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
-profile. Aspire supplies each entry's management address, runtime gRPC endpoint, and worker ID. Assign and link requests
-select an entry by name; an unknown name returns `404` instead of choosing a different worker. Each worker has a distinct
-worker ID, request ID, pod name, and proxy endpoints, and both link to the same Host.
+profile. Aspire supplies each entry's management address, mapped HTTP authority, runtime gRPC endpoint, and worker ID.
+The assignment sends that scheme-less HTTP authority before the worker is linked, and publishes it as the effective
+runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
+`404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
+endpoints, and both link to the same Host.
 
 ## Host state publication (prototype)
 

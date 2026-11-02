@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
@@ -619,8 +620,11 @@ public class ManagementApiHandlersTests
         Assert.Empty(clock.Timers);
     }
 
-    private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null) =>
-        new(Options.Create(new WorkerProxyOptions { PodName = "pod" }), timeProvider ?? TimeProvider.System);
+    private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null)
+    {
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions { PodName = "pod" });
+        return new(options, new WorkerHttpProxyEndpointState(), timeProvider ?? TimeProvider.System);
+    }
 
     private static WorkerPodStateManager CreateReadyManager(TimeProvider? timeProvider = null)
     {

@@ -44,6 +44,7 @@ EndpointReference hostEndpoint;
 EndpointReference proxyManagementEndpoint;
 EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
+ReferenceExpression workerHttpEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -85,6 +86,7 @@ if (topology is not null)
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
     proxyManagementEndpoint = workerPod.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
+    workerHttpEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:28080");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
@@ -154,6 +156,7 @@ else
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     proxyManagementEndpoint = proxyProject.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
+    workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
     dependencies = tokenServiceProxyScenario
         ? ["functions-host", "worker-proxy-1", "fake-platform", "mock-token-service"]
         : ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
@@ -220,6 +223,7 @@ else
         fakePlatform
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__Name", proxyName)
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__ManagementUri", proxy.GetEndpoint(ManagementEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__HttpProxyEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
 
@@ -233,6 +237,7 @@ if (autoLink)
         hostEndpoint,
         proxyManagementEndpoint,
         workerGrpcEndpoint,
+        workerHttpEndpoint,
         platformEndpoint,
         workerId,
         dependencies,

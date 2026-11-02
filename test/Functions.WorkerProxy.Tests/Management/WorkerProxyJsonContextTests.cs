@@ -25,18 +25,21 @@ public class WorkerProxyJsonContextTests
             MaxHttpConcurrency = 10,
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
-            Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
+            Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" },
+            HttpProxyEndpoint = "worker-pod:28080"
         };
 
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "maxHttpConcurrency", "functionAppDirectory", "isAlwaysReady", "environment");
+        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "maxHttpConcurrency", "functionAppDirectory",
+            "isAlwaysReady", "environment", "httpProxyEndpoint");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal(10, root.GetProperty("maxHttpConcurrency").GetInt32());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
         Assert.Equal("private-value", root.GetProperty("environment").GetProperty("SECRET").GetString());
+        Assert.Equal("worker-pod:28080", root.GetProperty("httpProxyEndpoint").GetString());
 
         WorkerAssignRequest copy = Assert.IsType<WorkerAssignRequest>(
             JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerAssignRequest));
@@ -45,6 +48,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
         Assert.Equal(request.MaxHttpConcurrency, copy.MaxHttpConcurrency);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
+        Assert.Equal(request.HttpProxyEndpoint, copy.HttpProxyEndpoint);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
     }

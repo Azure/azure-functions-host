@@ -345,8 +345,10 @@ internal sealed partial class FunctionRpcRelay
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
-                Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
-                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities);
+                (WorkerPodState state, string? httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                Uri? destination = capabilityFinalizer.FinalizeCapabilities(
+                    finalized.WorkerInitResponse.Capabilities, httpProxyEndpoint);
+                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities, state);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -377,13 +379,12 @@ internal sealed partial class FunctionRpcRelay
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
         /// the capability is omitted so the runtime never receives an unassigned or stale group.
         /// </remarks>
-        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities)
+        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities, WorkerPodState state)
         {
             // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
 
-            WorkerPodState state = stateManager.State;
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {

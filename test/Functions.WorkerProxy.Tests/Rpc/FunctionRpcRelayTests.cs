@@ -472,14 +472,19 @@ public partial class FunctionRpcRelayTests
     }
 
     private static WorkerPodStateManager CreatePodStateManager()
-        => new(Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }), TimeProvider.System);
+    {
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" });
+        return new(options, new WorkerHttpProxyEndpointState(), TimeProvider.System);
+    }
 
     private static StreamingMessage CreateStartStream(string requestId = "worker-start")
         => new() { RequestId = requestId, StartStream = new() { WorkerId = "test-worker" } };
 
-    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
+    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(
+        WorkerProxyOptions? options = null)
     {
-        return new(Options.Create(options ?? new()), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options ?? new());
+        return new(configuredOptions, NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)

@@ -110,6 +110,7 @@ internal static partial class WorkerProxyApplication
         builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
             WorkerProxyLogExporter.AssignmentCategory,
             LogLevel.Information);
+        builder.Services.AddSingleton<WorkerHttpProxyEndpointState>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();
