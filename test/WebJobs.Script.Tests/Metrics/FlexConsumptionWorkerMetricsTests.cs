@@ -28,6 +28,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     private readonly TestLogger<FlexConsumptionMetricsPublisher> _logger = new();
     private readonly FlexConsumptionMetricsPublisher _publisher;
     private readonly FlexConsumptionMetricsPublisherOptions _options;
+    private readonly HashSet<string> _stampedFiles = new(StringComparer.Ordinal);
     private DateTime _now = new(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc);
 
     public FlexConsumptionWorkerMetricsTests()
@@ -386,6 +387,24 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     }
 
     [Fact]
+    public void FileRetention_DefaultMatchesFifteenMinuteBuffer()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(15), _options.WorkerMetricsFileRetentionPeriod);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void FileRetention_NonPositivePeriodIsRejected(int seconds)
+    {
+        _options.WorkerMetricsFileRetentionPeriod = TimeSpan.FromSeconds(seconds);
+        Mock<IOptionsMonitor<StandbyOptions>> standby = new();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FlexConsumptionMetricsPublisher(
+            new TestEnvironment(), standby.Object, Options.Create(_options), _logger, _fileSystem, _provider.Object));
+    }
+
+    [Fact]
     public async Task FileRetention_IsIndependentPerWorker()
     {
         _publisher.WorkerLinked("worker-a");
@@ -404,6 +423,94 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         Assert.All(metrics, records => Assert.Equal(2, records.Count()));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FileRetention_ReclaimsRetiredWorkersAndPreservesFreshFinalRecords(bool hasLinkedWorker)
+    {
+        _publisher.IsAlwaysReady = true;
+        for (int i = 0; i < 100; i++)
+        {
+            string workerId = $"retired-{i}";
+            _publisher.WorkerLinked(workerId);
+            _now = _now.AddSeconds(1);
+            _publisher.WorkerUnlinked(workerId);
+            await PublishAsync();
+        }
+
+        Assert.Equal(100, ReadMetrics().Count);
+        _now += _options.WorkerMetricsFileRetentionPeriod;
+        _publisher.WorkerLinked("fresh-final");
+        _now = _now.AddSeconds(1);
+        _publisher.WorkerUnlinked("fresh-final");
+        await PublishAsync();
+        Assert.Equal("fresh-final", Assert.Single(ReadMetrics()).InstanceId);
+
+        if (hasLinkedWorker)
+        {
+            _publisher.WorkerLinked("current");
+        }
+
+        _now = _now.AddMinutes(1);
+        await PublishAsync();
+        var records = ReadMetrics();
+        Assert.Contains(records, record => string.Equals(record.InstanceId, "fresh-final", StringComparison.Ordinal));
+        Assert.Equal(hasLinkedWorker ? 2 : 1, records.Count);
+    }
+
+    [Fact]
+    public async Task FileRetention_UsesConfiguredPeriodAndPreservesExactBoundary()
+    {
+        _options.WorkerMetricsFileRetentionPeriod = TimeSpan.FromMinutes(2);
+        _publisher.IsAlwaysReady = true;
+        _publisher.WorkerLinked("retired");
+        _now = _now.AddSeconds(1);
+        _publisher.WorkerUnlinked("retired");
+        await PublishAsync();
+        _now += _options.WorkerMetricsFileRetentionPeriod;
+
+        await PublishAsync();
+        Assert.Single(ReadMetrics());
+        _now = _now.AddTicks(1);
+        await PublishAsync();
+        Assert.Empty(ReadMetrics());
+        Assert.Contains(_logger.GetLogMessages(), message =>
+            message.Level == LogLevel.Debug &&
+            message.FormattedMessage.Contains("Deleted 1 expired Worker metrics file", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task FileRetention_NonSeparatedFlexDoesNotExpireWorkerFiles()
+    {
+        _publisher.IsAlwaysReady = true;
+        _publisher.WorkerLinked("retired");
+        _publisher.WorkerUnlinked("retired");
+        await PublishAsync();
+        _options.UseWorkerAttribution = false;
+        _publisher.IsAlwaysReady = false;
+        _now += _options.WorkerMetricsFileRetentionPeriod + TimeSpan.FromSeconds(1);
+
+        await PublishAsync();
+
+        Assert.Equal("retired", Assert.Single(ReadMetrics()).InstanceId);
+    }
+
+    private void StampNewFiles()
+    {
+        if (!_fileSystem.Directory.Exists(MetricsPath))
+        {
+            return;
+        }
+
+        foreach (string path in _fileSystem.Directory.GetFiles(MetricsPath))
+        {
+            if (_stampedFiles.Add(path))
+            {
+                _fileSystem.File.SetLastWriteTimeUtc(path, _now);
+            }
+        }
+    }
+
     public void Dispose()
     {
         _publisher.Dispose();
@@ -414,7 +521,11 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         Assert.True(_publisher.TryDispatchInvocation(invocationId, workerId, cancellationToken, () => true));
     }
 
-    private Task PublishAsync() => _publisher.OnPublishMetrics(_now, ValueStopwatch.StartNew());
+    private async Task PublishAsync()
+    {
+        await _publisher.OnPublishMetrics(_now, ValueStopwatch.StartNew());
+        StampNewFiles();
+    }
 
     private List<FlexConsumptionMetricsPublisher.Metrics> ReadMetrics()
     {

@@ -37,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+            if (_options.UseWorkerAttribution && _options.WorkerMetricsFileRetentionPeriod <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), "Worker metrics file retention must be positive.");
+            }
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? new FileSystem();
             _metricsFileManager = new LegionMetricsFileManager(_options.MetricsFilePath, _fileSystem, _logger, _options.MaxFileCount);

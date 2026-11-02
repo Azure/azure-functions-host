@@ -67,6 +67,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         public bool UseWorkerAttribution { get; set; }
 
         /// <summary>
+        /// Gets or sets the maximum age of Worker metric files, measured from their last write in UTC.
+        /// Defaults to 15 minutes and must be positive when Worker attribution is enabled.
+        /// </summary>
+        /// <remarks>
+        /// Expired files are removed across all Workers, including retired Workers, even when no Workers are linked.
+        /// Uncollected billing records are discarded after this window. This does not impose a directory-wide size limit.
+        /// Non-compute-separated publishing does not use this setting.
+        /// </remarks>
+        public TimeSpan WorkerMetricsFileRetentionPeriod { get; set; } = TimeSpan.FromMinutes(15);
+
+        /// <summary>
         /// Gets or sets the maximum number of files to keep in the metrics directory, per Worker when Worker attribution is enabled.
         /// </summary>
         /// <remarks>

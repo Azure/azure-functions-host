@@ -37,6 +37,76 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         // Internal access for testing only
         internal string MetricsFilePath { get; set;  }
 
+        internal void DeleteExpiredWorkerMetrics(DateTime utcNow, TimeSpan retentionPeriod)
+        {
+            if (string.IsNullOrEmpty(MetricsFilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_fileSystem.Directory.Exists(MetricsFilePath))
+                {
+                    return;
+                }
+
+                int deletedCount = 0;
+                foreach (var file in _fileSystem.DirectoryInfo.FromDirectoryName(MetricsFilePath).GetFiles("*.json"))
+                {
+                    if (!IsWorkerMetricsFile(file.Name))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        if (utcNow - file.LastWriteTimeUtc > retentionPeriod)
+                        {
+                            file.Delete();
+                            deletedCount++;
+                        }
+                    }
+                    catch (Exception ex) when (!ex.IsFatal())
+                    {
+                        _logger.LogError(ex, "Error deleting expired Worker metrics file '{FilePath}'.", file.FullName);
+                    }
+                }
+
+                if (deletedCount > 0)
+                {
+                    _logger.LogDebug("Deleted {FileCount} expired Worker metrics file(s). Retention period: {RetentionPeriod}.",
+                        deletedCount, retentionPeriod);
+                }
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                _logger.LogError(ex, "Error cleaning expired Worker metrics files in '{MetricsFilePath}'.", MetricsFilePath);
+            }
+        }
+
+        private static bool IsWorkerMetricsFile(string name)
+        {
+            const int hashLength = 64;
+            const int guidLength = 36;
+            if (name.Length != hashLength + 1 + guidLength + ".json".Length ||
+                name[hashLength] != '-' || !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+                !Guid.TryParseExact(name.AsSpan(hashLength + 1, guidLength), "D", out _))
+            {
+                return false;
+            }
+
+            foreach (char character in name.AsSpan(0, hashLength))
+            {
+                if (!char.IsAsciiHexDigit(character))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private bool PrepareDirectoryForFile(string filePrefix)
         {
             if (string.IsNullOrEmpty(MetricsFilePath))

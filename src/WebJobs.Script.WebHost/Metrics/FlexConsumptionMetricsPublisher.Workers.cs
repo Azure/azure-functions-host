@@ -152,6 +152,8 @@ public sealed partial class FlexConsumptionMetricsPublisher
 
     private async Task PublishWorkerMetricsAsync(DateTime now)
     {
+        _metricsFileManager.DeleteExpiredWorkerMetrics(now, _options.WorkerMetricsFileRetentionPeriod);
+
         List<Metrics> snapshots = [];
         lock (_lock)
         {
