@@ -337,6 +337,28 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task LinkAsync_DeadlineCreationFailureLogsUnknownStageAfterCleanup()
+    {
+        InvalidOperationException failure = new("private-failure-sentinel");
+        Mock<TimeProvider> timeProvider = new();
+        timeProvider.Setup(provider => provider.CreateTimer(
+            It.IsAny<TimerCallback>(), It.IsAny<object>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Throws(failure);
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: timeProvider.Object);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        harness.OnLinkFailure = () => Assert.False(registry.UnlinkAsync("worker").WaitAsync(TestTimeout).GetAwaiter().GetResult());
+
+        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout));
+
+        Assert.Same(failure, actual);
+        AssertLinkFailure(harness, "Unknown", "UnexpectedFailure", typeof(InvalidOperationException));
+        Assert.Empty(registry.GetInitializedChannels());
+        harness.DuplexFactory.VerifyNoOtherCalls();
+        harness.ChannelFactory.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task LinkAsync_CleanCloseDuringHandshakeThrowsIOException()
     {
         RegistryHarness harness = new();

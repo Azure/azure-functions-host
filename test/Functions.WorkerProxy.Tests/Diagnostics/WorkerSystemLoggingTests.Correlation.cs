@@ -28,16 +28,8 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
-        using (logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }))
-        using (logger.BeginScope(new WorkerSystemLogContext
-        {
-            Operation = "Initialization",
-            Stage = "ResponseReceived",
-            Outcome = "Failed",
-            ReasonCode = "WorkerFailure",
-            DurationMs = 12.5,
-            Attributes = new() { RpcStatus = "Failure", WorkerReady = false, StateRevision = 3 }
-        }))
+        using (logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id" }))
+        using (logger.BeginScope(new WorkerSystemLogContext { ProxySessionId = 7 }))
         {
             logger.LogWarning(new EventId(8, "ProtocolMessageObserved"), "Response received.");
         }
@@ -50,17 +42,7 @@ public partial class WorkerSystemLoggingTests
         Assert.All(records, record => Assert.Equal(21, record.Length));
         Assert.Equal(WorkerProxyLogExporter.RelayCategory, records[0][5]);
         Assert.Equal(string.Empty, records[0][12]);
-        foreach (string field in new[]
-        {
-            "WorkerId=worker-id;", "ProxySessionId=7;", "Operation=Initialization;",
-            "Stage=ResponseReceived;", "Outcome=Failed;", "ReasonCode=WorkerFailure;",
-            "DurationMs=12.5;", "RpcStatus=Failure;", "WorkerReady=False;", "StateRevision=3;"
-        })
-        {
-            Assert.Contains(field, records[0][7], StringComparison.Ordinal);
-        }
-
-        Assert.EndsWith("Response received.", records[0][7], StringComparison.Ordinal);
+        Assert.Equal("WorkerId=worker-id; ProxySessionId=7; Response received.", records[0][7]);
         Assert.Equal(string.Empty, records[1][12]);
         Assert.Equal("No invocation.", records[1][7]);
     }
@@ -109,11 +91,7 @@ public partial class WorkerSystemLoggingTests
             string.Empty, string.Empty, new()
             {
                 WorkerId = workerId,
-                ProxySessionId = 7,
-                Operation = oversized,
-                Stage = oversized,
-                Outcome = oversized,
-                ReasonCode = oversized
+                ProxySessionId = 7
             });
         await generator.CompleteAsync();
 
@@ -122,11 +100,44 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(21, record.Length);
         Assert.Contains($"WorkerId=sha256:{hash};", record[7], StringComparison.Ordinal);
         Assert.Contains("ProxySessionId=7;", record[7], StringComparison.Ordinal);
-        Assert.Contains("ReasonCode=", record[7], StringComparison.Ordinal);
         Assert.Equal(string.Empty, record[12]);
         Assert.InRange(record[7].Length, 1, 1_024);
         Assert.DoesNotContain(workerId, output.ToString(), StringComparison.Ordinal);
         Assert.InRange(Encoding.UTF8.GetByteCount(output.ToString()), 1, 32_768);
+    }
+
+    [Fact]
+    public async Task ConsoleLogging_MaximumCorrelationPrefixPreservesDiagnosticText()
+    {
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        string workerId = new('w', 128);
+        string summary = $"Diagnostic message. {new string('x', 1_024)}";
+        generator.LogEvent(LogLevel.Warning, "Failure", "Proxy", string.Empty, summary,
+            string.Empty, string.Empty, new() { WorkerId = workerId, ProxySessionId = long.MaxValue });
+        await generator.CompleteAsync();
+
+        string[] record = Assert.Single(ParseCsvOutput(output.ToString()));
+        string prefix = $"WorkerId={workerId}; ProxySessionId={long.MaxValue.ToString(CultureInfo.InvariantCulture)}; ";
+        Assert.Equal(175, prefix.Length);
+        Assert.Equal(prefix + summary[..(1_024 - prefix.Length)], record[7]);
+    }
+
+    [Fact]
+    public async Task ConsoleLogging_CorrelatedSummaryTruncatesWithoutSplittingSurrogatePair()
+    {
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        const string prefix = "WorkerId=worker; ProxySessionId=7; ";
+        string retainedSummary = new('x', 1_024 - prefix.Length - 1);
+        generator.LogEvent(LogLevel.Warning, "Failure", "Proxy", string.Empty,
+            retainedSummary + "\uD83D\uDE80tail", string.Empty, string.Empty,
+            new() { WorkerId = "worker", ProxySessionId = 7 });
+        await generator.CompleteAsync();
+
+        string[] record = Assert.Single(ParseCsvOutput(output.ToString()));
+        Assert.Equal(prefix + retainedSummary, record[7]);
+        Assert.Equal(1_023, record[7].Length);
     }
 
     [Fact]

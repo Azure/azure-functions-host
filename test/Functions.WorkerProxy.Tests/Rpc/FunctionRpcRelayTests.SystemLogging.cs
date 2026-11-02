@@ -225,7 +225,7 @@ public partial class FunctionRpcRelayTests
             WorkerSystemLogContext? context = null,
             DateTimeOffset? timestamp = null)
         {
-            ProxyRecords.Enqueue(new(eventName, summary, context, source, details, exceptionType, exceptionMessage));
+            ProxyRecords.Enqueue(new(eventName, summary, context, source, details, exceptionType, exceptionMessage, level));
         }
     }
 
@@ -236,5 +236,6 @@ public partial class FunctionRpcRelayTests
         string Source,
         string Details,
         string ExceptionType,
-        string ExceptionMessage);
+        string ExceptionMessage,
+        LogLevel Level);
 }

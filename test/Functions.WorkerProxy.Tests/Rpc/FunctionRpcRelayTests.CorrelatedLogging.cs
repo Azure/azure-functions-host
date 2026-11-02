@@ -9,14 +9,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
-    [Fact]
-    public async Task Relay_LogsLinkAndStartupBoundariesWithoutInvocationTelemetry()
+    [Theory]
+    [InlineData(StatusResult.Types.Status.Failure)]
+    [InlineData(StatusResult.Types.Status.Success)]
+    [InlineData(StatusResult.Types.Status.Cancelled)]
+    [InlineData((StatusResult.Types.Status)123)]
+    [InlineData(null)]
+    public async Task Relay_LogsLinkAndStartupBoundariesWithoutInvocationTelemetry(StatusResult.Types.Status? loadStatus)
     {
         const string sentinel = "customer-payload-secret";
         const string invocationId = "invocation-id";
@@ -55,11 +61,12 @@ public partial class FunctionRpcRelayTests
             FunctionLoadResponse = new()
             {
                 FunctionId = sentinel,
-                Result = new()
+                Result = loadStatus is { } responseStatus ? new()
                 {
-                    Status = StatusResult.Types.Status.Failure,
+                    Status = responseStatus,
                     Exception = new() { Message = sentinel, StackTrace = sentinel }
                 }
+                : null
             }
         };
         await runtime.WriteAsync(loadRequest, timeout.Token);
@@ -72,17 +79,26 @@ public partial class FunctionRpcRelayTests
         foreach (string operation in new[] { "Initialization", "FunctionLoad" })
         {
             CapturedProxyLog[] records = generator.ProxyRecords.Where(record =>
-                string.Equals(record.Context?.Operation, operation, StringComparison.Ordinal)).ToArray();
-            Assert.Equal(new[] { "RequestForwarded", "RequestReceived", "ResponseForwarded", "ResponseReceived" },
-                records.Select(record => record.Context!.Stage).Order(StringComparer.Ordinal));
+                string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)
+                && record.Message.StartsWith($"FunctionRpc {operation} reached ", StringComparison.Ordinal)).ToArray();
+            Assert.Equal(4, records.Length);
             Assert.All(records, record =>
             {
                 Assert.Equal("telemetry-worker", record.Context!.WorkerId);
                 Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
             });
-            Assert.All(records.Where(record => record.Context!.Stage!.StartsWith("Response", StringComparison.Ordinal)),
-                record => Assert.Equal(string.Equals(operation, "Initialization", StringComparison.Ordinal) ? "Success" : "Failure",
-                    record.Context!.Attributes!.RpcStatus));
+            foreach (string stage in new[] { "RequestForwarded", "RequestReceived", "ResponseForwarded", "ResponseReceived" })
+            {
+                StatusResult.Types.Status? status = stage.StartsWith("Response", StringComparison.Ordinal)
+                    ? string.Equals(operation, "Initialization", StringComparison.Ordinal) ? StatusResult.Types.Status.Success : loadStatus
+                    : null;
+                string? statusText = status?.ToString();
+                CapturedProxyLog record = Assert.Single(records, record =>
+                    string.Equals(record.Message, $"FunctionRpc {operation} reached {stage} with RPC status {statusText ?? "(null)"}.",
+                        StringComparison.Ordinal));
+                Assert.Equal(status is not null and not StatusResult.Types.Status.Success ? LogLevel.Warning : LogLevel.Information,
+                    record.Level);
+            }
         }
 
         StreamingMessage request = new()
@@ -123,12 +139,11 @@ public partial class FunctionRpcRelayTests
         Assert.Contains(generator.ProxyRecords, record =>
             string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal)
             && string.Equals(record.Context?.WorkerId, "telemetry-worker", StringComparison.Ordinal)
-            && record.Context?.Attributes?.WorkerReady is false);
+            && record.Context?.ProxySessionId == preLink.Context.ProxySessionId);
         Assert.Equal(8, generator.ProxyRecords.Count(record =>
             string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)));
         Assert.DoesNotContain(generator.ProxyRecords, record =>
-            string.Equals(record.Context?.Operation, "RpcInvocation", StringComparison.Ordinal)
-            || string.Equals(record.Context?.Operation, "HttpForwarding", StringComparison.Ordinal));
+            record.Message.Contains(invocationId, StringComparison.Ordinal));
         Assert.DoesNotContain(generator.ProxyRecords, record =>
             record.Message.Contains(sentinel, StringComparison.Ordinal)
             || (record.Context?.ToString().Contains(sentinel, StringComparison.Ordinal) ?? false));

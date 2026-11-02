@@ -72,8 +72,7 @@ internal static partial class WorkerProxyApplication
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         generator.LogEvent(LogLevel.Critical, "WorkerProxyStartupFailed", WorkerProxyLogExporter.ApplicationCategory,
             details: string.Empty, summary: $"WorkerProxy failed to start ({exception.GetType().FullName}).",
-            exceptionType: string.Empty, exceptionMessage: string.Empty,
-            context: new() { Operation = "Startup", Stage = "Failed", Outcome = "Failed", ReasonCode = "StartupFailed" });
+            exceptionType: string.Empty, exceptionMessage: string.Empty);
     }
 
     /// <summary>
@@ -160,35 +159,9 @@ internal static partial class WorkerProxyApplication
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
-        app.Lifetime.ApplicationStarted.Register(() =>
-        {
-            using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
-            {
-                Operation = "Startup",
-                Stage = "Completed",
-                Outcome = "Succeeded"
-            });
-            Log.WorkerProxyStarted(logger);
-        });
-        app.Lifetime.ApplicationStopping.Register(() =>
-        {
-            using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
-            {
-                Operation = "Shutdown",
-                Stage = "Started"
-            });
-            Log.WorkerProxyShutdownStarted(logger);
-        });
-        app.Lifetime.ApplicationStopped.Register(() =>
-        {
-            using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
-            {
-                Operation = "Shutdown",
-                Stage = "Completed",
-                Outcome = "Succeeded"
-            });
-            Log.WorkerProxyStopped(logger);
-        });
+        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
+        app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
+        app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)

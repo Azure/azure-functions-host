@@ -93,9 +93,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
     private enum LinkStage
     {
+        Unknown,
         ConnectingToProxy,
         CreatingWorkerChannel,
         InitializingWorker,
+        ValidatingHostConfiguration,
         RegisteringChannel
     }
 
@@ -230,7 +232,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                     }
 
                     operationSource.Token.ThrowIfCancellationRequested();
-                    stage = LinkStage.RegisteringChannel;
+                    stage = LinkStage.ValidatingHostConfiguration;
                     IConfigurationSource configurationSource;
                     try
                     {
@@ -241,6 +243,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                         throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable, exception.Message);
                     }
 
+                    stage = LinkStage.RegisteringChannel;
                     RegisterInitializedChannel(workerId, slot, candidate, configurationSource, operationSource.Token);
 
                     WorkerChannel linkedChannel = candidate;
@@ -265,7 +268,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                             LinkStage.ConnectingToProxy => "ConnectionFailed",
                             LinkStage.CreatingWorkerChannel => "ChannelCreationFailed",
                             LinkStage.InitializingWorker => "WorkerInitializationFailed",
-                            _ => "ChannelRegistrationFailed"
+                            LinkStage.ValidatingHostConfiguration => "HostConfigurationValidationFailed",
+                            LinkStage.RegisteringChannel => "ChannelRegistrationFailed",
+                            _ => "UnexpectedFailure"
                         })
                     };
                     // Preserve the primary cause before cleanup can aggregate additional exceptions.
@@ -296,7 +301,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
         catch (Exception exception)
         {
-            var failure = linkFailure ?? (Stage: LinkStage.ConnectingToProxy,
+            var failure = linkFailure ?? (Stage: LinkStage.Unknown,
                 Reason: "UnexpectedFailure", ExceptionType: exception.GetType().FullName);
             Log.LinkEnded(_logger, workerId,
                 exception is OperationCanceledException ? "Canceled" : "Failed",

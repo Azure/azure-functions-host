@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -55,14 +56,58 @@ public partial class WorkerSystemLoggingTests
         CapturingEventGenerator generator = new();
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
-        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 });
+        WorkerSystemLogContext context = new() { WorkerId = "worker-id", ProxySessionId = 7 };
+        using IDisposable? scope = logger.BeginScope(context);
         logger.LogWarning(new EventId(3, "RelayFailure"), "Relay failed.");
 
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         Assert.Equal("RelayFailure", record.EventName);
+        Assert.Same(context, record.Context);
         Assert.Equal("worker-id", record.Context!.WorkerId);
         Assert.Equal(7, record.Context.ProxySessionId);
         Assert.Equal(WorkerProxyLogExporter.RelayCategory, record.Source);
+    }
+
+    [Fact]
+    public void LogExporter_DoesNotCreateContextWithoutTypedScopes()
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
+        logger.LogInformation("No scope.");
+        using (logger.BeginScope(new Dictionary<string, object?> { ["WorkerId"] = "not-a-typed-scope" }))
+        {
+            logger.LogInformation("Untyped scope.");
+        }
+
+        Assert.Equal(2, generator.ProxyRecords.Count);
+        Assert.All(generator.ProxyRecords, record => Assert.Null(record.Context));
+    }
+
+    [Fact]
+    public void LogExporter_MergesNestedScopesWithoutChangingOuterContext()
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
+        WorkerSystemLogContext outer = new() { WorkerId = "outer-worker", ProxySessionId = 7 };
+        WorkerSystemLogContext inner = new() { WorkerId = "inner-worker" };
+        using (logger.BeginScope(outer))
+        {
+            using (logger.BeginScope(inner))
+            {
+                logger.LogInformation("Nested scopes.");
+            }
+
+            logger.LogInformation("Outer scope.");
+        }
+
+        CapturedProxyLog[] records = generator.ProxyRecords.ToArray();
+        Assert.Equal(2, records.Length);
+        Assert.Equal(outer with { WorkerId = inner.WorkerId }, records[0].Context);
+        Assert.Same(outer, records[1].Context);
+        Assert.Equal("outer-worker", outer.WorkerId);
+        Assert.Equal(7, outer.ProxySessionId);
     }
 
     [Fact]
@@ -115,6 +160,44 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains("\"first 'value' second value\"", formatted, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("fr-FR")]
+    [InlineData("ar-SA")]
+    public void Format_PreservesExactColumnLayoutAndInvariantTimestamp(string culture)
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+            using WorkerPodEventGenerator generator = CreateEventGenerator();
+            WorkerPodEventGenerator.WorkerSystemLogRecord record = new(
+                3, "Event,name", "Proxy,category", "first\r\nsecond", "Summary \"quoted\", value",
+                new DateTimeOffset(2026, 11, 2, 8, 30, 0, TimeSpan.FromHours(-7)),
+                "Example.Exception", "failure,\nmessage");
+
+            string formatted = generator.Format(record);
+
+            Assert.Equal(
+                """MS_FUNCTIONS_WORKER_POD_LOGS 3,,,,"Event,name","Proxy,category","first second","Summary 'quoted', value",,2026-11-02T15:30:00.0000000Z,Example.Exception,"failure, message",,,,,,,,,""",
+                formatted);
+            Assert.Equal(
+                new[]
+                {
+                    "3", string.Empty, string.Empty, string.Empty,
+                    "Event,name", "Proxy,category", "first second", "Summary 'quoted', value",
+                    string.Empty, "2026-11-02T15:30:00.0000000Z", "Example.Exception", "failure, message",
+                    string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+                    string.Empty, string.Empty, string.Empty, string.Empty
+                },
+                Assert.Single(ParseCsvOutput(formatted)));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
     [Fact]
     public void Format_BoundsEveryDiagnosticField()
     {
@@ -142,6 +225,33 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(1_024, fields[11].Length);
         Assert.DoesNotContain("customer-secret-sentinel", formatted, StringComparison.Ordinal);
         Assert.InRange(Encoding.UTF8.GetByteCount(formatted), 1, 32_768);
+    }
+
+    [Fact]
+    public void Format_TruncationDoesNotSplitSurrogatePairs()
+    {
+        using WorkerPodEventGenerator generator = CreateEventGenerator();
+        foreach (int offset in new[] { -2, -1, 0 })
+        {
+            string Value(int limit) => new string('x', limit + offset) + "\uD83D\uDE80tail";
+            string Expected(int limit) => offset == -2
+                ? new string('x', limit - 2) + "\uD83D\uDE80"
+                : new string('x', limit + Math.Min(offset, 0));
+            WorkerPodEventGenerator.WorkerSystemLogRecord record = new(
+                3, Value(128), Value(256), Value(1_024), Value(1_024), Timestamp, Value(256), Value(1_024));
+
+            string formatted = generator.Format(record);
+
+            string[] fields = Assert.Single(ParseCsvOutput(formatted));
+            Assert.Equal(21, fields.Length);
+            Assert.Equal(Expected(128), fields[4]);
+            Assert.Equal(Expected(256), fields[5]);
+            Assert.Equal(Expected(1_024), fields[6]);
+            Assert.Equal(Expected(1_024), fields[7]);
+            Assert.Equal(Expected(256), fields[10]);
+            Assert.Equal(Expected(1_024), fields[11]);
+            Assert.NotEmpty(new UTF8Encoding(false, true).GetBytes(formatted));
+        }
     }
 
     [Fact]
@@ -173,9 +283,7 @@ public partial class WorkerSystemLoggingTests
         string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
         Assert.Equal(21, fields.Length);
         Assert.Equal("WorkerProxyStartupFailed", fields[4]);
-        Assert.Contains("Operation=Startup;", fields[7], StringComparison.Ordinal);
-        Assert.Contains("Outcome=Failed;", fields[7], StringComparison.Ordinal);
-        Assert.Contains(typeof(InvalidOperationException).FullName!, fields[7], StringComparison.Ordinal);
+        Assert.Equal($"WorkerProxy failed to start ({typeof(InvalidOperationException).FullName}).", fields[7]);
     }
 
     [Fact]
@@ -279,9 +387,43 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(
             eventGenerator.ProxyRecords,
             record => string.Equals(record.EventName, "WorkerAssignmentRequestRejected", StringComparison.Ordinal));
-        Assert.Equal(
-            "Worker assignment request completed with HTTP status 400.",
+        Assert.Matches(
+            @"^Worker assignment request completed with HTTP status 400 in \d+(?:\.\d+)? ms\. Assignment state: Unassigned\. Worker attached with ID: False\.$",
             record.Message);
+    }
+
+    [Fact]
+    public async Task LogExporter_LogsSuccessfulAssignmentDetailsWithWorkerIdentity()
+    {
+        CapturingEventGenerator eventGenerator = new();
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+        {
+            services.RemoveAll<IWorkerSystemEventGenerator>();
+            services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
+        });
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(7));
+        Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
+        using StringContent content = new(
+            """
+            {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
+             "environment":{},"functionAppDirectory":""}
+            """,
+            Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
+            string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Information, record.Level);
+        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Matches(
+            @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached with ID: True\.$",
+            record.Message);
+        Assert.DoesNotContain("test-app", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("test-group", record.Message, StringComparison.Ordinal);
     }
 
     [Fact]

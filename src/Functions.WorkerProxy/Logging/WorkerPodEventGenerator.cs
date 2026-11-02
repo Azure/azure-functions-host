@@ -17,7 +17,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
 {
     internal const string EventStreamName = "MS_FUNCTIONS_WORKER_POD_LOGS";
     private const int ConsoleBufferSize = 8_000;
-    private const string EventTimestampFormat = "O";
 
     private readonly BufferedConsoleWriter _writer;
     private readonly TimeProvider _timeProvider;
@@ -71,30 +70,15 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         StringBuilder fields = new();
         Add(nameof(context.WorkerId), NormalizeIdentifier(context.WorkerId));
         Add(nameof(context.ProxySessionId), context.ProxySessionId?.ToString(CultureInfo.InvariantCulture));
-        Add(nameof(context.Operation), context.Operation);
-        Add(nameof(context.Stage), context.Stage);
-        Add(nameof(context.Outcome), context.Outcome);
-        Add(nameof(context.ReasonCode), context.ReasonCode);
-        Add(nameof(context.DurationMs), context.DurationMs?.ToString(CultureInfo.InvariantCulture));
-        if (context.Attributes is { } attributes)
-        {
-            Add(nameof(attributes.HttpStatusCode), attributes.HttpStatusCode?.ToString(CultureInfo.InvariantCulture));
-            Add(nameof(attributes.RpcStatus), attributes.RpcStatus);
-            Add(nameof(attributes.PeerSide), attributes.PeerSide);
-            Add(nameof(attributes.StateRevision), attributes.StateRevision?.ToString(CultureInfo.InvariantCulture));
-            Add(nameof(attributes.WorkerReady), attributes.WorkerReady?.ToString());
-            Add(nameof(attributes.AssignmentState), attributes.AssignmentState);
-        }
-
         return fields.Length == 0
             ? summary
-            : fields.Append(summary.AsSpan(0, Math.Min(summary.Length, 1_024))).ToString();
+            : fields.Append(summary.AsSpan(0, GetTruncatedLength(summary, 1_024))).ToString();
 
         void Add(string name, string? value)
         {
             if (!string.IsNullOrEmpty(value))
             {
-                fields.Append(name).Append('=').Append(value.AsSpan(0, Math.Min(value.Length, 128))).Append("; ");
+                fields.Append(name).Append('=').Append(value.AsSpan(0, GetTruncatedLength(value, 128))).Append("; ");
             }
         }
     }
@@ -118,39 +102,14 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
 
     internal string Format(WorkerSystemLogRecord record)
     {
-        string[] fields =
-        [
-            record.Level.ToString(CultureInfo.InvariantCulture),
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            NormalizeColumn(record.EventName, 128),
-            NormalizeColumn(record.Source, 256),
-            NormalizeString(record.Details, 1_024),
-            NormalizeString(record.Summary, 1_024),
-            string.Empty,
-            record.Timestamp.UtcDateTime.ToString(
-                EventTimestampFormat,
-                CultureInfo.InvariantCulture),
-            NormalizeColumn(record.ExceptionType, 256),
-            NormalizeString(record.ExceptionMessage, 1_024),
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty
-        ];
-
-        return $"{EventStreamName} {string.Join(',', fields)}";
+        // Preserve the Host trace layout, leaving Host-only identity columns empty.
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{EventStreamName} {record.Level},,,,{NormalizeColumn(record.EventName, 128)},{NormalizeColumn(record.Source, 256)},{NormalizeString(record.Details, 1_024)},{NormalizeString(record.Summary, 1_024)},,{record.Timestamp.UtcDateTime:O},{NormalizeColumn(record.ExceptionType, 256)},{NormalizeString(record.ExceptionMessage, 1_024)},,,,,,,,,");
     }
 
     private static string NormalizeColumn(string value, int limit)
     {
-        value = value[..Math.Min(value.Length, limit)]
+        value = value[..GetTruncatedLength(value, limit)]
             .Replace("\r\n", " ", StringComparison.Ordinal)
             .Replace('\r', ' ')
             .Replace('\n', ' ')
@@ -163,6 +122,18 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
     {
         string normalized = NormalizeColumn(value, limit);
         return normalized.StartsWith('"') ? normalized : $"\"{normalized}\"";
+    }
+
+    private static int GetTruncatedLength(string value, int limit)
+    {
+        int length = Math.Min(value.Length, limit);
+        if (length > 0 && length < value.Length
+            && char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
+        {
+            length--;
+        }
+
+        return length;
     }
 
     private static EventLevel ToEventLevel(LogLevel level)

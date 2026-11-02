@@ -91,11 +91,18 @@ to stdout; there is no OTLP exporter. Disposal uses the writer's existing best-e
 
 Records use the existing `MS_FUNCTIONS_WORKER_POD_LOGS` prefix and 21-column positional format.
 Worker/session IDs (when known) and operation details are included in the message; the InvocationId column is empty.
+The shared log context contains only `WorkerId` and `ProxySessionId`. Event-specific details such as
+relay side, protocol stage/status, and assignment status/duration are written directly in the log message,
+not duplicated in context attributes.
+Assignment 5xx responses and thrown failures emit `WorkerAssignmentRequestFailed`; validation failures
+remain `WorkerAssignmentRequestRejected`. Exceptions are rethrown, and assignment failure records include
+only the exception type. When a thrown failure has no known HTTP status, the log reports `unavailable`
+rather than the response's default status.
 The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
 Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
 Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.
 
-Fields are bounded and encoded; unsafe identities are fingerprinted rather than truncated.
+Fields are bounded and encoded without splitting valid UTF-16 surrogate pairs; unsafe identities are fingerprinted rather than truncated.
 Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs
 are excluded.
 

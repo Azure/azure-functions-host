@@ -61,7 +61,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                 {
                     if (scope.Scope is WorkerSystemLogContext context)
                     {
-                        state.Context = state.Context.Merge(context);
+                        state.Context = state.Context is { } outer ? outer.Merge(context) : context;
                     }
                 },
                 scopeState);
@@ -86,6 +86,6 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
 
     private sealed class ScopeState
     {
-        public WorkerSystemLogContext Context { get; set; } = new();
+        public WorkerSystemLogContext? Context { get; set; }
     }
 }

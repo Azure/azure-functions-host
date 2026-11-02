@@ -131,13 +131,7 @@ internal sealed partial class FunctionRpcRelay
 
         public void LogAttachment(FunctionRpcRelaySide side, bool released)
         {
-            using IDisposable? scope = logger.BeginScope(GetLogContext() with
-            {
-                Operation = "Link",
-                Stage = released ? "PeerReleased" : "PeerAttached",
-                Outcome = "Succeeded",
-                Attributes = new() { PeerSide = side.ToString() }
-            });
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (released)
             {
                 Log.PeerReleased(logger, id, side);
@@ -325,12 +319,7 @@ internal sealed partial class FunctionRpcRelay
                     _workerId = startStream.WorkerId;
                 }
 
-                using IDisposable? scope = logger.BeginScope(GetLogContext() with
-                {
-                    Operation = "Link",
-                    Stage = "StartStreamValidated",
-                    Outcome = "Succeeded"
-                });
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
                 Log.StartStreamValidated(logger, id);
             }
 
@@ -472,15 +461,16 @@ internal sealed partial class FunctionRpcRelay
                 (true, false) => "ResponseReceived",
                 (true, true) => "ResponseForwarded"
             };
-            using IDisposable? scope = logger.BeginScope(GetLogContext() with
+            string? rpcStatus = value.Result?.Status.ToString();
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
+            if (level == LogLevel.Warning)
             {
-                Operation = value.Operation,
-                Stage = stage,
-                Attributes = value.Result is null ? null : new() { RpcStatus = value.Result.Status.ToString() }
-            });
-            logger.Log(level, new EventId(8, "ProtocolMessageObserved"),
-                "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.",
-                value.Operation, stage, value.Result?.Status.ToString());
+                Log.ProtocolMessageFailed(logger, value.Operation, stage, rpcStatus);
+            }
+            else
+            {
+                Log.ProtocolMessageObserved(logger, value.Operation, stage, rpcStatus);
+            }
         }
 
         private async Task<FunctionRpcRelayTerminalState> ClassifyCompletionAsync(FunctionRpcRelaySide side,
@@ -540,13 +530,7 @@ internal sealed partial class FunctionRpcRelay
             _toRuntime.Writer.TryComplete(completionException);
             _toWorker.Writer.TryComplete(completionException);
 
-            using IDisposable? scope = logger.BeginScope(GetLogContext() with
-            {
-                Operation = "Link",
-                Stage = "Terminated",
-                ReasonCode = terminalState.Reason.ToString(),
-                Attributes = new() { PeerSide = terminalState.Side?.ToString(), WorkerReady = false }
-            });
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
                 Log.SessionFaulted(logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
@@ -660,5 +644,12 @@ internal sealed partial class FunctionRpcRelay
 
         [LoggerMessage(7, LogLevel.Information, "FunctionRpc session {SessionId} released the {Side} peer.")]
         public static partial void PeerReleased(ILogger logger, long sessionId, FunctionRpcRelaySide side);
+
+        [LoggerMessage(8, LogLevel.Information, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.")]
+        public static partial void ProtocolMessageObserved(ILogger logger, string operation, string stage, string? rpcStatus);
+
+        [LoggerMessage(8, LogLevel.Warning, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.",
+            EventName = nameof(ProtocolMessageObserved))]
+        public static partial void ProtocolMessageFailed(ILogger logger, string operation, string stage, string? rpcStatus);
     }
 }

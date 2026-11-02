@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
@@ -33,32 +34,41 @@ internal sealed partial class WorkerAssignmentLoggingMiddleware(
         }
 
         long start = Stopwatch.GetTimestamp();
-        await next(context);
+        try
+        {
+            await next(context);
+        }
+        catch (Exception exception)
+        {
+            LogResult(start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception);
+            throw;
+        }
+
+        LogResult(start, context.Response.StatusCode);
+    }
+
+    private void LogResult(long start, int? statusCode, Exception? exception = null)
+    {
         WorkerPodState state = stateManager.State;
-        int statusCode = context.Response.StatusCode;
+        double durationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
         {
             WorkerId = state.WorkerId,
-            ProxySessionId = state.SessionId,
-            Operation = "Assignment",
-            Stage = "Completed",
-            Outcome = statusCode is >= 200 and < 400 ? "Succeeded" : "Rejected",
-            DurationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds,
-            Attributes = new()
-            {
-                HttpStatusCode = statusCode,
-                StateRevision = state.Revision,
-                WorkerReady = state.IsWorkerReady,
-                AssignmentState = state.AssignmentState.ToString()
-            }
+            ProxySessionId = state.SessionId
         });
-        if (statusCode is >= StatusCodes.Status200OK and < StatusCodes.Status400BadRequest)
+        if (statusCode is null or >= StatusCodes.Status500InternalServerError)
         {
-            Log.RequestCompleted(logger, statusCode);
+            // Assignment errors can contain configuration values. Record only the exception type.
+            Log.RequestFailed(logger, statusCode?.ToString(CultureInfo.InvariantCulture) ?? "unavailable",
+                exception?.GetType().FullName ?? "none", durationMs, state.AssignmentState, state.IsWorkerReady);
+        }
+        else if (exception is null && statusCode is >= StatusCodes.Status200OK and < StatusCodes.Status400BadRequest)
+        {
+            Log.RequestCompleted(logger, statusCode.Value, durationMs, state.AssignmentState, state.IsWorkerReady);
         }
         else
         {
-            Log.RequestRejected(logger, statusCode);
+            Log.RequestRejected(logger, statusCode.Value, durationMs, state.AssignmentState, state.IsWorkerReady);
         }
     }
 
@@ -67,15 +77,22 @@ internal sealed partial class WorkerAssignmentLoggingMiddleware(
         [LoggerMessage(
             0,
             LogLevel.Information,
-            "Worker assignment request completed with HTTP status {StatusCode}.",
+            "Worker assignment request completed with HTTP status {StatusCode} in {DurationMs} ms. Assignment state: {AssignmentState}. Worker attached with ID: {WorkerReady}.",
             EventName = "WorkerAssignmentRequestCompleted")]
-        public static partial void RequestCompleted(ILogger logger, int statusCode);
+        public static partial void RequestCompleted(ILogger logger, int statusCode, double durationMs, WorkerAssignmentState assignmentState, bool workerReady);
 
         [LoggerMessage(
             1,
             LogLevel.Warning,
-            "Worker assignment request completed with HTTP status {StatusCode}.",
+            "Worker assignment request completed with HTTP status {StatusCode} in {DurationMs} ms. Assignment state: {AssignmentState}. Worker attached with ID: {WorkerReady}.",
             EventName = "WorkerAssignmentRequestRejected")]
-        public static partial void RequestRejected(ILogger logger, int statusCode);
+        public static partial void RequestRejected(ILogger logger, int statusCode, double durationMs, WorkerAssignmentState assignmentState, bool workerReady);
+
+        [LoggerMessage(
+            2,
+            LogLevel.Error,
+            "Worker assignment request failed in {DurationMs} ms. HTTP status: {StatusCode}. Exception type: {ExceptionType}. Assignment state: {AssignmentState}. Worker attached with ID: {WorkerReady}.",
+            EventName = "WorkerAssignmentRequestFailed")]
+        public static partial void RequestFailed(ILogger logger, string statusCode, string exceptionType, double durationMs, WorkerAssignmentState assignmentState, bool workerReady);
     }
 }
