@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -35,8 +36,11 @@ public static class RpcClientServiceCollectionExtensions
 
         services.AddHttpForwarder();
         services.TryAddSingleton<IHttpProxyService, DefaultHttpProxyService>();
-        services.AddSingleton<WorkerProxyHttpTransport>();
-        services.AddSingleton<Func<IHttpProxyService>>(provider => () => provider.GetRequiredService<WorkerProxyHttpTransport>());
+        services.AddSingleton(provider => new DefaultHttpProxyService(
+            provider.GetRequiredService<IHttpForwarder>(),
+            provider.GetRequiredService<ILogger<DefaultHttpProxyService>>(),
+            RpcClientFactory.CreateHttpHandler()));
+        services.AddSingleton<Func<IHttpProxyService>>(provider => () => provider.GetRequiredService<DefaultHttpProxyService>());
         services.AddOptions<WorkerProcessCountOptions>(RpcClientWorkerChannelFactory.WorkerOptionsName)
             .BindConfiguration("RpcClient:Worker")
             .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),

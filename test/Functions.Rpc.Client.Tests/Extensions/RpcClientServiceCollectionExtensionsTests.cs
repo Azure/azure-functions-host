@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,7 +39,10 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         ServiceDescriptor httpProxy = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IHttpProxyService) && !descriptor.IsKeyedService));
         Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
         Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", httpProxy.ImplementationType?.FullName);
-        AssertSingleton<WorkerProxyHttpTransport, WorkerProxyHttpTransport>(services);
+        ServiceDescriptor concreteProxy = Assert.Single(services.Where(descriptor => string.Equals(
+            descriptor.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)));
+        Assert.Equal(ServiceLifetime.Singleton, concreteProxy.Lifetime);
+        Assert.NotNull(concreteProxy.ImplementationFactory);
         ServiceDescriptor workerTransport = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(Func<IHttpProxyService>)));
         Assert.Equal(ServiceLifetime.Singleton, workerTransport.Lifetime);
         Assert.NotNull(workerTransport.ImplementationFactory);
@@ -198,6 +202,8 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         Assert.Same(custom, provider.GetRequiredService<IHttpProxyService>());
         IHttpProxyService worker = provider.GetRequiredService<Func<IHttpProxyService>>()();
+        Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", worker.GetType().FullName);
+        Assert.Same(provider.GetRequiredService(worker.GetType()), worker);
         Assert.NotSame(custom, worker);
         Assert.Same(worker, provider.GetRequiredService<Func<IHttpProxyService>>()());
     }
@@ -220,6 +226,17 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         services.AddRpcClientServices();
         ServiceProvider provider = services.BuildServiceProvider();
         IHttpProxyService transport = provider.GetRequiredService<Func<IHttpProxyService>>()();
+        IServiceCollection forwardingServices = new ServiceCollection();
+        foreach (ServiceDescriptor descriptor in services.Where(descriptor =>
+            descriptor.ServiceType == typeof(IHttpProxyService) || descriptor.ServiceType == transport.GetType()
+                || descriptor.ServiceType == typeof(Func<IHttpProxyService>)))
+        {
+            forwardingServices.Add(descriptor);
+        }
+        await using (ServiceProvider child = provider.CreateChildContainer(forwardingServices).BuildServiceProvider())
+        {
+            Assert.Same(transport, child.GetRequiredService<Func<IHttpProxyService>>()());
+        }
         DefaultHttpContext http = new();
         http.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
         ScriptInvocationContext invocation = new()

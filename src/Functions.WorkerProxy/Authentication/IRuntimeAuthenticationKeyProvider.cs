@@ -34,24 +34,28 @@ internal sealed partial class RuntimeAuthenticationKeyProvider : IRuntimeAuthent
 {
     private readonly WorkerPodStateManager _manager;
     private readonly IConfiguration _configuration;
-    private readonly string _workerId;
-    private readonly byte[] _workerKey;
+    private readonly ContainerManagementAuthenticationHandler.Credentials _container;
 
     public RuntimeAuthenticationKeyProvider(
-        IConfiguration configuration, IOptions<WorkerProxyOptions> options, WorkerPodStateManager manager,
+        IConfiguration configuration, IOptionsMonitor<ContainerManagementAuthenticationHandler.Credentials> options,
+        WorkerPodStateManager manager,
         ILogger<RuntimeAuthenticationKeyProvider> logger)
     {
         _manager = manager;
         _configuration = configuration;
-        _workerId = options.Value.PodName;
-        ValidateKey(configuration[RuntimeWorkerAuthentication.WorkerKeySetting], RuntimeWorkerAuthentication.WorkerKeySetting, logger, out _workerKey);
-        ValidateKey(configuration[RuntimeWorkerAuthentication.AppKeySetting], RuntimeWorkerAuthentication.AppKeySetting, logger, out _);
+        _container = options.Get(ContainerManagementAuthenticationHandler.SchemeName);
+        string? encodedAppKey = configuration[RuntimeWorkerAuthentication.AppKeySetting];
+        if (!RuntimeWorkerAuthentication.TryDecodeAppKey(encodedAppKey, out _))
+        {
+            Log.KeyUnavailable(logger, RuntimeWorkerAuthentication.AppKeySetting,
+                string.IsNullOrWhiteSpace(encodedAppKey) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey);
+        }
     }
 
     public RuntimeAuthenticationKeys? GetKeys()
     {
         WorkerPodState state = _manager.State;
-        if (_workerKey.Length < 32 || state.AssignmentState is not WorkerAssignmentState.Ready
+        if (_container.Failure is not AuthenticationFailureReason.None || state.AssignmentState is not WorkerAssignmentState.Ready
             || string.IsNullOrWhiteSpace(state.FunctionAppName))
         {
             return null;
@@ -59,16 +63,7 @@ internal sealed partial class RuntimeAuthenticationKeyProvider : IRuntimeAuthent
 
         RuntimeWorkerAuthentication.TryDecodeAppKey(_configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey);
 
-        return new(_workerId, state.FunctionAppName, _workerKey, appKey);
-    }
-
-    private static void ValidateKey(string? encoded, string setting, ILogger logger, out byte[] key)
-    {
-        if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(encoded, out key))
-        {
-            Log.KeyUnavailable(logger, setting,
-                string.IsNullOrWhiteSpace(encoded) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey);
-        }
+        return new(_container.PodName, state.FunctionAppName, _container.Key, appKey);
     }
 
     private static partial class Log

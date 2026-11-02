@@ -49,9 +49,7 @@ using Xunit;
 using Xunit.Abstractions;
 using ProxyApplication = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyApplication;
 using ProxyAuthentication = workerproxy::Azure.Functions.Authentication.RuntimeWorkerAuthentication;
-using ProxyCertificate = workerproxy::Azure.Functions.WorkerProxy.Authentication.WorkerProxyCertificate;
 using ProxyEndpoints = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyEndpointConfiguration;
-using ProxyOptions = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyOptions;
 using ProxyRelay = workerproxy::Azure.Functions.WorkerProxy.Rpc.FunctionRpcRelay;
 using ProxyRelaySide = workerproxy::Azure.Functions.WorkerProxy.Rpc.FunctionRpcRelaySide;
 using ProxyStateManager = workerproxy::Azure.Functions.WorkerProxy.State.WorkerPodStateManager;
@@ -74,11 +72,6 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     {
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         using TestCertificateFiles certificates = new();
-        using ProxyCertificate certificate = new(Options.Create(new ProxyOptions
-        {
-            CertificatePath = certificates.CertificatePath,
-            CertificateKeyPath = certificates.KeyPath
-        }));
         byte[] appKey = SHA256.HashData("integration-test-app-key"u8);
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         string header = Convert.ToBase64String("""{"alg":"HS256","typ":"JWT"}"""u8).TrimEnd('=').Replace('+', '-').Replace('/', '_');
@@ -91,7 +84,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
-            listener.UseHttps(certificate.Certificate);
+            listener.UseHttps(certificates.Certificate);
         }));
         builder.Services.AddSingleton(service);
         builder.Services.AddGrpc();
@@ -154,18 +147,13 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     {
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         using TestCertificateFiles certificates = new();
-        using ProxyCertificate certificate = new(Options.Create(new ProxyOptions
-        {
-            CertificatePath = certificates.CertificatePath,
-            CertificateKeyPath = certificates.KeyPath
-        }));
         byte[] appKey = SHA256.HashData("integration-test-app-key"u8);
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseKestrelHttpsConfiguration();
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
-            listener.UseHttps(certificate.Certificate);
+            listener.UseHttps(certificates.Certificate);
         }));
         builder.Services.AddSingleton(new AdvertisedOriginService(origin, appKey));
         builder.Services.AddGrpc();

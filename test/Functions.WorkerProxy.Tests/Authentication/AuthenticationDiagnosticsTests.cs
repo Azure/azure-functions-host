@@ -37,9 +37,9 @@ public class AuthenticationDiagnosticsTests
 
         _ = factory.Services;
 
-        Assert.Contains(capture.Entries, entry => entry.Level is LogLevel.Error
+        Assert.Single(capture.Entries.Where(entry => entry.Level is LogLevel.Error
             && entry.Message.Contains(setting, StringComparison.Ordinal)
-            && entry.Message.Contains(reason, StringComparison.Ordinal));
+            && entry.Message.Contains(reason, StringComparison.Ordinal)));
         capture.AssertNoCredentials();
         Assert.DoesNotContain("invalid-private-key", capture.Text, StringComparison.Ordinal);
         if (string.Equals(setting, RuntimeWorkerAuthentication.AppKeySetting, StringComparison.Ordinal))

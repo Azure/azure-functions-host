@@ -2,12 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Net;
-using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy;
@@ -16,7 +17,7 @@ namespace Azure.Functions.WorkerProxy;
 /// Configures the WorkerProxy Kestrel listeners and resolves requests to their listener roles.
 /// </summary>
 internal sealed class WorkerProxyEndpointConfiguration(
-    IOptions<WorkerProxyOptions> workerProxyOptions, WorkerProxyCertificate certificate,
+    IOptions<WorkerProxyOptions> workerProxyOptions,
     IOptions<TokenServiceProxyWorkerOptions> tokenServiceProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
     private ListenOptions? _management;
@@ -35,6 +36,12 @@ internal sealed class WorkerProxyEndpointConfiguration(
             throw new InvalidOperationException("WorkerProxy Kestrel endpoints have already been configured.");
         }
 
+        options.Configure(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Certificates:Default:Path"] = configuredOptions.CertificatePath,
+            ["Certificates:Default:KeyPath"] = configuredOptions.CertificateKeyPath
+        }).Build(), reloadOnChange: false);
+
         options.ListenAnyIP(configuredOptions.ManagementPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http1;
@@ -43,7 +50,7 @@ internal sealed class WorkerProxyEndpointConfiguration(
         options.ListenAnyIP(configuredOptions.RuntimeGrpcPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
-            listener.UseHttps(certificate.Certificate);
+            listener.UseHttps();
             _runtime = listener;
         });
         options.Listen(IPAddress.Loopback, configuredOptions.WorkerGrpcPort, listener =>
@@ -54,7 +61,7 @@ internal sealed class WorkerProxyEndpointConfiguration(
         options.ListenAnyIP(configuredOptions.HttpPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http1;
-            listener.UseHttps(certificate.Certificate);
+            listener.UseHttps();
             _http = listener;
         });
         TokenServiceProxyWorkerOptions tokenServiceProxy = tokenServiceProxyOptions.Value;

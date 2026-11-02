@@ -63,7 +63,6 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
         builder.Services.AddSingleton<RuntimeRequestAuthenticator>();
-        builder.Services.AddSingleton<WorkerProxyCertificate>();
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();

@@ -29,11 +29,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Xunit;
 using ProxyAuthentication = workerproxy::Azure.Functions.Authentication.RuntimeWorkerAuthentication;
-using ProxyCertificate = workerproxy::Azure.Functions.WorkerProxy.Authentication.WorkerProxyCertificate;
-using ProxyOptions = workerproxy::Azure.Functions.WorkerProxy.WorkerProxyOptions;
 
 namespace Azure.Functions.Host.Tests;
 
@@ -69,11 +66,6 @@ public sealed class HostConfigurationLoggingIntegrationTests
         };
         WorkerService service = new(delivery);
         using TestCertificateFiles certificates = new();
-        using ProxyCertificate certificate = new(Options.Create(new ProxyOptions
-        {
-            CertificatePath = certificates.CertificatePath,
-            CertificateKeyPath = certificates.KeyPath
-        }));
         WebApplicationBuilder workerBuilder = WebApplication.CreateSlimBuilder();
         workerBuilder.Logging.ClearProviders();
         workerBuilder.WebHost.UseKestrelHttpsConfiguration();
@@ -81,7 +73,7 @@ public sealed class HostConfigurationLoggingIntegrationTests
             options.Listen(IPAddress.Loopback, 0, listener =>
             {
                 listener.Protocols = HttpProtocols.Http2;
-                listener.UseHttps(certificate.Certificate);
+                listener.UseHttps(certificates.Certificate);
             }));
         workerBuilder.Services.AddSingleton(service);
         workerBuilder.Services.AddGrpc();

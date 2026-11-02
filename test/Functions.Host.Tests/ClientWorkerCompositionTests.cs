@@ -69,12 +69,15 @@ public class ClientWorkerCompositionTests
         Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
         Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", httpProxy.ImplementationType?.FullName);
         Assert.Single(services.Where(service => string.Equals(service.ServiceType.FullName,
-            "Azure.Functions.Rpc.Client.WorkerProxyHttpTransport", StringComparison.Ordinal)));
+            "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)));
         services.AddLogging();
         using (ServiceProvider provider = services.BuildServiceProvider())
         {
             Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService",
                 provider.GetRequiredService(httpProxy.ServiceType).GetType().FullName);
+            Assert.NotSame(provider.GetRequiredService(httpProxy.ServiceType),
+                provider.GetRequiredService(services.Single(service => string.Equals(service.ServiceType.FullName,
+                    "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)).ServiceType));
         }
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IRpcClientFactory",
             "Azure.Functions.Rpc.Client.RpcClientFactory");

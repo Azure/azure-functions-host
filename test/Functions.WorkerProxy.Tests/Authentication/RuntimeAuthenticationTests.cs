@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Security;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -22,6 +24,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -215,8 +218,17 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(RuntimeAuthenticationTestData.AppKey, keys.AppKey.ToArray());
         Assert.Equal(RuntimeAuthenticationTestData.AppName, keys.AppName);
         Assert.Equal(RuntimeAuthenticationTestData.WorkerId, keys.WorkerId);
+        ContainerManagementAuthenticationHandler.Credentials container = factory.Services
+            .GetRequiredService<IOptionsMonitor<ContainerManagementAuthenticationHandler.Credentials>>()
+            .Get(ContainerManagementAuthenticationHandler.SchemeName);
+        Assert.True(keys.WorkerKey.Equals(new ReadOnlyMemory<byte>(container.Key)));
+        Assert.Equal(container.PodName, keys.WorkerId);
         Assert.Equal(RuntimeAuthenticationTestData.EncodedAppKey,
             factory.Services.GetRequiredService<IConfiguration>()[RuntimeWorkerAuthentication.AppKeySetting]);
+        IConfiguration configuration = factory.Services.GetRequiredService<IConfiguration>();
+        byte[] replacement = SHA256.HashData("updated-normal-configuration-key"u8);
+        configuration[RuntimeWorkerAuthentication.AppKeySetting] = Convert.ToHexString(replacement);
+        Assert.Equal(replacement, factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys()!.AppKey.ToArray());
         factory.Services.GetRequiredService<WorkerPodStateManager>().OnSessionTerminated(1);
         Assert.Null(factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys());
     }
@@ -247,21 +259,41 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public void Certificate_LoadsProvisionedPemWithoutGeneratingReplacement()
+    public async Task Certificate_LoadsProvisionedPemWithoutGeneratingReplacement()
     {
         using TestCertificateFiles files = new();
-        var options = Options.Create(new WorkerProxyOptions { CertificatePath = files.CertificatePath, CertificateKeyPath = files.KeyPath });
-        using WorkerProxyCertificate first = new(options);
-        using WorkerProxyCertificate second = new(options);
-
-        Assert.True(first.Certificate.HasPrivateKey);
-        Assert.Equal(first.Certificate.Thumbprint, second.Certificate.Thumbprint);
+        string certificate = File.ReadAllText(files.CertificatePath);
+        string key = File.ReadAllText(files.KeyPath);
+        await using WorkerProxyWebApplicationFactory factory = new(new Dictionary<string, string?>
+        {
+            ["WorkerProxy:CertificatePath"] = files.CertificatePath,
+            ["WorkerProxy:CertificateKeyPath"] = files.KeyPath
+        });
+        using HttpClient http = factory.CreateHttpForwardingClient();
+        KestrelServerOptions options = factory.Services.GetRequiredService<IOptions<KestrelServerOptions>>().Value;
+        Assert.Equal(files.CertificatePath, options.ConfigurationLoader!.Configuration["Certificates:Default:Path"]);
+        Assert.Equal(files.KeyPath, options.ConfigurationLoader.Configuration["Certificates:Default:KeyPath"]);
+        foreach (Uri address in new[] { http.BaseAddress!, factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) })
+        {
+            using CancellationTokenSource timeout = new(TestTimeout);
+            using TcpClient connection = new();
+            await connection.ConnectAsync(address.Host, address.Port, timeout.Token);
+            using SslStream tls = new(connection.GetStream());
+            await tls.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+            {
+                TargetHost = address.Host,
+                RemoteCertificateValidationCallback = static (_, _, _, _) => true
+            }, timeout.Token);
+            Assert.Equal(files.Certificate.Thumbprint, tls.RemoteCertificate!.GetCertHashString());
+        }
+        Assert.Equal(certificate, File.ReadAllText(files.CertificatePath));
+        Assert.Equal(key, File.ReadAllText(files.KeyPath));
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Certificate_RejectsMissingOrMalformedFiles(bool malformed)
+    public async Task Certificate_RejectsMissingOrMalformedFiles(bool malformed)
     {
         using TestCertificateFiles files = new();
         if (malformed)
@@ -273,32 +305,33 @@ public partial class FunctionRpcRelayTests
             File.Delete(files.CertificatePath);
         }
 
-        var options = Options.Create(new WorkerProxyOptions
+        await using WorkerProxyWebApplicationFactory factory = new(new Dictionary<string, string?>
         {
-            CertificatePath = files.CertificatePath,
-            CertificateKeyPath = files.KeyPath
+            ["WorkerProxy:CertificatePath"] = files.CertificatePath,
+            ["WorkerProxy:CertificateKeyPath"] = files.KeyPath
         });
         if (malformed)
         {
-            Assert.ThrowsAny<CryptographicException>(() => new WorkerProxyCertificate(options));
+            Assert.Throws<ArgumentException>(() => factory.CreateHttpForwardingClient());
         }
         else
         {
-            Assert.Throws<FileNotFoundException>(() => new WorkerProxyCertificate(options));
+            Assert.Throws<FileNotFoundException>(() => factory.CreateHttpForwardingClient());
         }
     }
 
     [Fact]
-    public void Certificate_RejectsMismatchedCertificateAndPrivateKey()
+    public async Task Certificate_RejectsMismatchedCertificateAndPrivateKey()
     {
         using TestCertificateFiles first = new();
         using TestCertificateFiles second = new();
 
-        Assert.Throws<ArgumentException>(() => new WorkerProxyCertificate(Options.Create(new WorkerProxyOptions
+        await using WorkerProxyWebApplicationFactory factory = new(new Dictionary<string, string?>
         {
-            CertificatePath = first.CertificatePath,
-            CertificateKeyPath = second.KeyPath
-        })));
+            ["WorkerProxy:CertificatePath"] = first.CertificatePath,
+            ["WorkerProxy:CertificateKeyPath"] = second.KeyPath
+        });
+        Assert.Throws<InvalidOperationException>(() => factory.CreateHttpForwardingClient());
     }
 
     private static void AssignForAuthentication(WorkerProxyWebApplicationFactory factory)

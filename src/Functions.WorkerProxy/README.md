@@ -41,6 +41,8 @@ Authentication diagnostics identify safe failure categories such as missing/inva
 
 Management uses the existing ASP.NET Core named authentication/authorization and options startup validation, not a separate hosted service. The shared adapter selects only the receiving container's key and pod audience; the ordinary WebHost JWT defaults allow app/fallback keys and specialized site audiences instead. WorkerProxy keeps its existing Native AOT dependency boundary without adding WebHost or JwtBearer packages. Missing management configuration is logged at startup and protected requests fail closed; it does not make ordinary Host startup require an app key.
 
+Runtime authentication reuses those configured own-container key bytes and pod identity. The accepted assignment still supplies the trusted app identity, and the app key is still read from normal configuration at proof time; management availability does not depend on either.
+
 `PUT /admin/worker/assignment` accepts validated configuration before any customer process, local gRPC connection or `StartStream`. Accepted app/group identity, environment retry identity, allocated `httpProxyEndpoint`, and requested `configLastModifiedTime`, `contentLastModifiedTime` and `maxHttpConcurrency` survive later attachments. All participate in immutable retry identity: matching retries return 204, changing any requested metadata or origin returns 409 without replacing the original assignment or revision, and a terminated assigned worker cannot be reused. These metadata values describe the requested assignment, not confirmation that versions are loaded or a concurrency limit is applied. Assignment acceptance is not customer initialization or Link success.
 
 The `WorkerNotReady` error identifier remains reserved for compatibility. Keeping it does not restore the former readiness gate: a valid assignment is still accepted before customer startup.
@@ -73,7 +75,7 @@ Token Service bootstrap controls are consumed by the infrastructure bridge, not 
 
 Capability reloads are rewritten to the same configured proxy origin. Raw customer origins and customer-supplied authentication proofs are not forwarded as runtime destinations. Host rejects a changed initialized proxy origin before it can receive caller credentials.
 
-Invalid advertised HTTP capabilities, including malformed and unsafe absolute origins, fail Link with an explicit retryable `503 WorkerUnavailable`; they are not treated as programming errors or successful fallback. The expiry-only HTTP transport is owned by a dedicated root-lifetime compute component and supplied only to linked WorkerProxy channels. It does not replace ordinary or custom `IHttpProxyService` registrations, and its handler is disposed with its owning root provider.
+Invalid advertised HTTP capabilities, including malformed and unsafe absolute origins, fail Link with an explicit retryable `503 WorkerUnavailable`; they are not treated as programming errors or successful fallback. The expiry-only HTTP transport reuses a separately registered root-owned `DefaultHttpProxyService` instance, supplied only to linked WorkerProxy channels. It does not replace ordinary or custom `IHttpProxyService` registrations, and its handler is disposed with its owning root provider.
 
 The checked-in combined Host/WorkerProxy integration fixture leaves the startup proxy-origin option absent, assigns a live scheme-less mapping, and uses distinct external/listener ports for both HTTPS and gRPC. Its local TCP mappings preserve TLS rather than replacing it. The fixture initializes through the real MVC Link and registry-owned worker setup, invokes once, performs a real environment reload with a changed customer-local path, and invokes again. Both forwarding calls must use the assigned HTTPS origin and mapped port, while customer authorization is preserved and platform headers/proof entries remain stripped. The same fixture can target a freshly published native WorkerProxy with explicitly supplied mapped and listener addresses.
 
@@ -86,7 +88,7 @@ The image startup script must generate a fresh self-signed PEM certificate and u
 | `WorkerProxy:CertificatePath` | `WORKERPROXY__CERTIFICATEPATH` | `/etc/ssl/workerproxy/server.crt` |
 | `WorkerProxy:CertificateKeyPath` | `WORKERPROXY__CERTIFICATEKEYPATH` | `/etc/ssl/workerproxy/server.key` |
 
-WorkerProxy loads those files for both runtime-facing TLS listeners. Missing, malformed or mismatched files fail startup. There is no C# certificate generation or plaintext fallback.
+WorkerProxy maps those required paths into Kestrel's built-in PEM `Certificates:Default:Path` and `KeyPath` loader, shared by both runtime-facing TLS listeners. Kestrel owns the serving certificate and private-key loading, including Windows key handling; no product certificate wrapper or file-reload watcher is used. Missing, malformed or mismatched files fail startup instead of selecting a development certificate. There is no C# certificate generation or plaintext fallback.
 
 The WorkerProxy-specific Host HTTP/gRPC clients share an expiry-only UTC certificate callback: absent or expired certificates are rejected, but chain, issuer, hostname and pin are not checked. Ordinary Host outbound clients and WorkerProxy's customer-facing forwarding client retain their normal validation.
 
