@@ -58,7 +58,7 @@ public class WorkerHttpForwardingTests
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         using HttpClient client = factory.CreateHttpForwardingClient();
-        using RequestActivityRecorder activityRecorder = new("/invoke");
+        using RequestActivityRecorder activityRecorder = new("/invoke", client.BaseAddress!.Port);
         using HttpRequestMessage request = new(HttpMethod.Post, "/invoke?name=worker")
         {
             Content = new StringContent("payload", Encoding.UTF8, "text/plain")
@@ -583,7 +583,7 @@ public class WorkerHttpForwardingTests
         Assert.Equal("Microsoft.AspNetCore", activity.Source.Name);
         Assert.Equal(ActivityKind.Server, activity.Kind);
         Assert.Equal(method, activity.GetTagItem("http.request.method"));
-        Assert.Equal("http", activity.GetTagItem("url.scheme"));
+        Assert.Equal("https", activity.GetTagItem("url.scheme"));
         Assert.Equal(path, activity.GetTagItem("url.path"));
         Assert.Single(activity.TagObjects.Where(tag => string.Equals(
             tag.Key, "http.request.method", StringComparison.Ordinal)));

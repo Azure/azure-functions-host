@@ -6,8 +6,10 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Tests;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +30,9 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope explicitIdentity = new("WORKERPROXY__PODNAME", explicitPodName);
         using EnvironmentVariableScope platformIdentity = new("WEBSITE_POD_NAME", platformPodName);
         using EnvironmentVariableScope containerIdentity = new("CONTAINER_NAME", containerName);
+        using TestCertificateFiles certificates = new();
+        using EnvironmentVariableScope certificatePath = new("WORKERPROXY__CERTIFICATEPATH", certificates.CertificatePath);
+        using EnvironmentVariableScope certificateKeyPath = new("WORKERPROXY__CERTIFICATEKEYPATH", certificates.KeyPath);
         await using WebApplication app = WorkerProxyApplication.Build([]);
 
         Assert.Equal(expectedPodName, app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
@@ -50,8 +55,12 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope workerGrpcPort = new("WORKERPROXY__WORKERGRPCPORT", "0");
         using EnvironmentVariableScope httpPort = new("WORKERPROXY__HTTPPORT", "0");
         using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", "environment-worker-pod");
+        using EnvironmentVariableScope containerKey = new("CONTAINER_ENCRYPTION_KEY", RuntimeAuthenticationTestData.EncodedWorkerKey);
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
+        using TestCertificateFiles certificates = new();
+        using EnvironmentVariableScope certificatePath = new("WORKERPROXY__CERTIFICATEPATH", certificates.CertificatePath);
+        using EnvironmentVariableScope certificateKeyPath = new("WORKERPROXY__CERTIFICATEKEYPATH", certificates.KeyPath);
         await using WebApplication app = WorkerProxyApplication.Build([]);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         await app.StartAsync(timeout.Token);
@@ -63,8 +72,11 @@ public class WorkerProxyEnvironmentConfigurationTests
         Assert.Equal("preserved", app.Configuration["DOTNET_WORKER_PROXY_TEST_SETTING"]);
         Assert.Equal("environment-worker-pod", app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
         using HttpClient client = new() { BaseAddress = address };
-        using HttpResponseMessage response = await client.GetAsync("/admin/instance/ready", timeout.Token);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        client.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
+            ManagementTokenTestData.Create(RuntimeAuthenticationTestData.EncodedWorkerKey, "environment-worker-pod"));
+        using StringContent content = new("null", Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", content, timeout.Token);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     private static int GetAvailablePort()

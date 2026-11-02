@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -45,9 +46,9 @@ public class WorkerProxyKestrelTests
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
 
         Assert.Equal(port, client.BaseAddress!.Port);
-        using HttpResponseMessage response =
-            await client.GetAsync("/admin/instance/ready", timeout.Token);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using StringContent initialState = new("null", Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", initialState, timeout.Token);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
         WorkerProxyEndpointConfiguration endpoints = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         Uri workerAddress = endpoints.GetRelayAddress(FunctionRpcRelaySide.Worker);
@@ -58,9 +59,13 @@ public class WorkerProxyKestrelTests
 
         foreach (FunctionRpcRelaySide side in Enum.GetValues<FunctionRpcRelaySide>())
         {
-            using HttpClient grpcClient = new() { BaseAddress = factory.GetFunctionRpcAddress(side) };
-            using HttpRequestMessage readyRequest = new(HttpMethod.Get, "/admin/instance/ready")
+            using HttpClient grpcClient = new(new HttpClientHandler
             {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }) { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            using HttpRequestMessage readyRequest = new(HttpMethod.Post, "/admin/infra/instanceState")
+            {
+                Content = new StringContent("null", Encoding.UTF8, "application/json"),
                 Version = HttpVersion.Version20,
                 VersionPolicy = HttpVersionPolicy.RequestVersionExact
             };
@@ -68,7 +73,10 @@ public class WorkerProxyKestrelTests
             Assert.Equal(HttpStatusCode.NotFound, readyResponse.StatusCode);
         }
 
-        using HttpClient runtimeClient = new() { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
+        using HttpClient runtimeClient = new(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        }) { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
         using HttpRequestMessage runtimeFallbackRequest = new(HttpMethod.Get, "/not-a-function-rpc-route")
         {
             Version = HttpVersion.Version20,

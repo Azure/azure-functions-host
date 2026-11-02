@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -47,6 +48,7 @@ public class WorkerProxyOptionsTests
 
     [Theory]
     [InlineData("relative")]
+    [InlineData("http://worker-pod:28080")]
     [InlineData("ftp://worker-pod:28080")]
     [InlineData("http://worker-pod:0")]
     [InlineData("http://worker-pod:28080/worker-id")]
@@ -65,11 +67,11 @@ public class WorkerProxyOptionsTests
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
-    [InlineData("http://localhost:28080")]
+    [InlineData("https://localhost:28080")]
     [InlineData(" https://worker-pod.example:48801/ ")]
-    [InlineData("http://[::1]:28080")]
-    [InlineData("http://100.64.1.12:48801")]
-    [InlineData("http://[fd00::12]:48801")]
+    [InlineData("https://[::1]:28080")]
+    [InlineData("https://100.64.1.12:48801")]
+    [InlineData("https://[fd00::12]:48801")]
     public void Options_AllowAbsentOrExplicitAdvertisedHttpOrigin(string endpoint)
     {
         WorkerProxyOptions options = GetOptions("--WorkerProxy:HttpProxyEndpoint", endpoint);
@@ -127,7 +129,9 @@ public class WorkerProxyOptionsTests
 
     private static WorkerProxyOptions GetOptions(params string[] args)
     {
-        using WebApplication app = WorkerProxyApplication.Build(["--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
+        using TestCertificateFiles certificates = new();
+        using WebApplication app = WorkerProxyApplication.Build(
+            [.. certificates.Arguments, "--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }

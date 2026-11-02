@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -23,13 +24,13 @@ internal static class ManagementApiEndpoints
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady)
-            .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
         endpoints.MapPut("/admin/worker/assignment",
             (WorkerAssignRequest request, WorkerPodStateManager manager) => ManagementApiHandlers.AssignWorker(request, manager))
-            .AllowAnonymous();
-        endpoints.MapGet("/admin/worker/state", ManagementApiHandlers.GetWorkerStateAsync)
-            .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
+            .RequireAuthorization(ContainerManagementAuthenticationHandler.SchemeName);
+        endpoints.MapPost("/admin/infra/instanceState",
+            (WorkerInstanceState? originState, WorkerPodStateManager manager, HttpContext context) =>
+                ManagementApiHandlers.GetInstanceStateAsync(originState, manager, context.RequestAborted))
+            .AddEndpointFilter(DisableResponseCaching).RequireAuthorization(ContainerManagementAuthenticationHandler.SchemeName);
     }
 
     private static ValueTask<object?> DisableResponseCaching(EndpointFilterInvocationContext context, EndpointFilterDelegate next)

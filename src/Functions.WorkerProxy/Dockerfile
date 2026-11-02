@@ -8,8 +8,8 @@ WORKDIR /app
 # Native AOT currently produces one required runtime artifact. Revisit if the publish layout changes.
 COPY Azure.Functions.WorkerProxy ./
 
-# HTTP-capable workers require WORKERPROXY__HTTPPROXYENDPOINT at deployment.
-# Set it to the externally reachable HTTP origin mapped to WORKERPROXY__HTTPPORT.
+# Provision the serving PEM certificate/key before starting this executable (see README.md).
+# HTTP-capable workers require an allocated HTTPS origin through assignment or trusted configuration.
 ENV WORKERPROXY__MANAGEMENTPORT=80 \
     WORKERPROXY__HTTPPORT=28080 \
     WORKERPROXY__RUNTIMEGRPCPORT=50053 \
