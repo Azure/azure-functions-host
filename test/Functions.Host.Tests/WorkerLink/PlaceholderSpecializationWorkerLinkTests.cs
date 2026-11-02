@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script;
@@ -29,7 +30,7 @@ namespace Azure.Functions.Host.Tests.WorkerLink;
 public sealed class PlaceholderSpecializationWorkerLinkTests
 {
     private const string WorkerId = "worker-pod-1";
-    private const string GrpcEndpoint = "http://100.64.1.12:50053";
+    private const string GrpcEndpoint = "100.86.1.2:48800";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Fact]
@@ -37,10 +38,13 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using EnvironmentVariableScope placeholderMode = new(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
         using EnvironmentVariableScope containerReady = new(EnvironmentSettingNames.AzureWebsiteContainerReady, null);
+        using EnvironmentVariableScope containerKey = new("CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.RuntimeKey);
+        using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", ManagementTokenTestData.RuntimePodName);
+        using EnvironmentVariableScope appKey = new("WEBSITE_AUTH_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey);
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
-        registry.Setup(value => value.LinkAsync(WorkerId, new Uri(GrpcEndpoint), It.IsAny<CancellationToken>()))
+        registry.Setup(value => value.LinkAsync(WorkerId, new Uri("https://100.86.1.2:48800/"), ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 linkedWithStandbyConfiguration = hostOptions!.CurrentValue.IsStandbyConfiguration;
@@ -95,8 +99,12 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
-            Content = new StringContent($$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}"}""", Encoding.UTF8, "application/json"),
+            Content = new StringContent(
+                $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}""",
+                Encoding.UTF8, "application/json"),
         };
+        request.Headers.Add(ManagementTokenTestData.HeaderName,
+            ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName));
 
         return await client.SendAsync(request, cancellationToken);
     }

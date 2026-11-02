@@ -41,7 +41,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
     {
         TestDuplexChannel<StreamingMessage> transport = new();
         RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
-            .Create(workerId, transport);
+            .Create(workerId, transport, RuntimeWorkerTestData.CreateCredentials(workerId));
         Task start = channel.StartAsync(CancellationToken.None);
 
         await transport.SendResponseAsync(new()
@@ -64,7 +64,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             initResponse.Capabilities.Add(RpcWorkerConstants.HttpUri, advertisedHttpUri);
         }
 
-        await transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await transport.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, workerId) });
         await start.WaitAsync(TestTimeout);
 
         return new(channel, transport);
@@ -148,7 +148,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            httpProxyService ?? Mock.Of<IHttpProxyService>(),
+            () => httpProxyService ?? Mock.Of<IHttpProxyService>(),
             Mock.Of<IMetricsLogger>());
     }
 }

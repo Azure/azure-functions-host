@@ -4,16 +4,17 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -63,7 +64,7 @@ public sealed partial class WorkerLinkController : Controller
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
     /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
-    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
+    /// different endpoints or credentials or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
     /// connection or handshake is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
@@ -75,7 +76,7 @@ public sealed partial class WorkerLinkController : Controller
     /// </remarks>
     [HttpPut]
     [Route("admin/workers/{workerId}")]
-    // [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+    [Authorize(Policy = ContainerManagementAuthenticationHandler.SchemeName)]
     public async Task<IActionResult> LinkWorker([FromRoute] string workerId, [FromBody] WorkerLinkRequest? request,
         CancellationToken cancellationToken = default)
     {
@@ -89,7 +90,7 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, request!.RuntimeAccessKey!, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
@@ -112,24 +113,31 @@ public sealed partial class WorkerLinkController : Controller
             return errors;
         }
 
-        if (!TryParseEndpoint(request.WorkerGrpcEndpoint, out grpcEndpoint))
+        if (!RuntimeWorkerAuthentication.TryCreateHttpsOrigin(request.WorkerGrpcEndpoint, out grpcEndpoint))
         {
             errors.Add(string.IsNullOrWhiteSpace(request.WorkerGrpcEndpoint)
                 ? new(ErrorCodes.Required, "workerGrpcEndpoint")
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
+        if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(request.RuntimeAccessKey, out _))
+        {
+            errors.Add(new(string.IsNullOrWhiteSpace(request.RuntimeAccessKey) ? ErrorCodes.Required : ErrorCodes.InvalidValue,
+                "runtimeAccessKey"));
+        }
+
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(
+        string workerId, Uri grpcEndpoint, string runtimeAccessKey, long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
+            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, runtimeAccessKey, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
@@ -165,7 +173,7 @@ public sealed partial class WorkerLinkController : Controller
         (int statusCode, string code, string detail) = reason switch
         {
             WorkerLinkFailureReason.Conflict => (StatusCodes.Status409Conflict, ErrorCodes.LinkConflict,
-                "The worker identity is already linked to another endpoint."),
+                "The worker identity is already linked with different endpoints or credentials."),
             WorkerLinkFailureReason.WorkerTerminated => (StatusCodes.Status409Conflict, ErrorCodes.WorkerTerminated,
                 "The worker's initialized channel has terminated."),
             WorkerLinkFailureReason.RuntimeStopping => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.RuntimeStopping,
@@ -174,6 +182,8 @@ public sealed partial class WorkerLinkController : Controller
                 "The worker connection or initialization handshake was unavailable."),
             WorkerLinkFailureReason.Timeout => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.LinkTimeout,
                 "The worker connection or initialization handshake timed out."),
+            WorkerLinkFailureReason.AuthenticationUnavailable => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.AuthenticationUnavailable,
+                "The runtime application authentication configuration is unavailable."),
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown worker link failure reason."),
         };
 
@@ -182,22 +192,13 @@ public sealed partial class WorkerLinkController : Controller
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
     }
 
-    // Accept only HTTP(S) authorities without credentials, non-root paths, queries, or fragments.
-    private static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
-        => Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
-            (string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) &&
-            !string.IsNullOrWhiteSpace(endpoint.Host) &&
-            string.IsNullOrEmpty(endpoint.UserInfo) &&
-            string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal) &&
-            string.IsNullOrEmpty(endpoint.Query) &&
-            string.IsNullOrEmpty(endpoint.Fragment);
-
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.
     private static class ErrorCodes
     {
         public const string InvalidBody = nameof(InvalidBody);
         public const string InvalidEndpoint = nameof(InvalidEndpoint);
+        public const string InvalidValue = nameof(InvalidValue);
+        public const string AuthenticationUnavailable = nameof(AuthenticationUnavailable);
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
         public const string Required = nameof(Required);

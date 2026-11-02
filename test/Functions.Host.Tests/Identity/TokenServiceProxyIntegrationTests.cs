@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Functions.Host.Identity;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Azure.Identity;
 using Google.Protobuf;
 using Grpc.Net.Client;
@@ -48,6 +49,7 @@ public sealed class TokenServiceProxyIntegrationTests
 {
     private const string LocalSecret = "worker-local-secret";
     private const string HostSecret = "host-only-secret";
+    private const string WorkerPodName = "token-proxy-test";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(20);
 
     [Fact]
@@ -517,12 +519,14 @@ public sealed class TokenServiceProxyIntegrationTests
         private readonly Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _applicationOptions = new();
         private readonly Mock<IScriptWebHostEnvironment> _environment = new();
         private readonly ServiceProvider _services;
+        private readonly TestCertificateFiles _certificates;
         private Task<WorkerLinkResult>? _link;
 
-        private Harness(WebApplication proxy, HttpClient upstream)
+        private Harness(WebApplication proxy, HttpClient upstream, TestCertificateFiles certificates)
         {
             _proxy = proxy;
             _upstream = upstream;
+            _certificates = certificates;
             _clients = new();
             _clients.Setup(factory => factory.CreateClient(HostTokenServiceForwarder.ClientName)).Returns(upstream);
             _applicationOptions.SetupGet(options => options.CurrentValue)
@@ -532,7 +536,9 @@ public sealed class TokenServiceProxyIntegrationTests
             Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["MSI_ENDPOINT"] = "http://token.test/MSI/token",
-                ["MSI_SECRET"] = HostSecret
+                ["MSI_SECRET"] = HostSecret,
+                ["WEBSITE_SITE_NAME"] = "token-proxy-app",
+                ["WEBSITE_AUTH_ENCRYPTION_KEY"] = ManagementTokenTestData.AppKey
             }).Build();
             ServiceCollection services = new();
             services.AddLogging();
@@ -572,21 +578,57 @@ public sealed class TokenServiceProxyIntegrationTests
         internal static async Task<Harness> CreateAsync(
             Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond, params string[] overrides)
         {
-            WebApplication proxy = ProxyApplication.Build(
-            [
-                "--WEBSITE_POD_NAME", "token-proxy-test",
-                "--WorkerProxy:ManagementPort", "0",
-                "--WorkerProxy:RuntimeGrpcPort", "0",
-                "--WorkerProxy:WorkerGrpcPort", "0",
-                "--WorkerProxy:HttpPort", "0",
-                "--WorkerProxy:TokenServiceProxy:Enabled", "true",
-                "--WorkerProxy:TokenServiceProxy:Port", "0",
-                "--IDENTITY_HEADER", LocalSecret,
-                "--Logging:LogLevel:Default", "Warning",
-                .. overrides
-            ]);
-            await proxy.StartAsync();
-            return new Harness(proxy, new HttpClient(new RespondingHandler(respond)));
+            TestCertificateFiles certificates = new();
+            HttpClient upstream = new(new RespondingHandler(respond));
+            WebApplication? proxy = null;
+            try
+            {
+                proxy = ProxyApplication.Build(
+                [
+                    "--WEBSITE_POD_NAME", WorkerPodName,
+                    "--CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey,
+                    "--WEBSITE_AUTH_ENCRYPTION_KEY", ManagementTokenTestData.AppKey,
+                    .. certificates.Arguments,
+                    "--WorkerProxy:ManagementPort", "0",
+                    "--WorkerProxy:RuntimeGrpcPort", "0",
+                    "--WorkerProxy:WorkerGrpcPort", "0",
+                    "--WorkerProxy:HttpPort", "0",
+                    "--WorkerProxy:TokenServiceProxy:Enabled", "true",
+                    "--WorkerProxy:TokenServiceProxy:Port", "0",
+                    "--IDENTITY_HEADER", LocalSecret,
+                    "--Logging:LogLevel:Default", "Warning",
+                    .. overrides
+                ]);
+                await proxy.StartAsync();
+                using HttpClient management = new()
+                {
+                    BaseAddress = new UriBuilder(proxy.Services.GetRequiredService<ProxyEndpoints>().GetManagementAddress())
+                    {
+                        Host = IPAddress.Loopback.ToString()
+                    }.Uri
+                };
+                management.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
+                    ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, WorkerPodName));
+                using StringContent assignment = new("""
+                    {"startupMode":"Preconfigured","functionAppName":"token-proxy-app","functionGroupName":"http","isAlwaysReady":false,
+                     "environment":{},"functionAppDirectory":"","configLastModifiedTime":1761868800,
+                     "contentLastModifiedTime":1761868801,"maxHttpConcurrency":0}
+                    """, Encoding.UTF8, "application/json");
+                using HttpResponseMessage accepted = await management.PutAsync("/admin/worker/assignment", assignment);
+                Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+
+                return new Harness(proxy, upstream, certificates);
+            }
+            catch
+            {
+                if (proxy is not null)
+                {
+                    await proxy.DisposeAsync();
+                }
+                certificates.Dispose();
+                upstream.Dispose();
+                throw;
+            }
         }
 
         internal Task ConnectAsync(CancellationToken cancellationToken)
@@ -595,7 +637,7 @@ public sealed class TokenServiceProxyIntegrationTests
             {
                 Host = IPAddress.Loopback.ToString()
             };
-            _link = Registry.LinkAsync("customer-run-1", endpoint.Uri, cancellationToken);
+            _link = Registry.LinkAsync(WorkerPodName, endpoint.Uri, ManagementTokenTestData.WorkerKey, cancellationToken);
             return Task.CompletedTask;
         }
 
@@ -641,7 +683,7 @@ public sealed class TokenServiceProxyIntegrationTests
                 WorkerInitResponse = new() { Result = new() { Status = StatusResult.Types.Status.Success } }
             }, cancellationToken);
             WorkerLinkResult initialized = await _link!.WaitAsync(cancellationToken);
-            Assert.Equal("customer-run-1", initialized.Channel.Id);
+            Assert.Equal(WorkerPodName, initialized.Channel.Id);
             Assert.Single(Registry.GetInitializedChannels());
         }
 
@@ -664,6 +706,7 @@ public sealed class TokenServiceProxyIntegrationTests
             using CancellationTokenSource timeout = new(TestTimeout);
             await _proxy.StopAsync(timeout.Token);
             await _proxy.DisposeAsync();
+            _certificates.Dispose();
         }
     }
 

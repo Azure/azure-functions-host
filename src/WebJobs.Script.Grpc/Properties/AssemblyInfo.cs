@@ -4,6 +4,7 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Azure.Functions.Rpc.Server")]
+[assembly: InternalsVisibleTo("Azure.Functions.Rpc.Client")]
 [assembly: InternalsVisibleTo("Azure.Functions.Rpc.Client.Tests")]
 [assembly: InternalsVisibleTo("Azure.Functions.Host.Tests")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Benchmarks")]

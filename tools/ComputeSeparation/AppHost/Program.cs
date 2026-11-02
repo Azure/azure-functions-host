@@ -12,6 +12,7 @@ const string ManagementEndpointName = "management";
 const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
+const string AppName = "aspire-sample-app";
 const string TokenServiceProxyEndpointName = "token-service-proxy";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -37,12 +38,18 @@ if (multipleWorkers && (useContainers || autoLink))
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
 string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
-using HarnessRunDirectory? runDirectory = useContainers ? null : new();
+string runtimeAccessKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+string appAuthKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+string runtimeContainerKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+const string RuntimePodName = "runtime-pod";
+using HarnessRunDirectory runDirectory = new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
 EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
+ReferenceExpression workerManagementEndpoint;
+ReferenceExpression workerHttpEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -56,6 +63,9 @@ if (topology is not null)
             name: HttpEndpointName, env: "COMPUTE_HOST_PORT")
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
+        .WithEnvironment("COMPUTE_APP_AUTH_KEY", appAuthKey)
+        .WithEnvironment("COMPUTE_RUNTIME_CONTAINER_KEY", runtimeContainerKey)
+        .WithEnvironment("COMPUTE_RUNTIME_POD_NAME", RuntimePodName)
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.Runtime.ProjectName)
         .WithEnvironment(context => context.EnvironmentVariables[ComposeSession.GenerationVariable] = topology.Runtime.Generation)
         .OnBeforeResourceStarted((_, _, cancellationToken) => topology.Runtime.BeforeStartAsync(cancellationToken))
@@ -63,14 +73,18 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
-    builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
+    IResourceBuilder<ExecutableResource> workerPod = builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
             "compose", "--file", topology.WorkerPod.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:ManagementPort"),
             name: ManagementEndpointName, env: "WORKER_PROXY_MANAGEMENT_PORT")
-        .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName)
         .WithEnvironment("COMPUTE_NETWORK_NAME", topology.NetworkName)
         .WithEnvironment("WORKER_PROXY_ALIAS", topology.ProxyAlias)
         .WithEnvironment("WORKER_ID", workerId)
+        .WithEnvironment("WORKER_POD_NAME", podName)
+        .WithEnvironment("WORKER_RUNTIME_ACCESS_KEY", runtimeAccessKey)
+        .WithEnvironment("WORKER_APP_AUTH_KEY", appAuthKey)
+        .WithEnvironment("WORKER_PROXY_CERTIFICATE_PATH", runDirectory.CertificatePath)
+        .WithEnvironment("WORKER_PROXY_CERTIFICATE_KEY_PATH", runDirectory.CertificateKeyPath)
         .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
         .WithEnvironment(context => context.EnvironmentVariables[ComposeSession.GenerationVariable] = topology.WorkerPod.Generation)
@@ -81,7 +95,9 @@ if (topology is not null)
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
-    workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
+    workerGrpcEndpoint = ReferenceExpression.Create($"https://{topology.ProxyAlias}:50053");
+    workerManagementEndpoint = ReferenceExpression.Create($"{workerPod.GetEndpoint(ManagementEndpointName)}");
+    workerHttpEndpoint = ReferenceExpression.Create($"https://{topology.ProxyAlias}:28080");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
@@ -91,6 +107,9 @@ else
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
+        .WithEnvironment("WEBSITE_SITE_NAME", AppName)
+        .WithEnvironment("WEBSITE_POD_NAME", RuntimePodName)
+        .WithEnvironment("CONTAINER_ENCRYPTION_KEY", runtimeContainerKey)
         .WithEnvironment("AzureWebJobsSecretStorageType", "Files")
         .WithEnvironment("AzureWebJobsScriptRoot", runDirectory!.ScriptPath)
         .WithEnvironment("FUNCTIONS_LOG_PATH", runDirectory.LogPath)
@@ -125,17 +144,22 @@ else
     IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
         .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
-        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName));
+        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("FakePlatform__AppAuthKey", appAuthKey)
+        .WithEnvironment("FakePlatform__RuntimeContainerKey", runtimeContainerKey)
+        .WithEnvironment("FakePlatform__RuntimePodName", RuntimePodName);
 
     if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))
     {
         // The platform assigns the app once; each worker is then assigned and linked independently.
-        string encryptionKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         functionsHost
             .WithEnvironment("WEBSITE_PLACEHOLDER_MODE", "1")
-            .WithEnvironment("WEBSITE_SITE_NAME", "aspire-sample-app")
-            .WithEnvironment("CONTAINER_ENCRYPTION_KEY", encryptionKey);
-        fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", encryptionKey);
+            .WithEnvironment("WEBSITE_SITE_NAME", "aspire-sample-app");
+        fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", runtimeContainerKey);
+    }
+    else
+    {
+        functionsHost.WithEnvironment("WEBSITE_AUTH_ENCRYPTION_KEY", appAuthKey);
     }
 
     IResourceBuilder<ProjectResource> proxyProject = AddProjectWorker(secondWorker: false);
@@ -148,6 +172,8 @@ else
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
+    workerManagementEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(ManagementEndpointName)}");
+    workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
     dependencies = tokenServiceProxyScenario
         ? ["functions-host", "worker-proxy-1", "fake-platform", "mock-token-service"]
         : ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
@@ -162,17 +188,21 @@ else
             ? builder.Configuration["ComputeSeparation:SecondWorker:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}"
             : workerId;
         string workerPodName = secondWorker ? "worker-pod-2" : podName;
+        string workerKey = secondWorker ? Convert.ToHexString(RandomNumberGenerator.GetBytes(32)) : runtimeAccessKey;
         IResourceBuilder<ProjectResource> proxy = builder.AddProject<Projects.Functions_WorkerProxy>(proxyName, launchProfileName: null)
             .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:ManagementPort"), name: ManagementEndpointName)
-            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:RuntimeGrpcPort"), name: RuntimeGrpcEndpointName)
+            .WithHttpsEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:RuntimeGrpcPort"), name: RuntimeGrpcEndpointName, isProxied: false)
             .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:WorkerGrpcPort"), name: WorkerGrpcEndpointName)
-            .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:HttpPort"), name: HttpEndpointName)
-            .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName);
+            .WithHttpsEndpoint(targetPort: GetOptionalPort(builder.Configuration, $"{configurationPrefix}:HttpPort"), name: HttpEndpointName, isProxied: false);
 
         proxy.WithEnvironment(context =>
         {
             // Each proxy represents a separate pod, with its own worker connection and runtime-facing endpoints.
             context.EnvironmentVariables["WEBSITE_POD_NAME"] = workerPodName;
+            context.EnvironmentVariables["CONTAINER_ENCRYPTION_KEY"] = workerKey;
+            context.EnvironmentVariables["WEBSITE_AUTH_ENCRYPTION_KEY"] = appAuthKey;
+            context.EnvironmentVariables["WORKERPROXY__CERTIFICATEPATH"] = runDirectory.CertificatePath;
+            context.EnvironmentVariables["WORKERPROXY__CERTIFICATEKEYPATH"] = runDirectory.CertificateKeyPath;
             context.EnvironmentVariables["WORKERPROXY__MANAGEMENTPORT"] =
                 proxy.GetEndpoint(ManagementEndpointName).Property(EndpointProperty.TargetPort);
             context.EnvironmentVariables["WORKERPROXY__RUNTIMEGRPCPORT"] =
@@ -181,7 +211,6 @@ else
                 proxy.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
             context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
                 proxy.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxy.GetEndpoint(HttpEndpointName);
             context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
         });
 
@@ -215,7 +244,9 @@ else
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__Name", proxyName)
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__ManagementUri", proxy.GetEndpoint(ManagementEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
-            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerHttpEndpoint", proxy.GetEndpoint(HttpEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__RuntimeAccessKey", workerKey)
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", workerPodName);
 
         return proxy;
     }
@@ -226,12 +257,16 @@ if (autoLink)
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
         workerGrpcEndpoint,
+        workerManagementEndpoint,
+        workerHttpEndpoint,
         platformEndpoint,
-        workerId,
+        podName,
+        runtimeAccessKey,
+        runtimeContainerKey,
+        RuntimePodName,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
-        services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>(),
-        linkBeforeAssignment: tokenServiceProxyScenario));
+        services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HostLinkService>>()));
 }
 
 await builder.Build().RunAsync();

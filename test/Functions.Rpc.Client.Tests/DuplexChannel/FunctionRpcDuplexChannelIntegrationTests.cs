@@ -93,7 +93,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
     public async Task ConnectionFailureDoesNotReturnPartialStream()
     {
         int unusedPort = GetUnusedPort();
-        Uri endpoint = new($"http://{IPAddress.Loopback}:{unusedPort}");
+        Uri endpoint = new($"https://{IPAddress.Loopback}:{unusedPort}");
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));

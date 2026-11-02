@@ -15,17 +15,12 @@
 
 @platform = http://localhost:7060
 @host = http://127.0.0.1:7071
-@workerProxy = http://localhost:7081
-@secondWorkerProxy = http://localhost:7091
 
 ### Expected flow, in order.
 
 ### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
-### 503 WorkerNotReady means the sample worker has not connected yet; retry.
+### Assignment does not require the customer worker to have started or connected.
 POST {{platform}}/simulate/worker/worker-proxy-1/assign
-
-### Optional: the WorkerProxy pod state is now ReadyForRequest.
-GET {{workerProxy}}/admin/worker/state
 
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
 ### repeated. The Host finishes specializing only after step 3 links the worker.
@@ -40,11 +35,8 @@ GET {{host}}/api/hello
 ### The remaining requests require `project-placeholder-manual-multiple-workers`.
 ### Wait for step 4 to succeed before linking the second worker, so this exercises a genuinely late link.
 
-### 5. Assign the second pod. Expect 201, or 204 if repeated; retry 503 until its worker has connected.
+### 5. Assign the second pod. Expect 201, or 204 if repeated; customer startup is not required.
 POST {{platform}}/simulate/worker/worker-proxy-2/assign
-
-### Optional: inspect the second pod independently.
-GET {{secondWorkerProxy}}/admin/worker/state
 
 ### 6. Link the second worker to the existing Host. Expect 201, or 200 for a matching retry.
 ### Do not send /simulate/host/assign again: the same Host and indexed functions are reused.

@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
@@ -42,8 +44,12 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     }
 
     /// <inheritdoc />
-    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint, RuntimeWorkerCredentials credentials, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(credentials);
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyDictionary<string, string> tokens = credentials.CreateHeaders();
         if (_proxyOptions.Enabled && _proxyHandler is null)
         {
             throw new InvalidOperationException("An enabled Token Service proxy requires a root-owned HTTP request handler.");
@@ -53,7 +59,13 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        var call = client.EventStream();
+        Metadata headers = new();
+        foreach ((string name, string token) in tokens)
+        {
+            headers.Add(name, token);
+        }
+
+        var call = client.EventStream(headers);
         try
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();

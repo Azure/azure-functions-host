@@ -22,13 +22,13 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed class RpcClientHttpInvocationTests
 {
-    private static readonly Uri HttpEndpoint = new("http://platform-proxy:28080");
+    private static readonly Uri HttpEndpoint = new("https://platform-proxy:28080");
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Theory]
-    [InlineData("http://platform-proxy:28080")]
-    [InlineData("http://worker-advertised:8080")]
-    public async Task InvokeAsync_UsesNegotiatedHttpCapability(string advertisedHttpUri)
+    [InlineData("https://platform-proxy:28080")]
+    [InlineData("https://worker-proxy:48801")]
+    public async Task InvokeAsync_UsesAuthenticatedNegotiatedHttpsOrigin(string advertisedHttpUri)
     {
         Uri endpoint = new(advertisedHttpUri);
         Mock<IHttpProxyService> proxy = CreateProxy(endpoint);
@@ -53,11 +53,11 @@ public sealed class RpcClientHttpInvocationTests
     }
 
     [Theory]
-    [InlineData(CapabilitiesUpdateStrategy.Merge, "http://replacement-advertised:8080")]
-    [InlineData(CapabilitiesUpdateStrategy.Replace, "http://replacement-advertised:8080")]
-    public async Task InvokeAsync_CapabilityReloadUpdatesHttpEndpoint(CapabilitiesUpdateStrategy strategy, string advertisedHttpUri)
+    [InlineData(CapabilitiesUpdateStrategy.Merge, "https://platform-proxy:28080")]
+    [InlineData(CapabilitiesUpdateStrategy.Replace, "https://platform-proxy:28080")]
+    public async Task InvokeAsync_CapabilityReloadPreservesNegotiatedProxyOrigin(CapabilitiesUpdateStrategy strategy, string advertisedHttpUri)
     {
-        Uri endpoint = new(advertisedHttpUri);
+        Uri endpoint = HttpEndpoint;
         Mock<IHttpProxyService> proxy = CreateProxy(endpoint);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
             "worker", advertisedHttpUri: HttpEndpoint.AbsoluteUri, httpProxyService: proxy.Object);
@@ -110,12 +110,37 @@ public sealed class RpcClientHttpInvocationTests
         return proxy;
     }
 
+    [Theory]
+    [InlineData("http://localhost:5678/customer", typeof(WorkerLinkException))]
+    [InlineData("https://different-customer:48801", typeof(WorkerLinkException))]
+    public async Task CapabilityReload_RejectsUnrewrittenCustomerOriginBeforeAnyCredentialForwarding(string destination, Type exceptionType)
+    {
+        Mock<IHttpProxyService> proxy = CreateProxy(HttpEndpoint);
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", advertisedHttpUri: HttpEndpoint.AbsoluteUri, httpProxyService: proxy.Object);
+        Task<bool> reload = worker.Channel.SendFunctionEnvironmentReloadRequest();
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
+        await worker.Transport.SendResponseAsync(new()
+        {
+            FunctionEnvironmentReloadResponse = new()
+            {
+                Result = new() { Status = StatusResult.Types.Status.Success },
+                Capabilities = { ["HttpUri"] = destination }
+            }
+        });
+        await Assert.ThrowsAsync(exceptionType, () => reload.WaitAsync(TestTimeout));
+        proxy.VerifyNoOtherCalls();
+        FunctionMetadata function = await LoadFunctionAsync(worker);
+        await InvokeHttpAsync(worker, function, proxy, HttpEndpoint);
+    }
+
     private static async Task InvokeHttpAsync(
         ClientWorkerChannelTestHarness worker, FunctionMetadata function, Mock<IHttpProxyService> proxy, Uri endpoint)
     {
         ScriptInvocationContext invocation = CreateInvocation(function);
         using MemoryStream body = new(Encoding.UTF8.GetBytes("HTTP body must not be serialized over gRPC"));
         HttpRequest httpRequest = new DefaultHttpContext().Request;
+        httpRequest.HttpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
         httpRequest.Method = "POST";
         httpRequest.Host = new("incoming.example");
         httpRequest.Body = body;

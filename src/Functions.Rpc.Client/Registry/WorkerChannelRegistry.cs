@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,16 +34,15 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
-    private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
-
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
+    private readonly IConfiguration _configuration;
+    private readonly TimeProvider _timeProvider;
     private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
     private readonly bool _registryOwnedAttempt;
-    private readonly TimeProvider _timeProvider;
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
@@ -62,12 +62,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
+        IConfiguration configuration,
+        TimeProvider timeProvider,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
-        IOptions<TokenServiceProxyOptions> proxyOptions = null,
-        TimeProvider timeProvider = null)
-        : this(duplexChannelFactory, channelFactory, logger,
-            proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout : DefaultLinkTimeout,
-            workerHostConfigurationParser, registryOwnedAttempt: proxyOptions?.Value.Enabled == true, timeProvider)
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions = null,
+        IOptions<TokenServiceProxyOptions> proxyOptions = null)
+        : this(duplexChannelFactory, channelFactory, logger, configuration, timeProvider,
+            ResolveLinkTimeout(processOptions, proxyOptions), workerHostConfigurationParser,
+            registryOwnedAttempt: proxyOptions?.Value.Enabled == true)
     {
     }
 
@@ -75,29 +77,40 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
+        IConfiguration configuration,
+        TimeProvider timeProvider,
         TimeSpan linkTimeout,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
-        bool registryOwnedAttempt = false,
-        TimeProvider timeProvider = null)
+        bool registryOwnedAttempt = false)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
         _workerHostConfigurationParser = workerHostConfigurationParser ?? throw new ArgumentNullException(nameof(workerHostConfigurationParser));
         _registryOwnedAttempt = registryOwnedAttempt;
-        _timeProvider = timeProvider ?? TimeProvider.System;
     }
+
+    internal TimeSpan LinkTimeout => _linkTimeout;
+
+    private static TimeSpan ResolveLinkTimeout(
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions, IOptions<TokenServiceProxyOptions> proxyOptions) =>
+        proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout
+            : RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new());
 
     public Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
+        string runtimeAccessKey,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
+        RuntimeWorkerCredentials credentials = new(workerId, runtimeAccessKey, _configuration, _timeProvider, _logger);
         cancellationToken.ThrowIfCancellationRequested();
 
         TaskCompletionSource<WorkerChannel> linkCompletion;
@@ -107,10 +120,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
-                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal))
+                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal)
+                    || !existing.Credentials.MatchesKey(runtimeAccessKey))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
-                        "The worker is already associated with a different gRPC endpoint.");
+                        "The worker is already associated with different endpoints or credentials.");
                 }
 
                 if (existing.Terminal || existing.Channel is { IsTerminated: true })
@@ -123,7 +137,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
 
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            slot = new() { Endpoint = grpcEndpoint, LinkTask = linkCompletion.Task };
+            slot = new() { Endpoint = grpcEndpoint, Credentials = credentials, LinkTask = linkCompletion.Task };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
         }
@@ -185,10 +199,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             try
             {
                 operationSource.Token.ThrowIfCancellationRequested();
-                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
+                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, slot.Credentials, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
-                candidate = _channelFactory.Create(workerId, ownedChannel)
+                candidate = _channelFactory.Create(workerId, ownedChannel, slot.Credentials)
                     ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
                 ownedChannel = null;
 
@@ -866,6 +880,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
+
+        public RuntimeWorkerCredentials Credentials { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }
