@@ -1863,7 +1863,7 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(IMetricsLogger metricsLogger = null)
+    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(IMetricsLogger metricsLogger = null, IHttpProxyService httpProxyService = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -1886,7 +1886,7 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            httpProxyService ?? Mock.Of<IHttpProxyService>(),
             metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 
@@ -1909,6 +1909,7 @@ public sealed partial class WorkerChannelRegistryTests
             TimeProvider timeProvider = null)
         {
             HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            RegistryLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
                 configuration ?? new ConfigurationBuilder().Build(),
                 HostConfigurationLogger.Object);
@@ -1942,16 +1943,16 @@ public sealed partial class WorkerChannelRegistryTests
                         throw new InvalidOperationException($"No test channel was configured for worker '{workerId}'.");
                     }
 
-                    RpcClientWorkerChannel channel = CreateRealChannelFactory(control.MetricsLogger.Object)
+                    RpcClientWorkerChannel channel = CreateRealChannelFactory(control.MetricsLogger.Object, control.HttpProxyService)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
                     return channel;
                 });
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance,
+                ? new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object,
                     linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider)
-                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
+                : new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object, workerHostConfigurationParser);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
@@ -1959,6 +1960,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal Mock<IDuplexChannelFactory<StreamingMessage>> DuplexFactory { get; } = new();
 
         internal Mock<ILogger<WorkerHostConfigurationParser>> HostConfigurationLogger { get; } = new();
+
+        internal Mock<ILogger<WorkerChannelRegistry>> RegistryLogger { get; } = new();
 
         internal WorkerChannelRegistry Registry { get; }
 
@@ -2058,6 +2061,10 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal HostConfiguration HostConfiguration { get; init; }
 
+        internal IDictionary<string, string> Capabilities { get; init; } = new Dictionary<string, string>();
+
+        internal IHttpProxyService HttpProxyService { get; init; }
+
         internal WorkerInitRequest InitRequest { get; private set; }
 
         internal StatusResult InitResult { get; init; } = new() { Status = StatusResult.Types.Status.Success };
@@ -2138,13 +2145,15 @@ public sealed partial class WorkerChannelRegistryTests
                     return;
                 }
 
+                WorkerInitResponse response = new()
+                {
+                    Result = InitResult,
+                    HostConfiguration = HostConfiguration,
+                };
+                response.Capabilities.Add(Capabilities);
                 await Transport.SendResponseAsync(new StreamingMessage
                 {
-                    WorkerInitResponse = new WorkerInitResponse
-                    {
-                        Result = InitResult,
-                        HostConfiguration = HostConfiguration,
-                    },
+                    WorkerInitResponse = response,
                 });
             }
             catch (ChannelClosedException)

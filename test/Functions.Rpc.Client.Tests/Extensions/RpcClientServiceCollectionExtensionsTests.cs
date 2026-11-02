@@ -105,9 +105,12 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
         Assert.NotNull(coordinator.ImplementationFactory);
-        ServiceDescriptor hostedService = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService)));
+        ServiceDescriptor hostedService = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationFactory is not null));
         Assert.Equal(ServiceLifetime.Singleton, hostedService.Lifetime);
         Assert.NotNull(hostedService.ImplementationFactory);
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationType == typeof(HttpWorkerIdleMonitor) && descriptor.Lifetime == ServiceLifetime.Singleton);
         Assert.Throws<InvalidOperationException>(() => services.AddRpcClientWebHostServices(_ => scriptHost));
     }
 

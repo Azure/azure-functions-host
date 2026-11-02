@@ -27,11 +27,12 @@ namespace Azure.Functions.Rpc.Client;
 /// begin initialization. Once initialization begins, cancellation only stops the individual caller's wait; shared initialization continues
 /// until it succeeds, fails, times out, or the channel is disposed.
 /// </remarks>
-internal sealed class RpcClientWorkerChannel : WorkerChannel
+internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 {
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ILogger _activityLogger;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -68,6 +69,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         Completion = ownedChannel.Reader.Completion;
+        _activityLogger = logger;
     }
 
     private enum LifecycleState
@@ -86,7 +88,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
+    internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -136,6 +138,14 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
 
         HostConfiguration = response.HostConfiguration?.Clone();
+        IsHttpFunctionGroup = response.Capabilities.TryGetValue("FunctionGroupName", out string group)
+            && string.Equals(group, "http", StringComparison.OrdinalIgnoreCase);
+        IsAlwaysReady = response.Capabilities.TryGetValue("IsAlwaysReady", out string alwaysReady)
+            && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
+        if (IsHttpFunctionGroup && IsAlwaysReady is null)
+        {
+            _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; idle retirement is disabled for this worker.", Id);
+        }
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);

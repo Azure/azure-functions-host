@@ -1,0 +1,517 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Xunit;
+using Yarp.ReverseProxy.Forwarder;
+
+namespace Azure.Functions.Rpc.Client.Tests;
+
+public sealed partial class WorkerChannelRegistryTests
+{
+    private static readonly TimeSpan IdleThreshold = TimeSpan.FromMinutes(2);
+
+    [Fact]
+    public async Task IdleMonitor_ScansEachMinute_StrictThreshold_RemovesLastWorker_StopsWithRoot()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("http");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("HttpFunction");
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        using HttpWorkerIdleMonitor monitor = new(registry, time);
+        await monitor.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => time.HasPeriodicTimer);
+
+        time.Advance(TimeSpan.FromMinutes(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Single(registry.GetInitializedChannels());
+        time.Advance(TimeSpan.FromMinutes(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Single(registry.GetInitializedChannels());
+        Assert.Equal(0, worker.DisposeCount);
+
+        time.Advance(TimeSpan.FromMinutes(1));
+        await worker.DisposeStarted.WaitAsync(TestTimeout);
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.False(registry.GetReadyChannelsAsync().IsCompleted);
+        Assert.False(worker.Channel.TryPostInvocation(CreateIdleInvocation(function)));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.DisposeCount);
+        WorkerLinkException replay = await Assert.ThrowsAsync<WorkerLinkException>(() =>
+            registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)));
+        Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, replay.Reason);
+
+        await monitor.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        Assert.False(time.HasPeriodicTimer);
+        time.Advance(TimeSpan.FromMinutes(10));
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_MixedWorkers_ExemptsAlwaysReadyUnknownNonHttpAndLoading()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl idle = CreateIdleWorker("idle");
+        ChannelControl secondIdle = CreateIdleWorker("second-idle");
+        ChannelControl alwaysReady = CreateIdleWorker("always-ready", alwaysReady: "True");
+        ChannelControl unknown = CreateIdleWorker("unknown", alwaysReady: null);
+        ChannelControl invalid = CreateIdleWorker("invalid", alwaysReady: "not-a-bool");
+        ChannelControl nonHttp = CreateIdleWorker("timer", group: "function:timer");
+        ChannelControl loading = CreateIdleWorker("loading");
+        ChannelControl busy = CreateIdleWorker("busy");
+        ChannelControl[] workers = [idle, secondIdle, alwaysReady, unknown, invalid, nonHttp, loading, busy];
+        foreach (ChannelControl worker in workers)
+        {
+            harness.Enqueue(worker);
+        }
+
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
+        foreach (ChannelControl worker in workers)
+        {
+            await LinkAsync(registry, worker.Id);
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+            if (!ReferenceEquals(worker, loading))
+            {
+                CompleteFunctionLoad(worker, function);
+                await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
+            }
+        }
+
+        ScriptInvocationContext invocation = CreateIdleInvocation(function);
+        Assert.True(busy.Channel.TryPostInvocation(invocation));
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+
+        Assert.Equal(1, idle.DisposeCount);
+        Assert.Equal(1, secondIdle.DisposeCount);
+        Assert.Equal(6, registry.GetInitializedChannels().Count);
+        Assert.All(workers.Where(worker => !ReferenceEquals(worker, idle) && !ReferenceEquals(worker, secondIdle)),
+            worker => Assert.Equal(0, worker.DisposeCount));
+
+        time.Advance(TimeSpan.FromMinutes(10));
+        CompleteFunctionLoad(loading, function);
+        await WaitUntilAsync(() => loading.Channel.IsIdleTrackingReady);
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(0, loading.DisposeCount);
+        invocation.ResultSource.TrySetResult(new());
+        await WaitUntilAsync(() => busy.Channel.OngoingRequests == 0);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_QueuedAndOverlappingRequests_ResetContinuousIdleTime()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await LinkAsync(registry, worker.Id);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        using RpcClientFunctionInvocationDispatcher dispatcher = new(registry, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext first = CreateIdleInvocation(function);
+        ScriptInvocationContext second = CreateIdleInvocation(function);
+
+        await dispatcher.InvokeAsync(first);
+        await dispatcher.InvokeAsync(second);
+        Assert.Equal(2, worker.Channel.OngoingRequests);
+        time.Advance(TimeSpan.FromMinutes(5));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(0, worker.DisposeCount);
+        Assert.False(worker.Transport.Requests.TryRead(out _));
+
+        CompleteFunctionLoad(worker, function);
+        await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
+        StreamingMessage request1 = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        StreamingMessage request2 = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await worker.Channel.InvokeResponse(new() { InvocationId = request1.InvocationRequest.InvocationId, Result = new() { Status = StatusResult.Types.Status.Success } });
+        await WaitUntilAsync(() => worker.Channel.OngoingRequests == 1);
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(0, worker.DisposeCount);
+        await worker.Channel.InvokeResponse(new() { InvocationId = request2.InvocationRequest.InvocationId, Result = new() { Status = StatusResult.Types.Status.Success } });
+        await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+        time.Advance(TimeSpan.FromSeconds(119));
+
+        ScriptInvocationContext brief = CreateIdleInvocation(function);
+        await dispatcher.InvokeAsync(brief);
+        StreamingMessage request3 = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await worker.Channel.InvokeResponse(new() { InvocationId = request3.InvocationRequest.InvocationId, Result = new() { Status = StatusResult.Types.Status.Success } });
+        await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+        time.Advance(TimeSpan.FromSeconds(120));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(0, worker.DisposeCount);
+        time.Advance(TimeSpan.FromSeconds(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task IdleRetirement_WaitsForStreamingBodyAndResponseCompletion_EvenOnFailureOrCancellation(bool failure, bool canceled)
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        TaskCompletionSource<ForwarderError> body = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IHttpProxyService> proxy = new();
+        proxy.Setup(service => service.StartForwarding(It.IsAny<ScriptInvocationContext>(), It.IsAny<Uri>()))
+            .Callback((ScriptInvocationContext context, Uri _) => context.Properties[ScriptConstants.HttpProxyTask] = body.Task);
+        proxy.Setup(service => service.EnsureSuccessfulForwardingAsync(It.IsAny<ScriptInvocationContext>()))
+            .Returns(async () => { await body.Task; });
+        ChannelControl worker = new("streaming")
+        {
+            Capabilities = new Dictionary<string, string>
+            {
+                ["FunctionGroupName"] = "http",
+                ["IsAlwaysReady"] = "False",
+                ["HttpUri"] = "http://worker:8080/"
+            },
+            HttpProxyService = proxy.Object,
+        };
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Stream");
+        function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        ScriptInvocationContext invocation = CreateIdleInvocation(function);
+        DefaultHttpContext httpContext = new();
+        Mock<IHttpResponseFeature> response = new();
+        response.SetupGet(feature => feature.Headers).Returns(new HeaderDictionary());
+        response.SetupGet(feature => feature.HasStarted).Returns(true);
+        Func<object, Task> completeResponse = null;
+        object completionState = null;
+        response.Setup(feature => feature.OnCompleted(It.IsAny<Func<object, Task>>(), It.IsAny<object>()))
+            .Callback((Func<object, Task> callback, object state) =>
+            {
+                completeResponse = callback;
+                completionState = state;
+            });
+        httpContext.Features.Set(response.Object);
+        invocation.Inputs = [("req", DataType.String, httpContext.Request)];
+        using CancellationTokenSource cancellation = new();
+        invocation.CancellationToken = cancellation.Token;
+        Assert.True(worker.Channel.TryPostInvocation(invocation));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+
+        cancellation.Cancel();
+        if (canceled)
+        {
+            invocation.ResultSource.TrySetCanceled();
+        }
+
+        time.Advance(TimeSpan.FromMinutes(4));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.Channel.OngoingRequests);
+        Assert.Equal(0, worker.DisposeCount);
+
+        if (failure)
+        {
+            body.SetException(new InvalidOperationException("forwarding failed"));
+        }
+        else
+        {
+            body.SetResult(ForwarderError.None);
+        }
+
+        if (!canceled)
+        {
+            await worker.Channel.InvokeResponse(new()
+            {
+                InvocationId = request.InvocationRequest.InvocationId,
+                Result = new() { Status = StatusResult.Types.Status.Success },
+            });
+        }
+
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.Channel.OngoingRequests);
+        Assert.Equal(0, worker.DisposeCount);
+        await completeResponse(completionState);
+        await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+        time.Advance(TimeSpan.FromSeconds(120));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(0, worker.DisposeCount);
+        time.Advance(TimeSpan.FromSeconds(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_AdmissionRace_EitherRetiresOrProtectsAcceptedInvocation()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        time.Advance(TimeSpan.FromMinutes(3));
+        ScriptInvocationContext invocation = CreateIdleInvocation(function);
+        using ManualResetEventSlim start = new();
+        Task<bool> dispatch = Task.Run(() =>
+        {
+            start.Wait();
+            return worker.Channel.TryPostInvocation(invocation);
+        });
+        Task retirement = Task.Run(async () =>
+        {
+            start.Wait();
+            await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        });
+        start.Set();
+        bool accepted = await dispatch.WaitAsync(TestTimeout);
+        await retirement.WaitAsync(TestTimeout);
+
+        if (accepted)
+        {
+            Assert.Equal(0, worker.DisposeCount);
+            Assert.Single(registry.GetInitializedChannels());
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            invocation.ResultSource.TrySetResult(new());
+            await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+        }
+        else
+        {
+            Assert.Equal(1, worker.DisposeCount);
+            Assert.Empty(registry.GetInitializedChannels());
+        }
+    }
+
+    [Fact]
+    public async Task IdleRetirement_WithdrawsBeforeDisposal_FencesStaleDispatcherSnapshot_ConcurrentUnlinkIsIdempotent()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = new("retiring", blockDisposal: true)
+        {
+            Capabilities = new Dictionary<string, string> { ["FunctionGroupName"] = "http", ["IsAlwaysReady"] = "False" },
+        };
+        ChannelControl replacement = CreateIdleWorker("always-ready", alwaysReady: "True");
+        harness.Enqueue(worker);
+        harness.Enqueue(replacement);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        await LinkAsync(registry, replacement.Id);
+        await replacement.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        CompleteFunctionLoad(replacement, function);
+        await WaitUntilAsync(() => replacement.Channel.IsIdleTrackingReady);
+        time.Advance(TimeSpan.FromMinutes(3));
+        Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        await worker.DisposeStarted.WaitAsync(TestTimeout);
+        Task<bool> unlink = registry.UnlinkAsync(worker.Id);
+        try
+        {
+            Mock<IWorkerChannelRegistry> staleRegistry = new();
+            staleRegistry.SetupSequence(value => value.GetReadyChannelsAsync())
+                .Returns(new ValueTask<IReadOnlyList<Microsoft.Azure.WebJobs.Script.Grpc.WorkerChannel>>([worker.Channel]))
+                .Returns(() => registry.GetReadyChannelsAsync());
+            using RpcClientFunctionInvocationDispatcher dispatcher = new(staleRegistry.Object, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+            await dispatcher.InitializeAsync([function]);
+            await dispatcher.InvokeAsync(CreateIdleInvocation(function));
+            await replacement.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            Assert.Same(replacement.Channel, Assert.Single(registry.GetInitializedChannels()));
+            Assert.Equal(0, worker.Channel.OngoingRequests);
+        }
+        finally
+        {
+            worker.AllowDispose();
+            await retirement.WaitAsync(TestTimeout);
+            Assert.False(await unlink.WaitAsync(TestTimeout));
+        }
+
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_DisposalFailureIsLogged_AndRemainingWorkersAreStillRetired()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl failed = CreateIdleWorker("failed");
+        ChannelControl healthy = CreateIdleWorker("healthy");
+        IOException failure = new("teardown failed");
+        failed.Transport.DisposeException = failure;
+        harness.Enqueue(failed);
+        harness.Enqueue(healthy);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
+        foreach (ChannelControl worker in new[] { failed, healthy })
+        {
+            await LinkAsync(registry, worker.Id);
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+            CompleteFunctionLoad(worker, function);
+            await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
+        }
+
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Equal(1, failed.DisposeCount);
+        Assert.Equal(1, healthy.DisposeCount);
+        harness.RegistryLogger.Verify(logger => logger.Log(
+            LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), failure,
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+    }
+
+    private static ChannelControl CreateIdleWorker(string id, string group = "http", string alwaysReady = "False")
+    {
+        Dictionary<string, string> capabilities = new() { ["FunctionGroupName"] = group };
+        if (alwaysReady is not null)
+        {
+            capabilities["IsAlwaysReady"] = alwaysReady;
+        }
+
+        return new(id) { Capabilities = capabilities };
+    }
+
+    private static async Task ReadyIdleWorkerAsync(WorkerChannelRegistry registry, ChannelControl worker, FunctionMetadata function)
+    {
+        await LinkAsync(registry, worker.Id);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        CompleteFunctionLoad(worker, function);
+        await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
+    }
+
+    private static ScriptInvocationContext CreateIdleInvocation(FunctionMetadata function)
+        => new()
+        {
+            FunctionMetadata = function,
+            ExecutionContext = new() { InvocationId = Guid.NewGuid(), FunctionName = function.Name },
+            Inputs = [],
+            BindingData = [],
+            ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            Logger = NullLogger.Instance,
+        };
+
+    private static void CompleteFunctionLoad(ChannelControl worker, FunctionMetadata function)
+        => worker.Channel.LoadResponse(new FunctionLoadResponse
+        {
+            FunctionId = function.GetFunctionId(),
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        });
+
+    private sealed class IdleTestTimeProvider : TimeProvider
+    {
+        private readonly Lock _lock = new();
+        private readonly List<Timer> _timers = [];
+        private long _timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public bool HasPeriodicTimer
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _timers.Any(timer => timer.Period > TimeSpan.Zero);
+                }
+            }
+        }
+
+        public override long GetTimestamp()
+        {
+            lock (_lock)
+            {
+                return _timestamp;
+            }
+        }
+
+        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UnixEpoch + TimeSpan.FromTicks(GetTimestamp());
+
+        public override ITimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+        {
+            Timer timer = new(this, callback, state);
+            timer.Change(dueTime, period);
+            return timer;
+        }
+
+        public void Advance(TimeSpan duration)
+        {
+            Timer[] due;
+            lock (_lock)
+            {
+                _timestamp += duration.Ticks;
+                due = [.. _timers.Where(timer => timer.Due <= _timestamp)];
+                foreach (Timer timer in due)
+                {
+                    timer.Due = timer.Period > TimeSpan.Zero ? _timestamp + timer.Period.Ticks : long.MaxValue;
+                }
+            }
+
+            foreach (Timer timer in due)
+            {
+                timer.Fire();
+            }
+        }
+
+        private sealed class Timer(IdleTestTimeProvider owner, TimerCallback callback, object state) : ITimer
+        {
+            public long Due { get; set; }
+
+            public TimeSpan Period { get; private set; }
+
+            public bool Change(TimeSpan dueTime, TimeSpan period)
+            {
+                lock (owner._lock)
+                {
+                    Due = dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : owner._timestamp + dueTime.Ticks;
+                    Period = period;
+                    if (!owner._timers.Contains(this))
+                    {
+                        owner._timers.Add(this);
+                    }
+
+                    return true;
+                }
+            }
+
+            public void Fire() => callback(state);
+
+            public void Dispose()
+            {
+                lock (owner._lock)
+                {
+                    owner._timers.Remove(this);
+                }
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
+    }
+}

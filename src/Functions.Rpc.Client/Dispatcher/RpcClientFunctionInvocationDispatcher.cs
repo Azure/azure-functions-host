@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -77,37 +76,34 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
         }
 
-        // Keep the common path synchronous and allocation-free after the registry snapshot.
+        // Keep the common path synchronous after the registry snapshot.
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels = _channelRegistry.GetReadyChannelsAsync();
         if (readyChannels.IsCompletedSuccessfully)
         {
-            WorkerChannel channel = GetReadyChannel(readyChannels.Result);
-            if (channel is not null)
+            if (TryDispatchInvocation(invocationContext, readyChannels.Result))
             {
-                return DispatchInvocation(invocationContext, channel);
+                return Task.CompletedTask;
             }
         }
 
         return InvokeWhenChannelIsReadyAsync(invocationContext, readyChannels);
     }
 
-    private Task DispatchInvocation(ScriptInvocationContext invocationContext, WorkerChannel channel)
+    private bool DispatchInvocation(ScriptInvocationContext invocationContext, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
-        string functionId = invocationContext.FunctionMetadata.GetFunctionId();
-        if (channel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
+        if (channel.TryPostInvocation(invocationContext))
         {
             if (_logger.IsEnabled(LogLevel.Trace))
             {
                 Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
             }
 
-            inputBuffer.Post(invocationContext);
-            return Task.CompletedTask;
+            return true;
         }
 
-        throw new InvalidOperationException(
-            $"Function '{invocationContext.FunctionMetadata.Name}' is not loaded by worker '{channel.Id}'.");
+        return false;
     }
 
     public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
@@ -202,32 +198,32 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         _dispatcherStoppedSource.Cancel();
     }
 
-    private WorkerChannel GetReadyChannel(IReadOnlyList<WorkerChannel> channels)
+    private bool TryDispatchInvocation(ScriptInvocationContext invocationContext, IReadOnlyList<WorkerChannel> channels,
+        CancellationToken cancellationToken = default)
     {
         if (channels.Count == 0)
         {
-            return null;
+            return false;
         }
 
         if (channels.Count == 1)
         {
             // The common one-worker path avoids round-robin synchronization and scanning.
-            WorkerChannel channel = channels[0];
-            return IsReadyForInvocations(channel) ? channel : null;
+            return channels[0] is RpcClientWorkerChannel channel && DispatchInvocation(invocationContext, channel, cancellationToken);
         }
 
-        // Start each scan at the next channel to spread work without allocating or locking.
+        // Start each scan at the next channel; each channel coordinates admission with retirement.
         int startIndex = (int)((uint)Interlocked.Increment(ref _nextChannelIndex) % (uint)channels.Count);
         for (int offset = 0; offset < channels.Count; offset++)
         {
-            WorkerChannel channel = channels[(startIndex + offset) % channels.Count];
-            if (IsReadyForInvocations(channel))
+            if (channels[(startIndex + offset) % channels.Count] is RpcClientWorkerChannel channel &&
+                DispatchInvocation(invocationContext, channel, cancellationToken))
             {
-                return channel;
+                return true;
             }
         }
 
-        return null;
+        return false;
     }
 
     private async Task InvokeWhenChannelIsReadyAsync(
@@ -247,11 +243,9 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 IReadOnlyList<WorkerChannel> channels = readyChannels.IsCompletedSuccessfully
                     ? readyChannels.Result
                     : await readyChannels.AsTask().WaitAsync(operationSource.Token);
-                WorkerChannel channel = GetReadyChannel(channels);
-                if (channel is not null)
+                operationSource.Token.ThrowIfCancellationRequested();
+                if (TryDispatchInvocation(invocationContext, channels, operationSource.Token))
                 {
-                    operationSource.Token.ThrowIfCancellationRequested();
-                    await DispatchInvocation(invocationContext, channel);
                     return;
                 }
 

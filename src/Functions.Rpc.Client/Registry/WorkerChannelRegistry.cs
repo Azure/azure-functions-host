@@ -343,6 +343,50 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         return false;
     }
 
+    public async Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(threshold, TimeSpan.Zero);
+        cancellationToken.ThrowIfCancellationRequested();
+        KeyValuePair<string, WorkerSlot>[] slots;
+        lock (_stateLock)
+        {
+            slots = _disposed ? [] : [.. _slots.Where(entry => entry.Value.Channel is { IsReadyForInvocations: true })];
+        }
+
+        foreach ((string workerId, WorkerSlot slot) in slots)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using SemaphoreLock gate = await slot.Gate.LockAsync(cancellationToken);
+            RpcClientWorkerChannel removed;
+            TimeSpan idleDuration;
+            lock (_stateLock)
+            {
+                if (_disposed || slot.Channel is not { } channel ||
+                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) || slot.SetupException is not null ||
+                    !channel.TryClaimIdleRetirement(threshold, out idleDuration))
+                {
+                    continue;
+                }
+
+                removed = DetachChannelLocked(slot, channel);
+            }
+
+            try
+            {
+                await removed.DisposeAsync();
+                _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
+            }
+            catch (Exception exception)
+            {
+                Log.ChannelDisposalFailed(_logger, exception, workerId);
+            }
+            finally
+            {
+                RemoveEmptySlot(workerId, slot);
+            }
+        }
+    }
+
     public IReadOnlyList<WorkerChannel> GetInitializedChannels()
     {
         lock (_stateLock)
@@ -547,6 +591,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             return null;
         }
 
+        channel.StopAcceptingInvocations();
         slot.Channel = null;
         slot.AttemptedSetupContext = null;
         slot.SetupException = null;
@@ -751,8 +796,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         slot.SetupException = null;
         try
         {
+            channel.PrepareIdleTracking(setupContext.Functions, _timeProvider);
             channel.SetupFunctionInvocationBuffers(setupContext.Functions);
             channel.SendFunctionLoadRequests(setupContext.ManagedDependencyOptions, setupContext.FunctionTimeout);
+            channel.CompleteIdleTrackingSetup();
             SignalReadyChannelsLocked();
         }
         catch (Exception exception)
