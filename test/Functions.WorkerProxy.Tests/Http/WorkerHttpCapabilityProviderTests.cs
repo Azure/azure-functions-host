@@ -124,6 +124,53 @@ public class WorkerHttpCapabilityProviderTests
         Assert.Equal("http://localhost:5678", capabilities["HttpUri"]);
     }
 
+    [Theory]
+    [InlineData("http://worker-pod:28080", "http://worker-pod:28080", false)]
+    [InlineData("http://WORKER-POD:28080", "http://worker-pod:28080", false)]
+    [InlineData("http://worker-pod:80/worker/", "http://worker-pod/", false)]
+    [InlineData("https://worker-pod/worker/", "https://WORKER-POD:443/proxy/", false)]
+    [InlineData("http://worker-pod:28080", "http://worker-pod:28080", true)]
+    [InlineData("http://WORKER-POD:28080", "http://worker-pod:28080", true)]
+    [InlineData("http://worker-pod:80/worker/", "http://worker-pod/", true)]
+    [InlineData("https://worker-pod/worker/", "https://WORKER-POD:443/proxy/", true)]
+    public void FinalizeCapabilities_SameOrigin_FailsWithoutRewritingHttpUri(string endpoint, string proxyEndpoint, bool useOverride)
+    {
+        string advertisedEndpoint = useOverride ? "http://localhost:5678" : endpoint;
+        WorkerHttpCapabilityProvider provider = CreateProvider(new()
+        {
+            WorkerHttpEndpoint = useOverride ? endpoint : null
+        });
+        Dictionary<string, string> capabilities = new() { ["HttpUri"] = advertisedEndpoint, ["WorkerIndexing"] = "true" };
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => provider.FinalizeCapabilities(capabilities, proxyEndpoint));
+
+        Assert.Contains("forwarding loop", exception.Message);
+        Assert.Equal(advertisedEndpoint, capabilities["HttpUri"]);
+        Assert.Equal("true", capabilities["WorkerIndexing"]);
+    }
+
+    [Theory]
+    [InlineData("http://worker:28080", "http://proxy:28080", false)]
+    [InlineData("http://worker:28080", "http://worker:28081", false)]
+    [InlineData("http://worker:28080", "https://worker:28080", false)]
+    [InlineData("http://worker:28080", "http://proxy:28080", true)]
+    [InlineData("http://worker:28080", "http://worker:28081", true)]
+    [InlineData("http://worker:28080", "https://worker:28080", true)]
+    public void FinalizeCapabilities_DistinctOrigin_RewritesHttpUri(string endpoint, string proxyEndpoint, bool useOverride)
+    {
+        WorkerHttpCapabilityProvider provider = CreateProvider(new()
+        {
+            WorkerHttpEndpoint = useOverride ? endpoint : null
+        });
+        Dictionary<string, string> capabilities = new() { ["HttpUri"] = useOverride ? proxyEndpoint : endpoint };
+
+        Uri? destination = provider.FinalizeCapabilities(capabilities, proxyEndpoint);
+
+        Assert.Equal(new Uri(endpoint), destination);
+        Assert.Equal(new Uri(proxyEndpoint).AbsoluteUri, capabilities["HttpUri"]);
+    }
+
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
         IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);

@@ -45,6 +45,12 @@ internal sealed partial class WorkerHttpCapabilityProvider(
         Uri proxyEndpoint = ResolveRequiredEndpoint(
             httpProxyEndpoint, "Worker assignment httpProxyEndpoint");
 
+        if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped, StringComparison.OrdinalIgnoreCase) == 0)
+        {
+            Log.HttpProxyLoop(_logger);
+            throw new InvalidOperationException("The worker HTTP destination and proxy endpoint must have different origins to prevent a forwarding loop.");
+        }
+
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
         Log.HttpCapabilityFinalized(_logger,
             destination.GetComponents(UriComponents.SchemeAndServer, UriFormat.UriEscaped),
@@ -73,5 +79,8 @@ internal sealed partial class WorkerHttpCapabilityProvider(
 
         [LoggerMessage(1, LogLevel.Debug, "Worker HTTP origin {WorkerOrigin} is advertised through proxy origin {ProxyOrigin}.")]
         public static partial void HttpCapabilityFinalized(ILogger logger, string workerOrigin, string proxyOrigin);
+
+        [LoggerMessage(2, LogLevel.Error, "The worker HTTP destination and proxy endpoint must have different origins to prevent a forwarding loop.")]
+        public static partial void HttpProxyLoop(ILogger logger);
     }
 }

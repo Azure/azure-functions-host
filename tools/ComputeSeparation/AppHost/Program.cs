@@ -190,7 +190,6 @@ else
                 proxy.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
             context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
                 proxy.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxy.GetEndpoint(HttpEndpointName);
             context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
         });
 

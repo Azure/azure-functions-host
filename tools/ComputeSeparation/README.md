@@ -127,6 +127,17 @@ runtime origin. No proxy origin is configured at startup. Assign and link reques
 `404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
 endpoints, and both link to the same Host.
 
+`httpProxyEndpoint` is optional for non-HTTP workers. HTTP-capable workers require it in the accepted assignment
+before linking; supply a scheme-less mapped authority with an explicit nonzero port, such as `worker-proxy-1:28080`.
+There is no startup fallback: `WorkerProxy:HttpProxyEndpoint` and `WORKERPROXY__HTTPPROXYENDPOINT` are no longer consumed.
+An accepted assignment without the field leaves the effective origin unset, so HTTP capability initialization fails
+rather than advertising the worker's local address. The effective worker destination must have a different origin
+from the mapped proxy endpoint to prevent a forwarding loop.
+
+Roll out assignment producers together with this WorkerProxy version: each platform must send the mapped authority
+for HTTP workers before linking them. Older producers that rely on the startup setting are not compatible with this
+HTTP initialization flow. AppHost and FakePlatform implement that ordering for the local profiles.
+
 ## Host state publication (prototype)
 
 AppHost sets the project's Host `MESH_INIT_URI` to the fake platform. After specialization, the Host sends
