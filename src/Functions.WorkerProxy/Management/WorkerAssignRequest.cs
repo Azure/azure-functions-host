@@ -32,9 +32,11 @@ internal sealed class WorkerAssignRequest
     public string? FunctionGroupName { get; init; }
 
     /// <summary>
-    /// Gets or sets the optional per-worker HTTP concurrency limit, from 1 through 1000.
+    /// Gets or sets the optional per-worker HTTP concurrency limit, from 1 through 1000 for HTTP groups.
     /// </summary>
-    /// <remarks>An omitted value defaults to 16 for HTTP assignments only. An explicit null is invalid.</remarks>
+    /// <remarks>
+    /// Non-HTTP groups also accept zero. An omitted value defaults to 16 for HTTP assignments only. An explicit null is invalid.
+    /// </remarks>
     [JsonNumberHandling(JsonNumberHandling.Strict)]
     public int? MaxHttpConcurrency
     {

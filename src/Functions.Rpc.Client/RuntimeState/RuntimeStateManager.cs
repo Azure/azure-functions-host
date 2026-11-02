@@ -47,7 +47,7 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
         _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _current = new(_timeProvider.GetUtcNow().ToUniversalTime(), HttpCapacity: 0, WorkerCount: 0, HttpWorkerCount: 0);
+        _current = new(_timeProvider.GetUtcNow().ToUniversalTime(), HttpCapacity: 0, WorkerCount: 0);
     }
 
     /// <inheritdoc />
@@ -190,11 +190,15 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
 
                     if (!invalidated)
                     {
-                        snapshot = ReplaceSnapshotLocked(_stopping ? 0 : httpCapacity, initializedChannels.Count, httpWorkerCount);
+                        snapshot = ReplaceSnapshotLocked(_stopping ? 0 : httpCapacity, initializedChannels.Count);
                     }
                 }
 
-                LogSnapshot(snapshot);
+                if (!invalidated)
+                {
+                    Log.WorkerCountsObserved(_logger, initializedChannels.Count, httpWorkerCount);
+                    LogSnapshot(snapshot);
+                }
             }
             catch (ObjectDisposedException)
             {
@@ -234,16 +238,16 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
         lock (_stateLock)
         {
             _stopping |= stopping;
-            snapshot = ReplaceSnapshotLocked(0, _current.WorkerCount, _current.HttpWorkerCount, withdrawing: true);
+            snapshot = ReplaceSnapshotLocked(0, _current.WorkerCount, withdrawing: true);
         }
 
         LogSnapshot(snapshot);
     }
 
     // Callers hold _stateLock. Only changed values create a new timestamp and outward snapshot.
-    private RuntimeState? ReplaceSnapshotLocked(long httpCapacity, int workerCount, int httpWorkerCount, bool withdrawing = false)
+    private RuntimeState? ReplaceSnapshotLocked(long httpCapacity, int workerCount, bool withdrawing = false)
     {
-        if (_current.HttpCapacity == httpCapacity && _current.WorkerCount == workerCount && _current.HttpWorkerCount == httpWorkerCount)
+        if (_current.HttpCapacity == httpCapacity && _current.WorkerCount == workerCount)
         {
             return null;
         }
@@ -260,7 +264,7 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
             createdTime = TimeProvider.System.GetUtcNow();
         }
 
-        _current = new(createdTime, httpCapacity, workerCount, httpWorkerCount);
+        _current = new(createdTime, httpCapacity, workerCount);
         TaskCompletionSource changed = _stateChanged;
         _stateChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         changed.TrySetResult();
@@ -271,7 +275,7 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
     {
         if (snapshot is not null)
         {
-            Log.StateChanged(_logger, snapshot.CreatedTime, snapshot.HttpCapacity, snapshot.WorkerCount, snapshot.HttpWorkerCount);
+            Log.StateChanged(_logger, snapshot.CreatedTime, snapshot.HttpCapacity, snapshot.WorkerCount);
         }
     }
 
@@ -281,8 +285,8 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
         /// Records the counts, capacity, and creation time of a changed snapshot.
         /// </summary>
         [LoggerMessage(900, LogLevel.Information,
-            "Compute runtime state created at {CreatedTime}: HTTP capacity {HttpCapacity}. Workers: {WorkerCount}. HTTP workers: {HttpWorkerCount}.")]
-        public static partial void StateChanged(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int workerCount, int httpWorkerCount);
+            "Compute runtime state created at {CreatedTime}: HTTP capacity {HttpCapacity}. Workers: {WorkerCount}.")]
+        public static partial void StateChanged(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int workerCount);
 
         /// <summary>
         /// Records a failed recomputation that temporarily withdraws capacity.
@@ -307,5 +311,11 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
         /// </summary>
         [LoggerMessage(904, LogLevel.Warning, "Failed to read the UTC clock while withdrawing HTTP capacity. Using the system UTC clock.")]
         public static partial void WithdrawalClockFailed(ILogger logger, Exception exception);
+
+        /// <summary>
+        /// Records initialized worker counts for diagnostics independently of changes to the runtime snapshot.
+        /// </summary>
+        [LoggerMessage(905, LogLevel.Debug, "Observed {WorkerCount} initialized workers, including {HttpWorkerCount} HTTP workers.")]
+        public static partial void WorkerCountsObserved(ILogger logger, int workerCount, int httpWorkerCount);
     }
 }

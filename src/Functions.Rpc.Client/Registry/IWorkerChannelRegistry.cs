@@ -67,7 +67,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     bool TryGetInitializedChannel(string workerId, out WorkerChannel channel);
 
     /// <summary>
-    /// Gets a snapshot of initialized channels.
+    /// Gets a read-only snapshot of initialized channels without waiting for function setup.
     /// </summary>
     /// <returns>The initialized channel snapshot.</returns>
     IReadOnlyList<WorkerChannel> GetInitializedChannels();
@@ -76,7 +76,10 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// Gets a one-shot task invalidated by the next initialized membership, readiness, or setup-context change.
     /// </summary>
     /// <returns>A shared task that completes on a change or disposal. Obtain it before sampling registry inputs.</returns>
-    /// <remarks>Cancel only the caller's wait, not this shared task. Getting a task after disposal throws.</remarks>
+    /// <remarks>
+    /// Reading the task does not wait for function setup. Cancel only the caller's wait, not this shared task.
+    /// Getting a task after disposal throws.
+    /// </remarks>
     Task GetChangeTask();
 
     /// <summary>

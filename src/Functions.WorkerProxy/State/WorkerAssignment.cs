@@ -47,9 +47,11 @@ internal sealed class WorkerAssignment
             ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
         }
 
-        if (maxHttpConcurrency is < 1 or > 1000)
+        if (maxHttpConcurrency is < 0 or > 1000
+            || (maxHttpConcurrency is 0 && string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase)))
         {
-            throw new ArgumentOutOfRangeException(nameof(maxHttpConcurrency), "HTTP concurrency must be between 1 and 1000.");
+            throw new ArgumentOutOfRangeException(nameof(maxHttpConcurrency),
+                "HTTP concurrency must be between 1 and 1000 for HTTP groups, or between 0 and 1000 for other groups.");
         }
 
         foreach ((string key, string value) in environment)

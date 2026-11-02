@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -125,7 +127,6 @@ public sealed partial class WorkerChannelRegistryTests
         await manager.StartAsync(CancellationToken.None);
         await LinkAsync(registry, first.Id);
         RuntimeState initialized = await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 1);
-        Assert.Equal(1, initialized.HttpWorkerCount);
         Assert.Equal(0, initialized.HttpCapacity);
         await registry.ActivateAsync([CreateFunction("First")], new(), functionTimeout: null);
         await WaitForRuntimeStateAsync(manager, state => state.HttpCapacity == firstLimit);
@@ -145,7 +146,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         int expected = failLaterSetup ? firstLimit : firstLimit + secondLimit;
         RuntimeState current = await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 3 && state.HttpCapacity == expected);
-        Assert.Equal(2, current.HttpWorkerCount);
+        Assert.Equal(3, current.WorkerCount);
         if (failLaterSetup)
         {
             Assert.True(later.Channel.IsChannelReadyForInvocations());
@@ -179,7 +180,6 @@ public sealed partial class WorkerChannelRegistryTests
 
         RuntimeState state = await WaitForRuntimeStateAsync(manager, state => state.HttpCapacity == 0);
         Assert.Equal(1, state.WorkerCount);
-        Assert.Equal(1, state.HttpWorkerCount);
         Assert.True(channel.Channel.IsChannelReadyForInvocations());
         Assert.False(registry.GetReadyChannelsAsync().IsCompleted);
         await manager.StopAsync(CancellationToken.None);
@@ -213,7 +213,81 @@ public sealed partial class WorkerChannelRegistryTests
         await changed.WaitAsync(TestTimeout);
         RuntimeState state = await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 0);
         Assert.Equal(0, state.HttpCapacity);
-        Assert.Equal(0, state.HttpWorkerCount);
+        await manager.StopAsync(CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public async Task RuntimeState_TerminalCapacityIsWithdrawnWhileLaterSetupIsBlocked(
+        bool functionLoadFailure, bool failLaterSetup, bool keepHealthyWorker)
+    {
+        RegistryHarness harness = new();
+        ChannelControl first = new("first", functionGroupName: "http", maxHttpConcurrency: 10);
+        ChannelControl healthy = new("healthy", functionGroupName: "http", maxHttpConcurrency: 7);
+        ChannelControl later = new("later", blockSetup: true, setupFailureCount: failLaterSetup ? 1 : 0,
+            functionGroupName: "http", maxHttpConcurrency: 13);
+        harness.Enqueue(first);
+        harness.Enqueue(healthy);
+        harness.Enqueue(later);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using RuntimeStateManager manager = CreateRuntimeStateManager(registry);
+        await manager.StartAsync(CancellationToken.None);
+        await LinkAsync(registry, first.Id);
+        if (keepHealthyWorker)
+        {
+            await LinkAsync(registry, healthy.Id);
+        }
+
+        await registry.ActivateAsync([CreateFunction("Function")], new(), functionTimeout: null);
+        int healthyCapacity = keepHealthyWorker ? 7 : 0;
+        await WaitForRuntimeStateAsync(manager, state => state.HttpCapacity == 10 + healthyCapacity);
+        IReadOnlyList<WorkerChannel> beforeLaterLink = registry.GetInitializedChannels();
+
+        try
+        {
+            await LinkAsync(registry, later.Id);
+            await later.SetupEntered.WaitAsync(TestTimeout);
+
+            var observation = await Task.Run(() =>
+            {
+                Task change = registry.GetChangeTask();
+                IReadOnlyList<WorkerChannel> channels = registry.GetInitializedChannels();
+                return (Change: change, Channels: channels);
+            }).WaitAsync(TestTimeout);
+            Assert.False(observation.Change.IsCompleted);
+            Assert.Equal(keepHealthyWorker ? 3 : 2, observation.Channels.Count);
+            Assert.Equal(keepHealthyWorker ? 2 : 1, beforeLaterLink.Count);
+
+            if (functionLoadFailure)
+            {
+                await first.FailFunctionLoadAsync();
+            }
+            else
+            {
+                first.Complete(new InvalidOperationException("Transport failed during another worker's setup."));
+            }
+
+            RuntimeState withdrawn = await WaitForRuntimeStateAsync(manager, state => state.HttpCapacity == healthyCapacity);
+            Assert.Equal(observation.Channels.Count, withdrawn.WorkerCount);
+            Assert.Equal(1, later.SetupAttempts);
+            Assert.True(first.Channel.IsTerminated);
+            Assert.False(observation.Change.IsCompleted);
+        }
+        finally
+        {
+            later.AllowSetup();
+        }
+
+        int finalCapacity = healthyCapacity + (failLaterSetup ? 0 : 13);
+        await WaitForRuntimeStateAsync(manager,
+            state => state.WorkerCount == (keepHealthyWorker ? 2 : 1) && state.HttpCapacity == finalCapacity);
         await manager.StopAsync(CancellationToken.None);
     }
 

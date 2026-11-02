@@ -32,13 +32,11 @@ public sealed class RuntimeStateManagerTests
         harness.Publish([http.Channel, pending.Channel, background.Channel], [http.Channel, background.Channel]);
         await harness.Manager.StartAsync(CancellationToken.None);
         RuntimeState current = await WaitForStateAsync(harness.Manager, state => state.WorkerCount == 3);
-        Assert.Equal(2, current.HttpWorkerCount);
         Assert.Equal(10, current.HttpCapacity);
 
         harness.Publish([http.Channel, pending.Channel, background.Channel], [http.Channel, pending.Channel, background.Channel]);
         RuntimeState ready = await WaitForStateAsync(harness.Manager, state => state.HttpCapacity == 23);
         Assert.Equal(3, ready.WorkerCount);
-        Assert.Equal(2, ready.HttpWorkerCount);
     }
 
     [Fact]
@@ -57,7 +55,7 @@ public sealed class RuntimeStateManagerTests
         RuntimeState state = await WaitForStateAsync(harness.Manager, state => state.WorkerCount == 2);
 
         Assert.Equal(0, state.HttpCapacity);
-        Assert.Equal(2, state.HttpWorkerCount);
+        Assert.Equal(2, state.WorkerCount);
     }
 
     [Fact]
@@ -144,6 +142,40 @@ public sealed class RuntimeStateManagerTests
         Assert.True(changedSignal.IsCompletedSuccessfully);
         Assert.Equal(harness.UtcNow.ToUniversalTime(), changed.CreatedTime);
         Assert.Equal(2, changed.WorkerCount);
+    }
+
+    [Fact]
+    public async Task Current_DiagnosticHttpWorkerCountChangesDoNotReplaceSnapshotOrNotify()
+    {
+        await using ClientWorkerChannelTestHarness http = await CreateReadyChannelAsync("http", "http", "10");
+        await using ClientWorkerChannelTestHarness background = await CreateReadyChannelAsync("background", "background");
+        await using RuntimeHarness harness = new();
+        harness.Publish([http.Channel], []);
+        await harness.Manager.StartAsync(CancellationToken.None);
+        RuntimeState initial = await WaitForStateAsync(harness.Manager, state => state.WorkerCount == 1);
+        Task changed = harness.Manager.GetChangeTask();
+        TaskCompletionSource diagnosticsUpdated = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Logger.Setup(logger => logger.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+            .Callback(new InvocationAction(invocation =>
+            {
+                if (invocation.Arguments[1] is EventId { Id: 905 })
+                {
+                    var fields = (IEnumerable<KeyValuePair<string, object?>>)invocation.Arguments[2];
+                    if (fields.Any(field => string.Equals(field.Key, "HttpWorkerCount", StringComparison.Ordinal) && field.Value is 0))
+                    {
+                        diagnosticsUpdated.TrySetResult();
+                    }
+                }
+            }));
+
+        harness.Publish([background.Channel], []);
+        await diagnosticsUpdated.Task.WaitAsync(TestTimeout);
+
+        Assert.Equal(0, initial.HttpCapacity);
+        Assert.Same(initial, harness.Manager.Current);
+        Assert.Same(changed, harness.Manager.GetChangeTask());
+        Assert.False(changed.IsCompleted);
     }
 
     [Fact]

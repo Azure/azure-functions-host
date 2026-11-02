@@ -107,7 +107,8 @@ public class ManagementApiEndpointTests
     [InlineData("functionAppName", "\" \"", "Required")]
     [InlineData("functionGroupName", null, "Required")]
     [InlineData("functionGroupName", "\"\"", "Required")]
-    [InlineData("maxHttpConcurrency", "0", "InvalidValue")]
+    [InlineData("maxHttpConcurrency", "0", "InvalidValue", "SpecializationRequired", "http")]
+    [InlineData("maxHttpConcurrency", "0", "InvalidValue", "Preconfigured", "HtTp")]
     [InlineData("maxHttpConcurrency", "-1", "InvalidValue")]
     [InlineData("maxHttpConcurrency", "1001", "InvalidValue")]
     [InlineData("maxHttpConcurrency", "null", null)]
@@ -138,10 +139,11 @@ public class ManagementApiEndpointTests
     [InlineData("environment", "{\"SETTING\":null}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":123}", null, "Preconfigured")]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
-        string field, string? value, string? code, string startupMode = "SpecializationRequired")
+        string field, string? value, string? code, string startupMode = "SpecializationRequired", string functionGroupName = "test-group")
     {
         JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
         body["startupMode"] = startupMode;
+        body["functionGroupName"] = functionGroupName;
         if (value is null)
         {
             body.Remove(field);
@@ -203,6 +205,7 @@ public class ManagementApiEndpointTests
     [InlineData("http", 1, 1)]
     [InlineData("http", 1000, 1000)]
     [InlineData("background", null, null)]
+    [InlineData("background", 0, 0)]
     public async Task Assignment_NormalizesHttpConcurrencyAndReplaysEffectiveIdentity(string group, int? supplied, int? effective)
     {
         JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();

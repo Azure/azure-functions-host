@@ -36,7 +36,8 @@ internal static class WorkerAssignRequestValidator
             errors.Add(new(WorkerApiErrorCodes.Required, "functionGroupName"));
         }
 
-        if (request.MaxHttpConcurrency is < 1 or > 1000)
+        if (request.MaxHttpConcurrency is < 0 or > 1000
+            || (request.MaxHttpConcurrency is 0 && string.Equals(request.FunctionGroupName, "http", StringComparison.OrdinalIgnoreCase)))
         {
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "maxHttpConcurrency"));
         }

@@ -31,6 +31,7 @@ public partial class FunctionRpcRelayTests
     [InlineData("http", 1, "1")]
     [InlineData("http", 1000, "1000")]
     [InlineData("background", null, null)]
+    [InlineData("background", 0, null)]
     [InlineData("background", 10, null)]
     [InlineData(null, null, null)]
     public async Task Relay_Initialization_UsesOnlyMatchingAssignmentHttpConcurrency(string? group, int? supplied, string? expected)

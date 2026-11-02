@@ -145,6 +145,7 @@ public class WorkerAssignmentTests
     [InlineData("http", 1, 1)]
     [InlineData("http", 1000, 1000)]
     [InlineData("background", null, null)]
+    [InlineData("background", 0, 0)]
     [InlineData("background", 10, 10)]
     public void Construction_NormalizesOnlyMissingHttpConcurrency(string group, int? supplied, int? effective)
     {
@@ -155,9 +156,10 @@ public class WorkerAssignmentTests
 
     [Theory]
     [InlineData("http", 0)]
+    [InlineData("HtTp", 0)]
     [InlineData("http", -1)]
     [InlineData("http", 1001)]
-    [InlineData("background", 0)]
+    [InlineData("background", -1)]
     [InlineData("background", 1001)]
     public void Construction_RejectsInvalidSuppliedConcurrency(string group, int supplied)
     {

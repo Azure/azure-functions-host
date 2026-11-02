@@ -181,6 +181,7 @@ public sealed class RpcClientWorkerChannelTests
     [InlineData("http", "1000", true, 1000)]
     [InlineData("background", "invalid", false, null)]
     [InlineData("background", null, false, null)]
+    [InlineData("background", "0", false, null)]
     [InlineData(null, "10", false, null)]
     [InlineData("", null, false, null)]
     public async Task StartAsync_CapturesOnlyApplicableAssignmentCapabilities(string group, string supplied, bool isHttp, int? expected)

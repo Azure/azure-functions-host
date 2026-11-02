@@ -1205,6 +1205,7 @@ public sealed partial class WorkerChannelRegistryTests
             [CreateFunction("TestFunction")], new ManagedDependencyOptions(), functionTimeout: null);
         Task<WorkerChannel> secondLink = LinkAsync(registry, second.Id);
         await second.SetupEntered.WaitAsync(TestTimeout);
+        Task setupChanged = registry.GetChangeTask();
         Task<ValueTask<IReadOnlyList<WorkerChannel>>> read = null;
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels;
         try
@@ -1230,13 +1231,14 @@ public sealed partial class WorkerChannelRegistryTests
         {
             second.AllowSetup();
             await secondLink.WaitAsync(TestTimeout);
+            await setupChanged.WaitAsync(TestTimeout);
             if (read is not null)
             {
                 await read.WaitAsync(TestTimeout);
             }
         }
 
-        // Link completion does not wait for background setup; this locked read observes its completed publication.
+        // Link completion does not wait for background setup; the captured change signals its publication.
         Assert.Contains(second.Channel, registry.GetInitializedChannels());
         IReadOnlyList<WorkerChannel> snapshot = await registry.GetReadyChannelsAsync();
         Assert.Equal(stopFirst ? 1 : 2, snapshot.Count);

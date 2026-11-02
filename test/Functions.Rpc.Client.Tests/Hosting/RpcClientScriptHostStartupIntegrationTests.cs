@@ -133,7 +133,6 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.Same(runtimeState, scriptServices.GetRequiredService<IRuntimeStateManager>());
             RuntimeState firstState = await WaitForRuntimeStateAsync(runtimeState, state => state.HttpCapacity == 7, timeout.Token);
             Assert.Equal(1, firstState.WorkerCount);
-            Assert.Equal(1, firstState.HttpWorkerCount);
             FunctionDescriptor function = Assert.Single(scriptHost.Functions);
             Assert.Equal("Http", function.Name);
             Assert.Equal(AuthorizationLevel.Anonymous, function.HttpTriggerAttribute.AuthLevel);
@@ -182,7 +181,6 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.Equal(3, readySnapshot.Result.Count);
             RuntimeState linkedState = await WaitForRuntimeStateAsync(runtimeState, state => state.HttpCapacity == 30, timeout.Token);
             Assert.Equal(3, linkedState.WorkerCount);
-            Assert.Equal(3, linkedState.HttpWorkerCount);
 
             string[] servingWorkers = new string[3];
             for (int i = 0; i < servingWorkers.Length; i++)
@@ -209,7 +207,6 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.True(await registry.UnlinkAsync("third", timeout.Token));
             RuntimeState unlinked = await WaitForRuntimeStateAsync(runtimeState, state => state.WorkerCount == 2, timeout.Token);
             Assert.Equal(20, unlinked.HttpCapacity);
-            Assert.Equal(2, unlinked.HttpWorkerCount);
 
             await coordinator.StopAsync(timeout.Token);
 
@@ -270,7 +267,6 @@ public class RpcClientScriptHostStartupIntegrationTests
         RuntimeState state = await WaitForRuntimeStateAsync(
             testHost.Host.Services.GetRequiredService<RuntimeStateManager>(), state => state.WorkerCount == 1, timeout.Token);
         Assert.Equal(0, state.HttpCapacity);
-        Assert.Equal(1, state.HttpWorkerCount);
     }
 
     [Fact]
