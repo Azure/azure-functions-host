@@ -58,10 +58,10 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(2, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
-        Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
+        Assert.Equal(WorkerPodStatus.Starting, ready.PodStatus);
 
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
         Assert.Equal(3, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
@@ -199,7 +199,7 @@ public partial class FunctionRpcRelayTests
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
             Assert.Equal(trigger is "runtime-close" or "runtime-cancel"
-                ? WorkerPodStatus.RemovalRequested : WorkerPodStatus.None, failed.PodStatus);
+                ? WorkerPodStatus.RemovalRequested : WorkerPodStatus.Starting, failed.PodStatus);
             Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));

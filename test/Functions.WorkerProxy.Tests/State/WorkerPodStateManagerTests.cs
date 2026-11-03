@@ -48,7 +48,7 @@ public partial class WorkerPodStateManagerTests
 
         Assert.False(manager.OnSessionTerminated(1, requestRemoval: true));
         Assert.Same(replacement, manager.State);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(state.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
         Assert.Null(state.StartupMode);
-        Assert.Equal(WorkerPodStatus.None, state.PodStatus);
+        Assert.Equal(WorkerPodStatus.Starting, state.PodStatus);
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
         Assert.Null(state.IsAlwaysReady);
@@ -86,13 +86,13 @@ public partial class WorkerPodStateManagerTests
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
         WorkerPodState started = manager.State;
         Assert.True(started.IsWorkerReady);
-        Assert.Equal(WorkerPodStatus.None, started.PodStatus);
+        Assert.Equal(WorkerPodStatus.Starting, started.PodStatus);
 
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment(startupMode: startupMode)));
         WorkerPodState assigned = manager.State;
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
         Assert.Equal(startupMode, assigned.StartupMode);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, assigned.PodStatus);
         Assert.Equal("app", assigned.FunctionAppName);
         Assert.Equal("http", assigned.FunctionGroupName);
         Assert.False(assigned.IsAlwaysReady);
@@ -105,7 +105,7 @@ public partial class WorkerPodStateManagerTests
         Assert.False(failed.IsWorkerAttached);
         Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
         Assert.Equal(startupMode, failed.StartupMode);
-        Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
+        Assert.Equal(WorkerPodStatus.Starting, failed.PodStatus);
         Assert.Equal("app", failed.FunctionAppName);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
             new[] { initial.Revision, attached.Revision, started.Revision, assigned.Revision, failed.Revision });
@@ -380,7 +380,7 @@ public partial class WorkerPodStateManagerTests
 
             WorkerAssignmentResult result = await assignment;
             Assert.False(manager.State.IsWorkerReady);
-            Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
+            Assert.Equal(WorkerPodStatus.Starting, manager.State.PodStatus);
             if (result == WorkerAssignmentResult.Created)
             {
                 Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);

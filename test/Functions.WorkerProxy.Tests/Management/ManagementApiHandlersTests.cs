@@ -35,7 +35,7 @@ public class ManagementApiHandlersTests
         WorkerPodState started = manager.State;
         Assert.Equal(200, Assert.IsType<Ok>(ManagementApiHandlers.GetWorkerReady(manager)).StatusCode);
         Assert.Same(started, manager.State);
-        Assert.Equal(WorkerPodStatus.None, started.PodStatus);
+        Assert.Equal(WorkerPodStatus.Starting, started.PodStatus);
 
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         Assert.IsType<Ok>(ManagementApiHandlers.GetWorkerReady(manager));
@@ -167,7 +167,7 @@ public class ManagementApiHandlersTests
         Assert.Equal("/admin/worker/assignment", created.Location);
         Assert.Equal(before.Revision + 1, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
         Assert.Equal("app", manager.State.FunctionAppName);
         Assert.Equal("group", manager.State.FunctionGroupName);
         Assert.Equal(isAlwaysReady, manager.State.IsAlwaysReady);
@@ -275,7 +275,7 @@ public class ManagementApiHandlersTests
         Assert.Equal(startupMode, assigned.StartupMode.ToString());
         Assert.Equal(before.Revision + 1, assigned.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, assigned.PodStatus);
         Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(request, manager));
         Assert.Same(assigned, manager.State);
         AssertError(ManagementApiHandlers.AssignWorker(

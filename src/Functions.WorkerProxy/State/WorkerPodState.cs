@@ -27,8 +27,8 @@ internal sealed record WorkerPodState(
     public WorkerPodStatus PodStatus => RemovalRequested
         ? WorkerPodStatus.RemovalRequested
         : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
-        ? WorkerPodStatus.ReadyForRequest
-        : WorkerPodStatus.None;
+        ? WorkerPodStatus.Running
+        : WorkerPodStatus.Starting;
 
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.

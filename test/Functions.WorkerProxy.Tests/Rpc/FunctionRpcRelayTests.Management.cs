@@ -117,7 +117,7 @@ public partial class FunctionRpcRelayTests
             using (JsonDocument unassigned = await ReadManagementStateAsync(management, null, timeout.Token))
             {
                 Assert.Equal(2, unassigned.RootElement.GetProperty("revisionId").GetInt64());
-                Assert.Equal("None", unassigned.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
+                Assert.Equal("Starting", unassigned.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
                 Assert.False(unassigned.RootElement.GetProperty("workerPodState").TryGetProperty("startupMode", out _));
             }
 
@@ -142,7 +142,7 @@ public partial class FunctionRpcRelayTests
                 Assert.Equal("test-worker-pod", state.RootElement.GetProperty("podName").GetString());
                 Assert.Equal(3, state.RootElement.GetProperty("revisionId").GetInt64());
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
-                Assert.Equal("ReadyForRequest", pod.GetProperty("podStatus").GetString());
+                Assert.Equal("Running", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
                 Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
@@ -200,7 +200,7 @@ public partial class FunctionRpcRelayTests
                 using JsonDocument state = JsonDocument.Parse(await changed.Content.ReadAsStringAsync(timeout.Token));
                 Assert.Equal(4, state.RootElement.GetProperty("revisionId").GetInt64());
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
-                Assert.Equal("None", pod.GetProperty("podStatus").GetString());
+                Assert.Equal("Starting", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
                 Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());

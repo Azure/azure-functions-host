@@ -43,7 +43,7 @@ public class ManagementApiEndpointTests
         AssertNoStore(response);
         using JsonDocument state = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal(0, state.RootElement.GetProperty("revisionId").GetInt64());
-        Assert.Equal("None", state.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
+        Assert.Equal("Starting", state.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
         Assert.False(state.RootElement.GetProperty("workerPodState").TryGetProperty("startupMode", out _));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
     }
@@ -763,7 +763,7 @@ public class ManagementApiEndpointTests
         WorkerPodState assigned = manager.State;
         Assert.Equal(WorkerStartupMode.Preconfigured, assigned.StartupMode);
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, assigned.PodStatus);
         Assert.Equal(3, assigned.Revision);
 
         using StringContent replayContent = JsonBody(body.ToJsonString());
