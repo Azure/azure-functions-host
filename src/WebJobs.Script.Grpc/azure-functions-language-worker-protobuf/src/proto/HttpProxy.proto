@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+option java_multiple_files = true;
+option java_package = "com.microsoft.azure.functions.rpc.messages";
+option java_outer_classname = "HttpProxyProto";
+option go_package = "github.com/Azure/azure-functions-go-worker/internal/rpc";
+
+package AzureFunctionsRpcMessages;
+
+// Opaque, bounded HTTP requests multiplexed over the existing FunctionRpc stream.
+// Session identifiers are correlation values, not authentication credentials.
+message HttpProxyMessage {
+  string session_id = 1;
+  string request_id = 2;
+
+  oneof content {
+    HttpProxyHello hello = 3;
+    HttpProxyReady ready = 4;
+    HttpProxyRequest request = 5;
+    HttpProxyResponse response = 6;
+    HttpProxyCancel cancel = 7;
+    HttpProxyFailure failure = 8;
+  }
+}
+
+message HttpProxyLimits {
+  uint32 max_request_body_bytes = 1;
+  uint32 max_response_body_bytes = 2;
+  uint32 max_header_bytes = 3;
+  uint32 max_header_count = 4;
+  uint32 max_target_bytes = 5;
+  uint32 max_pending_requests = 6;
+}
+
+message HttpProxyHello {
+  uint32 version = 1;
+  HttpProxyLimits limits = 2;
+}
+
+message HttpProxyReady {
+  uint32 version = 1;
+  HttpProxyLimits limits = 2;
+}
+
+message HttpProxyHeader {
+  string name = 1;
+  repeated string values = 2;
+}
+
+message HttpProxyRequest {
+  string method = 1;
+  // Origin-form path and query. No destination authority or credentials.
+  string target = 2;
+  repeated HttpProxyHeader headers = 3;
+  bytes body = 4;
+  uint32 timeout_ms = 5;
+}
+
+message HttpProxyResponse {
+  uint32 status_code = 1;
+  repeated HttpProxyHeader headers = 2;
+  bytes body = 3;
+  // Representation length for HEAD/304 responses, where no body is transferred.
+  optional int64 content_length = 4;
+}
+
+message HttpProxyCancel {
+}
+
+// Every admitted request ends with exactly one response or failure, including cancellation.
+message HttpProxyFailure {
+  enum Code {
+    UNAVAILABLE = 0;
+    INVALID_REQUEST = 1;
+    REQUEST_TOO_LARGE = 2;
+    RESPONSE_TOO_LARGE = 3;
+    HEADERS_TOO_LARGE = 4;
+    TOO_MANY_REQUESTS = 5;
+    DEADLINE_EXCEEDED = 6;
+    CANCELLED = 7;
+    BAD_GATEWAY = 8;
+  }
+
+  Code code = 1;
+}

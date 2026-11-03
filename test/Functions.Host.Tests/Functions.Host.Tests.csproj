@@ -17,6 +17,13 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <!-- The real-transport identity tests also load WorkerProxy's Native AOT-compatible dependencies. -->
+    <PackageReference Include="Google.Protobuf" VersionOverride="3.35.1" />
+    <PackageReference Include="Grpc.AspNetCore" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
+    <PackageReference Include="Yarp.ReverseProxy" VersionOverride="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Functions.Host\Functions.Host.csproj" />
+    <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" Aliases="WorkerProxy" />
   </ItemGroup>
 
 </Project>

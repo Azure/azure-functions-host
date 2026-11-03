@@ -5,12 +5,15 @@ using System;
 using System.Linq;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -30,10 +33,21 @@ public static class RpcClientServiceCollectionExtensions
         ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
         services.AddDefaultHttpProxyService();
+        services.AddSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>();
+        services.AddOptions<TokenServiceProxyOptions>().ValidateOnStart();
+        services.AddSingleton<IValidateOptions<TokenServiceProxyOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyOptions>>();
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton(provider =>
+        {
+            TokenServiceProxyOptions options = provider.GetRequiredService<IOptions<TokenServiceProxyOptions>>().Value;
+            return new TokenServiceProxyAdmission(options.MaxHostRequests, options.MaxHostBufferedBytes);
+        });
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
-        services.AddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
+        services.AddSingleton<WorkerChannelRegistry>();
+        services.AddSingleton<IWorkerChannelRegistry>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
+        services.AddSingleton<IHostConfigurationSourceProvider>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
         services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
 
@@ -41,7 +55,7 @@ public static class RpcClientServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds the Client worker graph, worker-backed Host metadata, and first-link ScriptHost activation.
+    /// Adds the Client worker graph, worker-backed Host metadata, registry-based runtime capacity, and first-link ScriptHost activation.
     /// </summary>
     /// <param name="services">The root service collection to update.</param>
     /// <param name="scriptHostFactory">Resolves the root-owned ScriptHost service whose activation is deferred.</param>
@@ -58,6 +72,10 @@ public static class RpcClientServiceCollectionExtensions
 
         services.AddRpcClientServices();
         services.Replace(ServiceDescriptor.Singleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>());
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<RuntimeStateManager>();
+        services.AddSingleton<IRuntimeStateManager>(provider => provider.GetRequiredService<RuntimeStateManager>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RuntimeStateManager>());
         services.AddSingleton(provider => new RpcClientScriptHostStartupCoordinator(
             provider.GetRequiredService<IWorkerChannelRegistry>(),
             scriptHostFactory(provider),

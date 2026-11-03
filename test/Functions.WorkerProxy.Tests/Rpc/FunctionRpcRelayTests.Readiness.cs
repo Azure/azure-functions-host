@@ -347,9 +347,9 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group")
+    private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group", int? maxHttpConcurrency = null)
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
-            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
+            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", maxHttpConcurrency: maxHttpConcurrency);
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

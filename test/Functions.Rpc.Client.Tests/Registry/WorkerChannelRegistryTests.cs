@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -22,6 +23,8 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -457,6 +460,79 @@ public sealed partial class WorkerChannelRegistryTests
         WorkerLinkResult retry = await registry.LinkAsync(waiting.Id, replacementEndpoint).WaitAsync(TestTimeout);
         Assert.True(retry.IsNewLink);
         Assert.Same(replacement.Channel, retry.Channel);
+    }
+
+    [Fact]
+    public async Task LinkAsync_TokenServiceProxy_OriginalCancellationEndsOnlyCallerWait()
+    {
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using CancellationTokenSource caller = new();
+        Task<WorkerLinkResult> original = registry.LinkAsync("worker", CreateEndpoint("worker"), caller.Token);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        caller.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => original);
+        Assert.Equal(0, channel.DisposeCount);
+
+        Task<WorkerLinkResult> retry = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        Assert.False(retry.IsCompleted);
+        channel.AllowStart();
+        WorkerLinkResult result = await retry.WaitAsync(TestTimeout);
+        Assert.False(result.IsNewLink);
+        Assert.Same(channel.Channel, result.Channel);
+        Assert.Single(harness.Transports);
+    }
+
+    [Fact]
+    public async Task UnlinkAsync_TokenServiceProxy_CancelsPendingAttemptWithoutWaitingForStartupDeadline()
+    {
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        Task<bool> unlink = registry.UnlinkAsync("worker");
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => link.WaitAsync(TestTimeout));
+        Assert.True(await unlink.WaitAsync(TestTimeout));
+        Assert.Equal(1, channel.DisposeCount);
+        Assert.Empty(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task LinkAsync_TokenServiceProxy_DeadlineUsesInjectedClock_AndDoesNotPublishPendingChannel()
+    {
+        TimerCallback expire = null;
+        object timerState = null;
+        TimeSpan observedDue = default;
+        Mock<TimeProvider> clock = new();
+        clock.Setup(provider => provider.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object>(),
+                It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object state, TimeSpan due, TimeSpan _) =>
+            {
+                expire = callback;
+                timerState = state;
+                observedDue = due;
+                return Mock.Of<ITimer>();
+            });
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true, timeProvider: clock.Object);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(2), observedDue);
+        Assert.Empty(registry.GetInitializedChannels());
+
+        expire(timerState);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => link.WaitAsync(TestTimeout));
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Equal(1, channel.DisposeCount);
     }
 
     [Fact]
@@ -1218,6 +1294,7 @@ public sealed partial class WorkerChannelRegistryTests
             [CreateFunction("TestFunction")], new ManagedDependencyOptions(), functionTimeout: null);
         Task<WorkerChannel> secondLink = LinkAsync(registry, second.Id);
         await second.SetupEntered.WaitAsync(TestTimeout);
+        Task setupChanged = registry.GetChangeTask();
         Task<ValueTask<IReadOnlyList<WorkerChannel>>> read = null;
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels;
         try
@@ -1243,13 +1320,14 @@ public sealed partial class WorkerChannelRegistryTests
         {
             second.AllowSetup();
             await secondLink.WaitAsync(TestTimeout);
+            await setupChanged.WaitAsync(TestTimeout);
             if (read is not null)
             {
                 await read.WaitAsync(TestTimeout);
             }
         }
 
-        // Link completion does not wait for background setup; this locked read observes its completed publication.
+        // Link completion does not wait for background setup; the captured change signals its publication.
         Assert.Contains(second.Channel, registry.GetInitializedChannels());
         IReadOnlyList<WorkerChannel> snapshot = await registry.GetReadyChannelsAsync();
         Assert.Equal(stopFirst ? 1 : 2, snapshot.Count);
@@ -1967,8 +2045,17 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
-        public RegistryHarness(TimeSpan? linkTimeout)
+        public RegistryHarness(
+            TimeSpan? linkTimeout,
+            IConfiguration configuration = null,
+            IWorkerHostConfigurationParser workerHostConfigurationParser = null,
+            bool registryOwnedAttempt = false,
+            TimeProvider timeProvider = null)
         {
+            HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
+                configuration ?? new ConfigurationBuilder().Build(),
+                HostConfigurationLogger.Object);
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
                 {
@@ -2009,13 +2096,16 @@ public sealed partial class WorkerChannelRegistryTests
                     return channel;
                 });
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
-                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
+                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance,
+                    linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider)
+                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
 
         internal Mock<IDuplexChannelFactory<StreamingMessage>> DuplexFactory { get; } = new();
+
+        internal Mock<ILogger<WorkerHostConfigurationParser>> HostConfigurationLogger { get; } = new();
 
         internal WorkerChannelRegistry Registry { get; }
 
@@ -2041,6 +2131,8 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly TaskCompletionSource _setupEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _setupRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Exception _setupFailure;
+        private readonly string _functionGroupName;
+        private readonly int? _maxHttpConcurrency;
         private int _remainingSetupFailures;
         private int _setupAttempts;
         private Exception _startFailure;
@@ -2053,13 +2145,17 @@ public sealed partial class WorkerChannelRegistryTests
             bool blockSetup = false,
             int setupFailureCount = 0,
             Exception setupFailure = null,
-            BlockingSharedMemory sharedMemory = null)
+            BlockingSharedMemory sharedMemory = null,
+            string functionGroupName = null,
+            int? maxHttpConcurrency = null)
         {
             Id = id;
             Transport = new(blockDisposal);
             SharedMemory = sharedMemory;
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
+            _functionGroupName = functionGroupName;
+            _maxHttpConcurrency = maxHttpConcurrency;
             if (!blockStart)
             {
                 _startRelease.TrySetResult();
@@ -2116,6 +2212,12 @@ public sealed partial class WorkerChannelRegistryTests
         internal Task StartEntered => _startEntered.Task;
 
         internal TestDuplexChannel<StreamingMessage> Transport { get; }
+
+        internal HostConfiguration HostConfiguration { get; init; }
+
+        internal WorkerInitRequest InitRequest { get; private set; }
+
+        internal StatusResult InitResult { get; init; } = new() { Status = StatusResult.Types.Status.Success };
 
         internal void AllowDispose() => Transport.AllowDispose();
 
@@ -2187,7 +2289,7 @@ public sealed partial class WorkerChannelRegistryTests
             try
             {
                 await Transport.SendResponseAsync(new() { StartStream = new() { WorkerId = Id } });
-                await Transport.Requests.ReadAsync().AsTask();
+                InitRequest = (await Transport.Requests.ReadAsync().AsTask()).WorkerInitRequest;
                 _startEntered.TrySetResult();
 
                 Task completed = await Task.WhenAny(_startRelease.Task, Transport.DisposeStarted);
@@ -2203,16 +2305,27 @@ public sealed partial class WorkerChannelRegistryTests
                     return;
                 }
 
-                WorkerInitResponse initResponse = new()
+                WorkerInitResponse response = new()
                 {
-                    Result = new() { Status = StatusResult.Types.Status.Success },
+                    Result = InitResult,
+                    HostConfiguration = HostConfiguration,
                 };
                 if (SharedMemory is not null)
                 {
-                    initResponse.Capabilities.Add(RpcWorkerConstants.SharedMemoryDataTransfer, "1");
+                    response.Capabilities.Add(RpcWorkerConstants.SharedMemoryDataTransfer, "1");
                 }
 
-                await Transport.SendResponseAsync(new StreamingMessage { WorkerInitResponse = initResponse });
+                if (_functionGroupName is not null)
+                {
+                    response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroupName);
+                }
+
+                if (_maxHttpConcurrency is { } concurrency)
+                {
+                    response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, concurrency.ToString(CultureInfo.InvariantCulture));
+                }
+
+                await Transport.SendResponseAsync(new() { WorkerInitResponse = response });
             }
             catch (ChannelClosedException)
             {

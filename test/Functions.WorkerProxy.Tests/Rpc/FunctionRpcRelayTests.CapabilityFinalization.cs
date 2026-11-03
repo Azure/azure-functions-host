@@ -3,10 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
+using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +23,113 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
+    private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+
+    [Theory]
+    [InlineData("http", null, "16")]
+    [InlineData("HtTp", 10, "10")]
+    [InlineData("http", 1, "1")]
+    [InlineData("http", 1000, "1000")]
+    [InlineData("background", null, null)]
+    [InlineData("background", 0, null)]
+    [InlineData("background", 10, null)]
+    [InlineData(null, null, null)]
+    public async Task Relay_Initialization_UsesOnlyMatchingAssignmentHttpConcurrency(string? group, int? supplied, string? expected)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        if (group is not null)
+        {
+            WorkerAssignRequest assignment = new()
+            {
+                StartupMode = nameof(WorkerStartupMode.Preconfigured),
+                FunctionAppName = "test-app",
+                FunctionGroupName = group,
+                IsAlwaysReady = false,
+                Environment = [],
+                FunctionAppDirectory = string.Empty,
+            };
+            if (supplied is { } concurrency)
+            {
+                assignment.MaxHttpConcurrency = concurrency;
+            }
+
+            using HttpClient client = factory.CreateWorkerProxyClient();
+            using HttpResponseMessage assignmentResponse = await client.PutAsJsonAsync(
+                "/admin/worker/assignment", assignment, WorkerProxyJsonContext.Default.WorkerAssignRequest, timeout.Token);
+            Assert.Equal(HttpStatusCode.Created, assignmentResponse.StatusCode);
+            Assert.Equal(group, manager.State.FunctionGroupName);
+        }
+
+        StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "worker-group";
+        response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = "999";
+        await worker.WriteAsync(response, timeout.Token);
+        StreamingMessage forwarded = await runtime.ReadAsync(timeout.Token);
+        Assert.Equal(group, forwarded.WorkerInitResponse.Capabilities.TryGetValue(FunctionGroupNameCapability, out string? actualGroup) ? actualGroup : null);
+        Assert.Equal(expected, forwarded.WorkerInitResponse.Capabilities.TryGetValue(MaxHttpConcurrencyCapability, out string? actual) ? actual : null);
+
+        response.RequestId = "repeated-init";
+        response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "http";
+        response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = "123";
+        await worker.WriteAsync(response, timeout.Token);
+        StreamingMessage replay = await runtime.ReadAsync(timeout.Token);
+        Assert.Equal(forwarded.WorkerInitResponse.Capabilities, replay.WorkerInitResponse.Capabilities);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(100)]
+    public async Task Relay_PreservesOpaqueHostConfigurationThroughInitialAndRepeatedCapabilityFinalization(int status)
+    {
+        TestCapabilityFinalizer finalizer = new(capabilities =>
+        {
+            capabilities["custom-capability"] = "finalized";
+            return null;
+        });
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+            services.Replace(ServiceDescriptor.Singleton<IWorkerCapabilityFinalizer>(finalizer)));
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        StreamingMessage request = new() { WorkerInitRequest = new() };
+        await runtime.WriteAsync(request, timeout.Token);
+        Assert.Equal(request, await worker.ReadAsync(timeout.Token));
+
+        StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.HostConfiguration = new()
+        {
+            Status = (HostConfiguration.Types.Status)status,
+            Content = ByteString.CopyFrom(new byte[65_537]),
+        };
+        StreamingMessage expected = response.Clone();
+        expected.WorkerInitResponse.Capabilities["custom-capability"] = "finalized";
+        await worker.WriteAsync(response, timeout.Token);
+        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+
+        StreamingMessage repeated = CreateInitResponse("repeated", null);
+        repeated.WorkerInitResponse.HostConfiguration = new()
+        {
+            Status = (HostConfiguration.Types.Status)status,
+            Content = ByteString.CopyFrom([0xFF, 0x00, 0xFE]),
+        };
+        StreamingMessage repeatedExpected = repeated.Clone();
+        repeatedExpected.WorkerInitResponse.Capabilities.Clear();
+        repeatedExpected.WorkerInitResponse.Capabilities.Add(expected.WorkerInitResponse.Capabilities);
+        await worker.WriteAsync(repeated, timeout.Token);
+        Assert.Equal(repeatedExpected, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(1, finalizer.CallCount);
+    }
 
     [Theory]
     [InlineData(true)]
@@ -223,11 +335,14 @@ public partial class FunctionRpcRelayTests
         WorkerAssignment failedAssignment = await FailAssignedSessionAsync(factory, timeout.Token);
         Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
         Assert.Equal(failedAssignment.FunctionGroupName, manager.State.FunctionGroupName);
+        Assert.Equal(failedAssignment.MaxHttpConcurrency, manager.State.MaxHttpConcurrency);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "replacement", timeout.Token);
         StreamingMessage response = CreateInitResponse("init", null);
         StreamingMessage expected = response.Clone();
+        response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "http";
+        response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = "999";
 
         await worker.WriteAsync(response, timeout.Token);
 
@@ -242,7 +357,7 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, cancellationToken);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, cancellationToken);
         await ExchangeAsync(runtime, worker, "assigned", cancellationToken);
-        WorkerAssignment assignment = CreateWorkerAssignment();
+        WorkerAssignment assignment = CreateWorkerAssignment("http", 10);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         await worker.CompleteRequestAsync(cancellationToken);
         await Task.WhenAll(runtime.WaitForTerminationAsync(cancellationToken), worker.WaitForTerminationAsync(cancellationToken));

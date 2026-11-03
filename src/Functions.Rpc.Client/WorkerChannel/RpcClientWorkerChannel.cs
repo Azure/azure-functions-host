@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -29,6 +31,9 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    internal const string FunctionGroupNameCapability = "FunctionGroupName";
+    internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -79,6 +84,23 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task Completion { get; }
 
+    internal HostConfiguration HostConfiguration { get; private set; }
+
+    /// <summary>
+    /// Gets the assigned group captured after successful initialization, or null when not advertised.
+    /// </summary>
+    internal string FunctionGroupName { get; private set; }
+
+    /// <summary>
+    /// Gets the validated startup HTTP concurrency, or null for a non-HTTP worker.
+    /// </summary>
+    internal int? MaxHttpConcurrency { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the captured startup assignment belongs to the HTTP function group.
+    /// </summary>
+    internal bool IsHttpFunctionGroup => string.Equals(FunctionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
+
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
@@ -122,6 +144,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return _startCompletion.Task.WaitAsync(cancellationToken);
     }
 
+    protected override void OnWorkerInitRequest(WorkerInitRequest request)
+        => request.Capabilities["HostConfiguration"] = "1";
+
+    protected override void OnWorkerInitResponse(WorkerInitResponse response)
+    {
+        if (response.HostConfiguration is not null && response.Result.Status is not StatusResult.Types.Status.Success)
+        {
+            throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                "The worker did not report successful initialization for Host configuration delivery.");
+        }
+
+        HostConfiguration = response.HostConfiguration?.Clone();
+    }
+
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
@@ -153,6 +189,22 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
+            // Assignment properties are captured once; later capability updates do not change this channel's identity.
+            string functionGroupName = GetCapabilityState(FunctionGroupNameCapability);
+            int? maxHttpConcurrency = null;
+            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!int.TryParse(GetCapabilityState(MaxHttpConcurrencyCapability), NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
+                    || concurrency is < 1 or > 1000)
+                {
+                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                }
+
+                maxHttpConcurrency = concurrency;
+            }
+
+            FunctionGroupName = functionGroupName;
+            MaxHttpConcurrency = maxHttpConcurrency;
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)

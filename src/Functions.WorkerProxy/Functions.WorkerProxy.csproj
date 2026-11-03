@@ -26,6 +26,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Azure.Functions.WorkerProxy.Tests" />
+    <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
+    <Compile Include="..\WebJobs.Script.Grpc\TokenServiceProxy\*.cs" Link="TokenServiceProxy\%(Filename)%(Extension)" />
+    <Compile Include="..\WebJobs.Script.Grpc\Transport\TrackedMessageWriter.cs" Link="Transport\TrackedMessageWriter.cs" />
   </ItemGroup>
 
   <ItemGroup>

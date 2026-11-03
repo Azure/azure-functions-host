@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -32,10 +33,16 @@ public sealed class RpcClientWorkerChannelTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
+    private readonly Mock<IEnvironment> _environment = new();
     private readonly RpcClientWorkerChannelFactory _factory;
     private readonly IMetricsLogger _metricsLogger = Mock.Of<IMetricsLogger>();
 
     public RpcClientWorkerChannelTests()
+    {
+        _factory = CreateFactory();
+    }
+
+    private RpcClientWorkerChannelFactory CreateFactory()
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -49,10 +56,10 @@ public sealed class RpcClientWorkerChannelTests
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
 
-        _factory = new(
+        return new(
             new ScriptEventManager(),
             hostManager.Object,
-            Mock.Of<IEnvironment>(),
+            _environment.Object,
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),
@@ -118,6 +125,129 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Contains("worker initialization failed", exception.Message, StringComparison.Ordinal);
 
         await channel.DisposeAsync();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartAsync_AdvertisesHostConfigurationAndCapturesOptionalDelivery(bool delivered, bool v2CompatibilityMode)
+    {
+        _environment.Setup(environment => environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey))
+            .Returns(v2CompatibilityMode ? "true" : "false");
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
+        Task start = channel.StartAsync(CancellationToken.None);
+        StreamingMessage request = await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        if (delivered)
+        {
+            response.HostConfiguration = new()
+            {
+                Status = HostConfiguration.Types.Status.Available,
+                Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
+            };
+        }
+
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = response });
+        await start.WaitAsync(TestTimeout);
+
+        Assert.Equal("1", request.WorkerInitRequest.Capabilities["HostConfiguration"]);
+        Assert.Equal("10", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.MultiStream]);
+        Assert.Equal(v2CompatibilityMode, request.WorkerInitRequest.Capabilities.ContainsKey(RpcWorkerConstants.V2Compatable));
+        if (v2CompatibilityMode)
+        {
+            Assert.Equal("true", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.V2Compatable]);
+        }
+
+        if (delivered)
+        {
+            Assert.Equal(response.HostConfiguration, channel.HostConfiguration);
+            Assert.NotSame(response.HostConfiguration, channel.HostConfiguration);
+            response.HostConfiguration.Content = ByteString.CopyFromUtf8("changed");
+            Assert.Equal("""{"version":"2.0"}""", channel.HostConfiguration.Content.ToStringUtf8());
+        }
+        else
+        {
+            Assert.Null(channel.HostConfiguration);
+        }
+    }
+
+    [Theory]
+    [InlineData("http", "10", true, 10)]
+    [InlineData("HTTP", "16", true, 16)]
+    [InlineData("http", "1", true, 1)]
+    [InlineData("http", "1000", true, 1000)]
+    [InlineData("background", "invalid", false, null)]
+    [InlineData("background", null, false, null)]
+    [InlineData("background", "0", false, null)]
+    [InlineData(null, "10", false, null)]
+    [InlineData("", null, false, null)]
+    public async Task StartAsync_CapturesOnlyApplicableAssignmentCapabilities(string group, string supplied, bool isHttp, int? expected)
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
+            WorkerId, functionGroupName: group, maxHttpConcurrency: supplied);
+
+        Assert.Equal(group, harness.Channel.FunctionGroupName);
+        Assert.Equal(isHttp, harness.Channel.IsHttpFunctionGroup);
+        Assert.Equal(expected, harness.Channel.MaxHttpConcurrency);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("10 ")]
+    [InlineData("+10")]
+    [InlineData("invalid")]
+    [InlineData("1.5")]
+    [InlineData("-1")]
+    [InlineData("0")]
+    [InlineData("1001")]
+    [InlineData("2147483648")]
+    public async Task StartAsync_HttpWithoutValidExplicitConcurrencyFails(string supplied)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "hTtP");
+        if (supplied is not null)
+        {
+            response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, supplied);
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start.WaitAsync(TestTimeout));
+        Assert.Contains("MaxHttpConcurrency", exception.Message, StringComparison.Ordinal);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+    }
+
+    [Fact]
+    public async Task StartAsync_LaterCapabilitiesDoNotChangeCapturedAssignment()
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
+            WorkerId, functionGroupName: "http", maxHttpConcurrency: "10");
+        Task reload = harness.Channel.SendFunctionEnvironmentReloadRequest();
+        await harness.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
+        FunctionEnvironmentReloadResponse response = new()
+        {
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        };
+        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "background");
+        response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "50");
+        await harness.Transport.SendResponseAsync(new() { FunctionEnvironmentReloadResponse = response });
+        await reload.WaitAsync(TestTimeout);
+
+        Assert.Equal("http", harness.Channel.FunctionGroupName);
+        Assert.True(harness.Channel.IsHttpFunctionGroup);
+        Assert.Equal(10, harness.Channel.MaxHttpConcurrency);
     }
 
     [Fact]

@@ -94,6 +94,8 @@ public partial class GrpcDuplexChannelTests
             _writeGate.Release();
         }
 
+        internal void AllowWrite() => _writeGate.Release();
+
         private void DisposeCall()
         {
             Interlocked.Increment(ref _disposeCount);

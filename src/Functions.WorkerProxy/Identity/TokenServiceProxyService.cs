@@ -1,0 +1,292 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Azure.Functions.WorkerProxy.Identity;
+
+/// <summary>
+/// Lets pod-local HTTP requests wait for the existing Host transport, independently of customer worker initialization.
+/// </summary>
+/// <remarks>Unsent waiters are pod-owned; forwarded requests belong only to the transport session that received them.</remarks>
+internal sealed class TokenServiceProxyService(IOptions<TokenServiceProxyWorkerOptions> options, TimeProvider timeProvider,
+    ILogger<TokenServiceProxyService> logger)
+{
+    private readonly Lock _lock = new();
+    private readonly TokenServiceProxyWorkerOptions _options = options.Value;
+    private readonly TimeProvider _timeProvider = timeProvider;
+    private readonly ILogger _logger = logger;
+    private TaskCompletionSource<Connection> _available = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Connection? _connection;
+    private bool _disconnected;
+
+    internal TokenServiceProxyAdmission Admission { get; } = new(options.Value.MaxPendingRequests, options.Value.MaxBufferedBytes);
+
+    internal bool Enabled => _options.Enabled;
+
+    /// <summary>
+    /// Attaches one Host transport whose send callback completes only after a physical write or discard.
+    /// </summary>
+    internal Connection Attach(Func<StreamingMessage, CancellationToken, Func<bool>?, Task<bool>> send, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            if (_connection is not null)
+            {
+                throw new InvalidOperationException("A Token Service proxy transport is already attached.");
+            }
+
+            Connection connection = new(this, send, cancellationToken);
+            _connection = connection;
+            _disconnected = false;
+            _available.TrySetResult(connection);
+            return connection;
+        }
+    }
+
+    /// <summary>
+    /// Waits for proxy negotiation within the caller's budget, then retains admission for transport-owned cleanup.
+    /// </summary>
+    internal async Task<HttpProxyMessage> SendAsync(HttpProxyRequest request, TokenServiceProxyAdmission.Lease ownership,
+        long started, CancellationToken cancellationToken)
+    {
+        Task<Connection> available;
+        lock (_lock)
+        {
+            if (_disconnected)
+            {
+                throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.Unavailable);
+            }
+
+            available = _available.Task;
+        }
+
+        Connection connection = await available.WaitAsync(cancellationToken);
+        HttpProxyLimits limits = await connection.Ready.WaitAsync(cancellationToken);
+        if (request.Body.Length > limits.MaxRequestBodyBytes)
+        {
+            throw new TokenServiceProxyException(HttpProxyFailure.Types.Code.RequestTooLarge);
+        }
+
+        TokenServiceProxyProtocol.ValidateTarget(request.Target, _options.TokenPath, limits);
+        List<HttpProxyHeader> headers = TokenServiceProxyProtocol.FilterHeaders(request.Headers, limits);
+        request.Headers.Clear();
+        request.Headers.Add(headers);
+
+        Task<HttpProxyMessage> forwarded = connection.SendAsync(request, ownership.Retain(), started, cancellationToken);
+        return await forwarded.WaitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Correlates requests and terminal outcomes for one transport; requests are never replayed onto another session.
+    /// </summary>
+    internal sealed class Connection : IDisposable
+    {
+        private readonly TokenServiceProxyService _owner;
+        private readonly Func<StreamingMessage, CancellationToken, Func<bool>?, Task<bool>> _send;
+        private readonly CancellationToken _transport;
+        private readonly Lock _lock = new();
+        private readonly TaskCompletionSource<HttpProxyLimits> _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly Dictionary<string, TaskCompletionSource<HttpProxyMessage>> _pending = new(StringComparer.Ordinal);
+        private string? _sessionId;
+        private HttpProxyLimits? _limits;
+        private bool _closed;
+
+        internal Connection(TokenServiceProxyService owner,
+            Func<StreamingMessage, CancellationToken, Func<bool>?, Task<bool>> send, CancellationToken transport)
+        {
+            _owner = owner;
+            _send = send;
+            _transport = transport;
+        }
+
+        /// <summary>
+        /// Gets proxy-protocol readiness, not customer WorkerInit completion or upstream service health.
+        /// </summary>
+        internal Task<HttpProxyLimits> Ready => _ready.Task;
+
+        /// <summary>
+        /// Negotiates the Host's Hello or delivers a bounded terminal outcome to its original request.
+        /// </summary>
+        internal async Task ReceiveAsync(HttpProxyMessage message)
+        {
+            lock (_lock)
+            {
+                if (_closed)
+                {
+                    return;
+                }
+            }
+
+            if (message.Hello is { } hello && _sessionId is null)
+            {
+                if (hello.Version != TokenServiceProxyProtocol.Version || !Guid.TryParseExact(message.SessionId, "N", out _)
+                    || !string.IsNullOrEmpty(message.RequestId))
+                {
+                    throw new InvalidDataException("Unsupported HTTP proxy bootstrap.");
+                }
+
+                HttpProxyLimits limits = _owner._options.Negotiate(hello.Limits);
+                _sessionId = message.SessionId;
+                _limits = limits;
+                await _send(new StreamingMessage
+                {
+                    HttpProxy = new()
+                    {
+                        SessionId = _sessionId,
+                        Ready = new() { Version = TokenServiceProxyProtocol.Version, Limits = limits }
+                    }
+                }, _transport, null);
+                _ready.TrySetResult(limits);
+                return;
+            }
+
+            if (_limits is null || !string.Equals(_sessionId, message.SessionId, StringComparison.Ordinal)
+                || message.ContentCase is not (HttpProxyMessage.ContentOneofCase.Response or HttpProxyMessage.ContentOneofCase.Failure))
+            {
+                throw new InvalidDataException("Unexpected HTTP proxy response.");
+            }
+
+            TaskCompletionSource<HttpProxyMessage>? completion;
+            lock (_lock)
+            {
+                _pending.TryGetValue(message.RequestId, out completion);
+            }
+
+            if (completion is null)
+            {
+                return;
+            }
+
+            if (message.Response is { } response)
+            {
+                if (response.StatusCode is < 200 or > 599 || response.Body.Length > _limits.MaxResponseBodyBytes
+                    || (response.HasContentLength && response.ContentLength < 0))
+                {
+                    throw new InvalidDataException("Invalid HTTP proxy response bounds.");
+                }
+
+                List<HttpProxyHeader> headers = TokenServiceProxyProtocol.FilterHeaders(response.Headers, _limits);
+                response.Headers.Clear();
+                response.Headers.Add(headers);
+            }
+
+            completion.TrySetResult(message);
+        }
+
+        /// <summary>
+        /// Recomputes the remaining deadline at send time and owns admission through terminal acknowledgment or teardown.
+        /// </summary>
+        /// <remarks>Caller cancellation sends a Cancel control; it does not immediately release transport-owned buffers.</remarks>
+        internal async Task<HttpProxyMessage> SendAsync(HttpProxyRequest request, IDisposable ownership, long started,
+            CancellationToken cancellationToken)
+        {
+            using (ownership)
+            {
+                string requestId = Guid.NewGuid().ToString("N");
+                string sessionId = _sessionId ?? throw new InvalidOperationException("The HTTP proxy has not initialized.");
+                HttpProxyLimits limits = _limits ?? throw new InvalidOperationException("The HTTP proxy has not initialized.");
+                TaskCompletionSource<HttpProxyMessage> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                lock (_lock)
+                {
+                    if (_closed)
+                    {
+                        return Failure(HttpProxyFailure.Types.Code.Unavailable);
+                    }
+
+                    if (_pending.Count >= limits.MaxPendingRequests)
+                    {
+                        return Failure(HttpProxyFailure.Types.Code.TooManyRequests);
+                    }
+
+                    _pending.Add(requestId, completion);
+                }
+
+                try
+                {
+                    bool sent = await _send(new StreamingMessage
+                    {
+                        HttpProxy = new() { SessionId = sessionId, RequestId = requestId, Request = request }
+                    }, cancellationToken, () =>
+                    {
+                        TimeSpan remaining = _owner._options.RequestTimeout - _owner._timeProvider.GetElapsedTime(started);
+                        if (remaining <= TimeSpan.Zero)
+                        {
+                            return false;
+                        }
+
+                        request.TimeoutMs = (uint)Math.Max(1, Math.Ceiling(remaining.TotalMilliseconds));
+                        return true;
+                    });
+                    if (!sent)
+                    {
+                        return Failure(HttpProxyFailure.Types.Code.Cancelled);
+                    }
+
+                    try
+                    {
+                        return await completion.Task.WaitAsync(cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        await _send(new StreamingMessage
+                        {
+                            HttpProxy = new() { SessionId = sessionId, RequestId = requestId, Cancel = new() }
+                        }, _transport, null);
+                        // The HTTP caller has left; retain admission until the peer's terminal acknowledgment.
+                        return await completion.Task;
+                    }
+                }
+                catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException or IOException
+                    or System.Threading.Channels.ChannelClosedException or Grpc.Core.RpcException)
+                {
+                    _owner._logger.LogDebug("Token Service proxy request ended with its transport ({ErrorType}).", exception.GetType().Name);
+                    return Failure(HttpProxyFailure.Types.Code.Unavailable);
+                }
+                finally
+                {
+                    lock (_lock)
+                    {
+                        _pending.Remove(requestId);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ends this session and releases waiters without allowing their requests to migrate to a later attachment.
+        /// </summary>
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                _closed = true;
+                _ready.TrySetCanceled(new CancellationToken(canceled: true));
+                foreach (TaskCompletionSource<HttpProxyMessage> pending in _pending.Values)
+                {
+                    pending.TrySetResult(Failure(HttpProxyFailure.Types.Code.Unavailable));
+                }
+            }
+
+            lock (_owner._lock)
+            {
+                if (ReferenceEquals(_owner._connection, this))
+                {
+                    _owner._connection = null;
+                    _owner._disconnected = true;
+                    _owner._available = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
+            }
+        }
+
+        private static HttpProxyMessage Failure(HttpProxyFailure.Types.Code code) => new() { Failure = new() { Code = code } };
+    }
+}
