@@ -74,6 +74,26 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Publishes known authentication configuration health without changing assignment or worker lifecycle.
+    /// </summary>
+    public void SetAuthenticationConfigurationError(bool hasError)
+    {
+        lock (_stateLock)
+        {
+            if (_state.HasAuthenticationConfigurationError == hasError)
+            {
+                return;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                HasAuthenticationConfigurationError = hasError
+            });
+        }
+    }
+
+    /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
     /// </summary>
     /// <returns>A changed snapshot, or <see cref="WorkerStatePollResult.NoChange"/> on timeout.</returns>

@@ -28,7 +28,9 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -212,25 +214,93 @@ public partial class FunctionRpcRelayTests
     {
         await using WorkerProxyWebApplicationFactory factory = new(useTestAuthentication: false);
         AssignForAuthentication(factory);
-        RuntimeAuthenticationKeys keys = Assert.IsType<RuntimeAuthenticationKeys>(
-            factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys());
+        IRuntimeAuthenticationKeyProvider provider = factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>();
+        RuntimeWorkerAuthenticationKeys workerKeys = Assert.IsType<RuntimeWorkerAuthenticationKeys>(provider.GetWorkerKeys());
+        RuntimeAppAuthenticationKeys appKeys = Assert.IsType<RuntimeAppAuthenticationKeys>(provider.GetAppKeys());
 
-        Assert.Equal(RuntimeAuthenticationTestData.AppKey, keys.AppKey.ToArray());
-        Assert.Equal(RuntimeAuthenticationTestData.AppName, keys.AppName);
-        Assert.Equal(RuntimeAuthenticationTestData.WorkerId, keys.WorkerId);
+        Assert.Equal(RuntimeAuthenticationTestData.AppKey, appKeys.AppKey.ToArray());
+        Assert.Equal(RuntimeAuthenticationTestData.AppName, appKeys.AppName);
+        Assert.Equal(RuntimeAuthenticationTestData.WorkerId, appKeys.WorkerId);
         ContainerManagementAuthenticationHandler.Credentials container = factory.Services
             .GetRequiredService<IOptionsMonitor<ContainerManagementAuthenticationHandler.Credentials>>()
             .Get(ContainerManagementAuthenticationHandler.SchemeName);
-        Assert.True(keys.WorkerKey.Equals(new ReadOnlyMemory<byte>(container.Key)));
-        Assert.Equal(container.PodName, keys.WorkerId);
+        Assert.True(workerKeys.WorkerKey.Equals(new ReadOnlyMemory<byte>(container.Key)));
+        Assert.Equal(container.PodName, workerKeys.WorkerId);
         Assert.Equal(RuntimeAuthenticationTestData.EncodedAppKey,
             factory.Services.GetRequiredService<IConfiguration>()[RuntimeWorkerAuthentication.AppKeySetting]);
         IConfiguration configuration = factory.Services.GetRequiredService<IConfiguration>();
         byte[] replacement = SHA256.HashData("updated-normal-configuration-key"u8);
         configuration[RuntimeWorkerAuthentication.AppKeySetting] = Convert.ToHexString(replacement);
-        Assert.Equal(replacement, factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys()!.AppKey.ToArray());
+        Assert.Equal(replacement, Assert.IsType<RuntimeAppAuthenticationKeys>(provider.GetAppKeys()).AppKey.ToArray());
         factory.Services.GetRequiredService<WorkerPodStateManager>().OnSessionTerminated(1);
-        Assert.Null(factory.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>().GetKeys());
+        Assert.Null(provider.GetWorkerKeys());
+        Assert.Null(provider.GetAppKeys());
+    }
+
+    [Fact]
+    public void CallerAuthentication_DoesNotReadAppKeyAfterStartup()
+    {
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppKeySetting])
+            .Returns(RuntimeAuthenticationTestData.EncodedAppKey);
+        WorkerPodStateManager manager = new(
+            Options.Create(new WorkerProxyOptions { PodName = RuntimeAuthenticationTestData.WorkerId }), TimeProvider.System);
+        RuntimeAuthenticationKeyProvider provider = CreateAuthenticationKeyProvider(configuration.Object, manager);
+        AssignAuthenticationState(manager);
+        RuntimeRequestAuthenticator authenticator = new(provider, TimeProvider.System, NullLogger<RuntimeRequestAuthenticator>.Instance);
+        configuration.Invocations.Clear();
+
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            DefaultHttpContext context = new();
+            context.Request.Scheme = Uri.UriSchemeHttps;
+            context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader] = RuntimeAuthenticationTestData.CreateCallerToken();
+
+            Assert.True(authenticator.TryAuthenticate(context));
+            Assert.False(context.Request.Headers.ContainsKey(RuntimeWorkerAuthentication.WorkerTokenHeader));
+        }
+
+        configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppKeySetting], Times.Never);
+        configuration.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void AppProof_ReadsLiveKeyAndRefreshesConfigurationHealthWithoutChangingAssignment()
+    {
+        string? encodedKey = null;
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppKeySetting]).Returns(() => encodedKey);
+        WorkerPodStateManager manager = new(
+            Options.Create(new WorkerProxyOptions { PodName = RuntimeAuthenticationTestData.WorkerId }), TimeProvider.System);
+        RuntimeAuthenticationKeyProvider provider = CreateAuthenticationKeyProvider(configuration.Object, manager);
+        AssignAuthenticationState(manager);
+        RuntimeRequestAuthenticator authenticator = new(provider, TimeProvider.System, NullLogger<RuntimeRequestAuthenticator>.Instance);
+        Assert.True(manager.State.HasAuthenticationConfigurationError);
+        Assert.True(manager.State.IsUnhealthy);
+
+        encodedKey = RuntimeAuthenticationTestData.EncodedAppKey;
+        string original = authenticator.CreateAppProof();
+
+        Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(original, RuntimeAuthenticationTestData.AppKey,
+            RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
+        Assert.False(manager.State.HasAuthenticationConfigurationError);
+        Assert.False(manager.State.IsUnhealthy);
+        byte[] replacement = SHA256.HashData("replacement-live-proof-key"u8);
+        encodedKey = Convert.ToHexString(replacement);
+        string updated = authenticator.CreateAppProof();
+
+        Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(updated, replacement,
+            RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
+        Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(updated, RuntimeAuthenticationTestData.AppKey,
+            RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
+        encodedKey = "invalid";
+        Assert.Throws<InvalidOperationException>(authenticator.CreateAppProof);
+        Assert.True(manager.State.HasAuthenticationConfigurationError);
+        Assert.True(manager.State.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.False(manager.State.IsWorkerAttached);
+        Assert.NotNull(provider.GetWorkerKeys());
+        configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppKeySetting], Times.Exactly(4));
     }
 
     [Theory]
@@ -340,6 +410,22 @@ public partial class FunctionRpcRelayTests
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "local-worker");
         AssignAuthenticationState(manager);
+    }
+
+    private static RuntimeAuthenticationKeyProvider CreateAuthenticationKeyProvider(
+        IConfiguration configuration, WorkerPodStateManager manager)
+    {
+        IConfiguration containerConfiguration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["WEBSITE_POD_NAME"] = RuntimeAuthenticationTestData.WorkerId,
+            [RuntimeWorkerAuthentication.WorkerKeySetting] = RuntimeAuthenticationTestData.EncodedWorkerKey
+        }).Build();
+        ContainerManagementAuthenticationHandler.Credentials container = new();
+        container.Configure(containerConfiguration, NullLogger<ContainerManagementAuthenticationHandler.Credentials>.Instance);
+        Mock<IOptionsMonitor<ContainerManagementAuthenticationHandler.Credentials>> options = new();
+        options.Setup(value => value.Get(ContainerManagementAuthenticationHandler.SchemeName)).Returns(container);
+
+        return new(configuration, options.Object, manager, NullLogger<RuntimeAuthenticationKeyProvider>.Instance);
     }
 
     private static void AssignAuthenticationState(WorkerPodStateManager manager)

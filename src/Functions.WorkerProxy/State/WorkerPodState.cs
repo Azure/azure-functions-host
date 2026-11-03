@@ -24,6 +24,10 @@ internal sealed record WorkerPodState(
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
 
+    public bool HasAuthenticationConfigurationError { get; init; }
+
+    public bool IsUnhealthy => HasAuthenticationConfigurationError || AssignmentState is WorkerAssignmentState.Failed;
+
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.
     /// </summary>

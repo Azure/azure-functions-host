@@ -28,7 +28,7 @@ internal sealed record WorkerInstanceState(
     // Sending an app proof is not sufficient to advertise Running/Linked.
     public static WorkerInstanceState FromState(WorkerPodState state, DateTimeOffset startupTime) =>
         new(ContainerType, false, state.IsAlwaysReady ?? false, state.FunctionGroupName, startupTime,
-            checked((int)state.Revision), "Starting", new("Unlinked"), state.AssignmentState is WorkerAssignmentState.Failed);
+            checked((int)state.Revision), "Starting", new("Unlinked"), state.IsUnhealthy);
 
     public bool MatchesPublishedState(WorkerInstanceState other) =>
         RevisionId == other.RevisionId
