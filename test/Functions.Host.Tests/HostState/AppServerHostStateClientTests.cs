@@ -3,12 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -198,13 +200,61 @@ public class AppServerHostStateClientTests
     }
 
     [Fact]
+    public async Task PublishAsync_DoesNotBufferResponseBodyAndDisposesIt()
+    {
+        UnreadableContent content = new();
+        _handler.ResponseContent = content;
+
+        Assert.Equal(HttpStatusCode.OK, await CreateClient().PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
+
+        Assert.True(content.Disposed);
+    }
+
+    [Fact]
+    public async Task AddAppServerHostStatePublisher_PreservesLegacyBundleHttpClient()
+    {
+        ServiceCollection collection = new();
+        collection.AddAppServerHostStatePublisher().AddBundlesHttpClient();
+        collection.AddHttpClient(nameof(ExtensionBundleManager)).ConfigurePrimaryHttpMessageHandler(() => _handler);
+        using ServiceProvider services = collection.BuildServiceProvider();
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ExtensionBundleManager));
+
+        using HttpResponseMessage response = await client.GetAsync("http://bundles/");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public void AddAppServerHostStatePublisher_BoundsEachRequestToFiveSeconds()
     {
         using ServiceProvider services = new ServiceCollection().AddAppServerHostStatePublisher().BuildServiceProvider();
-
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(AppServerHostStateClient.HttpClientName);
 
         Assert.Equal(TimeSpan.FromSeconds(5), client.Timeout);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task AddAppServerHostStatePublisher_HttpHandlerDoesNotRetryResponses(HttpStatusCode statusCode)
+    {
+        int requests = 0;
+        _handler.StatusCode = statusCode;
+        _handler.OnRequest = _ =>
+        {
+            requests++;
+            return Task.CompletedTask;
+        };
+        ServiceCollection collection = new();
+        collection.AddAppServerHostStatePublisher();
+        collection.AddHttpClient(AppServerHostStateClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => _handler);
+        using ServiceProvider services = collection.BuildServiceProvider();
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(AppServerHostStateClient.HttpClientName);
+
+        using HttpResponseMessage response = await client.GetAsync("http://appserver/");
+
+        Assert.Equal(statusCode, response.StatusCode);
+        Assert.Equal(1, requests);
     }
 
     private AppServerHostStateClient CreateClient(Dictionary<string, string?>? settings = null)
@@ -222,6 +272,8 @@ public class AppServerHostStateClientTests
     private sealed class RecordingHandler : HttpMessageHandler
     {
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
+
+        public HttpContent? ResponseContent { get; set; }
 
         public HttpMethod? Method { get; private set; }
 
@@ -244,7 +296,27 @@ public class AppServerHostStateClientTests
                 await OnRequest(cancellationToken);
             }
 
-            return new HttpResponseMessage(StatusCode);
+            return new HttpResponseMessage(StatusCode) { Content = ResponseContent };
+        }
+    }
+
+    private sealed class UnreadableContent : HttpContent
+    {
+        public bool Disposed { get; private set; }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => throw new InvalidOperationException("The response body must not be buffered.");
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Disposed = true;
+            base.Dispose(disposing);
         }
     }
 }

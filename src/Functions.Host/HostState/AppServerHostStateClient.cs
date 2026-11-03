@@ -35,11 +35,14 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
         ArgumentNullException.ThrowIfNull(state);
 
         using HttpClient client = _httpClientFactory.CreateClient(HttpClientName);
-        using HttpResponseMessage response = await client.PutAsJsonAsync(
-            _hostStateUri ??= GetHostStateUri(),
-            new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
-            AppServerJsonSerializerContext.Default.HostStateRequest,
-            cancellationToken);
+        using HttpRequestMessage request = new(HttpMethod.Put, _hostStateUri ??= GetHostStateUri())
+        {
+            Content = JsonContent.Create(
+                new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
+                AppServerJsonSerializerContext.Default.HostStateRequest),
+        };
+        // Only status is consumed; do not buffer an unused response body.
+        using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
         return response.StatusCode;
     }

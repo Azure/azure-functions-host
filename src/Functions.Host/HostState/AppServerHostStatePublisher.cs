@@ -12,6 +12,9 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Registry;
+using Polly.Timeout;
 
 namespace Azure.Functions.Host.HostState;
 
@@ -21,6 +24,7 @@ namespace Azure.Functions.Host.HostState;
 /// <remarks>
 /// Failed requests use exponential backoff, interrupted by a newer snapshot. Successful snapshots are not periodically
 /// resent; a successful HTTP response does not establish restart recovery or an exact applied-state acknowledgement.
+/// Authentication rejections are not retried until a different runtime snapshot exists.
 /// Snapshot identity, not timestamp ordering, drives local deduplication.
 /// After specialization, normal root Host shutdown permits one bounded final attempt using the current snapshot.
 /// Unexpected publisher failures stop publication without another attempt or changing the borrowed state.
@@ -31,12 +35,14 @@ internal sealed partial class AppServerHostStatePublisher(
     IAppServerHostStateClient client,
     IOptionsMonitor<StandbyOptions> standbyOptions,
     TimeProvider timeProvider,
+    IReadOnlyPolicyRegistry<string> policyRegistry,
     ILoggerFactory loggerFactory) : BackgroundService
 {
-    internal const string LogCategory = "Host.AppServer.HostStatePublisher";
+    internal const string PublicationPolicyName = "AppServerHostStatePublication";
+    internal const string ChangeTaskKey = "AppServerHostStateChange";
+    internal const string CancellationTokenKey = "AppServerHostStateCancellation";
+    private const string LogCategory = "Host.AppServer.HostStatePublisher";
 
-    private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromMilliseconds(250);
-    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan FinalPublishTimeout = TimeSpan.FromSeconds(2);
 
     private readonly IRuntimeStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
@@ -44,7 +50,18 @@ internal sealed partial class AppServerHostStatePublisher(
     private readonly IOptionsMonitor<StandbyOptions> _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
     private readonly TimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly ILogger _logger = loggerFactory?.CreateLogger(LogCategory) ?? throw new ArgumentNullException(nameof(loggerFactory));
-    private RuntimeState? _lastPublishedSnapshot;
+    private readonly IAsyncPolicy<PublicationOutcome> _publicationPolicy =
+        (policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry))).Get<IAsyncPolicy<PublicationOutcome>>(PublicationPolicyName);
+
+    private RuntimeState? _lastCompletedSnapshot;
+
+    internal enum PublicationOutcome
+    {
+        Published,
+        Retry,
+        Rejected,
+        Unchanged,
+    }
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -99,45 +116,41 @@ internal sealed partial class AppServerHostStatePublisher(
 
     private async Task PublishUntilStoppedAsync(CancellationToken cancellationToken)
     {
-        TimeSpan retryDelay = InitialRetryDelay;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Task changed = _stateManager.GetChangeTask();
-            RuntimeState state = _stateManager.Current;
-
-            if (ReferenceEquals(_lastPublishedSnapshot, state))
+            Context context = new()
             {
-                await changed.WaitAsync(cancellationToken);
-                continue;
-            }
-
-            if (await TryPublishAsync(state, cancellationToken))
-            {
-                retryDelay = InitialRetryDelay;
-            }
-            else
-            {
-                await WaitForChangeOrDelayAsync(changed, retryDelay, cancellationToken);
-                retryDelay = GetNextRetryDelay(retryDelay);
-            }
+                [CancellationTokenKey] = cancellationToken,
+            };
+            await _publicationPolicy.ExecuteAsync(PublishCurrentSnapshotAsync, context, cancellationToken);
         }
     }
 
-    // Retry the latest snapshot, not an HTTP handler's previously serialized request.
-    private async Task WaitForChangeOrDelayAsync(Task changed, TimeSpan delay, CancellationToken cancellationToken)
+    private async Task<PublicationOutcome> PublishCurrentSnapshotAsync(Context context, CancellationToken cancellationToken)
     {
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Each retry samples again; the captured signal also lets a newer snapshot interrupt the retry delay.
+        Task changed = _stateManager.GetChangeTask();
+        RuntimeState state = _stateManager.Current;
+        context[ChangeTaskKey] = changed;
+        if (ReferenceEquals(_lastCompletedSnapshot, state))
         {
-            await changed.WaitAsync(delay, _timeProvider, cancellationToken);
+            await changed.WaitAsync(cancellationToken);
+            return PublicationOutcome.Unchanged;
         }
-        catch (TimeoutException exception) when (!changed.IsFaulted && !Utility.IsFatal(exception))
+
+        PublicationOutcome outcome = await TryPublishAsync(state, cancellationToken);
+        if (outcome is not PublicationOutcome.Retry)
         {
-            // The retry delay elapsed without a newer snapshot.
+            _lastCompletedSnapshot = state;
         }
+
+        return outcome;
     }
 
-    private async Task<bool> TryPublishAsync(RuntimeState state, CancellationToken cancellationToken)
+    private async Task<PublicationOutcome> TryPublishAsync(RuntimeState state, CancellationToken cancellationToken)
     {
         HttpStatusCode statusCode;
         try
@@ -148,31 +161,34 @@ internal sealed partial class AppServerHostStatePublisher(
         {
             throw;
         }
-        catch (Exception exception) when (!Utility.IsFatal(exception) && exception is HttpRequestException or OperationCanceledException)
+        catch (Exception exception) when (!Utility.IsFatal(exception)
+            && exception is HttpRequestException or OperationCanceledException or TimeoutRejectedException)
         {
             Log.PublishFailed(_logger, exception, state.CreatedTime);
-            return false;
+            return PublicationOutcome.Retry;
         }
 
         switch ((int)statusCode)
         {
             case >= 200 and < 300:
                 Log.Published(_logger, state.CreatedTime, state.HttpCapacity, state.WorkerCount);
-                _lastPublishedSnapshot = state;
-                return true;
-            case (int)HttpStatusCode.Unauthorized or (int)HttpStatusCode.Forbidden or >= 500:
+                return PublicationOutcome.Published;
+            case (int)HttpStatusCode.Unauthorized or (int)HttpStatusCode.Forbidden:
+                Log.PublishRejected(_logger, state.CreatedTime, (int)statusCode);
+                return PublicationOutcome.Rejected;
+            case >= 500:
                 Log.PublishRejectedTransient(_logger, state.CreatedTime, (int)statusCode);
-                return false;
+                return PublicationOutcome.Retry;
             default:
                 Log.PublishRejected(_logger, state.CreatedTime, (int)statusCode);
-                return false;
+                return PublicationOutcome.Retry;
         }
     }
 
     private async Task PublishFinalSnapshotAsync()
     {
         RuntimeState state = _stateManager.Current;
-        if (ReferenceEquals(_lastPublishedSnapshot, state))
+        if (ReferenceEquals(_lastCompletedSnapshot, state))
         {
             return;
         }
@@ -187,9 +203,6 @@ internal sealed partial class AppServerHostStatePublisher(
             Log.FinalPublishTimedOut(_logger, state.CreatedTime);
         }
     }
-
-    private static TimeSpan GetNextRetryDelay(TimeSpan retryDelay)
-        => retryDelay * 2 < MaxRetryDelay ? retryDelay * 2 : MaxRetryDelay;
 
     private static partial class Log
     {
@@ -207,7 +220,7 @@ internal sealed partial class AppServerHostStatePublisher(
         public static partial void PublishRejectedTransient(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
         [LoggerMessage(1003, LogLevel.Error,
-            "AppServer rejected Host state snapshot created at {CreatedTime} with status code {StatusCode}. The latest snapshot will be retried.")]
+            "AppServer rejected Host state snapshot created at {CreatedTime} with status code {StatusCode}.")]
         public static partial void PublishRejected(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
         [LoggerMessage(1004, LogLevel.Warning,

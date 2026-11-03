@@ -118,11 +118,16 @@ Use `GET /simulate/host/state` to inspect the latest received snapshot; `204` me
 arrival order without dropping timestamps that move backward. Timestamps are not versions and can be equal across
 distinct snapshots. Repeated matching worker links do not create another snapshot.
 
-Recoverable request failures retry the latest snapshot with exponential backoff from 250 milliseconds to 30 seconds; a new snapshot
-interrupts that wait. Each request is bounded to five seconds. After a successful HTTP response, the same snapshot is
+Recoverable request failures retry the latest snapshot through a DI-registered Polly policy with exponential backoff
+from 250 milliseconds to 30 seconds; a new snapshot interrupts that wait. `Microsoft.Extensions.Http.Polly` supplies
+the policy-registry integration. The named HTTP client bounds each request to five seconds and does not retry serialized
+requests. Each publication retry reads the latest runtime snapshot. After a successful HTTP response, the same snapshot is
 not periodically resent. After specialization, normal root Host shutdown withdraws capacity and makes one best-effort final
 attempt bounded to two seconds. An unexpected publisher failure is logged without attempting another publication; fatal
 exceptions are not swallowed. This does not guarantee delivery or establish an AppServer admission policy.
+
+HTTP 401/403 responses are logged as authentication rejections, not transient failures. The rejected snapshot is not sent
+again on a retry timer or unchanged shutdown; publication resumes only when runtime state changes. The Host keeps running.
 
 The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. Requests have no
 authentication or applied-version acknowledgement, and an AppServer restart is not repaired without a later Host state

@@ -11,15 +11,18 @@ using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Polly.Registry;
+using Polly.Timeout;
 using Xunit;
 
 namespace Azure.Functions.Host.Tests.HostState;
 
-public sealed class AppServerHostStatePublisherTests
+public sealed class AppServerHostStatePublisherTests : IDisposable
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private static readonly DateTimeOffset CreatedTime = new(2026, 10, 2, 12, 34, 56, TimeSpan.Zero);
@@ -30,7 +33,7 @@ public sealed class AppServerHostStatePublisherTests
     private readonly Mock<IOptionsMonitor<StandbyOptions>> _standbyOptions = new(MockBehavior.Strict);
     private readonly Mock<IDisposable> _standbySubscription = new();
     private readonly Mock<TimeProvider> _timeProvider = new() { CallBase = true };
-    private readonly Channel<(RuntimeState State, bool AlreadyPublished)> _samples = Channel.CreateUnbounded<(RuntimeState, bool)>();
+    private readonly Channel<(RuntimeState State, bool AlreadyCompleted)> _samples = Channel.CreateUnbounded<(RuntimeState, bool)>();
     private readonly Channel<ScheduledTimer> _timers = Channel.CreateUnbounded<ScheduledTimer>();
     private readonly TaskCompletionSource _waitingForSpecialization = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RuntimeState _current = new(CreatedTime, 0, 0);
@@ -39,6 +42,7 @@ public sealed class AppServerHostStatePublisherTests
     private Action<StandbyOptions, string?>? _standbyChanged;
     private Action? _onChangeCaptured;
     private Action? _onCurrentRead;
+    private ServiceProvider? _services;
 
     public AppServerHostStatePublisherTests()
     {
@@ -46,7 +50,7 @@ public sealed class AppServerHostStatePublisherTests
         {
             RuntimeState state = CurrentState;
             Interlocked.Exchange(ref _onCurrentRead, null)?.Invoke();
-            _samples.Writer.TryWrite((state, ReferenceEquals(_client.LastSuccessfulSnapshot, state)));
+            _samples.Writer.TryWrite((state, ReferenceEquals(_client.LastCompletedSnapshot, state)));
 
             return state;
         });
@@ -310,13 +314,17 @@ public sealed class AppServerHostStatePublisherTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ExecuteAsync_RequestFailure_RetriesWithoutCancelingSharedChangeTask(bool requestTimeout)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task ExecuteAsync_RequestFailure_RetriesWithoutCancelingSharedChangeTask(int failureKind)
     {
-        Exception exception = requestTimeout
-            ? new TaskCanceledException("request timed out", new TimeoutException())
-            : new HttpRequestException("connection refused");
+        Exception exception = failureKind switch
+        {
+            1 => new TaskCanceledException("request timed out", new TimeoutException()),
+            2 => new TimeoutRejectedException("resilience request timed out"),
+            _ => new HttpRequestException("connection refused"),
+        };
         _client.Enqueue(_ => Task.FromException<HttpStatusCode>(exception));
         Mock<ILogger> logger = new();
         using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
@@ -335,9 +343,71 @@ public sealed class AppServerHostStatePublisherTests
     }
 
     [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ExecuteAsync_AuthenticationRejection_DoesNotRetryUnchangedSnapshot(HttpStatusCode statusCode)
+    {
+        _client.Enqueue(_ => Task.FromResult(statusCode));
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        Task sharedChange = ChangeTask;
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        RuntimeState rejected = await TakePublishedAsync();
+        await WaitUntilIdleAsync(rejected);
+
+        Assert.False(publisher.ExecuteTask!.IsCompleted);
+        Assert.False(_timers.Reader.TryRead(out _));
+        _stateManager.Verify(manager => manager.GetChangeTask(), Times.Exactly(2));
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.Same(rejected, CurrentState);
+        Assert.False(sharedChange.IsCompleted);
+        Assert.Equal(1, _client.AttemptCount);
+        VerifyLog(logger, LogLevel.Error, 1003);
+        AssertNoMorePublications();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, false)]
+    [InlineData(HttpStatusCode.Unauthorized, true)]
+    [InlineData(HttpStatusCode.Forbidden, false)]
+    [InlineData(HttpStatusCode.Forbidden, true)]
+    public async Task ExecuteAsync_AuthenticationRejection_ResumesOnlyForChangedSnapshot(HttpStatusCode statusCode, bool changeDuringPublish)
+    {
+        RuntimeState initial = new(CreatedTime, 36, 2);
+        RuntimeState latest = initial with { WorkerCount = 3 };
+        SetState(initial);
+        _client.Enqueue(_ =>
+        {
+            if (changeDuringPublish)
+            {
+                SetState(latest);
+            }
+
+            return Task.FromResult(statusCode);
+        });
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        Assert.Same(initial, await TakePublishedAsync());
+        if (!changeDuringPublish)
+        {
+            await WaitUntilIdleAsync(initial);
+            Assert.Equal(1, _client.AttemptCount);
+            SetState(latest);
+        }
+
+        Assert.Same(latest, await TakePublishedAsync());
+        await WaitUntilIdleAsync(latest);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.Equal(2, _client.AttemptCount);
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.OK, LogLevel.Information, 1000)]
-    [InlineData(HttpStatusCode.Unauthorized, LogLevel.Warning, 1002)]
-    [InlineData(HttpStatusCode.Forbidden, LogLevel.Warning, 1002)]
+    [InlineData(HttpStatusCode.Unauthorized, LogLevel.Error, 1003)]
+    [InlineData(HttpStatusCode.Forbidden, LogLevel.Error, 1003)]
     [InlineData(HttpStatusCode.Conflict, LogLevel.Error, 1003)]
     [InlineData(HttpStatusCode.InternalServerError, LogLevel.Warning, 1002)]
     public async Task ExecuteAsync_PublishResponse_LogsAssignedEventId(HttpStatusCode statusCode, LogLevel level, int expectedEventId)
@@ -357,7 +427,7 @@ public sealed class AppServerHostStatePublisherTests
         _client.Enqueue(_ => Task.FromResult(statusCode));
         using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
         await TakePublishedAsync();
-        if (statusCode is HttpStatusCode.OK)
+        if (statusCode is HttpStatusCode.OK or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
             await WaitUntilIdleAsync(CurrentState);
         }
@@ -951,12 +1021,16 @@ public sealed class AppServerHostStatePublisherTests
 
     private async Task<AppServerHostStatePublisher> StartPublisherAsync(ILoggerFactory? loggerFactory = null)
     {
+        _services = new ServiceCollection().AddSingleton(_timeProvider.Object).AddAppServerHostStatePublisher().BuildServiceProvider();
         AppServerHostStatePublisher publisher = new(
-            _stateManager.Object, _client, _standbyOptions.Object, _timeProvider.Object, loggerFactory ?? NullLoggerFactory.Instance);
+            _stateManager.Object, _client, _standbyOptions.Object, _timeProvider.Object,
+            _services.GetRequiredService<IReadOnlyPolicyRegistry<string>>(), loggerFactory ?? NullLoggerFactory.Instance);
         await publisher.StartAsync(CancellationToken.None);
 
         return publisher;
     }
+
+    public void Dispose() => _services?.Dispose();
 
     private async Task<RuntimeState> TakePublishedAsync()
         => await _client.Publications.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
@@ -973,8 +1047,8 @@ public sealed class AppServerHostStatePublisherTests
     {
         while (true)
         {
-            (RuntimeState sampled, bool alreadyPublished) = await _samples.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
-            if (ReferenceEquals(sampled, state) && alreadyPublished)
+            (RuntimeState sampled, bool alreadyCompleted) = await _samples.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout);
+            if (ReferenceEquals(sampled, state) && alreadyCompleted)
             {
                 return;
             }
@@ -1019,7 +1093,7 @@ public sealed class AppServerHostStatePublisherTests
     {
         private readonly Lock _lock = new();
         private readonly Queue<Func<CancellationToken, Task<HttpStatusCode>>> _responses = new();
-        private RuntimeState? _lastSuccessfulSnapshot;
+        private RuntimeState? _lastCompletedSnapshot;
         private int _attemptCount;
 
         public Channel<RuntimeState> Publications { get; } = Channel.CreateUnbounded<RuntimeState>();
@@ -1035,13 +1109,13 @@ public sealed class AppServerHostStatePublisherTests
             }
         }
 
-        public RuntimeState? LastSuccessfulSnapshot
+        public RuntimeState? LastCompletedSnapshot
         {
             get
             {
                 lock (_lock)
                 {
-                    return _lastSuccessfulSnapshot;
+                    return _lastCompletedSnapshot;
                 }
             }
         }
@@ -1065,11 +1139,11 @@ public sealed class AppServerHostStatePublisherTests
 
             Publications.Writer.TryWrite(state);
             HttpStatusCode status = response is null ? HttpStatusCode.OK : await response(cancellationToken);
-            if ((int)status is >= 200 and < 300)
+            if ((int)status is >= 200 and < 300 || status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
                 lock (_lock)
                 {
-                    _lastSuccessfulSnapshot = state;
+                    _lastCompletedSnapshot = state;
                 }
             }
 
