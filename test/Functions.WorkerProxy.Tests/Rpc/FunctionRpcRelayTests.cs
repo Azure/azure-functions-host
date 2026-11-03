@@ -174,10 +174,11 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.AlreadyExists, exception.StatusCode);
         Assert.True(relay.IsAttached(side));
         Assert.Null(relay.LastTerminalState);
+        Assert.False(factory.Services.GetRequiredService<WorkerPodStateManager>().State.RemovalRequested);
     }
 
     [Fact]
-    public async Task Relay_PeerCloseStopsSiblingAndAllowsWholeSessionReplacement()
+    public async Task Relay_WorkerPeerCloseStopsSiblingAndAllowsWholeSessionReplacement()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -187,7 +188,7 @@ public partial class FunctionRpcRelayTests
         await using (RelayClient firstWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
         {
             await ExchangeAsync(firstRuntime, firstWorker, "first", timeout.Token);
-            await firstRuntime.CompleteRequestAsync(timeout.Token);
+            await firstWorker.CompleteRequestAsync(timeout.Token);
 
             StatusCode[] terminalStatuses = await Task.WhenAll(firstRuntime.WaitForTerminationAsync(timeout.Token),
                 firstWorker.WaitForTerminationAsync(timeout.Token));
@@ -196,7 +197,7 @@ public partial class FunctionRpcRelayTests
 
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.Equal(FunctionRpcRelayTerminationReason.PeerClosed, relay.LastTerminalState?.Reason);
-        Assert.Equal(FunctionRpcRelaySide.Runtime, relay.LastTerminalState?.Side);
+        Assert.Equal(FunctionRpcRelaySide.Worker, relay.LastTerminalState?.Side);
 
         await using RelayClient secondRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient secondWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
@@ -222,9 +223,10 @@ public partial class FunctionRpcRelayTests
         try
         {
             await logger.LogEntered.WaitAsync(timeout.Token);
-            WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
-            Assert.False(failed.IsWorkerReady);
-            Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            WorkerPodState removed = Assert.IsType<WorkerPodState>((await poll).State);
+            Assert.False(removed.IsWorkerReady);
+            Assert.True(removed.RemovalRequested);
+            Assert.Equal(WorkerAssignmentState.Unassigned, removed.AssignmentState);
             await using RelayClient reconnect = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
 
             GrpcRpcException exception = await reconnect.WriteAndReadRejectionAsync(CreateMessage("reconnect"), timeout.Token);
@@ -263,7 +265,8 @@ public partial class FunctionRpcRelayTests
     [Fact]
     public async Task Relay_FirstReadFaultStopsBothStreamOperationsAndPreservesFault()
     {
-        FunctionRpcRelay relay = CreateInProcessRelay();
+        WorkerPodStateManager manager = CreatePodStateManager();
+        FunctionRpcRelay relay = CreateInProcessRelay(manager);
         using CancellationTokenSource timeout = new(TestTimeout);
         TaskCompletionSource<bool> releaseFault = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IOException expectedException = new("Injected read failure.");
@@ -287,6 +290,7 @@ public partial class FunctionRpcRelayTests
         Assert.Same(runtimeState, workerState);
         Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, runtimeState.Reason);
         Assert.Equal(FunctionRpcRelaySide.Runtime, runtimeState.Side);
+        Assert.True(manager.State.RemovalRequested);
 
         await relay.DisposeAsync();
     }
@@ -336,6 +340,7 @@ public partial class FunctionRpcRelayTests
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
@@ -348,6 +353,7 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
         Assert.Null(relay.LastTerminalState?.Side);
+        Assert.False(manager.State.RemovalRequested);
     }
 
     [Fact]

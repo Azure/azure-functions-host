@@ -42,7 +42,7 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName);
+        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
 
     /// <summary>
@@ -133,7 +133,9 @@ internal sealed class WorkerPodStateManager
         lock (_stateLock)
         {
             // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            if (sessionId <= _lastSessionId ||
+                _state.AssignmentState == WorkerAssignmentState.Failed ||
+                _state.RemovalRequested)
             {
                 return false;
             }
@@ -169,7 +171,7 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (_state.SessionId != sessionId || !_state.IsWorkerAttached)
+            if (_state.SessionId != sessionId || !_state.IsWorkerAttached || _state.RemovalRequested)
             {
                 return false;
             }
@@ -198,6 +200,11 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
+            if (_state.RemovalRequested)
+            {
+                return false;
+            }
+
             if (sessionId < _lastSessionId)
             {
                 return false;
@@ -221,6 +228,38 @@ internal sealed class WorkerPodStateManager
                 IsWorkerAttached = false,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Publishes sticky removal and clears live worker and assignment identity.
+    /// </summary>
+    public bool RequestRemoval()
+    {
+        lock (_stateLock)
+        {
+            if (_state.RemovalRequested)
+            {
+                return false;
+            }
+
+            _assignment = null;
+            _assignmentClaimed = 0;
+            _lastSessionId = 0;
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                SessionId = null,
+                IsWorkerAttached = false,
+                WorkerId = null,
+                AssignmentState = WorkerAssignmentState.Unassigned,
+                StartupMode = null,
+                FunctionAppName = null,
+                FunctionGroupName = null,
+                IsAlwaysReady = null,
+                RemovalRequested = true
             });
             return true;
         }

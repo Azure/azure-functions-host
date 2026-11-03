@@ -1,3 +1,29 @@
+# Runtime link-loss cleanup
+
+WorkerProxy requests removal when an admitted Runtime-facing FunctionRpc stream ends unexpectedly
+through EOF, cancellation, read failure, or write failure, even before Worker initialization.
+The existing relay completion path publishes one sticky removal decision; no extra monitor,
+startup deadline, or lifecycle state machine is added.
+
+Duplicate and rejected Runtime streams do not select removal. Worker-side termination retains its
+existing behavior, and application-owned shutdown is excluded from Runtime link-loss cleanup.
+
+Removal clears live worker and assignment identity and publishes `RemovalRequested` through
+`POST /admin/infra/instanceState`. An empty body returns the current checkpoint; posting that
+checkpoint waits up to 60 seconds for changes (HTTP 204 if unchanged). Removal checkpoints always
+return immediately, including repeated polls. The existing worker state endpoint remains available.
+The infrastructure projection retains the source contract's placeholder identity fields and
+`Unlinked` link state; Runtime stream admission is not a full Link acknowledgment.
+
+Removal withdraws worker readiness, rejects new Runtime and Worker FunctionRpc streams, and
+returns HTTP 503 for new forwarding requests, including those finishing endpoint-readiness checks.
+The relay terminates the stream pair through its existing teardown path. Requests already being
+forwarded are not canceled. `/admin/instance/ready` stays available for management health.
+Legion remains responsible for physical pod deletion.
+
+**Deployment prerequisite:** authenticate the Runtime-facing FunctionRpc endpoint before rollout.
+Authentication and a rollout switch are outside this change.
+
 # Token Service proxy configuration
 
 The compute-separated `Functions.Host` and `Functions.WorkerProxy` can forward managed-identity HTTP requests over their existing Host-initiated gRPC stream. The Token Service runs only in the Host environment; no worker-pod Token Service or additional cross-pod Token Service listener is needed. The feature is **disabled by default** and must be enabled on both products. These settings supplement existing worker registration, listener, and Host-link configuration.
