@@ -27,7 +27,7 @@ jobs:
     displayName: Azure Functions Host Tests (Linux)
     inputs:
       command: test
-      arguments: -v m -c release
+      arguments: -v m -c release --blame-hang --blame-hang-timeout 5m --blame-hang-dump-type mini
       # Build the product test graphs without bootstrapping the manual Aspire tool.
       projects: test/Functions.*.Tests/*.csproj
 
