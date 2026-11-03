@@ -23,13 +23,13 @@ public class WorkerProxyJsonContextTests
             StartupMode = startupMode,
             FunctionAppName = "app",
             FunctionGroupName = "group",
+            MaxHttpConcurrency = 10,
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" },
             HttpProxyEndpoint = "127.0.0.1:48801",
             ConfigLastModifiedTime = 1761868800,
-            ContentLastModifiedTime = 1761868801,
-            MaxHttpConcurrency = 0
+            ContentLastModifiedTime = 1761868801
         };
 
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
@@ -39,6 +39,7 @@ public class WorkerProxyJsonContextTests
             "httpProxyEndpoint", "configLastModifiedTime", "contentLastModifiedTime", "maxHttpConcurrency");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(10, root.GetProperty("maxHttpConcurrency").GetInt32());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
         Assert.Equal("private-value", root.GetProperty("environment").GetProperty("SECRET").GetString());
 
@@ -47,11 +48,11 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.StartupMode, copy.StartupMode);
         Assert.Equal(request.FunctionAppName, copy.FunctionAppName);
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
+        Assert.Equal(request.MaxHttpConcurrency, copy.MaxHttpConcurrency);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
         Assert.Equal(request.HttpProxyEndpoint, copy.HttpProxyEndpoint);
         Assert.Equal(request.ConfigLastModifiedTime, copy.ConfigLastModifiedTime);
         Assert.Equal(request.ContentLastModifiedTime, copy.ContentLastModifiedTime);
-        Assert.Equal(request.MaxHttpConcurrency, copy.MaxHttpConcurrency);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
     }
@@ -98,24 +99,24 @@ public class WorkerProxyJsonContextTests
     }
 
     [Theory]
-    [InlineData(long.MinValue, long.MaxValue, int.MinValue)]
-    [InlineData(long.MaxValue, long.MinValue, int.MaxValue)]
-    [InlineData(9007199254740993L, -9007199254740993L, -1)]
-    [InlineData(0L, 0L, 0)]
-    public void Assignment_RequestedMetadataAcceptsSignedNumbersAndNumericStringsAndWritesExactNumbers(
-        long configTime, long contentTime, int concurrency)
+    [InlineData(long.MinValue, long.MaxValue)]
+    [InlineData(long.MaxValue, long.MinValue)]
+    [InlineData(9007199254740993L, -9007199254740993L)]
+    [InlineData(0L, 0L)]
+    public void Assignment_RequestedVersionsAcceptSignedNumbersAndNumericStringsAndWriteExactNumbers(
+        long configTime, long contentTime)
     {
         string numbers = FormattableString.Invariant(
-            $$"""{"configLastModifiedTime":{{configTime}},"contentLastModifiedTime":{{contentTime}},"maxHttpConcurrency":{{concurrency}}}""");
+            $$"""{"configLastModifiedTime":{{configTime}},"contentLastModifiedTime":{{contentTime}}}""");
         string strings = FormattableString.Invariant(
-            $$"""{"configLastModifiedTime":"{{configTime}}","contentLastModifiedTime":"{{contentTime}}","maxHttpConcurrency":"{{concurrency}}"}""");
+            $$"""{"configLastModifiedTime":"{{configTime}}","contentLastModifiedTime":"{{contentTime}}"}""");
         foreach (string input in new[] { numbers, strings })
         {
             WorkerAssignRequest request = Assert.IsType<WorkerAssignRequest>(
                 JsonSerializer.Deserialize(input, WorkerProxyJsonContext.Default.WorkerAssignRequest));
             Assert.Equal(configTime, request.ConfigLastModifiedTime);
             Assert.Equal(contentTime, request.ContentLastModifiedTime);
-            Assert.Equal(concurrency, request.MaxHttpConcurrency);
+            Assert.Null(request.MaxHttpConcurrency);
 
             string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
             Assert.Equal(numbers, json);
@@ -123,9 +124,9 @@ public class WorkerProxyJsonContextTests
     }
 
     [Fact]
-    public void Assignment_NullRequestedMetadataIsUnspecifiedAndOmittedOnWrite()
+    public void Assignment_NullRequestedVersionsAreUnspecifiedAndOmittedOnWrite()
     {
-        const string input = """{"configLastModifiedTime":null,"contentLastModifiedTime":null,"maxHttpConcurrency":null}""";
+        const string input = """{"configLastModifiedTime":null,"contentLastModifiedTime":null}""";
         WorkerAssignRequest request = Assert.IsType<WorkerAssignRequest>(
             JsonSerializer.Deserialize(input, WorkerProxyJsonContext.Default.WorkerAssignRequest));
 
@@ -133,6 +134,21 @@ public class WorkerProxyJsonContextTests
         Assert.Null(request.ContentLastModifiedTime);
         Assert.Null(request.MaxHttpConcurrency);
         Assert.Equal("{}", JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(16)]
+    [InlineData(1000)]
+    public void Assignment_ConcurrencyRoundTripsAsAnExplicitJsonInteger(int concurrency)
+    {
+        string json = FormattableString.Invariant($$"""{"maxHttpConcurrency":{{concurrency}}}""");
+        WorkerAssignRequest request = Assert.IsType<WorkerAssignRequest>(
+            JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerAssignRequest));
+
+        Assert.Equal(concurrency, request.MaxHttpConcurrency);
+        Assert.Equal(json, JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest));
     }
 
     [Fact]
@@ -154,6 +170,11 @@ public class WorkerProxyJsonContextTests
     [InlineData("""{"isAlwaysReady":0}""")]
     [InlineData("""{"functionAppName":123}""")]
     [InlineData("""{"functionGroupName":[]}""")]
+    [InlineData("""{"maxHttpConcurrency":null}""")]
+    [InlineData("""{"maxHttpConcurrency":"10"}""")]
+    [InlineData("""{"maxHttpConcurrency":1.5}""")]
+    [InlineData("""{"maxHttpConcurrency":true}""")]
+    [InlineData("""{"maxHttpConcurrency":{}}""")]
     [InlineData("""{"functionAppDirectory":{}}""")]
     [InlineData("""{"environment":[]}""")]
     [InlineData("""{"environment":{"SETTING":123}}""")]

@@ -612,7 +612,7 @@ public sealed class TokenServiceProxyIntegrationTests
                 using StringContent assignment = new("""
                     {"startupMode":"Preconfigured","functionAppName":"token-proxy-app","functionGroupName":"http","isAlwaysReady":false,
                      "environment":{},"functionAppDirectory":"","configLastModifiedTime":1761868800,
-                     "contentLastModifiedTime":1761868801,"maxHttpConcurrency":0}
+                     "contentLastModifiedTime":1761868801,"maxHttpConcurrency":16}
                     """, Encoding.UTF8, "application/json");
                 using HttpResponseMessage accepted = await management.PutAsync("/admin/worker/assignment", assignment);
                 Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);

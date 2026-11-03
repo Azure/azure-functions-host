@@ -19,7 +19,8 @@ internal sealed record WorkerPodState(
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
-    Uri? HttpProxyEndpoint = null)
+    Uri? HttpProxyEndpoint = null,
+    int? MaxHttpConcurrency = null)
 {
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;

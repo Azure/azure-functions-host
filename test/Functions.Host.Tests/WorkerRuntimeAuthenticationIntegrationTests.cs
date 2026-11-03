@@ -301,10 +301,16 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         JsonObject numericStringRetry = JsonNode.Parse(assignmentJson)!.AsObject();
         numericStringRetry["configLastModifiedTime"] = "9007199254740993";
         numericStringRetry["contentLastModifiedTime"] = "1761868801";
-        numericStringRetry["maxHttpConcurrency"] = "0";
+        numericStringRetry["maxHttpConcurrency"] = 0;
         using StringContent equivalentContent = new(numericStringRetry.ToJsonString(), Encoding.UTF8, "application/json");
         using HttpResponseMessage equivalentRetry = await management.PutAsync("/admin/worker/assignment", equivalentContent, timeout.Token);
         Assert.Equal(HttpStatusCode.NoContent, equivalentRetry.StatusCode);
+        JsonObject invalidConcurrency = JsonNode.Parse(assignmentJson)!.AsObject();
+        invalidConcurrency["maxHttpConcurrency"] = "0";
+        using StringContent invalidConcurrencyContent = new(invalidConcurrency.ToJsonString(), Encoding.UTF8, "application/json");
+        using HttpResponseMessage invalidConcurrencyResponse = await management.PutAsync(
+            "/admin/worker/assignment", invalidConcurrencyContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidConcurrencyResponse.StatusCode);
 
         await using ServiceProvider runtime = CreateRuntime(appName, appKey,
             includeAppKey: !string.Equals(scenario, "missing-runtime-key", StringComparison.Ordinal),

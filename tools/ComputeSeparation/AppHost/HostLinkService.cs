@@ -88,7 +88,7 @@ internal sealed partial class HostLinkService(
             environment = new Dictionary<string, string>(),
             configLastModifiedTime = 0L,
             contentLastModifiedTime = 0L,
-            maxHttpConcurrency = 0,
+            maxHttpConcurrency = 16,
             httpProxyEndpoint = new Uri(httpOrigin).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)
         }, cancellationToken);
         await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assignment, cancellationToken);
