@@ -171,6 +171,8 @@ public class ManagementApiHandlersTests
         Assert.Equal("app", manager.State.FunctionAppName);
         Assert.Equal("group", manager.State.FunctionGroupName);
         Assert.Equal(isAlwaysReady, manager.State.IsAlwaysReady);
+        Assert.Equal(10, manager.State.ConfigLastModifiedTime);
+        Assert.Equal(20, manager.State.ContentLastModifiedTime);
         Assert.Equal(before.SessionId, manager.State.SessionId);
         Assert.Equal(before.WorkerId, manager.State.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, before.AssignmentState);
@@ -324,7 +326,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_NotReadyDoesNotReserveIdentity(bool attached)
+    public void AssignWorker_BeforeStartStreamReservesIdentityAndBecomesReady(bool attached)
     {
         WorkerPodStateManager manager = CreateManager();
         if (attached)
@@ -332,9 +334,13 @@ public class ManagementApiHandlersTests
             manager.OnWorkerAttached(1);
         }
 
-        WorkerPodState before = manager.State;
-        AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(), manager), 503, "WorkerNotReady");
-        Assert.Same(before, manager.State);
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
+        Assert.Equal("app", manager.State.FunctionAppName);
+        AssertError(
+            ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager),
+            409,
+            "AssignmentConflict");
 
         if (!attached)
         {
@@ -342,8 +348,8 @@ public class ManagementApiHandlersTests
         }
 
         manager.OnWorkerStartStream(1, "worker");
-        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager));
-        Assert.Equal("other-app", manager.State.FunctionAppName);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
     }
 
     [Fact]
@@ -376,6 +382,8 @@ public class ManagementApiHandlersTests
     [InlineData("environmentKey")]
     [InlineData("environmentValue")]
     [InlineData("startupMode")]
+    [InlineData("configLastModifiedTime")]
+    [InlineData("contentLastModifiedTime")]
     public void AssignWorker_DifferentIdentityConflictsBeforeAndAfterTermination(string field)
     {
         WorkerPodStateManager manager = CreateReadyManager();
@@ -389,6 +397,8 @@ public class ManagementApiHandlersTests
             "alwaysReady" => CreateRequest(isAlwaysReady: true),
             "environmentKey" => CreateRequest(environment: new() { ["setting"] = "private-value" }),
             "environmentValue" => CreateRequest(environment: new() { ["SETTING"] = "PRIVATE-VALUE" }),
+            "configLastModifiedTime" => CreateRequest(configLastModifiedTime: 11),
+            "contentLastModifiedTime" => CreateRequest(contentLastModifiedTime: 21),
             _ => throw new ArgumentException("Unknown field.", nameof(field))
         };
         WorkerPodState assigned = manager.State;
@@ -636,7 +646,9 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured),
+        long? configLastModifiedTime = 10,
+        long? contentLastModifiedTime = 20) =>
         new()
         {
             StartupMode = startupMode,
@@ -644,7 +656,9 @@ public class ManagementApiHandlersTests
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" }
+            Environment = environment ?? new() { ["SETTING"] = "private-value" },
+            ConfigLastModifiedTime = configLastModifiedTime,
+            ContentLastModifiedTime = contentLastModifiedTime
         };
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)

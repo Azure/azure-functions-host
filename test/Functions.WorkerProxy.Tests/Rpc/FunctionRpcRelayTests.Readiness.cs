@@ -41,28 +41,27 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(0, manager.State.Revision);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), CreateMessageWriter(workerOutbound.Writer), timeout.Token);
         WorkerPodState attached = manager.State;
-        Assert.Equal(1, attached.Revision);
+        Assert.Equal(2, attached.Revision);
         Assert.True(attached.IsWorkerAttached);
         Assert.False(attached.IsWorkerReady);
         Assert.Null(attached.WorkerId);
+        Assert.Equal(WorkerAssignmentState.Assigned, attached.AssignmentState);
 
         Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(attached.Revision, timeout.Token);
         StreamingMessage start = CreateStartStream();
         await workerInbound.Writer.WriteAsync(start, timeout.Token);
         WorkerPodState ready = Assert.IsType<WorkerPodState>((await poll).State);
-        Assert.Equal(2, ready.Revision);
+        Assert.Equal(3, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
-        Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
-
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Ready, ready.AssignmentState);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, ready.PodStatus);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,

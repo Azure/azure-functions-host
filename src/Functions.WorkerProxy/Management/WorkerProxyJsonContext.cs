@@ -13,6 +13,7 @@ namespace Azure.Functions.WorkerProxy.Management;
 [JsonSerializable(typeof(WorkerAssignRequest))]
 [JsonSerializable(typeof(WorkerInstanceState))]
 [JsonSerializable(typeof(SplitWorkerOriginState))]
+[JsonSerializable(typeof(SplitPodIdentity))]
 [JsonSerializable(typeof(WorkerApiErrorResponse))]
 [JsonSerializable(typeof(RequestValidationResponse))]
 internal sealed partial class WorkerProxyJsonContext : JsonSerializerContext;

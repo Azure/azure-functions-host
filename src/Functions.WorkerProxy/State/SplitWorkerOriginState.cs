@@ -11,7 +11,7 @@ internal sealed record SplitWorkerOriginState(
     [property: JsonRequired] SplitPodIdentity Self,
     [property: JsonRequired] bool IsDiscoveryPod,
     [property: JsonRequired] bool IsAlwaysReady,
-    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
     [property: JsonRequired] long ConfigLastModifiedTime,
     [property: JsonRequired] long ContentLastModifiedTime,
     [property: JsonRequired] DateTimeOffset StartupTime,
@@ -23,21 +23,26 @@ internal sealed record SplitWorkerOriginState(
     public const string ContainerType = "FunctionsSplitWorkerProxy";
     private static readonly SplitWorkerLink Unlinked = new(SplitWorkerLinkState.Unlinked);
 
-    public static SplitWorkerOriginState FromState(WorkerPodState state) =>
-        new(
+    public static SplitWorkerOriginState FromState(WorkerPodState state)
+    {
+        SplitWorkerStatus status = state.IsRuntimeInitialized
+            ? SplitWorkerStatus.Running
+            : SplitWorkerStatus.Starting;
+        return new(
             ContainerType,
             new(
                 "unknown",
                 state.PodName,
                 new("unknown", 0, "unknown")),
-            IsDiscoveryPod: false,
+            IsDiscoveryPod: string.Equals(state.FunctionGroupName, "deployment:validation", StringComparison.Ordinal),
             IsAlwaysReady: state.IsAlwaysReady ?? false,
             FunctionGroup: state.FunctionGroupName,
-            ConfigLastModifiedTime: 0,
-            ContentLastModifiedTime: 0,
+            ConfigLastModifiedTime: state.ConfigLastModifiedTime,
+            ContentLastModifiedTime: state.ContentLastModifiedTime,
             state.StartupTime,
             checked((int)state.Revision),
-            SplitWorkerStatus.Starting,
-            Unlinked,
+            status,
+            state.IsRuntimeInitialized ? new(SplitWorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
             state.AssignmentState == WorkerAssignmentState.Failed);
+    }
 }

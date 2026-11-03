@@ -9,8 +9,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// The directory may be empty for Preconfigured but must be nonblank for SpecializationRequired.
+/// Version timestamps are optional and default to zero.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -34,4 +34,8 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
+
+    public long? ConfigLastModifiedTime { get; init; }
+
+    public long? ContentLastModifiedTime { get; init; }
 }
