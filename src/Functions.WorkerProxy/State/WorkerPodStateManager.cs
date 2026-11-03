@@ -338,8 +338,6 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = null,
                 FunctionGroupName = null,
                 IsAlwaysReady = null,
-                ConfigLastModifiedTime = 0,
-                ContentLastModifiedTime = 0,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
                 RemovalRequested = true
