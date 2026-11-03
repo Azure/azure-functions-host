@@ -8,9 +8,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -18,6 +20,39 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public class FunctionRpcDuplexChannelIntegrationTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
+
+    [Fact]
+    public async Task ConnectAsync_ForwardsNeutralHeaderDictionaryAsGrpcMetadata()
+    {
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+        IReadOnlyDictionary<string, string> headers = new Dictionary<string, string>
+        {
+            ["x-test-header"] = "neutral-transport-value",
+            ["x-ms-functions-worker-token"] = "opaque-caller-token"
+        };
+
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, headers);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        foreach ((string name, string value) in headers)
+        {
+            Assert.Equal(value, server.Service.RequestHeaders.GetValue(name));
+        }
+    }
+
+    [Fact]
+    public async Task ConnectAsync_RejectsMissingHeadersBeforeCreatingClient()
+    {
+        Mock<IRpcClientFactory> clientFactory = new(MockBehavior.Strict);
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory.Object);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            channelFactory.ConnectAsync(new("https://worker-proxy:50053"), null));
+
+        clientFactory.VerifyNoOtherCalls();
+    }
 
     [Fact]
     public async Task ChannelExchangesArbitraryMessagesInBothDirections()

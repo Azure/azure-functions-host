@@ -53,7 +53,7 @@ internal static class RuntimeWorkerTestData
     public static Task<DuplexChannel<T>> ConnectAsync<T>(
         this IDuplexChannelFactory<T> factory, Uri endpoint, CancellationToken cancellationToken = default)
         where T : class
-        => factory.ConnectAsync(endpoint, CreateCredentials(), cancellationToken);
+        => factory.ConnectAsync(endpoint, CreateCredentials().CreateHeaders(), cancellationToken);
 
     public static void ConfigureTlsListener(WebApplicationBuilder builder, DateTimeOffset? expires = null)
     {

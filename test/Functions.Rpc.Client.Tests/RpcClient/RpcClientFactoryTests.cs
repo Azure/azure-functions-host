@@ -13,6 +13,7 @@ using Azure.Functions.Tests;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -195,6 +196,8 @@ public class RpcClientFactoryTests
         Assert.Equal(TimeSpan.FromSeconds(30), handler.KeepAlivePingDelay);
         Assert.Equal(TimeSpan.FromSeconds(10), handler.KeepAlivePingTimeout);
         Assert.Equal(HttpKeepAlivePingPolicy.Always, handler.KeepAlivePingPolicy);
+        Assert.True(handler.UseProxy);
+        Assert.Null(handler.Proxy);
     }
 
     [Fact]
@@ -259,7 +262,7 @@ public class RpcClientFactoryTests
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync(
             expires: DateTimeOffset.UtcNow.AddMinutes(expired ? -1 : 10));
-        using HttpClient client = new(RpcClientFactory.CreateHttpHandler());
+        using HttpClient client = new(RpcClientServiceCollectionExtensions.CreateHttpProxyHandler());
         using HttpRequestMessage request = new(HttpMethod.Get, new Uri(server.Endpoint, "/probe"))
         {
             Version = HttpVersion.Version20,

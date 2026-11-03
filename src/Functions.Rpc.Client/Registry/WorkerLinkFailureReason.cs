@@ -25,4 +25,7 @@ public enum WorkerLinkFailureReason
 
     /// <summary>The specialized application authentication key or identity is missing or invalid.</summary>
     AuthenticationUnavailable,
+
+    /// <summary>The target WorkerProxy's runtime access key is missing or invalid.</summary>
+    InvalidRuntimeAccessKey,
 }

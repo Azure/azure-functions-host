@@ -43,7 +43,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// The initialized and registered channel, and whether this caller started the successful attempt.
     /// Matching retries report an existing link, including retries that waited for initialization.
     /// </returns>
-    /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
+    /// <exception cref="WorkerLinkException">The runtime access key is invalid or the request conflicts with the registry's admission state.</exception>
     /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
     Task<WorkerLinkResult> LinkAsync(
         string workerId,

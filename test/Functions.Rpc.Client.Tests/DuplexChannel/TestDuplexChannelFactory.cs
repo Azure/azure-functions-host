@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -23,14 +24,17 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
 
     internal Uri Endpoint { get; private set; }
 
+    internal IReadOnlyDictionary<string, string> Headers { get; private set; }
+
     internal int InvocationCount { get; private set; }
 
     /// <inheritdoc />
     public Task<DuplexChannel<T>> ConnectAsync(
-        Uri endpoint, RuntimeWorkerCredentials credentials, CancellationToken cancellationToken = default)
+        Uri endpoint, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;
+        Headers = headers;
         InvocationCount++;
         return Task.FromResult(_channelFactory());
     }

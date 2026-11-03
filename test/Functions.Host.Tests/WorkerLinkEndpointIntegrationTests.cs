@@ -270,6 +270,31 @@ public sealed class WorkerLinkEndpointIntegrationTests
         _registry.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData("not-a-key")]
+    [InlineData("c2hvcnQ=")]
+    public async Task Put_InvalidRuntimeAccessKey_ReturnsBadRequestBeforeConnection(string key)
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using ServiceProvider runtime = WorkerRuntimeAuthenticationIntegrationTests.CreateRuntime(
+            "test-app", ManagementTokenTestData.AppKey, true, new(), new());
+        IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, registry);
+        string json = JsonSerializer.Serialize(new
+        {
+            workerGrpcEndpoint = Endpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
+            runtimeAccessKey = key
+        });
+
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
+
+        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
+        Assert.Equal("InvalidValue", error.GetProperty("code").GetString());
+        Assert.Equal("runtimeAccessKey", error.GetProperty("target").GetString());
+        Assert.DoesNotContain(key, await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        Assert.Empty(registry.GetInitializedChannels());
+    }
+
     [Fact]
     public async Task Put_InvalidHttpOrigin_DoesNotBypassGrpcEndpointValidation()
     {

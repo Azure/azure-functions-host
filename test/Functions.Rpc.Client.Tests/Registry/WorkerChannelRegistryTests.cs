@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -46,7 +47,68 @@ public sealed partial class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
         await registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
 
+        IReadOnlyDictionary<string, string> headers = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(
+            Assert.Single(harness.DuplexFactory.Invocations).Arguments[1]);
+        Assert.True(RuntimeWorkerAuthentication.ValidateHeaders(name => headers[name],
+            Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey), "worker", DateTimeOffset.UtcNow));
         harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport, It.IsAny<RuntimeWorkerCredentials>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("not-a-key")]
+    [InlineData("c2hvcnQ=")]
+    public async Task LinkAsync_InvalidKeyIsRejectedBeforeConnectionAndDoesNotReserveIdentity(string key)
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+
+        WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(() =>
+            registry.LinkAsync("worker", CreateEndpoint("worker"), key));
+
+        Assert.Equal(WorkerLinkFailureReason.InvalidRuntimeAccessKey, failure.Reason);
+        Assert.Empty(registry.GetInitializedChannels());
+        harness.DuplexFactory.VerifyNoOtherCalls();
+        harness.ChannelFactory.VerifyNoOtherCalls();
+
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        WorkerLinkResult retry = await registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
+        Assert.True(retry.IsNewLink);
+        Assert.Same(channel.Channel, retry.Channel);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkAsync_EquivalentEncodedKeysSharePendingAndCompletedLink(bool initialHex)
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Uri endpoint = CreateEndpoint("worker");
+        string hex = Convert.ToHexString(Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey));
+        string firstKey = initialHex ? hex : RuntimeWorkerTestData.WorkerKey;
+        string retryKey = initialHex ? RuntimeWorkerTestData.WorkerKey : hex;
+        Task<WorkerLinkResult> first = registry.LinkAsync("worker", endpoint, firstKey);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        Task<WorkerLinkResult> pending = registry.LinkAsync("worker", endpoint, retryKey);
+        Assert.False(pending.IsCompleted);
+        channel.AllowStart();
+        WorkerLinkResult linked = await first.WaitAsync(TestTimeout);
+        WorkerLinkResult pendingReplay = await pending.WaitAsync(TestTimeout);
+        WorkerLinkResult completedReplay = await registry.LinkAsync("worker", endpoint, retryKey).WaitAsync(TestTimeout);
+
+        Assert.True(linked.IsNewLink);
+        Assert.False(pendingReplay.IsNewLink);
+        Assert.False(completedReplay.IsNewLink);
+        Assert.Same(linked.Channel, pendingReplay.Channel);
+        Assert.Same(linked.Channel, completedReplay.Channel);
+        Assert.Single(harness.Transports);
     }
 
     [Fact]
@@ -56,8 +118,8 @@ public sealed partial class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
         IOException failure = new("connection failed");
         Task<WorkerLinkResult> replay = null;
-        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()))
-            .Returns((Uri endpoint, RuntimeWorkerCredentials _, CancellationToken _) =>
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+            .Returns((Uri endpoint, IReadOnlyDictionary<string, string> _, CancellationToken _) =>
             {
                 // Another thread must be able to enter the registry even if connection setup runs synchronously.
                 Task<IReadOnlyList<WorkerChannel>> snapshot = Task.Run(registry.GetInitializedChannels);
@@ -75,7 +137,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(failure, firstFailure);
         Assert.Same(failure, replayFailure);
         harness.DuplexFactory.Verify(
-            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
+            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Once);
         harness.ChannelFactory.VerifyNoOtherCalls();
     }
 
@@ -103,8 +165,8 @@ public sealed partial class WorkerChannelRegistryTests
         RegistryHarness harness = new(TimeSpan.FromMilliseconds(50));
         TaskCompletionSource<DuplexChannel<StreamingMessage>> connection = new(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken connectionToken = default;
-        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()))
-            .Returns((Uri _, RuntimeWorkerCredentials _, CancellationToken token) =>
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+            .Returns((Uri _, IReadOnlyDictionary<string, string> _, CancellationToken token) =>
             {
                 connectionToken = token;
 
@@ -254,7 +316,7 @@ public sealed partial class WorkerChannelRegistryTests
             () => registry.LinkAsync("worker", grpcEndpoint));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminated.Reason);
         Assert.Single(harness.Transports);
-        harness.DuplexFactory.Verify(factory => factory.ConnectAsync(grpcEndpoint, It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
+        harness.DuplexFactory.Verify(factory => factory.ConnectAsync(grpcEndpoint, It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Once);
         harness.DuplexFactory.VerifyNoOtherCalls();
         harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport, It.IsAny<RuntimeWorkerCredentials>()), Times.Once);
         harness.ChannelFactory.VerifyNoOtherCalls();
@@ -379,8 +441,8 @@ public sealed partial class WorkerChannelRegistryTests
         TaskCompletionSource<DuplexChannel<StreamingMessage>> connection = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<CancellationToken> connectionStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<Thread> registrationStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(endpoint, It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()))
-            .Returns((Uri _, RuntimeWorkerCredentials _, CancellationToken token) =>
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(endpoint, It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+            .Returns((Uri _, IReadOnlyDictionary<string, string> _, CancellationToken token) =>
             {
                 connectionStarted.SetResult(token);
                 return connection.Task;
@@ -797,7 +859,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         Assert.False(await unlink);
         harness.DuplexFactory.Verify(
-            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
+            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(1, canceled.DisposeCount);
         WorkerChannel linked = await LinkAsync(registry, "worker").WaitAsync(TestTimeout);
         Assert.Same(replacement.Channel, linked);
@@ -1775,7 +1837,7 @@ public sealed partial class WorkerChannelRegistryTests
     {
         RegistryHarness harness = new();
         TaskCompletionSource<DuplexChannel<StreamingMessage>> connection = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()))
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .Returns(connection.Task);
         await using WorkerChannelRegistry registry = harness.Registry;
         Task<WorkerChannel> link = LinkAsync(registry, "worker");
@@ -1793,7 +1855,7 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         harness.DuplexFactory.Verify(
-            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
+            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Once);
         harness.ChannelFactory.VerifyNoOtherCalls();
         Assert.Empty(registry.GetInitializedChannels());
     }
@@ -1913,8 +1975,8 @@ public sealed partial class WorkerChannelRegistryTests
             workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
                 configuration ?? new ConfigurationBuilder().Build(),
                 HostConfigurationLogger.Object);
-            DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<RuntimeWorkerCredentials>(), It.IsAny<CancellationToken>()))
-                .Returns((Uri endpoint, RuntimeWorkerCredentials _, CancellationToken cancellationToken) =>
+            DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+                .Returns((Uri endpoint, IReadOnlyDictionary<string, string> _, CancellationToken cancellationToken) =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     TestDuplexChannel<StreamingMessage> transport;

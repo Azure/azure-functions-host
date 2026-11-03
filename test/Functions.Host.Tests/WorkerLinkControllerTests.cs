@@ -19,6 +19,7 @@ using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -483,12 +484,17 @@ public class WorkerLinkControllerTests
     [InlineData("c2hvcnQ=", "InvalidValue")]
     public async Task LinkWorker_MissingOrInvalidRuntimeAccessKey_IsRejectedWithoutDisclosure(string? key, string code)
     {
+        await using ServiceProvider runtime = WorkerRuntimeAuthenticationIntegrationTests.CreateRuntime(
+            "test-app", ManagementTokenTestData.AppKey, true, new(), new());
+        IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
+        WorkerLinkController controller = new(NullLogger<WorkerLinkController>.Instance, registry);
         WorkerLinkRequest request = ValidRequest();
         request.RuntimeAccessKey = key;
-        RequestValidationError error = Assert.Single(AssertBadRequest(await CreateController().LinkWorker(WorkerId, request)));
+        RequestValidationError error = Assert.Single(AssertBadRequest(await controller.LinkWorker(WorkerId, request)));
 
         Assert.Equal(code, error.Code);
         Assert.Equal("runtimeAccessKey", error.Target);
+        Assert.Empty(registry.GetInitializedChannels());
         _registry.VerifyNoOtherCalls();
     }
 

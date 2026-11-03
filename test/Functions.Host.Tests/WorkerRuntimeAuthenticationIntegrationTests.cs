@@ -514,7 +514,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(StatusCodes.Status200OK, httpContext.Response.StatusCode);
     }
 
-    private static ServiceProvider CreateRuntime(
+    internal static ServiceProvider CreateRuntime(
         string appName, string appKey, bool includeAppKey, ConcurrentQueue<(string Message, Exception? Error)> diagnostics,
         ConcurrentQueue<Uri> forwardedOrigins)
     {

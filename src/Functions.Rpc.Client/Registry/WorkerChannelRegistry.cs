@@ -121,7 +121,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
                 if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal)
-                    || !existing.Credentials.MatchesKey(runtimeAccessKey))
+                    || !existing.Credentials.MatchesKey(credentials))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
                         "The worker is already associated with different endpoints or credentials.");
@@ -199,7 +199,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             try
             {
                 operationSource.Token.ThrowIfCancellationRequested();
-                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, slot.Credentials, operationSource.Token);
+                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, slot.Credentials.CreateHeaders(), operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
                 candidate = _channelFactory.Create(workerId, ownedChannel, slot.Credentials)

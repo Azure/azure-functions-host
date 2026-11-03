@@ -29,6 +29,28 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed class RpcClientServiceCollectionExtensionsTests
 {
     [Fact]
+    public void HttpProxyHandler_SharesOnlyCertificateValidationWithGrpc()
+    {
+        using SocketsHttpHandler defaults = new();
+        using SocketsHttpHandler forwarding = RpcClientServiceCollectionExtensions.CreateHttpProxyHandler();
+        using SocketsHttpHandler grpc = RpcClientFactory.CreateHttpHandler();
+
+        Assert.Equal(defaults.ConnectTimeout, forwarding.ConnectTimeout);
+        Assert.Equal(Timeout.InfiniteTimeSpan, forwarding.ConnectTimeout);
+        Assert.Equal(defaults.KeepAlivePingDelay, forwarding.KeepAlivePingDelay);
+        Assert.Equal(defaults.KeepAlivePingTimeout, forwarding.KeepAlivePingTimeout);
+        Assert.Equal(defaults.KeepAlivePingPolicy, forwarding.KeepAlivePingPolicy);
+        Assert.True(forwarding.UseProxy);
+        Assert.Null(forwarding.Proxy);
+        Assert.True(grpc.UseProxy);
+        Assert.Null(grpc.Proxy);
+        Assert.NotEqual(grpc.ConnectTimeout, forwarding.ConnectTimeout);
+        Assert.NotEqual(grpc.KeepAlivePingDelay, forwarding.KeepAlivePingDelay);
+        Assert.Same(RpcClientFactory.CertificateValidationCallback, forwarding.SslOptions.RemoteCertificateValidationCallback);
+        Assert.Same(grpc.SslOptions.RemoteCertificateValidationCallback, forwarding.SslOptions.RemoteCertificateValidationCallback);
+    }
+
+    [Fact]
     public void AddRpcClientServices_RegistersClientLifecycleAsSingletons()
     {
         ServiceCollection services = new();

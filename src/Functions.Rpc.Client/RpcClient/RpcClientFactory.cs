@@ -28,6 +28,10 @@ internal sealed class RpcClientFactory : IRpcClientFactory
     /// </summary>
     internal static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
 
+    // Server identity is not authenticated for compute-separated WorkerProxy connections.
+    internal static readonly RemoteCertificateValidationCallback CertificateValidationCallback =
+        static (_, certificate, _, _) => IsCertificateUnexpired(certificate, DateTimeOffset.UtcNow);
+
     /// <summary>
     /// Gets the idle interval before an HTTP/2 keepalive ping is sent.
     /// </summary>
@@ -216,11 +220,9 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             KeepAlivePingDelay = DefaultKeepAlivePingDelay,
             KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
             KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
-            UseProxy = false,
-            // Only the compute-separation WorkerProxy client uses this handler. Server identity is not authenticated.
             SslOptions = new SslClientAuthenticationOptions
             {
-                RemoteCertificateValidationCallback = static (_, certificate, _, _) => IsCertificateUnexpired(certificate, DateTimeOffset.UtcNow)
+                RemoteCertificateValidationCallback = CertificateValidationCallback
             },
         };
     }

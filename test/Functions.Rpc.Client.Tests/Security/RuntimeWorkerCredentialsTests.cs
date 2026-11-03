@@ -18,6 +18,22 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public class RuntimeWorkerCredentialsTests
 {
     [Fact]
+    public void MatchesKey_ComparesDecodedCredentialBytesAcrossEncodings()
+    {
+        IConfiguration configuration = RuntimeWorkerTestData.CreateConfiguration();
+        byte[] key = Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey);
+        RuntimeWorkerCredentials base64 = new("worker", Convert.ToBase64String(key), configuration, TimeProvider.System);
+        RuntimeWorkerCredentials hex = new("worker", Convert.ToHexString(key), configuration, TimeProvider.System);
+        key[0] ^= 1;
+        RuntimeWorkerCredentials different = new("worker", Convert.ToBase64String(key), configuration, TimeProvider.System);
+
+        Assert.True(base64.MatchesKey(hex));
+        Assert.True(hex.MatchesKey(base64));
+        Assert.False(base64.MatchesKey(different));
+        Assert.False(different.MatchesKey(base64));
+    }
+
+    [Fact]
     public void SharedContract_UsesOneCallerHeaderAndASeparateWorkerBoundAppProof()
     {
         RuntimeWorkerCredentials credentials = RuntimeWorkerTestData.CreateCredentials("worker");

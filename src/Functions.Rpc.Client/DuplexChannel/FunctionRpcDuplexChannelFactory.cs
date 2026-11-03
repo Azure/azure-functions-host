@@ -45,11 +45,10 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 
     /// <inheritdoc />
     public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
-        Uri endpoint, RuntimeWorkerCredentials credentials, CancellationToken cancellationToken = default)
+        Uri endpoint, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(credentials);
+        ArgumentNullException.ThrowIfNull(headers);
         cancellationToken.ThrowIfCancellationRequested();
-        IReadOnlyDictionary<string, string> tokens = credentials.CreateHeaders();
         if (_proxyOptions.Enabled && _proxyHandler is null)
         {
             throw new InvalidOperationException("An enabled Token Service proxy requires a root-owned HTTP request handler.");
@@ -59,13 +58,13 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        Metadata headers = new();
-        foreach ((string name, string token) in tokens)
+        Metadata metadata = new();
+        foreach ((string name, string value) in headers)
         {
-            headers.Add(name, token);
+            metadata.Add(name, value);
         }
 
-        var call = client.EventStream(headers);
+        var call = client.EventStream(metadata);
         try
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();

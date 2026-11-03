@@ -120,10 +120,9 @@ public sealed partial class WorkerLinkController : Controller
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
-        if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(request.RuntimeAccessKey, out _))
+        if (string.IsNullOrWhiteSpace(request.RuntimeAccessKey))
         {
-            errors.Add(new(string.IsNullOrWhiteSpace(request.RuntimeAccessKey) ? ErrorCodes.Required : ErrorCodes.InvalidValue,
-                "runtimeAccessKey"));
+            errors.Add(new(ErrorCodes.Required, "runtimeAccessKey"));
         }
 
         return errors;
@@ -141,6 +140,13 @@ public sealed partial class WorkerLinkController : Controller
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
+        }
+        catch (WorkerLinkException exception) when (exception.Reason is WorkerLinkFailureReason.InvalidRuntimeAccessKey)
+        {
+            Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
+                Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+
+            return BadRequest(new RequestValidationResponse([new(ErrorCodes.InvalidValue, "runtimeAccessKey")]));
         }
         catch (WorkerLinkException exception)
         {

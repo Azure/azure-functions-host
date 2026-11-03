@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -23,11 +25,12 @@ internal sealed partial class RuntimeWorkerCredentials
     private readonly ILogger _logger;
 
     public RuntimeWorkerCredentials(string workerId, string runtimeAccessKey, IConfiguration configuration, TimeProvider timeProvider,
-        ILogger logger = null)
+        ILogger? logger = null)
     {
         if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(runtimeAccessKey, out _workerKey))
         {
-            throw new ArgumentException("A hexadecimal or base64 WorkerProxy container key containing at least 256 bits is required.", nameof(runtimeAccessKey));
+            throw new WorkerLinkException(WorkerLinkFailureReason.InvalidRuntimeAccessKey,
+                "A hexadecimal or base64 WorkerProxy container key containing at least 256 bits is required.");
         }
 
         _workerId = workerId;
@@ -36,20 +39,19 @@ internal sealed partial class RuntimeWorkerCredentials
         _logger = logger ?? NullLogger.Instance;
     }
 
-    public bool MatchesKey(string runtimeAccessKey)
-        => RuntimeWorkerAuthentication.TryDecodeWorkerKey(runtimeAccessKey, out byte[] key)
-            && CryptographicOperations.FixedTimeEquals(_workerKey, key);
+    public bool MatchesKey(RuntimeWorkerCredentials credentials)
+        => CryptographicOperations.FixedTimeEquals(_workerKey, credentials._workerKey);
 
     public IReadOnlyDictionary<string, string> CreateHeaders()
         => RuntimeWorkerAuthentication.CreateHeaders(_workerKey, _workerId, _timeProvider.GetUtcNow());
 
-    public void ValidateAppProof(string proof)
+    public void ValidateAppProof(string? proof)
     {
-        string appName = _configuration[RuntimeWorkerAuthentication.AppNameSetting];
+        string? appName = _configuration[RuntimeWorkerAuthentication.AppNameSetting];
         if (string.IsNullOrWhiteSpace(appName)
             || !RuntimeWorkerAuthentication.TryDecodeAppKey(_configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey))
         {
-            string key = _configuration[RuntimeWorkerAuthentication.AppKeySetting];
+            string? key = _configuration[RuntimeWorkerAuthentication.AppKeySetting];
             AuthenticationFailureReason configurationFailure = string.IsNullOrWhiteSpace(appName) ? AuthenticationFailureReason.MissingIdentity
                 : string.IsNullOrWhiteSpace(key) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey;
             Log.AppProofRejected(_logger, configurationFailure);

@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Net.Http;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -39,7 +40,7 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton(provider => new DefaultHttpProxyService(
             provider.GetRequiredService<IHttpForwarder>(),
             provider.GetRequiredService<ILogger<DefaultHttpProxyService>>(),
-            RpcClientFactory.CreateHttpHandler()));
+            CreateHttpProxyHandler()));
         services.AddSingleton<Func<IHttpProxyService>>(provider => () => provider.GetRequiredService<DefaultHttpProxyService>());
         services.AddOptions<WorkerProcessCountOptions>(RpcClientWorkerChannelFactory.WorkerOptionsName)
             .BindConfiguration("RpcClient:Worker")
@@ -129,6 +130,14 @@ public static class RpcClientServiceCollectionExtensions
 
         return services;
     }
+
+    internal static SocketsHttpHandler CreateHttpProxyHandler() => new()
+    {
+        SslOptions = new()
+        {
+            RemoteCertificateValidationCallback = RpcClientFactory.CertificateValidationCallback
+        }
+    };
 
     private static void ThrowIfRegistered<TService>(IServiceCollection services, string registrationMethod)
     {
