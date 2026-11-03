@@ -65,6 +65,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Contains("safe text", formattedText);
         }
 
+        [Fact]
+        public void GetExceptionDetails_Rpc_RedactsRemoteMessageWithoutFunctionInvocationException()
+        {
+            const string customerMessage = "customer-record-12345";
+            string stack = $"Error: {customerMessage}\n    at execute (probe.js:42:7)\nRepeated: {customerMessage}";
+            var exception = new RpcException("Failure", customerMessage, stack);
+            string hash = EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(customerMessage));
+            string redacted = $"[Redacted]- Customers using AppInsights or OTel can view full details. (Hash: {hash})";
+
+            var (exceptionType, exceptionMessage, exceptionDetails, formattedMessage) = exception.GetSanitizedExceptionDetails("safe text");
+
+            Assert.Equal(typeof(RpcException).ToString(), exceptionType);
+            foreach (string output in new[] { exceptionMessage, exceptionDetails })
+            {
+                Assert.Contains(redacted, output);
+                Assert.DoesNotContain(customerMessage, output);
+                Assert.Contains("at execute (probe.js:42:7)", output);
+            }
+
+            Assert.Equal("safe text", formattedMessage);
+        }
+
         [Theory]
         [InlineData("alice@example.invalid")]
         [InlineData("ALICE@EXAMPLE.INVALID")]
