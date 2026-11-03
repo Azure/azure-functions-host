@@ -394,7 +394,11 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId))
+                    {
+                        throw new InvalidDataException("The worker StartStream arrived after worker admission closed.");
+                    }
+
                     _workerId = startStream.WorkerId;
                     _startStream.TrySetResult(message.Clone());
                 }
@@ -786,11 +790,14 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
+                bool peerTerminated = terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                    or FunctionRpcRelayTerminationReason.Canceled
+                    or FunctionRpcRelayTerminationReason.Faulted;
                 bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
                     terminalState.Side == FunctionRpcRelaySide.Runtime &&
-                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
-                        or FunctionRpcRelayTerminationReason.Canceled
-                        or FunctionRpcRelayTerminationReason.Faulted;
+                    peerTerminated;
+                bool workerStreamFailed = terminalState.Side == FunctionRpcRelaySide.Worker &&
+                    peerTerminated;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
                 if (runtimePeerTerminated)
                 {
@@ -804,7 +811,7 @@ internal sealed partial class FunctionRpcRelay
                         Side: FunctionRpcRelaySide.Worker,
                         Exception: InvalidDataException
                     };
-                    stateManager.OnSessionTerminated(id, assignmentFailed);
+                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed);
                 }
 
                 _terminalState = terminalState;

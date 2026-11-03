@@ -19,7 +19,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="RevisionId">The revision of this checkpoint.</param>
 /// <param name="Status">The platform-visible worker proxy lifecycle status.</param>
 /// <param name="Link">The worker proxy's runtime link state.</param>
-/// <param name="IsUnhealthy">Whether known authentication configuration or an assigned session has failed.</param>
+/// <param name="IsUnhealthy">Whether removal is requested or known authentication configuration or an assigned session has failed.</param>
 internal sealed record WorkerOriginState(
     [property: JsonRequired, JsonPropertyOrder(-1)] string FunctionsContainerType,
     [property: JsonRequired] PodIdentity Self,
@@ -65,6 +65,6 @@ internal sealed record WorkerOriginState(
             checked((int)state.Revision),
             status,
             state.IsRuntimeInitialized ? new(WorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
-            state.IsUnhealthy);
+            state.RemovalRequested || state.IsUnhealthy);
     }
 }

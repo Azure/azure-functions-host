@@ -229,7 +229,7 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
         Assert.Equal(assignment.FunctionGroupName, removed.FunctionGroup);
-        Assert.Equal(hasAuthenticationError, removed.IsUnhealthy);
+        Assert.True(removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
         Assert.Null(removed.Link.Runtime);
         Assert.Equal(WorkerStatus.RemovalRequested, (await ReadManagementStateAsync(management, timeout.Token)).Status);
