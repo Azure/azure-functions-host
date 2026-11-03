@@ -37,6 +37,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
         AssertRegistryServices(services);
+        AssertSingleton<IByocRuntimeDrainManager, ByocRuntimeDrainManager>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostedService));
@@ -192,7 +193,12 @@ public sealed class RpcClientServiceCollectionExtensionsTests
     private static void AssertRegistryServices(IServiceCollection services)
     {
         AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
-        foreach (Type serviceType in new[] { typeof(IWorkerChannelRegistry), typeof(IHostConfigurationSourceProvider) })
+        foreach (Type serviceType in new[]
+        {
+            typeof(IWorkerChannelRegistry),
+            typeof(IHostConfigurationSourceProvider),
+            typeof(IByocRuntimeDrainWorkerManager)
+        })
         {
             ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == serviceType));
             Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);

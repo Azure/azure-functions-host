@@ -41,6 +41,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Task _drainTask;
     private bool _draining;
     private string _functionGroupName;
     private bool? _isAlwaysReady;
@@ -96,6 +97,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+
+    internal bool IsHttpFunctionGroup
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return string.Equals(
+                    _functionGroupName,
+                    FunctionGroups.Http,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
     internal bool IsReadyForInvocations
@@ -168,13 +183,32 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 return null;
             }
 
-            _draining = true;
-            return Task.WhenAll(_acceptedInvocations.Select(static invocation => invocation.ResultSource.Task)).ContinueWith(
-                static _ => { },
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+            return BeginDrainLocked();
         }
+    }
+
+    internal Task TryBeginRuntimeDrain()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            if (_draining)
+            {
+                return _drainTask;
+            }
+
+            if (IsTerminated)
+            {
+                return null;
+            }
+
+            return BeginDrainLocked();
+        }
+    }
+
+    internal void ExpireRuntimeDrain(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        FailAcceptedInvocations(exception);
     }
 
     /// <summary>
@@ -302,6 +336,19 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             invocation.ResultSource.TrySetException(exception);
         }
+    }
+
+    private Task BeginDrainLocked()
+    {
+        _draining = true;
+        _drainTask = Task.WhenAll(
+                _acceptedInvocations.Select(static invocation => invocation.ResultSource.Task))
+            .ContinueWith(
+                static _ => { },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        return _drainTask;
     }
 
     private void ReleaseAcceptedInvocation(ScriptInvocationContext invocation)

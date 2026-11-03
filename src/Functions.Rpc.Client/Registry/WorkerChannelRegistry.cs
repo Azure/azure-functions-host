@@ -31,9 +31,13 @@ namespace Azure.Functions.Rpc.Client;
 /// context, and retains terminal identities. Initialized channels remain available for metadata bootstrap before a
 /// ScriptHost function set is known; only ready channels are available for invocation dispatch.
 /// </remarks>
-internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
+internal sealed partial class WorkerChannelRegistry :
+    IWorkerChannelRegistry,
+    IHostConfigurationSourceProvider,
+    IByocRuntimeDrainWorkerManager
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RuntimeDrainGracePeriod = TimeSpan.FromMinutes(60);
 
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly Lock _disposeLock = new();
@@ -41,6 +45,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
+    private readonly TimeSpan _runtimeDrainGracePeriod;
     private readonly bool _registryOwnedAttempt;
     private readonly TimeProvider _timeProvider;
     private readonly HashSet<Task> _monitorTasks = [];
@@ -53,6 +58,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
+    private bool _runtimeAdmissionClosed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // Setup writers hold _stateLock; ready-channel readers observe this published signal without taking that lock.
@@ -78,7 +84,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         TimeSpan linkTimeout,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
         bool registryOwnedAttempt = false,
-        TimeProvider timeProvider = null)
+        TimeProvider timeProvider = null,
+        TimeSpan? runtimeDrainGracePeriod = null)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -89,6 +96,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         _workerHostConfigurationParser = workerHostConfigurationParser ?? throw new ArgumentNullException(nameof(workerHostConfigurationParser));
         _registryOwnedAttempt = registryOwnedAttempt;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _runtimeDrainGracePeriod = runtimeDrainGracePeriod ?? RuntimeDrainGracePeriod;
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            _runtimeDrainGracePeriod,
+            TimeSpan.Zero);
     }
 
     public Task<WorkerLinkResult> LinkAsync(
@@ -131,6 +142,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, _timeProvider, cancellationToken), isNewLink: false);
             }
 
+            if (_runtimeAdmissionClosed)
+            {
+                throw new WorkerLinkException(
+                    WorkerLinkFailureReason.RuntimeStopping,
+                    "The Runtime has permanently closed Worker-Link admission.");
+            }
+
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
             slot = new()
             {
@@ -169,11 +187,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
         ArgumentOutOfRangeException.ThrowIfNegative(desiredWorkerCount);
 
-        List<(string WorkerId, Task DrainTask)> selections = [];
+        List<(string WorkerId, RpcClientWorkerChannel Channel, Task InvocationDrain)> selections = [];
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            List<(string WorkerId, RpcClientWorkerChannel Channel)> candidates = [];
+            List<(string WorkerId, WorkerSlot Slot, RpcClientWorkerChannel Channel)> candidates = [];
             foreach ((string workerId, WorkerSlot slot) in _slots)
             {
                 if (_activeSetupContext is null ||
@@ -184,22 +202,24 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                     continue;
                 }
 
-                candidates.Add(new(workerId, channel));
+                candidates.Add(new(workerId, slot, channel));
             }
 
             candidates.RemoveAll(candidate => !candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady));
             int matchingWorkerCount = candidates.Count;
 
-            foreach ((string workerId, RpcClientWorkerChannel channel) in candidates)
+            foreach ((string workerId, WorkerSlot slot, RpcClientWorkerChannel channel) in candidates)
             {
                 if (matchingWorkerCount <= desiredWorkerCount)
                 {
                     break;
                 }
 
-                if (channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
+                if (channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } invocationDrain)
                 {
-                    selections.Add(new(workerId, drainTask));
+                    slot.DrainStarted = true;
+                    slot.InvocationDrain = invocationDrain;
+                    selections.Add(new(workerId, channel, invocationDrain));
                 }
 
                 matchingWorkerCount--;
@@ -211,26 +231,152 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
         }
 
-        foreach ((string workerId, Task drainTask) in selections)
+        foreach (var selection in selections)
         {
-            _ = DrainAndUnlinkAsync(workerId, drainTask);
+            _ = DrainAndUnlinkAsync(
+                selection.WorkerId,
+                selection.Channel,
+                selection.InvocationDrain,
+                selectedTimestamp: null);
         }
 
         return selections.Count;
     }
 
-    private async Task DrainAndUnlinkAsync(string workerId, Task drainTask)
+    ByocRuntimeDrainStart IByocRuntimeDrainWorkerManager.CloseAdmission()
+    {
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_runtimeAdmissionClosed)
+            {
+                throw new InvalidOperationException("The Runtime drain admission fence is already closed.");
+            }
+
+            _runtimeAdmissionClosed = true;
+            List<string> nonHttpWorkerIds = [];
+            List<string> httpWorkerIds = [];
+            foreach ((string workerId, WorkerSlot slot) in _slots)
+            {
+                if (slot.Channel is not { IsTerminated: false } channel)
+                {
+                    continue;
+                }
+
+                (channel.IsHttpFunctionGroup ? httpWorkerIds : nonHttpWorkerIds).Add(workerId);
+            }
+
+            nonHttpWorkerIds.Sort(StringComparer.Ordinal);
+            httpWorkerIds.Sort(StringComparer.Ordinal);
+            return new(nonHttpWorkerIds, httpWorkerIds);
+        }
+    }
+
+    void IByocRuntimeDrainWorkerManager.SelectWorkers(
+        IReadOnlyList<string> workerIds)
+    {
+        ArgumentNullException.ThrowIfNull(workerIds);
+
+        List<(string WorkerId, RpcClientWorkerChannel Channel, Task InvocationDrain, long SelectedTimestamp)> selections = [];
+        List<(string WorkerId, RpcClientWorkerChannel Channel, Task InvocationDrain, long SelectedTimestamp)> deadlineEscalations = [];
+        HashSet<string> seenWorkerIds = new(StringComparer.Ordinal);
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_runtimeAdmissionClosed)
+            {
+                throw new InvalidOperationException("The Runtime drain admission fence is open.");
+            }
+
+            foreach (string workerId in workerIds)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+                if (!seenWorkerIds.Add(workerId) ||
+                    !_slots.TryGetValue(workerId, out WorkerSlot slot) ||
+                    slot.Channel is not { } channel)
+                {
+                    continue;
+                }
+
+                long selectedTimestamp = _timeProvider.GetTimestamp();
+                Task invocationDrain = channel.TryBeginRuntimeDrain();
+                if (invocationDrain is null)
+                {
+                    continue;
+                }
+
+                if (slot.DrainStarted)
+                {
+                    deadlineEscalations.Add((
+                        workerId,
+                        channel,
+                        slot.InvocationDrain ?? invocationDrain,
+                        selectedTimestamp));
+                    continue;
+                }
+
+                slot.DrainStarted = true;
+                slot.InvocationDrain = invocationDrain;
+                selections.Add((
+                    workerId,
+                    channel,
+                    invocationDrain,
+                    selectedTimestamp));
+            }
+
+            if (selections.Count > 0)
+            {
+                SignalReadyChannelsLocked();
+            }
+        }
+
+        foreach (var selection in selections)
+        {
+            _ = DrainAndUnlinkAsync(
+                selection.WorkerId,
+                selection.Channel,
+                selection.InvocationDrain,
+                selection.SelectedTimestamp);
+        }
+
+        foreach (var escalation in deadlineEscalations)
+        {
+            _ = EnforceRuntimeDeadlineAsync(
+                escalation.WorkerId,
+                escalation.Channel,
+                escalation.InvocationDrain,
+                escalation.SelectedTimestamp);
+        }
+    }
+
+    private async Task DrainAndUnlinkAsync(
+        string workerId,
+        RpcClientWorkerChannel channel,
+        Task invocationDrain,
+        long? selectedTimestamp)
     {
         try
         {
-            await drainTask.WaitAsync(_shutdownSource.Token);
-            if (await UnlinkAsync(workerId, _shutdownSource.Token))
+            if (selectedTimestamp is { } timestamp)
             {
-                Log.ScaleInDrainCompleted(_logger, workerId);
+                await WaitForRuntimeDrainAsync(
+                    workerId,
+                    channel,
+                    invocationDrain,
+                    timestamp);
             }
             else
             {
-                Log.ScaleInDrainAlreadyDetached(_logger, workerId);
+                await invocationDrain.WaitAsync(_shutdownSource.Token);
+            }
+
+            if (await UnlinkAsync(workerId, _shutdownSource.Token))
+            {
+                Log.DrainCompleted(_logger, workerId);
+            }
+            else
+            {
+                Log.DrainAlreadyDetached(_logger, workerId);
             }
         }
         catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
@@ -238,7 +384,72 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
         catch (Exception exception)
         {
-            Log.ScaleInDrainFailed(_logger, exception, workerId);
+            Log.DrainFailed(_logger, exception, workerId);
+        }
+    }
+
+    private async Task EnforceRuntimeDeadlineAsync(
+        string workerId,
+        RpcClientWorkerChannel channel,
+        Task invocationDrain,
+        long selectedTimestamp)
+    {
+        try
+        {
+            await WaitForRuntimeDrainAsync(
+                workerId,
+                channel,
+                invocationDrain,
+                selectedTimestamp);
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Log.DrainFailed(_logger, exception, workerId);
+        }
+    }
+
+    private async Task WaitForRuntimeDrainAsync(
+        string workerId,
+        RpcClientWorkerChannel channel,
+        Task invocationDrain,
+        long selectedTimestamp)
+    {
+        using CancellationTokenSource deadlineSource =
+            CancellationTokenSource.CreateLinkedTokenSource(_shutdownSource.Token);
+        Task deadline = DelayFromSelectionAsync(
+            selectedTimestamp,
+            _runtimeDrainGracePeriod,
+            deadlineSource.Token);
+        Task completed = await Task.WhenAny(invocationDrain, deadline);
+        if (ReferenceEquals(completed, invocationDrain))
+        {
+            deadlineSource.Cancel();
+        }
+        else
+        {
+            await deadline;
+            channel.ExpireRuntimeDrain(
+                new TimeoutException(
+                    $"Worker '{workerId}' exceeded the BYOC Runtime drain grace period."));
+        }
+
+        await invocationDrain.WaitAsync(_shutdownSource.Token);
+    }
+
+    private async Task DelayFromSelectionAsync(
+        long selectedTimestamp,
+        TimeSpan delay,
+        CancellationToken cancellationToken)
+    {
+        TimeSpan remaining = delay - _timeProvider.GetElapsedTime(
+            selectedTimestamp,
+            _timeProvider.GetTimestamp());
+        if (remaining > TimeSpan.Zero)
+        {
+            await Task.Delay(remaining, _timeProvider, cancellationToken);
         }
     }
 
@@ -779,6 +990,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_runtimeAdmissionClosed)
+            {
+                throw new WorkerLinkException(
+                    WorkerLinkFailureReason.RuntimeStopping,
+                    "The Runtime closed Worker-Link admission while this link was initializing.");
+            }
+
             // Setup can hold this lock past the link deadline or transport lifetime.
             cancellationToken.ThrowIfCancellationRequested();
             if (!_slots.TryGetValue(workerId, out WorkerSlot currentSlot) || !ReferenceEquals(currentSlot, slot) ||
@@ -972,6 +1190,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         // The original failure from the attempted setup context, or null after successful setup.
         public Exception SetupException { get; set; }
 
+        public bool DrainStarted { get; set; }
+
+        public Task InvocationDrain { get; set; }
+
         // Indicates that a previously accepted link has terminated and cannot be replayed.
         public bool Terminal { get; set; }
 
@@ -1024,14 +1246,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
 
-        [LoggerMessage(6, LogLevel.Information, "Worker {WorkerId} completed scale-in drain and closed its Runtime link.")]
-        public static partial void ScaleInDrainCompleted(ILogger logger, string workerId);
+        [LoggerMessage(6, LogLevel.Information, "Worker {WorkerId} completed drain and closed its Runtime link.")]
+        public static partial void DrainCompleted(ILogger logger, string workerId);
 
-        [LoggerMessage(7, LogLevel.Error, "Worker {WorkerId} failed while completing scale-in drain.")]
-        public static partial void ScaleInDrainFailed(ILogger logger, Exception exception, string workerId);
+        [LoggerMessage(7, LogLevel.Error, "Worker {WorkerId} failed while completing drain.")]
+        public static partial void DrainFailed(ILogger logger, Exception exception, string workerId);
 
         [LoggerMessage(8, LogLevel.Information,
-            "Worker {WorkerId} completed scale-in drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
-        public static partial void ScaleInDrainAlreadyDetached(ILogger logger, string workerId);
+            "Worker {WorkerId} completed drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
+        public static partial void DrainAlreadyDetached(ILogger logger, string workerId);
     }
 }

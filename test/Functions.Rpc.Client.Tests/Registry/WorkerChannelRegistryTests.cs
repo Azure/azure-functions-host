@@ -1906,7 +1906,8 @@ public sealed partial class WorkerChannelRegistryTests
             IConfiguration configuration = null,
             IWorkerHostConfigurationParser workerHostConfigurationParser = null,
             bool registryOwnedAttempt = false,
-            TimeProvider timeProvider = null)
+            TimeProvider timeProvider = null,
+            TimeSpan? runtimeDrainGracePeriod = null)
         {
             HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             RegistryLogger.Setup(logger => logger.IsEnabled(LogLevel.Information)).Returns(true);
@@ -1951,7 +1952,8 @@ public sealed partial class WorkerChannelRegistryTests
                 });
             Registry = linkTimeout.HasValue
                 ? new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object,
-                    linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider)
+                    linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider,
+                    runtimeDrainGracePeriod)
                 : new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object, workerHostConfigurationParser);
         }
 

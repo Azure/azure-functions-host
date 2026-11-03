@@ -32,8 +32,11 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
 
     internal HttpClient Client { get; }
 
-    internal static async Task<WorkerLinkTestHost> StartAsync(CancellationToken cancellationToken,
-        IWorkerChannelRegistry registry, bool includeCompute = true)
+    internal static async Task<WorkerLinkTestHost> StartAsync(
+        CancellationToken cancellationToken,
+        IWorkerChannelRegistry registry,
+        bool includeCompute = true,
+        IByocRuntimeDrainManager? drainManager = null)
     {
         IHost host = new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -59,6 +62,11 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             services.AddSingleton(registry);
+                            if (drainManager is not null)
+                            {
+                                services.AddSingleton(drainManager);
+                            }
+
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
                         }
 
@@ -91,6 +99,21 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerId}");
         request.Content = new StringContent(json ?? string.Empty, Encoding.UTF8, "application/json");
+
+        return await Client.SendAsync(request, cancellationToken);
+    }
+
+    internal async Task<HttpResponseMessage> PostDrainAsync(
+        string? json,
+        CancellationToken cancellationToken)
+    {
+        using HttpRequestMessage request = new(
+            HttpMethod.Post,
+            "/admin/functions/byocdrain");
+        request.Content = new StringContent(
+            json ?? string.Empty,
+            Encoding.UTF8,
+            "application/json");
 
         return await Client.SendAsync(request, cancellationToken);
     }
