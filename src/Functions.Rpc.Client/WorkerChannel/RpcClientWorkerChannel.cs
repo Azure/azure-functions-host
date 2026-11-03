@@ -44,11 +44,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _activityLogger;
     private readonly DuplexChannel<StreamingMessage> _transport;
-    private readonly Dictionary<string, int> _pendingFunctionLoads = new(StringComparer.Ordinal);
     private LifecycleState _lifecycleState;
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private long? _idleSince;
     private int _ongoingRequests;
+    private int _pendingFunctionLoadCount;
     private bool _retiring;
 
     public RpcClientWorkerChannel(
@@ -144,12 +144,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             _activityTimeProvider = timeProvider;
             // Reactivation can overlap earlier loads; each response completes only one outstanding request.
-            foreach (FunctionMetadata function in functions)
-            {
-                string functionId = function.GetFunctionId();
-                _pendingFunctionLoads.TryGetValue(functionId, out int pendingCount);
-                _pendingFunctionLoads[functionId] = checked(pendingCount + 1);
-            }
+            _pendingFunctionLoadCount = checked(_pendingFunctionLoadCount + functions.Count);
 
             _idleSince = null;
             RecordReadyIdleTime();
@@ -210,7 +205,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
             if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
-                _pendingFunctionLoads.Count != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
+                _pendingFunctionLoadCount != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
             {
                 return false;
             }
@@ -286,18 +281,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     {
         lock (_lifecycleLock)
         {
-            if (response.Result.Status is StatusResult.Types.Status.Success &&
-                _pendingFunctionLoads.TryGetValue(response.FunctionId, out int pendingCount))
+            if (response.Result.Status is StatusResult.Types.Status.Success && _pendingFunctionLoadCount > 0)
             {
-                if (pendingCount == 1)
-                {
-                    _pendingFunctionLoads.Remove(response.FunctionId);
-                }
-                else
-                {
-                    _pendingFunctionLoads[response.FunctionId] = pendingCount - 1;
-                }
-
+                _pendingFunctionLoadCount--;
                 RecordReadyIdleTime();
             }
         }
@@ -404,7 +390,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     private void RecordReadyIdleTime()
     {
-        if (_pendingFunctionLoads.Count == 0 && _ongoingRequests == 0 && _idleSince is null)
+        if (_pendingFunctionLoadCount == 0 && _ongoingRequests == 0 && _idleSince is null)
         {
             _idleSince = _activityTimeProvider.GetTimestamp();
         }
