@@ -242,10 +242,8 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("http://localhost:5678")]
-    public async Task Relay_ReplacementSession_DoesNotReusePreviousDestination(string? replacementEndpoint)
+    [Fact]
+    public async Task Relay_WorkerTermination_ClearsDestinationAndRejectsReplacement()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory("http://worker-pod:28080/");
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -268,18 +266,11 @@ public partial class FunctionRpcRelayTests
         Assert.Null(relay.WorkerHttpDestination);
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
+        Assert.Equal(StatusCode.Unavailable,
+            (await replacementRuntime.WriteAndReadRejectionAsync(CreateMessage("replacement"), timeout.Token)).StatusCode);
+        Assert.Equal(StatusCode.Unavailable,
+            (await replacementWorker.WriteAndReadRejectionAsync(CreateStartStream("replacement"), timeout.Token)).StatusCode);
         Assert.Null(relay.WorkerHttpDestination);
-
-        StreamingMessage replacement = CreateInitResponse("replacement-init", replacementEndpoint);
-        replacement.WorkerInitResponse.Capabilities["replacement-only"] = "true";
-        await replacementWorker.WriteAsync(replacement, timeout.Token);
-        StreamingMessage response = await replacementRuntime.ReadAsync(timeout.Token);
-
-        Assert.Equal(replacementEndpoint is null ? null : new Uri(replacementEndpoint), relay.WorkerHttpDestination);
-        Assert.Equal(replacementEndpoint is not null, response.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
-        Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("original-only"));
-        Assert.Equal("true", response.WorkerInitResponse.Capabilities["replacement-only"]);
     }
 
     [Fact]

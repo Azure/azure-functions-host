@@ -1,12 +1,15 @@
-# Runtime link-loss cleanup
+# Runtime and Worker disconnect cleanup
 
 WorkerProxy requests removal when an admitted Runtime-facing FunctionRpc stream ends unexpectedly
 through EOF, cancellation, read failure, or write failure, even before Worker initialization.
+The same removal path applies when an admitted customer Worker-facing stream ends unexpectedly,
+both before and after assignment. Worker admission requires a validated first `StartStream` with
+a nonempty worker ID accepted by the current pod state.
 The existing relay completion path publishes one sticky removal decision; no extra monitor,
 startup deadline, or lifecycle state machine is added.
 
-Duplicate and rejected Runtime streams do not select removal. Worker-side termination retains its
-existing behavior, and application-owned shutdown is excluded from Runtime link-loss cleanup.
+Duplicate and rejected streams, Worker failures before accepted `StartStream`, and stale handlers
+do not select removal. Application-owned shutdown is excluded from disconnect cleanup.
 
 Removal clears live worker and assignment identity and publishes `RemovalRequested` through
 `POST /admin/infra/instanceState`. An empty body returns the current checkpoint; posting that
@@ -15,7 +18,7 @@ A new removal revision wakes existing polls immediately. The existing worker sta
 
 The shared checkpoint contracts and Runtime identity/initialization wiring are aligned with
 `manikantanallagatla/azure-functions-host` PR #20 at `2c4b21bd`. Only the contract prerequisites
-are reused here; never-linked timeouts, Worker-side removal, scale-in, and drain are not included.
+are reused here; never-linked timeouts, scale-in, and drain are not included.
 The infrastructure `self` identity retains the shared contract's placeholders. Runtime identity
 comes from the Runtime-only `x-ms-functions-runtime-identity-bin` metadata. A correlated successful
 WorkerInit response written to that Runtime publishes `Running` / `Linked` for a ready assignment;

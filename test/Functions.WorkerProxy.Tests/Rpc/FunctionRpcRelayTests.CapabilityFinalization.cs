@@ -152,8 +152,9 @@ public partial class FunctionRpcRelayTests
         await WaitForReleaseAsync(relay, timeout.Token);
         WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
         Assert.False(failed.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
-        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
+        Assert.True(failed.RemovalRequested);
+        Assert.Equal(WorkerAssignmentState.Unassigned, failed.AssignmentState);
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(assignment));
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, relay.LastTerminalState?.Reason);
         Assert.Same(failure, relay.LastTerminalState?.Exception);
@@ -266,23 +267,22 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_ReplacementSessionAfterFailedAssignment_DoesNotReuseFunctionGroup()
+    public async Task Relay_WorkerTerminationAfterAssignment_ClearsFunctionGroup()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
         WorkerAssignment failedAssignment = await FailAssignedSessionAsync(factory, timeout.Token);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
-        Assert.Equal(failedAssignment.FunctionGroupName, manager.State.FunctionGroupName);
+        Assert.True(manager.State.RemovalRequested);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Null(manager.State.FunctionGroupName);
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(failedAssignment));
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "replacement", timeout.Token);
-        StreamingMessage response = CreateInitResponse("init", null);
-        StreamingMessage expected = response.Clone();
-
-        await worker.WriteAsync(response, timeout.Token);
-
-        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable,
+            (await runtime.WriteAndReadRejectionAsync(CreateMessage("replacement"), timeout.Token)).StatusCode);
+        Assert.Equal(StatusCode.Unavailable,
+            (await worker.WriteAndReadRejectionAsync(CreateStartStream("replacement"), timeout.Token)).StatusCode);
     }
 
     private static async Task<WorkerAssignment> FailAssignedSessionAsync(WorkerProxyWebApplicationFactory factory,

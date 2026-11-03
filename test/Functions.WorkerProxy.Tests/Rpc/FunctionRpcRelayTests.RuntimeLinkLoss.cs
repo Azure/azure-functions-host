@@ -223,10 +223,13 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(false, "worker-init")]
-    [InlineData(false, "")]
-    [InlineData(true, "worker-init")]
-    public async Task RemovalRequested_IsStickyPollableAndClosesNewAdmission(bool cancelRuntime, string initializationRequestId)
+    [InlineData(false, false, "worker-init")]
+    [InlineData(false, false, "")]
+    [InlineData(false, true, "worker-init")]
+    [InlineData(true, false, "worker-init")]
+    [InlineData(true, true, "worker-init")]
+    public async Task RemovalRequested_IsStickyPollableAndClosesNewAdmission(
+        bool terminateWorker, bool cancelPeer, string initializationRequestId)
     {
         int forwardedRequests = 0;
         await using var destination = await WorkerHttpForwardingTests.StartWorkerAsync(context =>
@@ -243,16 +246,18 @@ public partial class FunctionRpcRelayTests
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using CancellationTokenSource runtimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        using CancellationTokenSource peerCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
         using HttpClient management = factory.CreateWorkerProxyClient();
         using HttpClient http = factory.CreateHttpForwardingClient();
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await using RelayClient worker = CreateClient(
+            factory, FunctionRpcRelaySide.Worker, terminateWorker ? peerCancellation.Token : timeout.Token);
         Metadata runtimeHeaders = new()
         {
             { "x-ms-functions-runtime-identity-bin", Encoding.UTF8.GetBytes(RuntimeIdentityJson) }
         };
         await using RelayClient runtime = CreateClient(
-            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), runtimeCancellation.Token, runtimeHeaders);
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            terminateWorker ? timeout.Token : peerCancellation.Token, runtimeHeaders);
         await InitializeAndAssignWorkerAsync(worker, runtime, management, timeout.Token, initializationRequestId);
         while (true)
         {
@@ -280,13 +285,13 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(42, runtimeIdentity.App.FunctionAppSiteId);
         Task<HttpResponseMessage> pendingPoll = PollSplitManagementStateAsync(management, assigned, timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
-        if (cancelRuntime)
+        if (cancelPeer)
         {
-            runtimeCancellation.Cancel();
+            peerCancellation.Cancel();
         }
         else
         {
-            await runtime.CompleteRequestAsync(timeout.Token);
+            await (terminateWorker ? worker : runtime).CompleteRequestAsync(timeout.Token);
         }
 
         await Task.WhenAll(

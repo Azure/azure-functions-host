@@ -178,7 +178,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_WorkerPeerCloseStopsSiblingAndAllowsWholeSessionReplacement()
+    public async Task Relay_WorkerPeerCloseStopsSiblingAndRejectsWholeSessionReplacement()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -201,7 +201,10 @@ public partial class FunctionRpcRelayTests
 
         await using RelayClient secondRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient secondWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(secondRuntime, secondWorker, "replacement", timeout.Token);
+        Assert.Equal(StatusCode.Unavailable,
+            (await secondRuntime.WriteAndReadRejectionAsync(CreateMessage("replacement"), timeout.Token)).StatusCode);
+        Assert.Equal(StatusCode.Unavailable,
+            (await secondWorker.WriteAndReadRejectionAsync(CreateStartStream("replacement"), timeout.Token)).StatusCode);
     }
 
     [Fact]

@@ -159,19 +159,19 @@ public partial class FunctionRpcRelayTests
                 Assert.Equal(4, state.RootElement.GetProperty("revisionId").GetInt64());
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
                 Assert.Equal("None", pod.GetProperty("podStatus").GetString());
-                Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
-                Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
-                Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
+                Assert.False(pod.TryGetProperty("startupMode", out _));
+                Assert.False(pod.TryGetProperty("functionGroupName", out _));
+                Assert.False(pod.TryGetProperty("isAlwaysReady", out _));
             }
 
             await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
             await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
             using HttpResponseMessage terminalReplay = await PutManagementJsonAsync(
                 management, "/admin/worker/assignment", assignmentBody, timeout.Token);
-            await AssertManagementErrorAsync(terminalReplay, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
+            await AssertManagementErrorAsync(terminalReplay, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
             using HttpResponseMessage terminalConflict = await PutManagementJsonAsync(
                 management, "/admin/worker/assignment", conflictingBody, timeout.Token);
-            await AssertManagementErrorAsync(terminalConflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+            await AssertManagementErrorAsync(terminalConflict, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
             using JsonDocument current = await ReadManagementStateAsync(management, 2, timeout.Token);
             Assert.Equal(4, current.RootElement.GetProperty("revisionId").GetInt64());
         }

@@ -46,6 +46,7 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+        private bool _workerHandlerAdmitted;
         private int _shutdownRequested;
         private string? _initializationRequestId;
 
@@ -316,7 +317,7 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    _workerHandlerAdmitted = stateManager.OnWorkerStartStream(id, startStream.WorkerId);
                 }
             }
 
@@ -485,13 +486,14 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
-                bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
-                    terminalState.Side == FunctionRpcRelaySide.Runtime &&
+                bool admittedPeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
+                    (terminalState.Side == FunctionRpcRelaySide.Runtime ||
+                        (terminalState.Side == FunctionRpcRelaySide.Worker && _workerHandlerAdmitted)) &&
                     terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
                         or FunctionRpcRelayTerminationReason.Canceled
                         or FunctionRpcRelayTerminationReason.Faulted;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                if (runtimePeerTerminated)
+                if (admittedPeerTerminated)
                 {
                     stateManager.RequestRemoval();
                 }
