@@ -400,7 +400,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                     removed.Completion.IsCompleted && exception.StatusCode == global::Grpc.Core.StatusCode.Unavailable)
                 {
                     // WorkerProxy reports peer closure as Unavailable, including an intentional Runtime half-close.
-                    _logger.LogDebug(exception, "Worker {WorkerId} stream closed during idle retirement.", workerId);
+                    _logger.LogDebug(
+                        "Worker {WorkerId} stream closed during idle retirement with status {StatusCode}.",
+                        workerId, exception.StatusCode);
                 }
                 catch (Exception exception) when (removed.Completion.IsCompleted)
                 {
