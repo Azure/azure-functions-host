@@ -318,8 +318,8 @@ public sealed partial class WorkerChannelRegistryTests
         await dispatcher.InvokeAsync(first);
         await dispatcher.InvokeAsync(second);
         Assert.Equal(2, worker.Channel.OngoingRequests);
-        Assert.True(worker.Channel.IsExecutingInvocation(first.ExecutionContext.InvocationId.ToString()));
-        Assert.True(worker.Channel.IsExecutingInvocation(second.ExecutionContext.InvocationId.ToString()));
+        Assert.False(worker.Channel.IsExecutingInvocation(first.ExecutionContext.InvocationId.ToString()));
+        Assert.False(worker.Channel.IsExecutingInvocation(second.ExecutionContext.InvocationId.ToString()));
         time.Advance(TimeSpan.FromMinutes(5));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(0, worker.DisposeCount);
@@ -382,6 +382,7 @@ public sealed partial class WorkerChannelRegistryTests
         await ReadyIdleWorkerAsync(registry, worker, function);
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
         DefaultHttpContext httpContext = new();
+        httpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = null;
         Mock<IHttpResponseFeature> response = new();
         response.SetupGet(feature => feature.Headers).Returns(new HeaderDictionary());
         response.SetupGet(feature => feature.HasStarted).Returns(true);
@@ -419,8 +420,6 @@ public sealed partial class WorkerChannelRegistryTests
             proxy.Verify(service => service.EnsureSuccessfulForwardingAsync(invocation), Times.Once);
         }
 
-        Task drain = worker.Channel.DrainInvocationsAsync();
-        Assert.False(drain.IsCompleted);
         time.Advance(TimeSpan.FromMinutes(4));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(1, worker.Channel.OngoingRequests);
@@ -440,18 +439,45 @@ public sealed partial class WorkerChannelRegistryTests
         time.Advance(TimeSpan.FromMinutes(3));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(1, worker.Channel.OngoingRequests);
-        Assert.True(worker.Channel.IsExecutingInvocation(request.InvocationRequest.InvocationId));
-        Assert.False(drain.IsCompleted);
         Assert.Equal(0, worker.DisposeCount);
         await completeResponse(completionState);
-        await drain.WaitAsync(TestTimeout);
         await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
-        Assert.False(worker.Channel.IsExecutingInvocation(request.InvocationRequest.InvocationId));
         time.Advance(TimeSpan.FromSeconds(120));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(0, worker.DisposeCount);
         time.Advance(TimeSpan.FromSeconds(1));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IdleRetirement_StandaloneHttpContextDoesNotWaitForResponseCallback(bool failed)
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("standalone");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("HttpFunction");
+        function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        ScriptInvocationContext invocation = CreateIdleInvocation(function);
+        invocation.Inputs = [("req", DataType.String, new DefaultHttpContext().Request)];
+
+        Assert.True(worker.Channel.TryPostInvocation(invocation));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await worker.Channel.InvokeResponse(new()
+        {
+            InvocationId = request.InvocationRequest.InvocationId,
+            Result = new() { Status = failed ? StatusResult.Types.Status.Failure : StatusResult.Types.Status.Success },
+        });
+        await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+        Assert.Equal(failed, invocation.ResultSource.Task.IsFaulted);
+
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.Equal(1, worker.DisposeCount);
     }
 

@@ -4,8 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -45,6 +48,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private LifecycleState _lifecycleState;
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private long? _idleSince;
+    private int _ongoingRequests;
     private bool _retiring;
 
     public RpcClientWorkerChannel(
@@ -116,7 +120,16 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
-    internal int OngoingRequests => TrackedInvocationCount;
+    internal int OngoingRequests
+    {
+        get
+        {
+            lock (_lifecycleLock)
+            {
+                return _ongoingRequests;
+            }
+        }
+    }
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
@@ -152,7 +165,41 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 return false;
             }
 
-            PostInvocation(context, trackRequestLifetime: IsHttpFunctionGroup);
+            if (!FunctionInputBuffers.TryGetValue(context.FunctionMetadata.GetFunctionId(), out BufferBlock<ScriptInvocationContext> buffer))
+            {
+                throw new InvalidOperationException($"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
+            }
+
+            bool trackActivity = IsHttpFunctionGroup && IsAlwaysReady is false;
+            Task responseCompleted = Task.CompletedTask;
+            if (trackActivity)
+            {
+                HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
+                    .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
+                if (request is not null)
+                {
+                    TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    request.HttpContext.Response.OnCompleted(() =>
+                    {
+                        completion.TrySetResult();
+                        return Task.CompletedTask;
+                    });
+                    responseCompleted = completion.Task;
+                }
+            }
+
+            if (!buffer.Post(context))
+            {
+                throw new InvalidOperationException($"Worker '{Id}' rejected the invocation input.");
+            }
+
+            if (trackActivity)
+            {
+                _ongoingRequests++;
+                _idleSince = null;
+                _ = ObserveRequestCompletionAsync(context, responseCompleted);
+            }
+
             return true;
         }
     }
@@ -163,7 +210,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
             if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
-                _pendingFunctionLoads.Count != 0 || HasTrackedInvocations || idleDuration <= threshold)
+                _pendingFunctionLoads.Count != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
             {
                 return false;
             }
@@ -256,21 +303,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    protected override void OnInvocationActivityChanged()
-    {
-        lock (_lifecycleLock)
-        {
-            if (HasTrackedInvocations)
-            {
-                _idleSince = null;
-            }
-            else
-            {
-                RecordReadyIdleTime();
-            }
-        }
-    }
-
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
@@ -332,9 +364,47 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    private async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
+    {
+        try
+        {
+            try
+            {
+                await context.ResultSource.Task.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The invoker owns failures; do not log customer exceptions on the system logger.
+                _activityLogger.LogDebug("Invocation on worker {WorkerId} ended unsuccessfully; waiting for HTTP completion.", Id);
+            }
+
+            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
+            {
+                try
+                {
+                    await forwarding.ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    _activityLogger.LogDebug("HTTP forwarding on worker {WorkerId} ended unsuccessfully.", Id);
+                }
+            }
+
+            await responseCompleted.ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_lifecycleLock)
+            {
+                _ongoingRequests--;
+                RecordReadyIdleTime();
+            }
+        }
+    }
+
     private void RecordReadyIdleTime()
     {
-        if (_pendingFunctionLoads.Count == 0 && !HasTrackedInvocations && _idleSince is null)
+        if (_pendingFunctionLoads.Count == 0 && _ongoingRequests == 0 && _idleSince is null)
         {
             _idleSince = _activityTimeProvider.GetTimestamp();
         }
