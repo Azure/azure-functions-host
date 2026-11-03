@@ -3,10 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
@@ -80,8 +83,13 @@ public partial class FunctionRpcRelayTests
             (await ReadSplitManagementStateAsync(management, timeout.Token)).Status);
     }
 
-    [Fact]
-    public async Task RemovalRequested_IsStickyPollableAndClosesNewAdmission()
+    [Theory]
+    [InlineData("Preconfigured", null, 16)]
+    [InlineData("Preconfigured", 10, 10)]
+    [InlineData("SpecializationRequired", null, 16)]
+    [InlineData("SpecializationRequired", 10, 10)]
+    public async Task RemovalRequested_IsStickyPollableAndClosesNewAdmission(
+        string startupMode, int? maxHttpConcurrency, int expectedConcurrency)
     {
         int forwardedRequests = 0;
         await using var destination = await WorkerHttpForwardingTests.StartWorkerAsync(context =>
@@ -101,7 +109,29 @@ public partial class FunctionRpcRelayTests
         using HttpClient http = factory.CreateHttpForwardingClient();
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await InitializeAndAssignWorkerAsync(worker, runtime, management, timeout.Token);
+        WorkerAssignRequest assignment = new()
+        {
+            StartupMode = startupMode,
+            FunctionAppName = "test-app",
+            FunctionGroupName = "http",
+            IsAlwaysReady = false,
+            Environment = [],
+            FunctionAppDirectory = "/home/site/wwwroot"
+        };
+        if (maxHttpConcurrency is { } concurrency)
+        {
+            assignment.MaxHttpConcurrency = concurrency;
+        }
+
+        StreamingMessage initialized = await InitializeAndAssignWorkerAsync(
+            worker, runtime, management, assignment, timeout.Token);
+        Assert.Equal("http", initialized.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
+        Assert.Equal(
+            expectedConcurrency.ToString(CultureInfo.InvariantCulture),
+            initialized.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability]);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
+        DateTimeOffset startupTime = manager.State.StartupTime;
 
         using (HttpResponseMessage before = await http.GetAsync("/before-removal", timeout.Token))
         {
@@ -116,16 +146,23 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(SplitWorkerStatus.RemovalRequested, removed.Status);
         Assert.Equal(SplitWorkerStatus.RemovalRequested, (await ReadSplitManagementStateAsync(management, timeout.Token)).Status);
+        WorkerPodState removedState = manager.State;
+        Assert.Null(removedState.FunctionAppName);
+        Assert.Null(removedState.FunctionGroupName);
+        Assert.Null(removedState.MaxHttpConcurrency);
+        Assert.Equal(startupTime, removedState.StartupTime);
+        Assert.False(manager.RequestRemoval());
+        Assert.Same(removedState, manager.State);
 
         await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
-        using (HttpResponseMessage assignment = await PutManagementJsonAsync(
+        using (HttpResponseMessage reassignment = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",
             ManagementAssignment,
             timeout.Token))
         {
-            await AssertManagementErrorAsync(assignment, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
+            await AssertManagementErrorAsync(reassignment, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
         }
 
         using (HttpResponseMessage after = await http.GetAsync("/after-removal", timeout.Token))
@@ -142,18 +179,25 @@ public partial class FunctionRpcRelayTests
                 timeout.Token);
             Assert.Equal(StatusCode.Unavailable, rejected.StatusCode);
         }
+
+        Assert.Same(removedState, manager.State);
     }
 
-    private static async Task InitializeAndAssignWorkerAsync(
+    private static async Task<StreamingMessage> InitializeAndAssignWorkerAsync(
         RelayClient worker,
         RelayClient runtime,
         HttpClient management,
+        WorkerAssignRequest assignment,
         CancellationToken cancellationToken)
     {
         StreamingMessage start = CreateStartStream();
         await worker.WriteAsync(start, cancellationToken);
         Assert.Equal(start, await runtime.ReadAsync(cancellationToken));
-        await AssignWorkerAsync(management, cancellationToken);
+        using (HttpResponseMessage assigned = await management.PutAsJsonAsync(
+            "/admin/worker/assignment", assignment, WorkerProxyJsonContext.Default.WorkerAssignRequest, cancellationToken))
+        {
+            Assert.Equal(HttpStatusCode.Created, assigned.StatusCode);
+        }
 
         StreamingMessage request = new()
         {
@@ -163,7 +207,9 @@ public partial class FunctionRpcRelayTests
         await runtime.WriteAsync(request, cancellationToken);
         Assert.Equal(request, await worker.ReadAsync(cancellationToken));
         await worker.WriteAsync(CreateInitResponse(request.RequestId, httpUri: null), cancellationToken);
-        Assert.NotNull((await runtime.ReadAsync(cancellationToken)).WorkerInitResponse);
+        StreamingMessage initialized = await runtime.ReadAsync(cancellationToken);
+        Assert.NotNull(initialized.WorkerInitResponse);
+        return initialized;
     }
 
     private static async Task<SplitWorkerOriginState> WaitForRemovalStateAsync(

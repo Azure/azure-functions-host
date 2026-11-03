@@ -42,7 +42,8 @@ side ended first, or because WorkerProxy is shutting down, that completion is no
 ## State and admission
 
 `WorkerPodStateManager.RequestRemoval` is the single sticky transition. It clears live Worker and
-assignment identity because `RemovalRequested` is the public contract.
+assignment identity, including assigned HTTP concurrency, because `RemovalRequested` is the public
+contract. The pod's startup timestamp is retained.
 
 ```mermaid
 flowchart TD
@@ -91,7 +92,7 @@ theory injects transport read and write failures that loopback gRPC cannot produ
 | `RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval` | An admitted Runtime EOF is W2 before customer Worker initialization |
 | `RuntimeEventStream_CancellationRequestsRemoval` | Runtime call cancellation uses the same handler completion transition |
 | `ApplicationShutdown_DoesNotRequestRemoval` | Application-owned shutdown is excluded |
-| `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Polling remains alive while gRPC, assignment, readiness, and HTTP admission remain closed |
+| `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Default and explicit HTTP capacity are advertised before removal and cleared afterward in both startup modes; polling remains alive while gRPC, assignment, readiness, and HTTP admission remain closed |
 | `Relay_RuntimeStreamFailureRequestsRemovalAndPreservesFault` | Runtime read and write faults preserve the terminal error and select W2 |
 
 ## Assumptions and limitations
