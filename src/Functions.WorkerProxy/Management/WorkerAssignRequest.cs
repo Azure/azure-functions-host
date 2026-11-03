@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
@@ -9,7 +11,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// The directory may be empty for Preconfigured but must be nonblank for SpecializationRequired.
+/// All fields except <see cref="MaxHttpConcurrency"/> are required. The directory may be empty for Preconfigured but must be nonblank
+/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -27,6 +30,20 @@ internal sealed class WorkerAssignRequest
     public string? FunctionAppName { get; init; }
 
     public string? FunctionGroupName { get; init; }
+
+    /// <summary>
+    /// Gets or sets the optional per-worker HTTP concurrency limit, from 1 through 1000 for HTTP groups.
+    /// </summary>
+    /// <remarks>
+    /// Non-HTTP groups also accept zero. An omitted value defaults to 16 for HTTP assignments only. An explicit null is invalid.
+    /// </remarks>
+    [JsonNumberHandling(JsonNumberHandling.Strict)]
+    public int? MaxHttpConcurrency
+    {
+        get;
+        // Unlike init-only properties, source-generated binding calls this setter only when the field is supplied.
+        set => field = value ?? throw new JsonException("maxHttpConcurrency must be an integer when supplied.");
+    }
 
     public bool? IsAlwaysReady { get; init; }
 

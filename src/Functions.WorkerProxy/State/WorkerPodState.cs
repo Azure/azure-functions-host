@@ -19,7 +19,8 @@ internal sealed record WorkerPodState(
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady,
-    DateTimeOffset StartupTime)
+    DateTimeOffset StartupTime,
+    int? MaxHttpConcurrency = null)
 {
     public SplitPodIdentity? RuntimeIdentity { get; init; }
 

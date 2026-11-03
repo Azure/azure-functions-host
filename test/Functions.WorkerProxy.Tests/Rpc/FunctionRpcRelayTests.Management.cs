@@ -34,13 +34,30 @@ public partial class FunctionRpcRelayTests
         """;
 
     [Theory]
-    [InlineData(true, "Preconfigured")]
-    [InlineData(false, "Preconfigured")]
-    [InlineData(true, "SpecializationRequired")]
-    [InlineData(false, "SpecializationRequired")]
-    public async Task ManagementApis_ObserveNormalStartupAssignmentAndTerminalFailure(bool runtimeFirst, string startupMode)
+    [InlineData(true, "Preconfigured", "test-group", null)]
+    [InlineData(false, "Preconfigured", "test-group", null)]
+    [InlineData(true, "SpecializationRequired", "test-group", null)]
+    [InlineData(false, "SpecializationRequired", "test-group", null)]
+    [InlineData(true, "Preconfigured", "http", null)]
+    [InlineData(false, "Preconfigured", "http", 10)]
+    [InlineData(true, "SpecializationRequired", "http", 10)]
+    [InlineData(false, "SpecializationRequired", "http", null)]
+    public async Task ManagementApis_ObserveNormalStartupAssignmentAndTerminalFailure(
+        bool runtimeFirst, string startupMode, string functionGroupName, int? maxHttpConcurrency)
     {
-        string assignmentBody = ManagementAssignment.Replace("SpecializationRequired", startupMode, StringComparison.Ordinal);
+        string assignmentBody = ManagementAssignment
+            .Replace("SpecializationRequired", startupMode, StringComparison.Ordinal)
+            .Replace("test-group", functionGroupName, StringComparison.Ordinal);
+        if (maxHttpConcurrency is { } concurrency)
+        {
+            assignmentBody = assignmentBody.Replace(
+                "\"isAlwaysReady\":false",
+                "\"maxHttpConcurrency\":" + concurrency.ToString(CultureInfo.InvariantCulture) + ",\"isAlwaysReady\":false",
+                StringComparison.Ordinal);
+        }
+
+        int? expectedConcurrency = maxHttpConcurrency ??
+            (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) ? 16 : null);
         const string proxyEndpoint = "http://worker-pod:28080/";
         await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory(proxyEndpoint);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -58,6 +75,8 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(1, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
+        Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
+        DateTimeOffset startupTime = manager.State.StartupTime;
         Metadata runtimeHeaders = new()
         {
             { "x-ms-functions-runtime-identity-bin", Encoding.UTF8.GetBytes(RuntimeIdentityJson) }
@@ -107,7 +126,7 @@ public partial class FunctionRpcRelayTests
                 JsonElement pod = assigned.RootElement.GetProperty("workerPodState");
                 Assert.Equal("ReadyForRequest", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
-                Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
+                Assert.Equal(functionGroupName, pod.GetProperty("functionGroupName").GetString());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
                 Assert.DoesNotContain("private-value", body);
                 Assert.DoesNotContain("environment", body);
@@ -125,7 +144,10 @@ public partial class FunctionRpcRelayTests
                 Assert.Empty(await replay.Content.ReadAsByteArrayAsync(timeout.Token));
             }
 
-            string conflictingBody = assignmentBody.Replace("test-group", "other-group", StringComparison.Ordinal);
+            string conflictingBody = assignmentBody.Replace(
+                "\"functionGroupName\":\"" + functionGroupName + "\"",
+                "\"functionGroupName\":\"other-group\"",
+                StringComparison.Ordinal);
             using (HttpResponseMessage conflict = await PutManagementJsonAsync(
                 management, "/admin/worker/assignment", conflictingBody, timeout.Token))
             {
@@ -149,12 +171,20 @@ public partial class FunctionRpcRelayTests
             StreamingMessage initialized = CreateInitResponse(init.RequestId, "http://localhost:1234/");
             StreamingMessage expected = initialized.Clone();
             expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
-            expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "test-group";
+            expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = functionGroupName;
+            if (expectedConcurrency is { } advertisedConcurrency)
+            {
+                expected.WorkerInitResponse.Capabilities["MaxHttpConcurrency"] =
+                    advertisedConcurrency.ToString(CultureInfo.InvariantCulture);
+            }
+
             Task<WorkerStatePollResult> initializationPoll =
                 manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
             await worker.WriteAsync(initialized, timeout.Token);
             Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
             Assert.True((await initializationPoll).State?.IsRuntimeInitialized);
+            Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
+            Assert.Equal(startupTime, manager.State.StartupTime);
             SplitWorkerOriginState running = await ReadSplitManagementStateAsync(management, timeout.Token);
             Assert.Equal(SplitWorkerStatus.Running, running.Status);
             Assert.Equal(SplitWorkerLinkState.Linked, running.Link.State);
@@ -180,7 +210,7 @@ public partial class FunctionRpcRelayTests
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
                 Assert.Equal("None", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
-                Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
+                Assert.Equal(functionGroupName, pod.GetProperty("functionGroupName").GetString());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
             }
 
