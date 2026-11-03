@@ -47,16 +47,21 @@ internal sealed record WorkerPodState(
     public bool RuntimeInitialized { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether removal has permanently closed admission for this pod.
+    /// </summary>
+    public bool RemovalRequested { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether the assigned worker has completed initialization with an identified Runtime.
     /// </summary>
     public bool IsRuntimeInitialized => IsWorkerReady &&
         AssignmentState == WorkerAssignmentState.Ready && RuntimeInitialized && RuntimeIdentity is not null;
 
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
-    public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
+    public bool IsWorkerReady => !RemovalRequested && IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
-    public WorkerPodStatus PodStatus => AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
+    public WorkerPodStatus PodStatus => RemovalRequested || AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
         ? WorkerPodStatus.RemovalRequested
         : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
         ? WorkerPodStatus.Running
