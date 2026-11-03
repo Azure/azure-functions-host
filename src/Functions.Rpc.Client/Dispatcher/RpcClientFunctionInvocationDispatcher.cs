@@ -209,15 +209,17 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         if (channels.Count == 1)
         {
             // The common one-worker path avoids round-robin synchronization and scanning.
-            return channels[0] is RpcClientWorkerChannel channel && DispatchInvocation(invocationContext, channel, cancellationToken);
+            WorkerChannel channel = channels[0];
+            return channel is RpcClientWorkerChannel clientChannel && DispatchInvocation(invocationContext, clientChannel, cancellationToken);
         }
 
         // Start each scan at the next channel; each channel coordinates admission with retirement.
         int startIndex = (int)((uint)Interlocked.Increment(ref _nextChannelIndex) % (uint)channels.Count);
         for (int offset = 0; offset < channels.Count; offset++)
         {
-            if (channels[(startIndex + offset) % channels.Count] is RpcClientWorkerChannel channel &&
-                DispatchInvocation(invocationContext, channel, cancellationToken))
+            WorkerChannel channel = channels[(startIndex + offset) % channels.Count];
+            if (channel is RpcClientWorkerChannel clientChannel &&
+                DispatchInvocation(invocationContext, clientChannel, cancellationToken))
             {
                 return true;
             }
