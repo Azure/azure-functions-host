@@ -952,6 +952,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         private bool _pendingDisposed;
 
         public CancellationTokenSource PendingCancellation { get; } = new();
+
         // The exact active setup context attempted for this channel.
         public ChannelSetupContext AttemptedSetupContext { get; set; }
 
