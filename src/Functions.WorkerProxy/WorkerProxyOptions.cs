@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
@@ -21,6 +23,11 @@ internal sealed class WorkerProxyOptions
     /// An explicitly configured WorkerProxy:PodName does not override the platform identity.
     /// </remarks>
     public string PodName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the fixed lifetime for completing the first accepted Runtime Link.
+    /// </summary>
+    public TimeSpan NeverLinkedTimeout { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Gets or sets the HTTP/1 management listener port.
