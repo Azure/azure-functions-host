@@ -50,6 +50,7 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
             StatusCode statusCode = exception.Failure switch
             {
                 FunctionRpcRelayAttachmentFailure.Duplicate => StatusCode.AlreadyExists,
+                FunctionRpcRelayAttachmentFailure.PodStateRejected => StatusCode.Unavailable,
                 FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown => StatusCode.Unavailable,
                 FunctionRpcRelayAttachmentFailure.Shutdown => StatusCode.Unavailable,
                 _ => StatusCode.Unknown

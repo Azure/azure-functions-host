@@ -108,16 +108,15 @@ internal sealed partial class FunctionRpcRelay
 
                 if (side == FunctionRpcRelaySide.Runtime && !stateManager.OnRuntimeAttached(id, runtimeIdentity))
                 {
-                    return FunctionRpcRelayAttachResult.Terminated;
+                    return FunctionRpcRelayAttachResult.Rejected;
+                }
+
+                if (side == FunctionRpcRelaySide.Worker && !stateManager.OnWorkerAttached(id))
+                {
+                    return FunctionRpcRelayAttachResult.Rejected;
                 }
 
                 SetAttachedLocked(side, value: true);
-                if (side == FunctionRpcRelaySide.Worker)
-                {
-                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
-                    stateManager.OnWorkerAttached(id);
-                }
-
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }

@@ -205,7 +205,7 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (sessionId < _lastSessionId)
+            if (sessionId < _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
             {
                 return false;
             }
@@ -215,9 +215,8 @@ internal sealed class WorkerPodStateManager
                 return true;
             }
 
-            if (_state.AssignmentState == WorkerAssignmentState.Failed ||
-                (_state.FunctionAppName is { } app &&
-                    !string.Equals(app, identity.App.FunctionAppName, StringComparison.Ordinal)))
+            if (_state.FunctionAppName is { } app &&
+                !string.Equals(app, identity.App.FunctionAppName, StringComparison.Ordinal))
             {
                 return false;
             }
@@ -298,10 +297,10 @@ internal sealed class WorkerPodStateManager
                 IsWorkerAttached = false,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                // Worker loss becomes terminal only after validated StartStream establishes its identity.
+                // Any assigned worker-session loss requires the pod owner to replace this unhealthy pod.
                 AssignmentState = _assignment is null
                     ? WorkerAssignmentState.Unassigned
-                    : _state.WorkerId is null ? WorkerAssignmentState.Assigned : WorkerAssignmentState.Failed
+                    : WorkerAssignmentState.Failed
             });
             return true;
         }

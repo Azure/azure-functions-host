@@ -265,42 +265,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
     }
 
-    [Fact]
-    public async Task Relay_ReplacementSessionAfterFailedAssignment_DoesNotReuseFunctionGroup()
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerAssignment failedAssignment = await FailAssignedSessionAsync(factory, timeout.Token);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
-        Assert.Equal(failedAssignment.FunctionGroupName, manager.State.FunctionGroupName);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "replacement", timeout.Token);
-        StreamingMessage response = CreateInitResponse("init", null);
-        StreamingMessage expected = response.Clone();
-
-        await worker.WriteAsync(response, timeout.Token);
-
-        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
-    }
-
-    private static async Task<WorkerAssignment> FailAssignedSessionAsync(WorkerProxyWebApplicationFactory factory,
-        CancellationToken cancellationToken)
-    {
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, cancellationToken);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, cancellationToken);
-        await ExchangeAsync(runtime, worker, "assigned", cancellationToken);
-        WorkerAssignment assignment = CreateWorkerAssignment();
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        await worker.CompleteRequestAsync(cancellationToken);
-        await Task.WhenAll(runtime.WaitForTerminationAsync(cancellationToken), worker.WaitForTerminationAsync(cancellationToken));
-        await WaitForReleaseAsync(relay, cancellationToken);
-        return assignment;
-    }
-
     private sealed class TestCapabilityFinalizer(Func<IDictionary<string, string>, Uri?> finalize) : IWorkerCapabilityFinalizer
     {
         private int _callCount;

@@ -211,7 +211,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task ManagementApis_InvalidWorkerStartupAllowsReplacement()
+    public async Task ManagementApis_InvalidWorkerStartupMarksAssignmentUnhealthy()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -228,9 +228,12 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
+        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        SplitWorkerOriginState failed = await ReadSplitManagementStateAsync(management, timeout.Token);
+        Assert.True(failed.IsUnhealthy);
         using HttpResponseMessage replay = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
-        Assert.Equal(HttpStatusCode.NoContent, replay.StatusCode);
+        await AssertManagementErrorAsync(replay, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
 
         while (relay.IsAttached(FunctionRpcRelaySide.Worker))
         {
@@ -238,10 +241,17 @@ public partial class FunctionRpcRelayTests
         }
 
         await using RelayClient replacement = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await replacement.WriteAsync(CreateStartStream("replacement-start"), timeout.Token);
-        await WaitForWorkerReadyAsync(manager, timeout.Token);
-        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.OK, timeout.Token);
+        Grpc.Core.RpcException replacementFailure = await replacement.WriteAndReadRejectionAsync(
+            CreateStartStream("replacement-start"),
+            timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, replacementFailure.StatusCode);
+        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+
+        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        Grpc.Core.RpcException runtimeFailure = await replacementRuntime.WriteAndReadRejectionAsync(
+            CreateMessage("replacement-runtime"),
+            timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, runtimeFailure.StatusCode);
     }
 
     [Fact]

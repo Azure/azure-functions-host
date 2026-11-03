@@ -43,6 +43,7 @@ internal sealed partial class FunctionRpcRelay(
     {
         Attached,
         Duplicate,
+        Rejected,
         Terminated
     }
 
@@ -142,16 +143,24 @@ internal sealed partial class FunctionRpcRelay(
                 ClearCurrentSessionLocked();
             }
 
+            bool createdSession = _currentSession is null;
             session = _currentSession ??= new FunctionRpcRelaySession(
                 Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, tokenServiceProxy);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, runtimeIdentity);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
             {
+                if (createdSession && attachResult == FunctionRpcRelayAttachResult.Rejected)
+                {
+                    _currentSession = null;
+                }
+
                 (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
                 {
                     FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
                         $"A {side} FunctionRpc stream is already attached."),
+                    FunctionRpcRelayAttachResult.Rejected => (FunctionRpcRelayAttachmentFailure.PodStateRejected,
+                        $"A {side} FunctionRpc stream is not accepted for the current WorkerProxy state."),
                     FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
                         "The previous FunctionRpc relay session is still tearing down."),
                     _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
