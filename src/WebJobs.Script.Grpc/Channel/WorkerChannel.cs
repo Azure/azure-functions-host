@@ -432,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             switch (msg.ContentCase)
             {
                 case MsgType.RpcLog when msg.RpcLog.LogCategory == RpcLogCategory.User || msg.RpcLog.LogCategory == RpcLogCategory.CustomMetric:
-                    if (_executingInvocations.TryGetValue(msg.RpcLog.InvocationId, out var invocation))
+                    if (_executingInvocations.TryGetValue(msg.RpcLog.InvocationId, out var invocation) && invocation.IsAwaitingResponse)
                     {
                         invocation.Dispatcher.DispatchRpcLog(msg);
                     }
@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                     break;
                 case MsgType.InvocationResponse:
-                    if (_executingInvocations.TryGetValue(msg.InvocationResponse.InvocationId, out invocation))
+                    if (_executingInvocations.TryGetValue(msg.InvocationResponse.InvocationId, out invocation) && invocation.IsAwaitingResponse)
                     {
                         invocation.Dispatcher.DispatchInvocationResponse(msg);
                     }
@@ -1017,7 +1017,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                 AddAdditionalTraceContext(invocationRequest, context);
-                _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
+                if (!context.Properties.ContainsKey(RequestLifetimeTrackingProperty))
+                {
+                    _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
+                }
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
                 // If the worker supports HTTP proxying, ensure this request is forwarded prior
@@ -1232,7 +1235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool userCodeExceptionHandlingEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
-            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out var invocation))
+            if (TryGetInvocationResponse(invokeResponse.InvocationId, out var invocation))
             {
                 var context = invocation.Context;
 
@@ -1618,11 +1621,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        private void RemoveExecutingInvocation(string invocationId)
+        private void RemoveExecutingInvocation(string invocationId, bool force = false)
         {
-            if (_executingInvocations.TryRemove(invocationId, out var invocation))
+            if (_executingInvocations.TryGetValue(invocationId, out var invocation) &&
+                (force || invocation.RequestCompletion is null))
             {
-                invocation.Dispose();
+                CompleteExecutingInvocation(invocationId, invocation);
             }
         }
 
@@ -1638,7 +1642,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     foreach (var id in _executingInvocations.Keys)
                     {
-                        RemoveExecutingInvocation(id);
+                        RemoveExecutingInvocation(id, force: true);
                     }
 
                     _startLatencyMetric?.Dispose();
@@ -1747,7 +1751,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Count of in-buffer invocations waiting to be drained out: {invocationCount}", _executingInvocations.Count);
             foreach (var invocation in _executingInvocations.Values)
             {
-                await invocation.Context.ResultSource.Task;
+                await (invocation.RequestCompletion ?? invocation.Context.ResultSource.Task);
             }
         }
 
@@ -1779,7 +1783,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
                 invocation.Context?.SetException(shutdownException);
-                RemoveExecutingInvocation(invocationId);
+                RemoveExecutingInvocation(invocationId, force: true);
             }
         }
 
@@ -1982,24 +1986,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             catch (Exception ex)
             {
                 Logger.FailedToRegisterAppCapabilities(_workerChannelLogger, ex, _workerId);
-            }
-        }
-
-        private sealed class ExecutingInvocation : IDisposable
-        {
-            public ExecutingInvocation(ScriptInvocationContext context, IInvocationMessageDispatcher dispatcher)
-            {
-                Context = context;
-                Dispatcher = dispatcher;
-            }
-
-            public ScriptInvocationContext Context { get; }
-
-            public IInvocationMessageDispatcher Dispatcher { get; }
-
-            public void Dispose()
-            {
-                (Dispatcher as IDisposable)?.Dispose();
             }
         }
 

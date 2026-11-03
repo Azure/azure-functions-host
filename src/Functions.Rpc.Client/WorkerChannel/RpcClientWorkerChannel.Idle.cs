@@ -4,13 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -19,22 +15,12 @@ internal sealed partial class RpcClientWorkerChannel
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private HashSet<string> _pendingFunctionLoads = [];
     private long? _idleSince;
-    private int _ongoingRequests;
     private bool _retiring;
 
     // Unknown metadata is not evidence that an assigned worker is on-demand.
     internal bool? IsAlwaysReady { get; private set; }
 
-    internal int OngoingRequests
-    {
-        get
-        {
-            lock (_lifecycleLock)
-            {
-                return _ongoingRequests;
-            }
-        }
-    }
+    internal int OngoingRequests => TrackedInvocationCount;
 
     internal void StartIdleTracking(IReadOnlyList<FunctionMetadata> functions, TimeProvider timeProvider)
     {
@@ -61,7 +47,7 @@ internal sealed partial class RpcClientWorkerChannel
 
     private void RecordReadyIdleTime()
     {
-        if (_pendingFunctionLoads.Count == 0 && _ongoingRequests == 0 && _idleSince is null)
+        if (_pendingFunctionLoads.Count == 0 && !HasTrackedInvocations && _idleSince is null)
         {
             _idleSince = _activityTimeProvider.GetTimestamp();
         }
@@ -76,90 +62,24 @@ internal sealed partial class RpcClientWorkerChannel
                 return false;
             }
 
-            if (!FunctionInputBuffers.TryGetValue(context.FunctionMetadata.GetFunctionId(), out BufferBlock<ScriptInvocationContext> buffer))
-            {
-                throw new InvalidOperationException($"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
-            }
-
-            bool track = IsHttpFunctionGroup;
-            Task responseCompleted = Task.CompletedTask;
-            if (track)
-            {
-                if (context.Inputs?.Select(input => input.Val).OfType<HttpRequest>().FirstOrDefault() is HttpRequest request)
-                {
-                    TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    request.HttpContext.Response.OnCompleted(() =>
-                    {
-                        completion.TrySetResult();
-                        return Task.CompletedTask;
-                    });
-                    responseCompleted = completion.Task;
-                }
-
-                _ongoingRequests++;
-                _idleSince = null;
-            }
-
-            if (!buffer.Post(context))
-            {
-                if (track)
-                {
-                    CompleteRequest();
-                }
-
-                throw new InvalidOperationException($"Worker '{Id}' rejected the invocation input.");
-            }
-
-            if (track)
-            {
-                _ = ObserveRequestCompletionAsync(context, responseCompleted);
-            }
-
+            PostInvocation(context, trackRequestLifetime: IsHttpFunctionGroup);
             return true;
         }
     }
 
-    private async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
+    protected override void OnInvocationActivityChanged()
     {
-        try
+        lock (_lifecycleLock)
         {
-            try
+            if (HasTrackedInvocations)
             {
-                await context.ResultSource.Task.ConfigureAwait(false);
+                _idleSince = null;
             }
-            catch (Exception exception)
+            else
             {
-                // The invoker owns the result failure; accounting must still wait for any active forwarder.
-                _activityLogger.LogDebug(exception, "Invocation on worker {WorkerId} ended unsuccessfully.", Id);
-            }
-
-            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
-            {
-                try
-                {
-                    await forwarding.ConfigureAwait(false);
-                }
-                catch (Exception exception)
-                {
-                    _activityLogger.LogDebug(exception, "HTTP forwarding on worker {WorkerId} ended unsuccessfully.", Id);
-                }
-            }
-
-            await responseCompleted.ConfigureAwait(false);
-        }
-        finally
-        {
-            lock (_lifecycleLock)
-            {
-                CompleteRequest();
+                RecordReadyIdleTime();
             }
         }
-    }
-
-    private void CompleteRequest()
-    {
-        _ongoingRequests--;
-        RecordReadyIdleTime();
     }
 
     internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration)
@@ -168,7 +88,7 @@ internal sealed partial class RpcClientWorkerChannel
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
             if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
-                _pendingFunctionLoads.Count != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
+                _pendingFunctionLoads.Count != 0 || HasTrackedInvocations || idleDuration <= threshold)
             {
                 return false;
             }

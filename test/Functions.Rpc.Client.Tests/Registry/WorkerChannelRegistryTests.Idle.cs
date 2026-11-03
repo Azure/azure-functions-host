@@ -258,6 +258,8 @@ public sealed partial class WorkerChannelRegistryTests
         await dispatcher.InvokeAsync(first);
         await dispatcher.InvokeAsync(second);
         Assert.Equal(2, worker.Channel.OngoingRequests);
+        Assert.True(worker.Channel.IsExecutingInvocation(first.ExecutionContext.InvocationId.ToString()));
+        Assert.True(worker.Channel.IsExecutingInvocation(second.ExecutionContext.InvocationId.ToString()));
         time.Advance(TimeSpan.FromMinutes(5));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(0, worker.DisposeCount);
@@ -344,6 +346,21 @@ public sealed partial class WorkerChannelRegistryTests
             invocation.ResultSource.TrySetCanceled();
         }
 
+        InvocationResponse rpcResponse = new()
+        {
+            InvocationId = request.InvocationRequest.InvocationId,
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        };
+        Task responseProcessing = canceled ? Task.CompletedTask : worker.Channel.InvokeResponse(rpcResponse);
+        if (!canceled)
+        {
+            Assert.False(responseProcessing.IsCompleted);
+            await worker.Channel.InvokeResponse(rpcResponse);
+            proxy.Verify(service => service.EnsureSuccessfulForwardingAsync(invocation), Times.Once);
+        }
+
+        Task drain = worker.Channel.DrainInvocationsAsync();
+        Assert.False(drain.IsCompleted);
         time.Advance(TimeSpan.FromMinutes(4));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(1, worker.Channel.OngoingRequests);
@@ -358,26 +375,45 @@ public sealed partial class WorkerChannelRegistryTests
             body.SetResult(ForwarderError.None);
         }
 
-        if (!canceled)
-        {
-            await worker.Channel.InvokeResponse(new()
-            {
-                InvocationId = request.InvocationRequest.InvocationId,
-                Result = new() { Status = StatusResult.Types.Status.Success },
-            });
-        }
+        await responseProcessing.WaitAsync(TestTimeout);
 
         time.Advance(TimeSpan.FromMinutes(3));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(1, worker.Channel.OngoingRequests);
+        Assert.True(worker.Channel.IsExecutingInvocation(request.InvocationRequest.InvocationId));
+        Assert.False(drain.IsCompleted);
         Assert.Equal(0, worker.DisposeCount);
         await completeResponse(completionState);
+        await drain.WaitAsync(TestTimeout);
         await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+        Assert.False(worker.Channel.IsExecutingInvocation(request.InvocationRequest.InvocationId));
         time.Advance(TimeSpan.FromSeconds(120));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(0, worker.DisposeCount);
         time.Advance(TimeSpan.FromSeconds(1));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_RejectedQueueDoesNotLeaveTrackedInvocation()
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        worker.Channel.FunctionInputBuffers[function.GetFunctionId()].Complete();
+        ScriptInvocationContext invocation = CreateIdleInvocation(function);
+
+        Assert.Throws<InvalidOperationException>(() => worker.Channel.TryPostInvocation(invocation));
+
+        Assert.Equal(0, worker.Channel.OngoingRequests);
+        Assert.False(worker.Channel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.Equal(1, worker.DisposeCount);
     }
 
