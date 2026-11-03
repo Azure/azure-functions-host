@@ -16,13 +16,17 @@ internal sealed record WorkerPodState(
     WorkerStartupMode? StartupMode,
     string? FunctionAppName,
     string? FunctionGroupName,
-    bool? IsAlwaysReady)
+    bool? IsAlwaysReady,
+    int? MaxHttpConcurrency = null,
+    bool RemovalRequested = false)
 {
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
-    public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
+    public bool IsWorkerReady => !RemovalRequested && IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
-    public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
+    public WorkerPodStatus PodStatus => RemovalRequested
+        ? WorkerPodStatus.RemovalRequested
+        : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
         ? WorkerPodStatus.ReadyForRequest
         : WorkerPodStatus.None;
 

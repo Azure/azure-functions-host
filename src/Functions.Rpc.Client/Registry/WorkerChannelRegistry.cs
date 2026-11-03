@@ -48,11 +48,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
     private readonly IWorkerHostConfigurationParser _workerHostConfigurationParser;
+    // Snapshot readers use only _observationLock; writers take it after _stateLock.
+    private readonly Lock _observationLock = new();
     private IConfigurationSource _hostConfigurationSource;
     private bool _hostConfigurationSourceSelected;
+    private IReadOnlyList<WorkerChannel> _initializedChannels = [];
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
+    private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // Setup writers hold _stateLock; ready-channel readers observe this published signal without taking that lock.
@@ -373,8 +377,37 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             try
             {
-                await removed.DisposeAsync();
+                try
+                {
+                    removed.CompleteRequests();
+                    using CancellationTokenSource completionSource =
+                        CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
+                    await removed.Completion.WaitAsync(TimeSpan.FromSeconds(10), completionSource.Token);
+                }
+                catch (TimeoutException exception)
+                {
+                    _logger.LogWarning(exception, "Worker {WorkerId} did not complete its stream after idle retirement; closing the transport.", workerId);
+                }
+                catch (global::Grpc.Core.RpcException exception) when (
+                    removed.Completion.IsCompleted && exception.StatusCode == global::Grpc.Core.StatusCode.Unavailable)
+                {
+                    // WorkerProxy reports peer closure as Unavailable, including an intentional Runtime half-close.
+                    _logger.LogDebug(exception, "Worker {WorkerId} stream closed during idle retirement.", workerId);
+                }
+                catch (Exception exception) when (removed.Completion.IsCompleted)
+                {
+                    Log.ChannelFailed(_logger, exception, workerId);
+                }
+                finally
+                {
+                    await removed.DisposeAsync();
+                }
+
                 _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _shutdownSource.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -387,16 +420,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
     }
 
+    /// <inheritdoc />
     public IReadOnlyList<WorkerChannel> GetInitializedChannels()
     {
-        lock (_stateLock)
+        lock (_observationLock)
         {
-            if (_disposed)
-            {
-                return [];
-            }
-
-            return [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)];
+            return _initializedChannels;
         }
     }
 
@@ -410,6 +439,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
 
             return _hostConfigurationSource;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task GetChangeTask()
+    {
+        lock (_observationLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _changed.Task;
         }
     }
 
@@ -434,6 +473,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             // An incomplete signal is retained so callers already waiting are not orphaned by a ScriptHost restart.
             ResetReadyChannelsSignal();
             _activeSetupContext = setupContext;
+            SignalChangeLocked();
 
             foreach (WorkerSlot slot in _slots.Values)
             {
@@ -543,7 +583,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         lock (_stateLock)
         {
-            _disposed = true;
+            lock (_observationLock)
+            {
+                _disposed = true;
+                _initializedChannels = [];
+                _changed.TrySetResult();
+            }
+
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
             _initializedChannelAvailable.TrySetResult();
@@ -605,6 +651,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         {
             // Remove the detached channel from the published snapshot before channel disposal begins.
             SignalReadyChannelsLocked();
+            PublishInitializedChannelsLocked();
             if (!_slots.Values.Any(slot => slot.Channel is not null))
             {
                 _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -756,6 +803,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             // Signal initialized-channel availability without starting ScriptHost here.
             _initializedChannelAvailable.TrySetResult();
+            PublishInitializedChannelsLocked();
         }
 
         _ = ConfigureSlotInBackgroundAsync(slot);
@@ -806,6 +854,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         {
             slot.SetupException = exception;
             Log.ChannelSetupFailed(_logger, exception, channel.Id);
+        }
+        finally
+        {
+            SignalChangeLocked();
         }
     }
 
@@ -865,6 +917,33 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
     private static TaskCompletionSource<IReadOnlyList<WorkerChannel>> CreateReadyChannelsSignal()
         => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private void SignalChangeLocked()
+    {
+        lock (_observationLock)
+        {
+            CompleteChangeLocked();
+        }
+    }
+
+    private void PublishInitializedChannelsLocked()
+    {
+        IReadOnlyList<WorkerChannel> channels = Array.AsReadOnly<WorkerChannel>(
+            [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)]);
+        lock (_observationLock)
+        {
+            _initializedChannels = channels;
+            CompleteChangeLocked();
+        }
+    }
+
+    // Requires _observationLock so membership publication and invalidation are observed atomically.
+    private void CompleteChangeLocked()
+    {
+        TaskCompletionSource changed = _changed;
+        _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
+    }
 
     private async Task<Exception> ShutdownSlotAsync(string workerId, WorkerSlot slot)
     {

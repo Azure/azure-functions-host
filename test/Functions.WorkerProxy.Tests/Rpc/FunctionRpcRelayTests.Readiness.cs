@@ -198,7 +198,8 @@ public partial class FunctionRpcRelayTests
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
-            Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
+            Assert.Equal(trigger is "runtime-close" or "runtime-cancel"
+                ? WorkerPodStatus.RemovalRequested : WorkerPodStatus.None, failed.PodStatus);
             Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
@@ -347,9 +348,9 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group", bool isAlwaysReady = false)
+    private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group", bool isAlwaysReady = false, int? maxHttpConcurrency = null)
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady,
-            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
+            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", maxHttpConcurrency: maxHttpConcurrency);
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

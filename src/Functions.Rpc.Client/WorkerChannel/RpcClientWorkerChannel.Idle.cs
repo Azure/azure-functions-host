@@ -23,8 +23,6 @@ internal sealed partial class RpcClientWorkerChannel
     private bool _setupCompleted;
     private bool _retiring;
 
-    internal bool IsHttpFunctionGroup { get; private set; }
-
     // Unknown metadata is not evidence that an assigned worker is on-demand.
     internal bool? IsAlwaysReady { get; private set; }
 

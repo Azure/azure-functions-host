@@ -9,5 +9,6 @@ namespace Azure.Functions.WorkerProxy.State;
 internal enum WorkerPodStatus
 {
     None,
-    ReadyForRequest
+    ReadyForRequest,
+    RemovalRequested
 }

@@ -14,6 +14,44 @@ namespace Azure.Functions.WorkerProxy.Tests.State;
 public partial class WorkerPodStateManagerTests
 {
     [Fact]
+    public async Task RuntimeRemoval_PublishesStickyStatusPreservingIdentityAndRejectsLateNotifications()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        manager.Assign(CreateAssignment());
+        WorkerPodState assigned = manager.State;
+        Task<WorkerStatePollResult> change = manager.WaitForChangeAsync(assigned.Revision);
+
+        Assert.True(manager.OnSessionTerminated(1, requestRemoval: true));
+        WorkerPodState removed = Assert.IsType<WorkerPodState>((await change).State);
+        Assert.Equal(WorkerPodStatus.RemovalRequested, removed.PodStatus);
+        Assert.False(removed.IsWorkerReady);
+        Assert.Equal(assigned.Revision + 1, removed.Revision);
+        Assert.Equal(assigned.WorkerId, removed.WorkerId);
+        Assert.Equal(assigned.FunctionAppName, removed.FunctionAppName);
+        Assert.Equal(assigned.FunctionGroupName, removed.FunctionGroupName);
+        Assert.False(manager.OnSessionTerminated(1));
+        Assert.False(manager.OnWorkerAttached(2));
+        Assert.False(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
+        Assert.Same(removed, manager.State);
+    }
+
+    [Fact]
+    public void RuntimeRemoval_StaleSessionCannotRetireReplacement()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        manager.OnSessionTerminated(1);
+        manager.OnWorkerAttached(2);
+        manager.OnWorkerStartStream(2, "replacement");
+        manager.Assign(CreateAssignment());
+        WorkerPodState replacement = manager.State;
+
+        Assert.False(manager.OnSessionTerminated(1, requestRemoval: true));
+        Assert.Same(replacement, manager.State);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+    }
+
+    [Fact]
     public void InitialState_IsUnassignedAtRevisionZero()
     {
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);

@@ -26,6 +26,84 @@ public sealed partial class WorkerChannelRegistryTests
 {
     private static readonly TimeSpan IdleThreshold = TimeSpan.FromMinutes(2);
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task IdleRetirement_CompletesRequestsBeforeDisposal_AndCleansUpOnCancellation(bool cancel, bool unavailable)
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
+        worker.Transport.CompleteResponsesOnRequestCompletion = false;
+        time.Advance(TimeSpan.FromMinutes(3));
+        using CancellationTokenSource cancellation = new();
+
+        Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold, cancellation.Token);
+        await worker.Transport.Requests.Completion.WaitAsync(TestTimeout);
+        Assert.False(retirement.IsCompleted);
+        Assert.Equal(0, worker.DisposeCount);
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.False(worker.Channel.TryPostInvocation(CreateIdleInvocation(CreateFunction("Function"))));
+
+        if (cancel)
+        {
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => retirement);
+        }
+        else
+        {
+            worker.Complete(unavailable
+                ? new global::Grpc.Core.RpcException(new(global::Grpc.Core.StatusCode.Unavailable, "Relay peer closed."))
+                : null);
+            await retirement.WaitAsync(TestTimeout);
+            harness.RegistryLogger.Verify(logger => logger.Log(
+                LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
+        }
+
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_PublishesZeroCapacityBeforeTransportDisposalCompletes()
+    {
+        IdleTestTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = new("worker", blockDisposal: true)
+        {
+            Capabilities = new Dictionary<string, string>
+            {
+                ["FunctionGroupName"] = "http",
+                ["IsAlwaysReady"] = "False",
+                ["MaxHttpConcurrency"] = "16",
+            },
+        };
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using RuntimeStateManager manager = CreateRuntimeStateManager(registry);
+        await manager.StartAsync(CancellationToken.None);
+        await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
+        await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 1 && state.HttpCapacity == 16);
+        time.Advance(TimeSpan.FromMinutes(3));
+        Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        try
+        {
+            await worker.DisposeStarted.WaitAsync(TestTimeout);
+            await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 0 && state.HttpCapacity == 0);
+            Assert.False(retirement.IsCompleted);
+        }
+        finally
+        {
+            worker.AllowDispose();
+            await retirement.WaitAsync(TestTimeout);
+            await manager.StopAsync(CancellationToken.None);
+        }
+    }
+
     [Fact]
     public async Task IdleMonitor_ScansEachMinute_StrictThreshold_RemovesLastWorker_StopsWithRoot()
     {
@@ -189,6 +267,7 @@ public sealed partial class WorkerChannelRegistryTests
             {
                 ["FunctionGroupName"] = "http",
                 ["IsAlwaysReady"] = "False",
+                ["MaxHttpConcurrency"] = "16",
                 ["HttpUri"] = "http://worker:8080/"
             },
             HttpProxyService = proxy.Object,
@@ -310,7 +389,7 @@ public sealed partial class WorkerChannelRegistryTests
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = new("retiring", blockDisposal: true)
         {
-            Capabilities = new Dictionary<string, string> { ["FunctionGroupName"] = "http", ["IsAlwaysReady"] = "False" },
+            Capabilities = new Dictionary<string, string> { ["FunctionGroupName"] = "http", ["IsAlwaysReady"] = "False", ["MaxHttpConcurrency"] = "16" },
         };
         ChannelControl replacement = CreateIdleWorker("always-ready", alwaysReady: "True");
         harness.Enqueue(worker);
@@ -384,17 +463,20 @@ public sealed partial class WorkerChannelRegistryTests
 
     private static ChannelControl CreateIdleWorker(string id, string group = "http", string alwaysReady = "False")
     {
-        Dictionary<string, string> capabilities = new() { ["FunctionGroupName"] = group };
+        Dictionary<string, string> capabilities = new() { ["FunctionGroupName"] = group, ["MaxHttpConcurrency"] = "16" };
         if (alwaysReady is not null)
         {
             capabilities["IsAlwaysReady"] = alwaysReady;
         }
 
-        return new(id) { Capabilities = capabilities };
+        ChannelControl worker = new(id) { Capabilities = capabilities };
+        worker.Transport.CompleteResponsesOnRequestCompletion = true;
+        return worker;
     }
 
     private static async Task ReadyIdleWorkerAsync(WorkerChannelRegistry registry, ChannelControl worker, FunctionMetadata function)
     {
+        worker.Transport.CompleteResponsesOnRequestCompletion = true;
         await LinkAsync(registry, worker.Id);
         await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);

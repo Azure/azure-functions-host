@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Channels;
@@ -32,6 +33,7 @@ internal sealed partial class FunctionRpcRelay
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private const string IsAlwaysReadyCapability = "IsAlwaysReady";
+        private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
@@ -338,7 +340,7 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
-        /// Advertises this session's assigned function group and always-ready policy, replacing worker-supplied values.
+        /// Advertises the assigned group, HTTP concurrency, and always-ready policy, replacing worker-supplied values.
         /// </summary>
         /// <remarks>
         /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
@@ -350,6 +352,7 @@ internal sealed partial class FunctionRpcRelay
             // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(IsAlwaysReadyCapability);
+            capabilities.Remove(MaxHttpConcurrencyCapability);
 
             WorkerPodState state = stateManager.State;
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
@@ -357,6 +360,11 @@ internal sealed partial class FunctionRpcRelay
             {
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
                 capabilities[IsAlwaysReadyCapability] = state.IsAlwaysReady is true ? bool.TrueString : bool.FalseString;
+                if (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) && state.MaxHttpConcurrency is { } concurrency)
+                {
+                    capabilities[MaxHttpConcurrencyCapability] = concurrency.ToString(CultureInfo.InvariantCulture);
+                }
+
                 return;
             }
 
@@ -442,7 +450,11 @@ internal sealed partial class FunctionRpcRelay
 
                 _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                bool runtimePeerTerminated = terminalState.Side == FunctionRpcRelaySide.Runtime &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
+                stateManager.OnSessionTerminated(id, requestRemoval: runtimePeerTerminated);
                 _completion.SetResult(terminalState);
             }
 

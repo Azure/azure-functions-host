@@ -192,7 +192,7 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
-    public bool OnSessionTerminated(long sessionId)
+    public bool OnSessionTerminated(long sessionId, bool requestRemoval = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -219,6 +219,7 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
+                RemovalRequested = requestRemoval && _assignment is not null,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
@@ -261,6 +262,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
+                MaxHttpConcurrency = assignment.MaxHttpConcurrency,
                 IsAlwaysReady = assignment.IsAlwaysReady
             };
 

@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -29,10 +31,14 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 {
+    internal const string FunctionGroupNameCapability = "FunctionGroupName";
+    internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _activityLogger;
+    private readonly DuplexChannel<StreamingMessage> _transport;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -69,6 +75,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         Completion = ownedChannel.Reader.Completion;
+        _transport = ownedChannel;
         _activityLogger = logger;
     }
 
@@ -83,12 +90,29 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     internal HostConfiguration HostConfiguration { get; private set; }
 
+    /// <summary>
+    /// Gets the assigned group captured after successful initialization, or null when not advertised.
+    /// </summary>
+    internal string FunctionGroupName { get; private set; }
+
+    /// <summary>
+    /// Gets the validated startup HTTP concurrency, or null for a non-HTTP worker.
+    /// </summary>
+    internal int? MaxHttpConcurrency { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the captured startup assignment belongs to the HTTP function group.
+    /// </summary>
+    internal bool IsHttpFunctionGroup => string.Equals(FunctionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
+
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
     internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
+
+    internal void CompleteRequests() => _transport.Writer.TryComplete();
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -138,14 +162,8 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
 
         HostConfiguration = response.HostConfiguration?.Clone();
-        IsHttpFunctionGroup = response.Capabilities.TryGetValue("FunctionGroupName", out string group)
-            && string.Equals(group, "http", StringComparison.OrdinalIgnoreCase);
         IsAlwaysReady = response.Capabilities.TryGetValue("IsAlwaysReady", out string alwaysReady)
             && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
-        if (IsHttpFunctionGroup && IsAlwaysReady is null)
-        {
-            _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; idle retirement is disabled for this worker.", Id);
-        }
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
@@ -179,6 +197,26 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
+            // Assignment properties are captured once; later capability updates do not change this channel's identity.
+            string functionGroupName = GetCapabilityState(FunctionGroupNameCapability);
+            int? maxHttpConcurrency = null;
+            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!int.TryParse(GetCapabilityState(MaxHttpConcurrencyCapability), NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
+                    || concurrency is < 1 or > 1000)
+                {
+                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                }
+
+                maxHttpConcurrency = concurrency;
+            }
+
+            FunctionGroupName = functionGroupName;
+            MaxHttpConcurrency = maxHttpConcurrency;
+            if (IsHttpFunctionGroup && IsAlwaysReady is null)
+            {
+                _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; idle retirement is disabled for this worker.", Id);
+            }
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)
