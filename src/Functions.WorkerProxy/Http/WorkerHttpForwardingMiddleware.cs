@@ -28,9 +28,8 @@ internal sealed class WorkerHttpForwardingMiddleware(
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        if (stateManager.State.RemovalRequested)
+        if (TryRejectRemoval(context, stateManager))
         {
-            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
         }
 
@@ -57,6 +56,11 @@ internal sealed class WorkerHttpForwardingMiddleware(
             }
         }
 
+        if (TryRejectRemoval(context, stateManager))
+        {
+            return;
+        }
+
         ForwarderError error = await forwarder.ForwardAsync(context, destination);
         if (error is ForwarderError.None || context.RequestAborted.IsCancellationRequested)
         {
@@ -70,5 +74,16 @@ internal sealed class WorkerHttpForwardingMiddleware(
         }
 
         WorkerHttpForwardingTelemetry.RecordForwarderError(error);
+    }
+
+    private static bool TryRejectRemoval(HttpContext context, WorkerPodStateManager stateManager)
+    {
+        if (!stateManager.State.RemovalRequested)
+        {
+            return false;
+        }
+
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        return true;
     }
 }

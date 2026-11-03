@@ -176,6 +176,8 @@ internal sealed partial class FunctionRpcRelay(
                     {
                         FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
                             $"A {side} FunctionRpc stream is already attached."),
+                        FunctionRpcRelayAttachResult.Rejected when _stateManager.State.RemovalRequested =>
+                            (FunctionRpcRelayAttachmentFailure.PodStateRejected, "The worker pod has requested removal."),
                         FunctionRpcRelayAttachResult.Rejected => (FunctionRpcRelayAttachmentFailure.PodStateRejected,
                             $"A {side} FunctionRpc stream is not accepted for the current WorkerProxy state."),
                         FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,

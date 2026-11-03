@@ -112,6 +112,7 @@ internal static partial class WorkerProxyApplication
             WorkerProxyLogExporter.AssignmentCategory,
             LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        builder.Services.AddSingleton(static _ => WorkerProxyStartupTime.Capture(TimeProvider.System));
         ContainerManagementAuthenticationHandler.AddServices(builder.Services);
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();
@@ -122,6 +123,7 @@ internal static partial class WorkerProxyApplication
         builder.Services.AddSingleton<TokenServiceProxyService>();
         builder.Services.AddSingleton<TokenServiceProxyMiddleware>();
         builder.Services.AddSingleton<WorkerPodStateManager>();
+        builder.Services.AddHostedService<NeverLinkedTimeoutService>();
         builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
         RuntimeRequestAuthenticator.AddServices(builder.Services);
         builder.Services.ConfigureHttpJsonOptions(options =>

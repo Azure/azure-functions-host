@@ -26,8 +26,13 @@ internal sealed class WorkerPodStateManager
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
     private readonly TaskCompletionSource<WorkerAssignment> _assigned = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _neverLinkedClock;
+    private readonly TimeSpan _neverLinkedTimeout;
+    private readonly long _startupTimestamp;
+    private readonly TaskCompletionSource _runtimeLinkAccepted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
+    private NeverLinkedOutcome _neverLinkedOutcome;
     private bool _applicationStopping;
 
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
@@ -38,20 +43,44 @@ internal sealed class WorkerPodStateManager
     /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
     /// Creates the pod's initial state and captures its startup time.
     /// </summary>
+    /// <param name="options">The worker proxy configuration containing the pod identity and never-linked timeout.</param>
+    /// <param name="timeProvider">The clock used for startup time, the never-linked deadline, and state-poll deadlines.</param>
+    public WorkerPodStateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
+        : this(options, timeProvider, WorkerProxyStartupTime.Capture(timeProvider))
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
+    /// Creates the pod's initial state from an already captured startup timestamp.
+    /// </summary>
     /// <param name="options">The worker proxy configuration containing the pod identity.</param>
-    /// <param name="timeProvider">The clock used for startup time and state-poll deadlines.</param>
+    /// <param name="timeProvider">The clock used for state-poll deadlines.</param>
+    /// <param name="startupTime">The fixed startup time and monotonic deadline clock.</param>
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        WorkerProxyStartupTime startupTime)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(startupTime);
 
         string podName = options.Value.PodName;
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
+        _neverLinkedClock = startupTime.Clock;
+        _neverLinkedTimeout = options.Value.NeverLinkedTimeout;
+        _startupTimestamp = startupTime.Timestamp;
+        _state = WorkerPodState.CreateUnassigned(podName, startupTime.UtcTime);
+    }
+
+    private enum NeverLinkedOutcome
+    {
+        Pending,
+        RuntimeLinkAccepted,
+        RemovalRequested
     }
 
     public DateTimeOffset StartupTime => State.StartupTime;
@@ -111,6 +140,7 @@ internal sealed class WorkerPodStateManager
         lock (_stateLock)
         {
             string? httpProxyEndpoint = _state.SessionId == sessionId
+                && !_state.RemovalRequested
                 && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
                     ? _assignment?.HttpProxyEndpoint?.AbsoluteUri
                     : null;
@@ -280,7 +310,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records identity supplied by an admitted Runtime stream, not by worker messages.
+    /// Records an accepted Runtime-facing FunctionRpc connection and its optional identity.
     /// </summary>
     /// <param name="sessionId">The attaching relay session identifier.</param>
     /// <param name="identity">The optional Runtime identity supplied in stream metadata.</param>
@@ -298,15 +328,33 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            if (identity is null)
-            {
-                return true;
-            }
-
-            if (_state.FunctionAppName is { } app &&
+            if (identity is not null &&
+                _state.FunctionAppName is { } app &&
                 !string.Equals(app, identity.App.FunctionAppName, StringComparison.Ordinal))
             {
                 return false;
+            }
+
+            if (_neverLinkedOutcome == NeverLinkedOutcome.Pending &&
+                _neverLinkedClock.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
+            {
+                SelectRemovalRequestedLocked();
+            }
+
+            if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
+            {
+                _neverLinkedOutcome = NeverLinkedOutcome.RuntimeLinkAccepted;
+                _runtimeLinkAccepted.TrySetResult();
+            }
+
+            if (_neverLinkedOutcome != NeverLinkedOutcome.RuntimeLinkAccepted)
+            {
+                return false;
+            }
+
+            if (identity is null)
+            {
+                return true;
             }
 
             UpdateStateAndNotifyWaitersLocked(_state with
@@ -536,6 +584,57 @@ internal sealed class WorkerPodStateManager
             _assigned.TrySetResult(assignment);
             UpdateStateAndNotifyWaitersLocked(assigned);
             return WorkerAssignmentResult.Created;
+        }
+    }
+
+    /// <summary>
+    /// Waits for the fixed startup deadline or an accepted Runtime connection.
+    /// </summary>
+    public async Task WatchNeverLinkedAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            TimeSpan remaining;
+            lock (_stateLock)
+            {
+                if (_neverLinkedOutcome != NeverLinkedOutcome.Pending)
+                {
+                    return;
+                }
+
+                remaining = _neverLinkedTimeout - _neverLinkedClock.GetElapsedTime(_startupTimestamp);
+                if (remaining <= TimeSpan.Zero)
+                {
+                    SelectRemovalRequestedLocked();
+                    return;
+                }
+            }
+
+            try
+            {
+                await _runtimeLinkAccepted.Task.WaitAsync(remaining, _neverLinkedClock, cancellationToken);
+                return;
+            }
+            catch (TimeoutException)
+            {
+                // Recheck the original monotonic deadline in case the timer completed early.
+            }
+        }
+    }
+
+    private void SelectRemovalRequestedLocked()
+    {
+        if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
+        {
+            _neverLinkedOutcome = NeverLinkedOutcome.RemovalRequested;
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RemovalRequested = true,
+                HttpProxyEndpoint = null,
+                MaxHttpConcurrency = 0
+            });
         }
     }
 
