@@ -181,6 +181,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         }
 
         [Fact]
+        public async Task DeferredProcessing_StartsAndDrainsBufferedMessages()
+        {
+            using var consoleWriter = new BufferedConsoleWriter(
+                bufferSize: 10, exceptionHandler: exception => throw exception,
+                consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: false)
+            {
+                Writer = _writer
+            };
+
+            consoleWriter.WriteHandler("first");
+            consoleWriter.WriteHandler("second");
+            Assert.Equal(string.Empty, _writer.ToString());
+
+            consoleWriter.StartProcessingBuffer();
+            await consoleWriter.CompleteAsync();
+
+            Assert.Equal($"first{Environment.NewLine}second{Environment.NewLine}", _writer.ToString());
+        }
+
+        [Fact]
         public async Task FlushesBufferOnDispose()
         {
             var env = CreateEnvironment();

@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly TimeSpan _consoleBufferTimeout;
         private readonly Action<Exception> _exceptionhandler;
         private readonly int _maxLinesPerWrite;
-        private Task _consoleBufferReadLoop;
+        private Task _consoleBufferReadLoop = Task.CompletedTask;
         private Action<string> _writeEvent;
         private bool _disposed;
 
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         internal void StartProcessingBuffer()
         {
             // intentional no-op if the task is already running
-            if (_consoleBufferReadLoop == null || _consoleBufferReadLoop.IsCompleted)
+            if (_consoleBufferReadLoop.IsCompleted)
             {
                 _consoleBufferReadLoop = ProcessConsoleBufferAsync();
             }
@@ -91,20 +91,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 while (await _consoleBuffer.Reader.WaitToReadAsync())
                 {
-                    if (_consoleBuffer.Reader.TryRead(out string line1))
+                    if (_consoleBuffer.Reader.TryRead(out var line1))
                     {
                         _writeResetEvent.Set();
 
                         // Can we synchronously read multiple lines?
                         // If yes, use the string builder to batch them together into a single write
                         // If no, just write the single line without using the builder;
-                        if (_consoleBuffer.Reader.TryRead(out string line2))
+                        if (_consoleBuffer.Reader.TryRead(out var line2))
                         {
                             builder.AppendLine(line1);
                             builder.AppendLine(line2);
                             int lines = 2;
 
-                            while (lines < _maxLinesPerWrite && _consoleBuffer.Reader.TryRead(out string nextLine))
+                            while (lines < _maxLinesPerWrite && _consoleBuffer.Reader.TryRead(out var nextLine))
                             {
                                 builder.AppendLine(nextLine);
                                 lines++;
