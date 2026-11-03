@@ -18,6 +18,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// unsupported media types return HTTP 415. Binding errors do not guarantee our validation envelope.
 /// Other binding failures follow framework behavior. Successfully bound requests use our
 /// field-validation envelope and lifecycle error codes.
+/// A valid assignment is accepted before the customer worker establishes StartStream; worker
+/// readiness remains a separate lifecycle state.
 /// </remarks>
 internal static class ManagementApiEndpoints
 {

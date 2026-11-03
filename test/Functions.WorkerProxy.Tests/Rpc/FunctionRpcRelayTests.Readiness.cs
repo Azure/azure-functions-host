@@ -41,28 +41,27 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(0, manager.State.Revision);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), CreateMessageWriter(workerOutbound.Writer), timeout.Token);
         WorkerPodState attached = manager.State;
-        Assert.Equal(1, attached.Revision);
+        Assert.Equal(2, attached.Revision);
         Assert.True(attached.IsWorkerAttached);
         Assert.False(attached.IsWorkerReady);
         Assert.Null(attached.WorkerId);
+        Assert.Equal(WorkerAssignmentState.Assigned, attached.AssignmentState);
 
         Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(attached.Revision, timeout.Token);
         StreamingMessage start = CreateStartStream();
         await workerInbound.Writer.WriteAsync(start, timeout.Token);
         WorkerPodState ready = Assert.IsType<WorkerPodState>((await poll).State);
-        Assert.Equal(2, ready.Revision);
+        Assert.Equal(3, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
-        Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
-
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Ready, ready.AssignmentState);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, ready.PodStatus);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,
@@ -216,10 +215,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(4, manager.State.Revision);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_ReplacementReadinessRespectsTerminalAssignment(bool assigned)
+    [Fact]
+    public async Task Relay_UnassignedSessionCanBeReplacedAfterTermination()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -231,11 +228,6 @@ public partial class FunctionRpcRelayTests
         await ExchangeAsync(runtime, worker, "original", timeout.Token);
         Assert.True(manager.State.IsWorkerReady);
 
-        if (assigned)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-
         await worker.CompleteRequestAsync(timeout.Token);
         await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
         await WaitForReleaseAsync(relay, timeout.Token);
@@ -246,18 +238,10 @@ public partial class FunctionRpcRelayTests
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
 
-        if (assigned)
-        {
-            Assert.Same(terminated, manager.State);
-            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
-        }
-        else
-        {
-            Assert.True(manager.State.IsWorkerReady);
-            Assert.True(manager.State.SessionId > terminated.SessionId);
-            Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
+        Assert.True(manager.State.IsWorkerReady);
+        Assert.True(manager.State.SessionId > terminated.SessionId);
+        Assert.Equal(terminated.Revision + 2, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
     }
 
     [Fact]

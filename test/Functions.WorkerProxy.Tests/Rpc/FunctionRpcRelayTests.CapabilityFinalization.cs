@@ -373,7 +373,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_ReplacementSessionAfterFailedAssignment_DoesNotReuseFunctionGroup()
+    public async Task Relay_ReplacementSessionAfterFailedAssignment_CannotReuseAssignmentCapabilities()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -382,17 +382,20 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
         Assert.Equal(failedAssignment.FunctionGroupName, manager.State.FunctionGroupName);
         Assert.Equal(failedAssignment.MaxHttpConcurrency, manager.State.MaxHttpConcurrency);
+        WorkerPodState failed = manager.State;
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "replacement", timeout.Token);
-        StreamingMessage response = CreateInitResponse("init", null);
-        StreamingMessage expected = response.Clone();
-        response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "http";
-        response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = "999";
 
-        await worker.WriteAsync(response, timeout.Token);
+        Grpc.Core.RpcException runtimeFailure = await runtime.WriteAndReadRejectionAsync(
+            new StreamingMessage { WorkerInitRequest = new() }, timeout.Token);
+        Grpc.Core.RpcException workerFailure = await worker.WriteAndReadRejectionAsync(
+            CreateStartStream("replacement"), timeout.Token);
 
-        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, runtimeFailure.StatusCode);
+        Assert.Equal(StatusCode.Unavailable, workerFailure.StatusCode);
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(failedAssignment));
+        Assert.False(manager.State.IsWorkerReady);
+        Assert.Same(failed, manager.State);
     }
 
     private static async Task<WorkerAssignment> FailAssignedSessionAsync(WorkerProxyWebApplicationFactory factory,

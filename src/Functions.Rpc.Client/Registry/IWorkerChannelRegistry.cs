@@ -50,6 +50,28 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Links a Worker while conveying the platform's serialized Runtime identity.
+    /// </summary>
+    /// <param name="workerId">The worker identifier.</param>
+    /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
+    /// <param name="runtimeIdentity">Optional serialized Runtime identity, included in exact retry matching.</param>
+    /// <param name="cancellationToken">Cancels the link attempt or retry wait.</param>
+    /// <returns>The initialized and registered channel and whether the link is new.</returns>
+    Task<WorkerLinkResult> LinkAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        string runtimeIdentity,
+        CancellationToken cancellationToken = default)
+    {
+        if (runtimeIdentity is null)
+        {
+            return LinkAsync(workerId, grpcEndpoint, cancellationToken);
+        }
+
+        throw new NotSupportedException("This registry does not support identified Runtime links.");
+    }
+
+    /// <summary>
     /// Removes and disposes a linked worker when present.
     /// </summary>
     /// <remarks>The accepted worker ID remains terminal and cannot be linked again in this registry.</remarks>
