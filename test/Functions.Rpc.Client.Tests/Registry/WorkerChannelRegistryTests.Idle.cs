@@ -27,6 +27,30 @@ public sealed partial class WorkerChannelRegistryTests
 {
     private static readonly TimeSpan IdleThreshold = TimeSpan.FromMinutes(2);
 
+    [Fact]
+    public async Task IdleRetirement_NegativeThresholdIsLoggedAndSkipped()
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
+        time.Advance(TimeSpan.FromMinutes(3));
+
+        await registry.RetireIdleHttpWorkersAsync(TimeSpan.FromTicks(-1));
+
+        Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
+        Assert.Same(worker.Channel, Assert.Single(await registry.GetReadyChannelsAsync()));
+        Assert.Equal(0, worker.DisposeCount);
+        harness.RegistryLogger.Verify(logger => logger.Log(
+            LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]

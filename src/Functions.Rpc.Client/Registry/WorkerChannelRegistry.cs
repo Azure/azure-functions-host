@@ -350,7 +350,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     /// <inheritdoc />
     public async Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(threshold, TimeSpan.Zero);
+        if (threshold < TimeSpan.Zero)
+        {
+            _logger.LogWarning("Skipping idle HTTP worker retirement because threshold {Threshold} is negative.", threshold);
+            return;
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
         KeyValuePair<string, WorkerSlot>[] slots;
         lock (_stateLock)
@@ -366,8 +371,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             TimeSpan idleDuration;
             lock (_stateLock)
             {
-                if (_disposed || slot.Channel is not { } channel ||
-                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) || slot.SetupException is not null ||
+                if (_disposed ||
+                    slot.Channel is not { } channel ||
+                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
+                    slot.SetupException is not null ||
                     !channel.TryClaimIdleRetirement(threshold, out idleDuration))
                 {
                     continue;
