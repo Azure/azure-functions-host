@@ -11,8 +11,9 @@ namespace Azure.Functions.WorkerProxy.State;
 /// Captures immutable assignment identity, including the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// Environment, app directory and requested version/concurrency metadata participate in retry equality only;
-/// this model does not apply them to the worker. Keep environment values out of published pod snapshots and diagnostic output.
+/// Environment, app directory and requested version metadata participate in retry equality only;
+/// this model does not apply them to the worker. Effective HTTP concurrency also participates in retry identity
+/// and is advertised to the runtime. Keep environment values out of published pod snapshots and diagnostic output.
 /// </remarks>
 internal sealed class WorkerAssignment
 {
@@ -22,6 +23,7 @@ internal sealed class WorkerAssignment
     /// <remarks>
     /// Copies environment entries using ordinal key equality. A directory is required in both modes,
     /// but only SpecializationRequired requires it to be nonblank. No filesystem check is performed.
+    /// An omitted HTTP concurrency is normalized here so retry identity and capability publication use the same effective value.
     /// </remarks>
     public WorkerAssignment(
         WorkerStartupMode startupMode,
@@ -49,6 +51,13 @@ internal sealed class WorkerAssignment
             ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
         }
 
+        if (maxHttpConcurrency is < 0 or > 1000
+            || (maxHttpConcurrency is 0 && string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxHttpConcurrency),
+                "HTTP concurrency must be between 1 and 1000 for HTTP groups, or between 0 and 1000 for other groups.");
+        }
+
         foreach ((string key, string value) in environment)
         {
             ArgumentException.ThrowIfNullOrEmpty(key);
@@ -58,6 +67,7 @@ internal sealed class WorkerAssignment
         StartupMode = startupMode;
         FunctionAppName = functionAppName;
         FunctionGroupName = functionGroupName;
+        MaxHttpConcurrency = maxHttpConcurrency ?? (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) ? 16 : null);
         IsAlwaysReady = isAlwaysReady;
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
@@ -65,7 +75,6 @@ internal sealed class WorkerAssignment
         HttpProxyEndpoint = httpProxyEndpoint;
         ConfigLastModifiedTime = configLastModifiedTime;
         ContentLastModifiedTime = contentLastModifiedTime;
-        MaxHttpConcurrency = maxHttpConcurrency;
     }
 
     /// <summary>
@@ -76,6 +85,11 @@ internal sealed class WorkerAssignment
     public string FunctionAppName { get; }
 
     public string FunctionGroupName { get; }
+
+    /// <summary>
+    /// Gets the assignment's effective HTTP concurrency, with no default for non-HTTP groups.
+    /// </summary>
+    public int? MaxHttpConcurrency { get; }
 
     public bool IsAlwaysReady { get; }
 
@@ -96,11 +110,6 @@ internal sealed class WorkerAssignment
     public long? ContentLastModifiedTime { get; }
 
     /// <summary>
-    /// Gets the requested concurrency metadata, not an applied limit.
-    /// </summary>
-    public int? MaxHttpConcurrency { get; }
-
-    /// <summary>
     /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
@@ -110,12 +119,12 @@ internal sealed class WorkerAssignment
         if (StartupMode != other.StartupMode
             || !string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
+            || MaxHttpConcurrency != other.MaxHttpConcurrency
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
             || !string.Equals(HttpProxyEndpoint?.AbsoluteUri, other.HttpProxyEndpoint?.AbsoluteUri, StringComparison.Ordinal)
             || ConfigLastModifiedTime != other.ConfigLastModifiedTime
             || ContentLastModifiedTime != other.ContentLastModifiedTime
-            || MaxHttpConcurrency != other.MaxHttpConcurrency
             || Environment.Count != other.Environment.Count)
         {
             return false;

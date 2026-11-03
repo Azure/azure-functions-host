@@ -201,11 +201,9 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("configLastModifiedTime", false)]
     [InlineData("contentLastModifiedTime", false)]
-    [InlineData("maxHttpConcurrency", false)]
     [InlineData("configLastModifiedTime", true)]
     [InlineData("contentLastModifiedTime", true)]
-    [InlineData("maxHttpConcurrency", true)]
-    public async Task AssignmentMetadata_UnspecifiedAndExplicitZeroHaveDistinctRetryIdentity(string field, bool supplied)
+    public async Task AssignmentVersions_UnspecifiedAndExplicitZeroHaveDistinctRetryIdentity(string field, bool supplied)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
@@ -249,8 +247,7 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("configLastModifiedTime", "9007199254740993", "9007199254740994")]
     [InlineData("contentLastModifiedTime", "-9223372036854775808", "-9223372036854775807")]
-    [InlineData("maxHttpConcurrency", "-2147483648", "-2147483647")]
-    public async Task AssignmentMetadata_NumericStringsMatchNumbersWithoutLosingSignedPrecision(
+    public async Task AssignmentVersions_NumericStringsMatchNumbersWithoutLosingSignedPrecision(
         string field, string originalValue, string changedValue)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -373,6 +370,17 @@ public class ManagementApiEndpointTests
     [InlineData("functionAppName", "\" \"", "Required")]
     [InlineData("functionGroupName", null, "Required")]
     [InlineData("functionGroupName", "\"\"", "Required")]
+    [InlineData("maxHttpConcurrency", "0", "InvalidValue", "SpecializationRequired", "http")]
+    [InlineData("maxHttpConcurrency", "0", "InvalidValue", "Preconfigured", "HtTp")]
+    [InlineData("maxHttpConcurrency", "-1", "InvalidValue")]
+    [InlineData("maxHttpConcurrency", "1001", "InvalidValue")]
+    [InlineData("maxHttpConcurrency", "null", null)]
+    [InlineData("maxHttpConcurrency", "\"10\"", null)]
+    [InlineData("maxHttpConcurrency", "\"\"", null)]
+    [InlineData("maxHttpConcurrency", "1.5", null)]
+    [InlineData("maxHttpConcurrency", "2147483648", null)]
+    [InlineData("maxHttpConcurrency", "true", null)]
+    [InlineData("maxHttpConcurrency", "{}", null)]
     [InlineData("functionAppDirectory", null, "Required")]
     [InlineData("functionAppDirectory", "null", "Required")]
     [InlineData("functionAppDirectory", "\"\"", "Required")]
@@ -394,10 +402,11 @@ public class ManagementApiEndpointTests
     [InlineData("environment", "{\"SETTING\":null}", "InvalidValue", "Preconfigured")]
     [InlineData("environment", "{\"SETTING\":123}", null, "Preconfigured")]
     public async Task InvalidAssignmentDoesNotClaimIdentity(
-        string field, string? value, string? code, string startupMode = "SpecializationRequired")
+        string field, string? value, string? code, string startupMode = "SpecializationRequired", string functionGroupName = "test-group")
     {
         JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
         body["startupMode"] = startupMode;
+        body["functionGroupName"] = functionGroupName;
         if (value is null)
         {
             body.Remove(field);
@@ -450,6 +459,96 @@ public class ManagementApiEndpointTests
             await AssertValidationAsync(rejected, timeout.Token, (code, field));
         }
 
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("http", null, 16)]
+    [InlineData("hTtP", 10, 10)]
+    [InlineData("http", 1, 1)]
+    [InlineData("http", 1000, 1000)]
+    [InlineData("background", null, null)]
+    [InlineData("background", 0, 0)]
+    public async Task Assignment_NormalizesHttpConcurrencyAndReplaysEffectiveIdentity(string group, int? supplied, int? effective)
+    {
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["functionGroupName"] = group;
+        body.Remove("maxHttpConcurrency");
+        if (supplied is { } concurrency)
+        {
+            body["maxHttpConcurrency"] = concurrency;
+        }
+
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(effective, assigned.MaxHttpConcurrency);
+
+        if (effective is { } value)
+        {
+            body["maxHttpConcurrency"] = value;
+        }
+
+        string acceptedIdentity = body.ToJsonString();
+        using StringContent replayContent = JsonBody(acceptedIdentity);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        body["maxHttpConcurrency"] = effective is 10 ? 11 : 10;
+        using StringContent conflictingContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Same(assigned, manager.State);
+
+        manager.OnSessionTerminated(1);
+        WorkerPodState failed = manager.State;
+        using StringContent terminalReplayContent = JsonBody(acceptedIdentity);
+        using HttpResponseMessage terminalReplay = await client.PutAsync(AssignPath, terminalReplayContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, terminalReplay.StatusCode);
+        using JsonDocument error = JsonDocument.Parse(await terminalReplay.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal("WorkerTerminated", error.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Same(failed, manager.State);
+    }
+
+    [Theory]
+    [InlineData("configLastModifiedTime", "\"1761868802\"")]
+    [InlineData("contentLastModifiedTime", "\"1761868803\"")]
+    [InlineData("httpProxyEndpoint", "\"127.0.0.1:48802\"")]
+    public async Task Assignment_DefaultHttpCapacityPreservesRequestedVersionsAndMappedOriginRetryIdentity(string field, string changedValue)
+    {
+        JsonObject original = JsonNode.Parse(ValidAssignment)!.AsObject();
+        original["functionGroupName"] = "http";
+        original.Remove("maxHttpConcurrency");
+        original["httpProxyEndpoint"] = "127.0.0.1:48801";
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using StringContent initialContent = JsonBody(original.ToJsonString());
+        using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent);
+        Assert.Equal(HttpStatusCode.Created, initial.StatusCode);
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(16, assigned.MaxHttpConcurrency);
+        Assert.Equal(new Uri("https://127.0.0.1:48801/"), assigned.HttpProxyEndpoint);
+
+        original["maxHttpConcurrency"] = 16;
+        original["configLastModifiedTime"] = "1761868800";
+        original["contentLastModifiedTime"] = "1761868801";
+        using StringContent replayContent = JsonBody(original.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent);
+        Assert.Equal(HttpStatusCode.NoContent, replay.StatusCode);
+        Assert.Same(assigned, manager.State);
+        original[field] = JsonNode.Parse(changedValue);
+        using StringContent changedContent = JsonBody(original.ToJsonString());
+        using HttpResponseMessage changed = await client.PutAsync(AssignPath, changedContent);
+        Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
         Assert.Same(assigned, manager.State);
     }
 

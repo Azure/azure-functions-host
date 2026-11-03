@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -12,7 +13,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// <remarks>
 /// Core assignment fields are required. The directory may be empty for Preconfigured but must be nonblank
 /// for SpecializationRequired. Environment values and optional requested metadata are retained privately
-/// for retry comparison; they are not evidence of applied configuration.
+/// for retry comparison; requested versions are not evidence of applied configuration.
+/// <see cref="MaxHttpConcurrency"/> supplies the effective startup capacity for HTTP assignments.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -30,6 +32,20 @@ internal sealed class WorkerAssignRequest
     public string? FunctionAppName { get; init; }
 
     public string? FunctionGroupName { get; init; }
+
+    /// <summary>
+    /// Gets or sets the optional per-worker HTTP concurrency limit, from 1 through 1000 for HTTP groups.
+    /// </summary>
+    /// <remarks>
+    /// Non-HTTP groups also accept zero. An omitted value defaults to 16 for HTTP assignments only. An explicit null is invalid.
+    /// </remarks>
+    [JsonNumberHandling(JsonNumberHandling.Strict)]
+    public int? MaxHttpConcurrency
+    {
+        get;
+        // Unlike init-only properties, source-generated binding calls this setter only when the field is supplied.
+        set => field = value ?? throw new JsonException("maxHttpConcurrency must be an integer when supplied.");
+    }
 
     public bool? IsAlwaysReady { get; init; }
 
@@ -53,10 +69,4 @@ internal sealed class WorkerAssignRequest
     /// </summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public long? ContentLastModifiedTime { get; init; }
-
-    /// <summary>
-    /// Gets the requested HTTP concurrency metadata, or null when unspecified. This does not enforce a limit.
-    /// </summary>
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int? MaxHttpConcurrency { get; init; }
 }
