@@ -29,9 +29,6 @@ internal sealed record SplitWorkerOriginState(
             new(
                 "unknown",
                 state.PodName,
-                Guid.Empty,
-                "unknown",
-                "FunctionsSplitWorkerPod",
                 new("unknown", 0, "unknown")),
             IsDiscoveryPod: false,
             IsAlwaysReady: state.IsAlwaysReady ?? false,
