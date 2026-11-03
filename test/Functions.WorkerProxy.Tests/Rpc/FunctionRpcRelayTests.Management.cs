@@ -242,9 +242,6 @@ public partial class FunctionRpcRelayTests
             wireSelf,
             "resourceNamespace",
             "podName",
-            "podGuid",
-            "legionStampName",
-            "podType",
             "app");
         AssertProperties(
             wireSelf.GetProperty("app"),
@@ -260,9 +257,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(SplitWorkerOriginState.ContainerType, placeholder.FunctionsContainerType);
         Assert.Equal("unknown", placeholder.Self.ResourceNamespace);
         Assert.Equal("test-worker-pod", placeholder.Self.PodName);
-        Assert.Equal(Guid.Empty, placeholder.Self.PodGuid);
-        Assert.Equal("unknown", placeholder.Self.LegionStampName);
-        Assert.Equal("FunctionsSplitWorkerPod", placeholder.Self.PodType);
         Assert.Equal(new SplitFunctionAppIdentity("unknown", 0, "unknown"), placeholder.Self.App);
         Assert.False(placeholder.IsDiscoveryPod);
         Assert.False(placeholder.IsAlwaysReady);
