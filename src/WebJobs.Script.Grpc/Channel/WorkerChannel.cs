@@ -225,15 +225,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             set => _state = value;
         }
 
-        internal virtual void DisposeWorkerResources() { }
-
         /// <summary>
-        /// Gets one finalized worker capability.
+        /// Gets a currently applied worker capability without waiting for initialization.
         /// </summary>
-        /// <param name="capabilityName">The capability name.</param>
-        /// <returns>The capability value, or an empty string when absent.</returns>
-        protected string GetWorkerCapabilityState(string capabilityName)
-            => _workerCapabilities.GetCapabilityState(capabilityName);
+        /// <param name="name">The capability name.</param>
+        /// <returns>The applied capability value, or <see langword="null"/> when absent.</returns>
+        protected string GetCapabilityState(string name) => _workerCapabilities.GetCapabilityState(name);
+
+        internal virtual void DisposeWorkerResources() { }
 
         /// <summary>
         /// Marks the worker channel as initializing.

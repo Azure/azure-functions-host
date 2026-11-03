@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -41,6 +42,76 @@ public sealed partial class WorkerChannelRegistryTests
             admissionClosed.Reason);
         await WaitUntilAsync(() => pending.DisposeCount == 1);
         Assert.Empty(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task RuntimeDrain_EscalationWithdrawsHttpCapacityWhileAcceptedWorkCompletes()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        ChannelControl background = CreateClassifiedWorker("background");
+        ChannelControl firstHttp = new(
+            "http-first", functionGroupName: FunctionGroups.Http, isAlwaysReady: false, maxHttpConcurrency: 7);
+        ChannelControl secondHttp = new(
+            "http-second", functionGroupName: "HTTP", isAlwaysReady: true, maxHttpConcurrency: 10);
+        ChannelControl[] httpWorkers = [firstHttp, secondHttp];
+        await LinkAndReadyWorkersAsync(harness, registry, function, background, firstHttp, secondHttp);
+        using RuntimeStateManager stateManager = CreateRuntimeStateManager(registry);
+        await stateManager.StartAsync(CancellationToken.None);
+        await WaitForRuntimeStateAsync(stateManager, state => state.WorkerCount == 3 && state.HttpCapacity == 17);
+        ScriptInvocationContext[] invocations =
+        [
+            CreateScaleInInvocation(function),
+            CreateScaleInInvocation(function),
+        ];
+        StreamingMessage[] requests = new StreamingMessage[httpWorkers.Length];
+        for (int index = 0; index < httpWorkers.Length; index++)
+        {
+            Assert.True(httpWorkers[index].Channel.TryDispatchInvocation(invocations[index]));
+            requests[index] = await httpWorkers[index].ReadRequestAsync(
+                StreamingMessage.ContentOneofCase.InvocationRequest);
+        }
+
+        IByocRuntimeDrainManager manager = new ByocRuntimeDrainManager(
+            registry,
+            TimeProvider.System,
+            NullLogger<ByocRuntimeDrainManager>.Instance);
+        ByocRuntimeDrainReceipt phased = manager.Accept(ByocDrainModel.Phased);
+        await background.DisposeStarted.WaitAsync(TestTimeout);
+        await WaitForRuntimeStateAsync(stateManager, state => state.WorkerCount == 2 && state.HttpCapacity == 17);
+        Assert.All(httpWorkers, worker => Assert.True(worker.Channel.IsReadyForInvocations));
+        Task changed = registry.GetChangeTask();
+
+        ByocRuntimeDrainReceipt immediate = manager.Accept(ByocDrainModel.Immediate);
+
+        Assert.Equal(phased.AcceptedAtUtc, immediate.AcceptedAtUtc);
+        await changed.WaitAsync(TestTimeout);
+        await WaitForRuntimeStateAsync(stateManager, state => state.WorkerCount == 2 && state.HttpCapacity == 0);
+        Assert.All(httpWorkers, worker =>
+        {
+            Assert.False(worker.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
+            Assert.False(worker.DisposeStarted.IsCompleted);
+        });
+        Assert.All(invocations, invocation => Assert.False(invocation.ResultSource.Task.IsCompleted));
+        for (int index = 0; index < httpWorkers.Length; index++)
+        {
+            ChannelControl worker = httpWorkers[index];
+            await worker.Transport.SendResponseAsync(new()
+            {
+                InvocationResponse = new()
+                {
+                    InvocationId = requests[index].InvocationRequest.InvocationId,
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                },
+            });
+            await invocations[index].ResultSource.Task.WaitAsync(TestTimeout);
+            await worker.DisposeStarted.WaitAsync(TestTimeout);
+            await WaitUntilAsync(() => worker.DisposeCount == 1);
+        }
+
+        await WaitForRuntimeStateAsync(stateManager, state => state.WorkerCount == 0 && state.HttpCapacity == 0);
+        await stateManager.StopAsync(CancellationToken.None);
     }
 
     [Theory]

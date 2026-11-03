@@ -45,6 +45,8 @@ Runtime drain reuses the existing P1 worker retirement path:
 2. Work accepted before that fence is allowed to reach a terminal result.
 3. `WorkerChannelRegistry` uses its existing unlink path to close and dispose the Runtime-facing connection.
 
+HTTP workers retain their startup group and validated concurrency capabilities. Selecting an HTTP worker for drain immediately withdraws its advertised Runtime capacity, even while accepted work is still completing on the linked channel. P1 non-HTTP scale-in continues to select only its exact function group and always-ready class.
+
 P1 scale-in and whole-Runtime drain share one invocation-drain task and one unlink owner per Worker. If P1 selected a Worker first, Runtime drain adds only the Runtime deadline to that existing operation.
 
 Each Worker has a fixed 60-minute deadline measured from its first Runtime drain selection. If accepted work has not completed by then, the Runtime fails that work and continues through the same unlink path.

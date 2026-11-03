@@ -66,6 +66,8 @@ public sealed partial class WorkerChannelRegistryTests
         ChannelControl secondMatch = CreateClassifiedWorker("second-match");
         ChannelControl wrongCaseGroup = CreateClassifiedWorker("wrong-group", functionGroup: "Durable");
         ChannelControl wrongClass = CreateClassifiedWorker("wrong-class", isAlwaysReady: true);
+        ChannelControl httpWorker = new(
+            "http-worker", functionGroupName: FunctionGroups.Http, isAlwaysReady: false, maxHttpConcurrency: 10);
         await LinkAndReadyWorkersAsync(
             harness,
             registry,
@@ -73,7 +75,8 @@ public sealed partial class WorkerChannelRegistryTests
             firstMatch,
             secondMatch,
             wrongCaseGroup,
-            wrongClass);
+            wrongClass,
+            httpWorker);
 
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
         using HttpResponseMessage response = await host.PostAsync(
@@ -84,6 +87,9 @@ public sealed partial class WorkerChannelRegistryTests
         await secondMatch.Transport.DisposeStarted.WaitAsync(TestTimeout);
         Assert.Equal(0, wrongCaseGroup.DisposeCount);
         Assert.Equal(0, wrongClass.DisposeCount);
+        Assert.Equal(0, httpWorker.DisposeCount);
+        Assert.True(httpWorker.Channel.IsReadyForInvocations);
+        Assert.Equal(10, httpWorker.Channel.MaxHttpConcurrency);
     }
 
     [Theory]
