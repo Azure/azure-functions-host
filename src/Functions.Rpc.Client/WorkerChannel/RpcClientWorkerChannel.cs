@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -42,9 +41,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _activityLogger;
     private readonly DuplexChannel<StreamingMessage> _transport;
+    private readonly Dictionary<string, int> _pendingFunctionLoads = new(StringComparer.Ordinal);
     private LifecycleState _lifecycleState;
     private TimeProvider _activityTimeProvider = TimeProvider.System;
-    private HashSet<string> _pendingFunctionLoads = [];
     private long? _idleSince;
     private bool _retiring;
 
@@ -131,7 +130,14 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         lock (_lifecycleLock)
         {
             _activityTimeProvider = timeProvider;
-            _pendingFunctionLoads = functions.Select(function => function.GetFunctionId()).ToHashSet(StringComparer.Ordinal);
+            // Reactivation can overlap earlier loads; each response completes only one outstanding request.
+            foreach (FunctionMetadata function in functions)
+            {
+                string functionId = function.GetFunctionId();
+                _pendingFunctionLoads.TryGetValue(functionId, out int pendingCount);
+                _pendingFunctionLoads[functionId] = checked(pendingCount + 1);
+            }
+
             _idleSince = null;
             RecordReadyIdleTime();
         }
@@ -233,9 +239,18 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     {
         lock (_lifecycleLock)
         {
-            if (response.Result.Status is StatusResult.Types.Status.Success)
+            if (response.Result.Status is StatusResult.Types.Status.Success &&
+                _pendingFunctionLoads.TryGetValue(response.FunctionId, out int pendingCount))
             {
-                _pendingFunctionLoads.Remove(response.FunctionId);
+                if (pendingCount == 1)
+                {
+                    _pendingFunctionLoads.Remove(response.FunctionId);
+                }
+                else
+                {
+                    _pendingFunctionLoads[response.FunctionId] = pendingCount - 1;
+                }
+
                 RecordReadyIdleTime();
             }
         }

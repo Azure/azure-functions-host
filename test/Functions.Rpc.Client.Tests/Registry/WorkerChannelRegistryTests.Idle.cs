@@ -262,6 +262,42 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, worker.DisposeCount);
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task IdleRetirement_OverlappingActivationsWaitForAllOutstandingLoads(int activationCount)
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, worker.Id);
+        FunctionMetadata function = CreateFunction("Function");
+        for (int i = 0; i < activationCount; i++)
+        {
+            await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        }
+
+        for (int i = 0; i < activationCount - 1; i++)
+        {
+            CompleteFunctionLoad(worker, function);
+            time.Advance(TimeSpan.FromMinutes(3));
+            await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+            Assert.Equal(0, worker.DisposeCount);
+            Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
+        }
+
+        CompleteFunctionLoad(worker, function);
+        time.Advance(IdleThreshold);
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(0, worker.DisposeCount);
+        time.Advance(TimeSpan.FromTicks(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
     [Fact]
     public async Task IdleRetirement_QueuedAndOverlappingRequests_ResetContinuousIdleTime()
     {
