@@ -65,7 +65,8 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
             if (_useTestAuthentication)
             {
                 Mock<IRuntimeAuthenticationKeyProvider> keys = new();
-                keys.Setup(provider => provider.GetKeys()).Returns(() => RuntimeAuthenticationTestData.Keys);
+                keys.Setup(provider => provider.GetWorkerKeys()).Returns(() => RuntimeAuthenticationTestData.WorkerKeys);
+                keys.Setup(provider => provider.GetAppKeys()).Returns(() => RuntimeAuthenticationTestData.AppKeys);
                 services.Replace(ServiceDescriptor.Singleton(keys.Object));
             }
 
@@ -156,7 +157,9 @@ internal static class RuntimeAuthenticationTestData
     public static readonly string EncodedWorkerKey = ManagementTokenTestData.WorkerKey;
     public static readonly string EncodedAppKey = Convert.ToHexString(AppKey);
 
-    public static RuntimeAuthenticationKeys Keys => new(WorkerId, AppName, WorkerKey, AppKey);
+    public static RuntimeWorkerAuthenticationKeys WorkerKeys => new(WorkerId, WorkerKey);
+
+    public static RuntimeAppAuthenticationKeys AppKeys => new(WorkerId, AppName, AppKey);
 
     public static string CreateCallerToken(DateTimeOffset? now = null)
         => RuntimeWorkerAuthentication.CreateToken(WorkerKey, RuntimeWorkerAuthentication.WorkerAudience(WorkerId),

@@ -121,28 +121,14 @@ internal static class RuntimeWorkerAuthentication
             return Reject(AuthenticationFailureReason.MissingIdentity, out reason);
         }
 
-        if (!TryReadSignedParts(token, key, out string[] parts, out reason))
+        if (!TryReadSignedToken(token, key, out JsonDocument? payload, out reason))
         {
             return false;
         }
 
-        try
+        using (payload)
         {
-            JsonDocumentOptions options = new() { MaxDepth = 8 };
-            using JsonDocument header = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[0]), options);
-            using JsonDocument payload = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[1]), options);
             JsonElement claims = payload.RootElement;
-            if (!HasUniqueProperties(header.RootElement) || !HasUniqueProperties(claims)
-                || !HasString(header.RootElement, "typ", "JWT")
-                || header.RootElement.TryGetProperty("crit", out _)
-                || header.RootElement.TryGetProperty("b64", out _))
-            {
-                return Reject(AuthenticationFailureReason.MalformedToken, out reason);
-            }
-            if (!HasString(header.RootElement, "alg", "HS256"))
-            {
-                return Reject(AuthenticationFailureReason.Algorithm, out reason);
-            }
             if (!HasString(claims, "iss", ManagementIssuer, StringComparison.OrdinalIgnoreCase))
             {
                 return Reject(AuthenticationFailureReason.Issuer, out reason);
@@ -173,15 +159,11 @@ internal static class RuntimeWorkerAuthentication
 
             return true;
         }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return Reject(AuthenticationFailureReason.MalformedToken, out reason);
-        }
     }
 
-    public static bool TryDecodeWorkerKey(string? value, out byte[] key) => TryDecodeKey(value, allowHex: true, out key);
+    public static bool TryDecodeWorkerKey(string? value, out byte[] key) => TryDecodeKey(value, out key);
 
-    public static bool TryDecodeAppKey(string? value, out byte[] key) => TryDecodeKey(value, allowHex: true, out key);
+    public static bool TryDecodeAppKey(string? value, out byte[] key) => TryDecodeKey(value, out key);
 
     public static IReadOnlyDictionary<string, string> CreateHeaders(
         ReadOnlySpan<byte> workerKey, string workerId, DateTimeOffset now)
@@ -193,11 +175,6 @@ internal static class RuntimeWorkerAuthentication
             [WorkerTokenHeader] = CreateToken(workerKey, WorkerAudience(workerId), WorkerPurpose, now)
         };
     }
-
-    public static bool ValidateHeaders(
-        Func<string, string?> readToken, ReadOnlySpan<byte> workerKey, string workerId, DateTimeOffset now)
-        => !string.IsNullOrWhiteSpace(workerId)
-            && ValidateToken(readToken(WorkerTokenHeader), workerKey, WorkerAudience(workerId), WorkerPurpose, now);
 
     public static string CreateAppProof(ReadOnlySpan<byte> appKey, string appName, string workerId, DateTimeOffset now)
     {
@@ -271,28 +248,14 @@ internal static class RuntimeWorkerAuthentication
         string? token, ReadOnlySpan<byte> key, string audience, string purpose, DateTimeOffset now,
         out AuthenticationFailureReason reason, string? workerId = null)
     {
-        if (!TryReadSignedParts(token, key, out string[] parts, out reason))
+        if (!TryReadSignedToken(token, key, out JsonDocument? payload, out reason))
         {
             return false;
         }
 
-        try
+        using (payload)
         {
-            JsonDocumentOptions options = new() { MaxDepth = 8 };
-            using JsonDocument header = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[0]), options);
-            using JsonDocument payload = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[1]), options);
             JsonElement claims = payload.RootElement;
-            if (!HasUniqueProperties(header.RootElement) || !HasUniqueProperties(claims)
-                || !HasString(header.RootElement, "typ", "JWT")
-                || header.RootElement.TryGetProperty("crit", out _)
-                || header.RootElement.TryGetProperty("b64", out _))
-            {
-                return Reject(AuthenticationFailureReason.MalformedToken, out reason);
-            }
-            if (!HasString(header.RootElement, "alg", "HS256"))
-            {
-                return Reject(AuthenticationFailureReason.Algorithm, out reason);
-            }
             if (!HasString(claims, "aud", audience))
             {
                 return Reject(AuthenticationFailureReason.Audience, out reason);
@@ -326,16 +289,12 @@ internal static class RuntimeWorkerAuthentication
 
             return true;
         }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return Reject(AuthenticationFailureReason.MalformedToken, out reason);
-        }
     }
 
-    private static bool TryReadSignedParts(
-        string? token, ReadOnlySpan<byte> key, out string[] parts, out AuthenticationFailureReason reason)
+    private static bool TryReadSignedToken(
+        string? token, ReadOnlySpan<byte> key, [NotNullWhen(true)] out JsonDocument? payload, out AuthenticationFailureReason reason)
     {
-        parts = [];
+        payload = null;
         if (key.Length < 32)
         {
             return Reject(AuthenticationFailureReason.InvalidKey, out reason);
@@ -348,11 +307,12 @@ internal static class RuntimeWorkerAuthentication
         {
             return Reject(AuthenticationFailureReason.MalformedToken, out reason);
         }
-        parts = token.Split('.');
+        string[] parts = token.Split('.');
         if (parts.Length != 3)
         {
             return Reject(AuthenticationFailureReason.MalformedToken, out reason);
         }
+        JsonDocument? parsedPayload = null;
         try
         {
             byte[] signature = Base64Url.DecodeFromChars(parts[2]);
@@ -361,15 +321,36 @@ internal static class RuntimeWorkerAuthentication
             {
                 return Reject(AuthenticationFailureReason.Signature, out reason);
             }
+
+            JsonDocumentOptions options = new() { MaxDepth = 8 };
+            using JsonDocument header = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[0]), options);
+            parsedPayload = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[1]), options);
+            if (!HasUniqueProperties(header.RootElement) || !HasUniqueProperties(parsedPayload.RootElement)
+                || !HasString(header.RootElement, "typ", "JWT")
+                || header.RootElement.TryGetProperty("crit", out _)
+                || header.RootElement.TryGetProperty("b64", out _))
+            {
+                return Reject(AuthenticationFailureReason.MalformedToken, out reason);
+            }
+            if (!HasString(header.RootElement, "alg", "HS256"))
+            {
+                return Reject(AuthenticationFailureReason.Algorithm, out reason);
+            }
+
+            payload = parsedPayload;
+            parsedPayload = null;
+            reason = AuthenticationFailureReason.None;
+
+            return true;
         }
-        catch (FormatException)
+        catch (Exception exception) when (exception is FormatException or JsonException)
         {
             return Reject(AuthenticationFailureReason.MalformedToken, out reason);
         }
-
-        reason = AuthenticationFailureReason.None;
-
-        return true;
+        finally
+        {
+            parsedPayload?.Dispose();
+        }
     }
 
     private static bool Reject(AuthenticationFailureReason failure, out AuthenticationFailureReason reason)
@@ -379,7 +360,7 @@ internal static class RuntimeWorkerAuthentication
         return false;
     }
 
-    private static bool TryDecodeKey(string? value, bool allowHex, out byte[] key)
+    private static bool TryDecodeKey(string? value, out byte[] key)
     {
         key = [];
         if (string.IsNullOrWhiteSpace(value) || value.Length > MaximumTokenLength)
@@ -390,7 +371,7 @@ internal static class RuntimeWorkerAuthentication
         try
         {
             // Match the platform's website-key convention: 64 characters denotes a 256-bit hex key.
-            byte[] decoded = allowHex && value.Length == 64 ? Convert.FromHexString(value) : Convert.FromBase64String(value);
+            byte[] decoded = value.Length == 64 ? Convert.FromHexString(value) : Convert.FromBase64String(value);
             if (decoded.Length < 32)
             {
                 return false;

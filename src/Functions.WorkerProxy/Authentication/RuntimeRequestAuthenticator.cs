@@ -16,7 +16,7 @@ internal sealed partial class RuntimeRequestAuthenticator(
 {
     public bool TryAuthenticate(HttpContext context)
     {
-        RuntimeAuthenticationKeys? keys = keyProvider.GetKeys();
+        RuntimeWorkerAuthenticationKeys? keys = keyProvider.GetWorkerKeys();
         if (!context.Request.IsHttps || keys is null)
         {
             Log.AuthenticationRejected(logger, keys is null ? AuthenticationFailureReason.AssignmentUnavailable : AuthenticationFailureReason.Transport);
@@ -50,7 +50,7 @@ internal sealed partial class RuntimeRequestAuthenticator(
 
     public string CreateAppProof()
     {
-        RuntimeAuthenticationKeys? keys = keyProvider.GetKeys();
+        RuntimeAppAuthenticationKeys? keys = keyProvider.GetAppKeys();
         if (keys is null || keys.AppKey.Length < 32)
         {
             Log.AppProofUnavailable(logger, keys is null ? AuthenticationFailureReason.AssignmentUnavailable : AuthenticationFailureReason.InvalidKey);

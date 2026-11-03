@@ -603,9 +603,10 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
             IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
-            CallerAuthenticated = ProxyAuthentication.ValidateHeaders(
-                name => context.RequestHeaders.GetValue(name), Convert.FromBase64String(ManagementTokenTestData.WorkerKey),
-                "test-worker-pod", DateTimeOffset.UtcNow);
+            CallerAuthenticated = ProxyAuthentication.ValidateToken(
+                context.RequestHeaders.GetValue(ProxyAuthentication.WorkerTokenHeader),
+                Convert.FromBase64String(ManagementTokenTestData.WorkerKey),
+                ProxyAuthentication.WorkerAudience("test-worker-pod"), ProxyAuthentication.WorkerPurpose, DateTimeOffset.UtcNow);
             if (!CallerAuthenticated)
             {
                 throw new Grpc.Core.RpcException(new Status(StatusCode.Unauthenticated, "A worker caller token is required."));

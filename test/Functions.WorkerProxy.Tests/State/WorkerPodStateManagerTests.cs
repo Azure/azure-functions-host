@@ -30,7 +30,49 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
         Assert.Null(state.IsAlwaysReady);
+        Assert.False(state.HasAuthenticationConfigurationError);
+        Assert.False(state.IsUnhealthy);
         Assert.Same(state, manager.State);
+    }
+
+    [Fact]
+    public async Task AuthenticationConfigurationHealth_PublishesChangesWithoutFailingOrReplacingAssignment()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodState initial = manager.State;
+        manager.SetAuthenticationConfigurationError(true);
+        WorkerPodState unavailable = manager.State;
+        Assert.True(unavailable.IsUnhealthy);
+        Assert.False(initial.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Unassigned, unavailable.AssignmentState);
+        Assert.Equal(1, unavailable.Revision);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        WorkerPodState assigned = manager.State;
+        Assert.True(assigned.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
+        Assert.False(assigned.IsWorkerAttached);
+        manager.SetAuthenticationConfigurationError(true);
+        Assert.Same(assigned, manager.State);
+        Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(assigned.Revision);
+
+        manager.SetAuthenticationConfigurationError(false);
+        WorkerPodState recovered = Assert.IsType<WorkerPodState>((await poll.WaitAsync(TestTimeout)).State);
+
+        Assert.False(recovered.IsUnhealthy);
+        Assert.Equal(assigned.Revision + 1, recovered.Revision);
+        Assert.Equal(assigned.FunctionAppName, recovered.FunctionAppName);
+        Assert.Equal(assigned.FunctionGroupName, recovered.FunctionGroupName);
+        Assert.Equal(assigned.AssignmentState, recovered.AssignmentState);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
+        manager.OnWorkerAttached(1);
+        manager.OnSessionTerminated(1);
+        manager.SetAuthenticationConfigurationError(true);
+        manager.SetAuthenticationConfigurationError(false);
+        Assert.False(manager.State.HasAuthenticationConfigurationError);
+        Assert.True(manager.State.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
     }
 
     [Theory]

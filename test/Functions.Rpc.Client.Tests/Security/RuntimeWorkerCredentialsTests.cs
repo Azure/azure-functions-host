@@ -40,8 +40,10 @@ public class RuntimeWorkerCredentialsTests
         IReadOnlyDictionary<string, string> headers = credentials.CreateHeaders();
         Assert.Equal(["x-ms-functions-worker-token"], headers.Keys);
         byte[] workerKey = Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey);
-        Assert.True(RuntimeWorkerAuthentication.ValidateHeaders(name => headers[name], workerKey, "worker", DateTimeOffset.UtcNow));
-        Assert.False(RuntimeWorkerAuthentication.ValidateHeaders(_ => null, workerKey, "worker", DateTimeOffset.UtcNow));
+        Assert.True(RuntimeWorkerAuthentication.ValidateToken(headers[RuntimeWorkerAuthentication.WorkerTokenHeader], workerKey,
+            RuntimeWorkerAuthentication.WorkerAudience("worker"), RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
+        Assert.False(RuntimeWorkerAuthentication.ValidateToken(null, workerKey,
+            RuntimeWorkerAuthentication.WorkerAudience("worker"), RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
         string proof = RuntimeWorkerTestData.CreateAppProof("worker");
         Dictionary<string, string> capabilities = new();
         RuntimeWorkerAuthentication.SetAppProof(capabilities, proof);

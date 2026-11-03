@@ -49,8 +49,9 @@ public sealed partial class WorkerChannelRegistryTests
 
         IReadOnlyDictionary<string, string> headers = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(
             Assert.Single(harness.DuplexFactory.Invocations).Arguments[1]);
-        Assert.True(RuntimeWorkerAuthentication.ValidateHeaders(name => headers[name],
-            Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey), "worker", DateTimeOffset.UtcNow));
+        Assert.True(RuntimeWorkerAuthentication.ValidateToken(headers[RuntimeWorkerAuthentication.WorkerTokenHeader],
+            Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey), RuntimeWorkerAuthentication.WorkerAudience("worker"),
+            RuntimeWorkerAuthentication.WorkerPurpose, DateTimeOffset.UtcNow));
         harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport, It.IsAny<RuntimeWorkerCredentials>()), Times.Once);
     }
 

@@ -670,7 +670,7 @@ public class ManagementApiHandlersTests
         WorkerLinkState link = Assert.IsType<WorkerLinkState>(response.Link);
         Assert.Equal("Unlinked", link.State);
         Assert.Null(link.Runtime);
-        Assert.Equal(expected.AssignmentState is WorkerAssignmentState.Failed, response.IsUnhealthy);
+        Assert.Equal(expected.IsUnhealthy, response.IsUnhealthy);
         return response;
     }
 

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.Tests;
@@ -45,12 +46,26 @@ public class AuthenticationDiagnosticsTests
         if (string.Equals(setting, RuntimeWorkerAuthentication.AppKeySetting, StringComparison.Ordinal))
         {
             using HttpClient client = factory.CreateWorkerProxyClient();
+            using HttpResponseMessage initial = await client.PostAsync("/admin/infra/instanceState", content: null);
+            Assert.Equal(HttpStatusCode.NoContent, initial.StatusCode);
             using StringContent assignment = new(
                 """{"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,"environment":{},"functionAppDirectory":""}""",
                 Encoding.UTF8, "application/json");
             using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", assignment);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            Assert.False(factory.Services.GetRequiredService<WorkerPodStateManager>().State.IsWorkerAttached);
+            WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+            Assert.False(manager.State.IsWorkerAttached);
+            Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+            Assert.True(manager.State.HasAuthenticationConfigurationError);
+            using HttpResponseMessage stateResponse = await client.PostAsync("/admin/infra/instanceState", content: null);
+            Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+            using JsonDocument state = JsonDocument.Parse(await stateResponse.Content.ReadAsStringAsync());
+            Assert.True(state.RootElement.GetProperty("isUnhealthy").GetBoolean());
+            Assert.Equal("Starting", state.RootElement.GetProperty("status").GetString());
+            Assert.Equal("Unlinked", state.RootElement.GetProperty("link").GetProperty("state").GetString());
+            Assert.False(state.RootElement.TryGetProperty("self", out _));
+            Assert.False(state.RootElement.TryGetProperty("configLastModifiedTime", out _));
+            Assert.False(state.RootElement.TryGetProperty("contentLastModifiedTime", out _));
         }
     }
 

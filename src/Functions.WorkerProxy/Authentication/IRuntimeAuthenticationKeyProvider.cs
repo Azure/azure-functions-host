@@ -15,17 +15,23 @@ namespace Azure.Functions.WorkerProxy.Authentication;
 /// </summary>
 internal interface IRuntimeAuthenticationKeyProvider
 {
-    RuntimeAuthenticationKeys? GetKeys();
+    RuntimeWorkerAuthenticationKeys? GetWorkerKeys();
+
+    RuntimeAppAuthenticationKeys? GetAppKeys();
 }
 
-internal sealed class RuntimeAuthenticationKeys(
-    string workerId, string appName, ReadOnlyMemory<byte> workerKey, ReadOnlyMemory<byte> appKey)
+internal sealed class RuntimeWorkerAuthenticationKeys(string workerId, ReadOnlyMemory<byte> workerKey)
+{
+    public string WorkerId { get; } = workerId;
+
+    public ReadOnlyMemory<byte> WorkerKey { get; } = workerKey;
+}
+
+internal sealed class RuntimeAppAuthenticationKeys(string workerId, string appName, ReadOnlyMemory<byte> appKey)
 {
     public string WorkerId { get; } = workerId;
 
     public string AppName { get; } = appName;
-
-    public ReadOnlyMemory<byte> WorkerKey { get; } = workerKey;
 
     public ReadOnlyMemory<byte> AppKey { get; } = appKey;
 }
@@ -45,14 +51,33 @@ internal sealed partial class RuntimeAuthenticationKeyProvider : IRuntimeAuthent
         _configuration = configuration;
         _container = options.Get(ContainerManagementAuthenticationHandler.SchemeName);
         string? encodedAppKey = configuration[RuntimeWorkerAuthentication.AppKeySetting];
-        if (!RuntimeWorkerAuthentication.TryDecodeAppKey(encodedAppKey, out _))
+        bool hasAppKey = RuntimeWorkerAuthentication.TryDecodeAppKey(encodedAppKey, out _);
+        _manager.SetAuthenticationConfigurationError(!hasAppKey);
+        if (!hasAppKey)
         {
             Log.KeyUnavailable(logger, RuntimeWorkerAuthentication.AppKeySetting,
                 string.IsNullOrWhiteSpace(encodedAppKey) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey);
         }
     }
 
-    public RuntimeAuthenticationKeys? GetKeys()
+    public RuntimeWorkerAuthenticationKeys? GetWorkerKeys()
+        => GetAssignedState() is null ? null : new(_container.PodName, _container.Key);
+
+    public RuntimeAppAuthenticationKeys? GetAppKeys()
+    {
+        if (GetAssignedState() is not { FunctionAppName: string appName })
+        {
+            return null;
+        }
+
+        bool hasAppKey = RuntimeWorkerAuthentication.TryDecodeAppKey(
+            _configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey);
+        _manager.SetAuthenticationConfigurationError(!hasAppKey);
+
+        return new(_container.PodName, appName, appKey);
+    }
+
+    private WorkerPodState? GetAssignedState()
     {
         WorkerPodState state = _manager.State;
         if (_container.Failure is not AuthenticationFailureReason.None || state.AssignmentState is not WorkerAssignmentState.Ready
@@ -61,9 +86,7 @@ internal sealed partial class RuntimeAuthenticationKeyProvider : IRuntimeAuthent
             return null;
         }
 
-        RuntimeWorkerAuthentication.TryDecodeAppKey(_configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey);
-
-        return new(_container.PodName, state.FunctionAppName, _container.Key, appKey);
+        return state;
     }
 
     private static partial class Log
