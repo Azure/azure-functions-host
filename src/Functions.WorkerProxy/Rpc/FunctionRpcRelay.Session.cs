@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Channels;
@@ -32,6 +33,7 @@ internal sealed partial class FunctionRpcRelay
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private const string IsAlwaysReadyCapability = "IsAlwaysReady";
+        private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
@@ -338,7 +340,7 @@ internal sealed partial class FunctionRpcRelay
             if (capabilities is null)
             {
                 Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
-                ApplyWorkerClassificationCapabilities(finalized.WorkerInitResponse.Capabilities);
+                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -361,10 +363,19 @@ internal sealed partial class FunctionRpcRelay
             return finalized;
         }
 
-        private void ApplyWorkerClassificationCapabilities(IDictionary<string, string> capabilities)
+        /// <summary>
+        /// Advertises this session's assigned group, always-ready class, and HTTP concurrency, replacing worker-supplied values.
+        /// </summary>
+        /// <remarks>
+        /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
+        /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
+        /// the capability is omitted so the runtime never receives an unassigned or stale group.
+        /// </remarks>
+        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities)
         {
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(IsAlwaysReadyCapability);
+            capabilities.Remove(MaxHttpConcurrencyCapability);
 
             WorkerPodState state = stateManager.State;
             if (state is
@@ -377,6 +388,11 @@ internal sealed partial class FunctionRpcRelay
             {
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
                 capabilities[IsAlwaysReadyCapability] = isAlwaysReady ? bool.TrueString : bool.FalseString;
+                if (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) && state.MaxHttpConcurrency is { } concurrency)
+                {
+                    capabilities[MaxHttpConcurrencyCapability] = concurrency.ToString(CultureInfo.InvariantCulture);
+                }
+
                 return;
             }
 

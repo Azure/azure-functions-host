@@ -324,8 +324,8 @@ internal sealed class WorkerPodStateManager
             {
                 return false;
             }
+
             _assignment = null;
-            _assignmentClaimed = 0;
             _assignmentClaimed = 0;
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -337,6 +337,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = null,
                 FunctionAppName = null,
                 FunctionGroupName = null,
+                MaxHttpConcurrency = null,
                 IsAlwaysReady = null,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
@@ -389,6 +390,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
+                MaxHttpConcurrency = assignment.MaxHttpConcurrency,
                 IsAlwaysReady = assignment.IsAlwaysReady
             };
 

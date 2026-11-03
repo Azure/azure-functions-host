@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -1204,6 +1205,7 @@ public sealed partial class WorkerChannelRegistryTests
             [CreateFunction("TestFunction")], new ManagedDependencyOptions(), functionTimeout: null);
         Task<WorkerChannel> secondLink = LinkAsync(registry, second.Id);
         await second.SetupEntered.WaitAsync(TestTimeout);
+        Task setupChanged = registry.GetChangeTask();
         Task<ValueTask<IReadOnlyList<WorkerChannel>>> read = null;
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels;
         try
@@ -1229,13 +1231,14 @@ public sealed partial class WorkerChannelRegistryTests
         {
             second.AllowSetup();
             await secondLink.WaitAsync(TestTimeout);
+            await setupChanged.WaitAsync(TestTimeout);
             if (read is not null)
             {
                 await read.WaitAsync(TestTimeout);
             }
         }
 
-        // Link completion does not wait for background setup; this locked read observes its completed publication.
+        // Link completion does not wait for background setup; the captured change signals its publication.
         Assert.Contains(second.Channel, registry.GetInitializedChannels());
         IReadOnlyList<WorkerChannel> snapshot = await registry.GetReadyChannelsAsync();
         Assert.Equal(stopFirst ? 1 : 2, snapshot.Count);
@@ -1989,6 +1992,7 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly Exception _setupFailure;
         private readonly string _functionGroupName;
         private readonly bool? _isAlwaysReady;
+        private readonly int? _maxHttpConcurrency;
         private int _remainingSetupFailures;
         private int _setupAttempts;
         private Exception _startFailure;
@@ -2002,7 +2006,8 @@ public sealed partial class WorkerChannelRegistryTests
             int setupFailureCount = 0,
             Exception setupFailure = null,
             string functionGroupName = null,
-            bool? isAlwaysReady = null)
+            bool? isAlwaysReady = null,
+            int? maxHttpConcurrency = null)
         {
             Id = id;
             Transport = new(blockDisposal);
@@ -2010,6 +2015,7 @@ public sealed partial class WorkerChannelRegistryTests
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
             _functionGroupName = functionGroupName;
             _isAlwaysReady = isAlwaysReady;
+            _maxHttpConcurrency = maxHttpConcurrency;
             if (!blockStart)
             {
                 _startRelease.TrySetResult();
@@ -2163,7 +2169,12 @@ public sealed partial class WorkerChannelRegistryTests
                         _isAlwaysReady.Value ? bool.TrueString : bool.FalseString;
                 }
 
-                await Transport.SendResponseAsync(new StreamingMessage { WorkerInitResponse = response });
+                if (_maxHttpConcurrency is { } concurrency)
+                {
+                    response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, concurrency.ToString(CultureInfo.InvariantCulture));
+                }
+
+                await Transport.SendResponseAsync(new() { WorkerInitResponse = response });
             }
             catch (ChannelClosedException)
             {

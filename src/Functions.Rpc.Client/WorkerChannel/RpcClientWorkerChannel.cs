@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,6 +36,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
+    internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
     private readonly HashSet<ScriptInvocationContext> _acceptedInvocations = [];
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -42,7 +44,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _draining;
-    private string _functionGroupName;
     private bool? _isAlwaysReady;
     private LifecycleState _lifecycleState;
 
@@ -92,6 +93,21 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal Task Completion { get; }
 
     internal HostConfiguration HostConfiguration { get; private set; }
+
+    /// <summary>
+    /// Gets the assigned group captured after successful initialization, or null when not advertised.
+    /// </summary>
+    internal string FunctionGroupName { get; private set; }
+
+    /// <summary>
+    /// Gets the validated startup HTTP concurrency, or null for a non-HTTP worker.
+    /// </summary>
+    internal int? MaxHttpConcurrency { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the captured startup assignment belongs to the HTTP function group.
+    /// </summary>
+    internal bool IsHttpFunctionGroup => string.Equals(FunctionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
 
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
@@ -260,8 +276,23 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
-            _functionGroupName = GetWorkerCapabilityState(FunctionGroupNameCapability);
-            string isAlwaysReady = GetWorkerCapabilityState(IsAlwaysReadyCapability);
+            // Assignment properties are captured once; later capability updates do not change this channel's identity.
+            string functionGroupName = GetCapabilityState(FunctionGroupNameCapability);
+            int? maxHttpConcurrency = null;
+            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!int.TryParse(GetCapabilityState(MaxHttpConcurrencyCapability), NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
+                    || concurrency is < 1 or > 1000)
+                {
+                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                }
+
+                maxHttpConcurrency = concurrency;
+            }
+
+            FunctionGroupName = functionGroupName;
+            MaxHttpConcurrency = maxHttpConcurrency;
+            string isAlwaysReady = GetCapabilityState(IsAlwaysReadyCapability);
             _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
                 ? parsedIsAlwaysReady
                 : null;
@@ -314,7 +345,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
         => IsUsableForInvocationsLocked() &&
-            string.Equals(_functionGroupName, functionGroup, StringComparison.Ordinal) &&
+            string.Equals(FunctionGroupName, functionGroup, StringComparison.Ordinal) &&
             _isAlwaysReady == isAlwaysReady;
 
     private bool IsUsableForInvocationsLocked()
