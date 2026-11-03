@@ -2262,7 +2262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             ObjectDisposedException exception = await Assert.ThrowsAsync<ObjectDisposedException>(
                 () => context.ResultSource.Task);
-            Assert.Contains("WorkerChannel.TryTrackInvocationLocked", exception.StackTrace, StringComparison.Ordinal);
+            Assert.Contains("WorkerChannel.TryTrackInvocation", exception.StackTrace, StringComparison.Ordinal);
         }
 
         [Fact]
