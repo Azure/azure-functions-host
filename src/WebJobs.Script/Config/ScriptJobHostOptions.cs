@@ -113,6 +113,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public ICollection<string> Functions { get; set; }
 
         /// <summary>
+        /// Gets or sets whether serving listeners are restricted to the configured function group.
+        /// The default is true. Validation runtimes remain non-serving regardless of this setting.
+        /// </summary>
+        public bool FunctionGroupTargetingEnabled { get; set; } = true;
+
+        /// <summary>
         /// Gets or sets a value indicating the timeout duration for all functions. If null,
         /// there is no timeout duration.
         /// </summary>

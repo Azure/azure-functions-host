@@ -33,7 +33,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private readonly CancellationTokenSource _dispatcherStoppedSource = new();
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger;
     private readonly TimeSpan _channelWaitTimeout;
-    private int _nextChannelIndex = -1;
+    private readonly Dictionary<string, int> _nextChannelIndices = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _selectionLock = new();
     private bool _disposed;
     private bool _stopping;
 
@@ -45,6 +46,9 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     {
     }
 
+    /// <summary>
+    /// Creates a ScriptHost-scoped dispatcher with an explicit matching-channel wait timeout.
+    /// </summary>
     internal RpcClientFunctionInvocationDispatcher(
         IWorkerChannelRegistry channelRegistry,
         ILogger<RpcClientFunctionInvocationDispatcher> logger,
@@ -67,6 +71,10 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     public int ErrorEventsThreshold => 3;
 
+    /// <summary>
+    /// Admits an invocation to a matching ready channel, waiting for one only when immediate selection fails.
+    /// Execution completion is reported separately through the invocation's result source.
+    /// </summary>
     public Task InvokeAsync(ScriptInvocationContext invocationContext)
     {
         ArgumentNullException.ThrowIfNull(invocationContext);
@@ -81,19 +89,24 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
         }
 
-        // Keep the common path synchronous after the registry snapshot.
+        string functionGroup = invocationContext.FunctionMetadata.GetFunctionGroup();
+        // Capture invalidation before sampling so a matching worker arriving during selection cannot be missed.
+        Task changed = _channelRegistry.GetChangeTask();
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels = _channelRegistry.GetReadyChannelsAsync();
         if (readyChannels.IsCompletedSuccessfully)
         {
-            if (TryDispatchInvocation(invocationContext, readyChannels.Result))
+            if (TryDispatchInvocation(invocationContext, readyChannels.Result, functionGroup))
             {
                 return Task.CompletedTask;
             }
         }
 
-        return InvokeWhenChannelIsReadyAsync(invocationContext, readyChannels);
+        return InvokeWhenChannelIsReadyAsync(invocationContext, functionGroup, readyChannels, changed);
     }
 
+    /// <summary>
+    /// Atomically checks channel readiness and transfers invocation ownership before idle retirement can claim it.
+    /// </summary>
     private bool DispatchInvocation(ScriptInvocationContext invocationContext, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -157,6 +170,9 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         }
     }
 
+    /// <summary>
+    /// Initializes this dispatcher's local lifecycle; function loading remains owned by the root registry.
+    /// </summary>
     public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -178,6 +194,9 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Queries all initialized channels, including those not yet ready for invocation, and keys their status by worker ID.
+    /// </summary>
     public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
     {
         // Preserve snapshot order so each status remains paired with the channel that produced it.
@@ -193,6 +212,10 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         return result;
     }
 
+    /// <summary>
+    /// Stops local dispatch and allows accepted invocations to drain within the shutdown timeout.
+    /// Shared channels remain owned by the root registry and are not disposed here.
+    /// </summary>
     public async Task ShutdownAsync()
     {
         PreShutdown();
@@ -218,11 +241,20 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         }
     }
 
+    /// <summary>
+    /// Declines worker restart requests because external worker lifetime is not owned by this dispatcher.
+    /// </summary>
     public Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception)
         => Task.FromResult(false);
 
+    /// <summary>
+    /// Leaves worker creation to the platform; externally linked channels are supplied by the registry.
+    /// </summary>
     public Task StartWorkerChannel() => Task.CompletedTask;
 
+    /// <summary>
+    /// Rejects new dispatch and cancels pending channel waits before already accepted invocations are drained.
+    /// </summary>
     public void PreShutdown()
     {
         if (_disposed || _stopping)
@@ -236,6 +268,9 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         _dispatcherStoppedSource.Cancel();
     }
 
+    /// <summary>
+    /// Ends this dispatcher's lifecycle and cancels its waits without disposing root-owned channels.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -250,25 +285,17 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     }
 
     private bool TryDispatchInvocation(ScriptInvocationContext invocationContext, IReadOnlyList<WorkerChannel> channels,
-        CancellationToken cancellationToken = default)
+        string functionGroup, CancellationToken cancellationToken = default)
     {
-        if (channels.Count == 0)
+        // A selected channel may retire before its lifecycle lock is acquired; try other matching channels.
+        for (int attempt = 0; attempt < channels.Count; attempt++)
         {
-            return false;
-        }
+            if (GetReadyChannel(channels, functionGroup) is not RpcClientWorkerChannel channel)
+            {
+                return false;
+            }
 
-        if (channels is [WorkerChannel channel])
-        {
-            // The common one-worker path avoids round-robin synchronization and scanning.
-            return DispatchInvocation(invocationContext, (RpcClientWorkerChannel)channel, cancellationToken);
-        }
-
-        // Start each scan at the next channel; each channel coordinates admission with retirement.
-        int startIndex = (int)((uint)Interlocked.Increment(ref _nextChannelIndex) % (uint)channels.Count);
-        for (int offset = 0; offset < channels.Count; offset++)
-        {
-            RpcClientWorkerChannel clientChannel = (RpcClientWorkerChannel)channels[(startIndex + offset) % channels.Count];
-            if (DispatchInvocation(invocationContext, clientChannel, cancellationToken))
+            if (DispatchInvocation(invocationContext, channel, cancellationToken))
             {
                 return true;
             }
@@ -277,9 +304,60 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         return false;
     }
 
+    /// <summary>
+    /// Rechecks a registry snapshot for eligible channels and rotates independently within the requested group.
+    /// Returns null when none match; traffic for other groups does not advance this group's cursor.
+    /// </summary>
+    private WorkerChannel GetReadyChannel(IReadOnlyList<WorkerChannel> channels, string functionGroup)
+    {
+        if (channels.Count == 0)
+        {
+            return null;
+        }
+
+        if (channels.Count == 1)
+        {
+            // The common one-worker path avoids round-robin synchronization and scanning.
+            WorkerChannel channel = channels[0];
+            return IsEligible(channel, functionGroup) ? channel : null;
+        }
+
+        List<WorkerChannel> matchingChannels = [];
+        for (int i = 0; i < channels.Count; i++)
+        {
+            if (IsEligible(channels[i], functionGroup))
+            {
+                matchingChannels.Add(channels[i]);
+            }
+        }
+
+        if (matchingChannels.Count == 0)
+        {
+            return null;
+        }
+
+        lock (_selectionLock)
+        {
+            _nextChannelIndices.TryGetValue(functionGroup, out int next);
+            next %= matchingChannels.Count;
+            _nextChannelIndices[functionGroup] = (next + 1) % matchingChannels.Count;
+            return matchingChannels[next];
+        }
+    }
+
+    /// <summary>
+    /// Waits for an eligible channel in the requested group, respecting cancellation, dispatcher stop, and the wait timeout.
+    /// Registry changes trigger resampling so globally ready channels from other groups cannot cause polling.
+    /// </summary>
+    /// <param name="invocationContext">The invocation awaiting channel admission.</param>
+    /// <param name="functionGroup">The group derived from the invocation's validated function metadata.</param>
+    /// <param name="readyChannels">The initial ready snapshot or pending readiness task.</param>
+    /// <param name="changed">The registry change task captured before obtaining that snapshot, preventing lost wakeups.</param>
     private async Task InvokeWhenChannelIsReadyAsync(
         ScriptInvocationContext invocationContext,
-        ValueTask<IReadOnlyList<WorkerChannel>> readyChannels)
+        string functionGroup,
+        ValueTask<IReadOnlyList<WorkerChannel>> readyChannels,
+        Task changed)
     {
         // Cancellation linking stays off the ready-channel hot path.
         using CancellationTokenSource operationSource =
@@ -295,23 +373,39 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                     ? readyChannels.Result
                     : await readyChannels.AsTask().WaitAsync(operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
-                if (TryDispatchInvocation(invocationContext, channels, operationSource.Token))
+                if (TryDispatchInvocation(invocationContext, channels, functionGroup, operationSource.Token))
                 {
                     return;
                 }
 
-                // A signaled channel can stop before selection; ask for current readiness instead of polling it.
+                // Other groups can stay globally ready indefinitely. Resample only after a registry change.
+                await changed.WaitAsync(operationSource.Token);
+                changed = _channelRegistry.GetChangeTask();
                 readyChannels = _channelRegistry.GetReadyChannelsAsync();
             }
         }
         catch (OperationCanceledException) when (!invocationContext.CancellationToken.IsCancellationRequested &&
             !_dispatcherStoppedSource.IsCancellationRequested)
         {
-            throw new TimeoutException($"No client-backed worker channel became ready within {_channelWaitTimeout}.");
+            throw new TimeoutException(
+                $"No client-backed worker channel became ready for function '{invocationContext.FunctionMetadata.Name}' in group '{functionGroup}' within {_channelWaitTimeout}.");
         }
     }
 
+    /// <summary>
+    /// Checks non-terminal Client readiness for draining, without restricting the function group.
+    /// Readiness permits buffering invocations before individual function-load responses arrive.
+    /// </summary>
     private static bool IsReadyForInvocations(WorkerChannel channel) => channel is RpcClientWorkerChannel { IsReadyForInvocations: true };
+
+    /// <summary>
+    /// Requires a ready serving channel with the same assigned group, using case-insensitive platform identity.
+    /// Validation workers are excluded; listener-specific exceptions such as HTTP/blob sharing do not apply to invocation routing.
+    /// </summary>
+    private static bool IsEligible(WorkerChannel channel, string functionGroup)
+        => channel is RpcClientWorkerChannel { IsReadyForInvocations: true } client
+            && !string.Equals(client.FunctionGroupName, FunctionGroups.ValidationWorker, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(client.FunctionGroupName, functionGroup, StringComparison.OrdinalIgnoreCase);
 
     private static partial class Log
     {

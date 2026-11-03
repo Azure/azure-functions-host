@@ -182,8 +182,7 @@ public sealed class RpcClientWorkerChannelTests
     [InlineData("background", "invalid", false, null)]
     [InlineData("background", null, false, null)]
     [InlineData("background", "0", false, null)]
-    [InlineData(null, "10", false, null)]
-    [InlineData("", null, false, null)]
+    [InlineData("deployment:validation", null, false, null)]
     public async Task StartAsync_CapturesOnlyApplicableAssignmentCapabilities(string group, string supplied, bool isHttp, int? expected)
     {
         await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
@@ -215,7 +214,7 @@ public sealed class RpcClientWorkerChannelTests
         Task start = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(transport);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
-        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "hTtP");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "hTtP";
         if (supplied is not null)
         {
             response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, supplied);
@@ -227,6 +226,48 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Contains("MaxHttpConcurrency", exception.Message, StringComparison.Ordinal);
         Assert.Null(channel.FunctionGroupName);
         Assert.Null(channel.MaxHttpConcurrency);
+    }
+
+    [Fact]
+    public async Task StartAsync_CapturesAssignmentBeforeInitializationCompletes()
+    {
+        using ManualResetEventSlim releaseInitialization = new(false);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
+            .Callback(() =>
+            {
+                entered.TrySetResult();
+                if (!releaseInitialization.Wait(TestTimeout))
+                {
+                    throw new TimeoutException("Initialization was not released.");
+                }
+            })
+            .Returns(true);
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse initial = CreateSuccessfulInitResponse();
+        initial.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        initial.Capabilities[RpcClientWorkerChannel.MaxHttpConcurrencyCapability] = "10";
+        initial.AppCapabilities.Add("TestAppCapability", "1");
+        await transport.SendResponseAsync(new() { WorkerInitResponse = initial });
+
+        try
+        {
+            await entered.Task.WaitAsync(TestTimeout);
+            Assert.False(start.IsCompleted);
+            Assert.Equal("http", channel.FunctionGroupName);
+            Assert.Equal(10, channel.MaxHttpConcurrency);
+        }
+        finally
+        {
+            releaseInitialization.Set();
+        }
+
+        await start.WaitAsync(TestTimeout);
+        Assert.Equal("http", channel.FunctionGroupName);
+        Assert.Equal(10, channel.MaxHttpConcurrency);
     }
 
     [Fact]
@@ -248,6 +289,31 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal("http", harness.Channel.FunctionGroupName);
         Assert.True(harness.Channel.IsHttpFunctionGroup);
         Assert.Equal(10, harness.Channel.MaxHttpConcurrency);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task StartAsync_WithoutAssignedGroupFails(string group)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Clear();
+        if (group is not null)
+        {
+            response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = group;
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start.WaitAsync(TestTimeout));
+        Assert.Contains("FunctionGroupName", exception.Message, StringComparison.Ordinal);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.False(channel.IsReadyForInvocations);
     }
 
     [Fact]
@@ -465,6 +531,7 @@ public sealed class RpcClientWorkerChannelTests
         => new()
         {
             Result = new() { Status = StatusResult.Types.Status.Success },
+            Capabilities = { [RpcClientWorkerChannel.FunctionGroupNameCapability] = "function:TestFunction" },
         };
 
     private static async Task<StreamingMessage> SendStartStreamAndReadInitRequestAsync(TestDuplexChannel<StreamingMessage> duplexChannel)

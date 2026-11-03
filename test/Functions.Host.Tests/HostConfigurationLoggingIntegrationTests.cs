@@ -199,6 +199,7 @@ public sealed class HostConfigurationLoggingIntegrationTests
                         {
                             Result = new() { Status = StatusResult.Types.Status.Success },
                             HostConfiguration = delivery,
+                            Capabilities = { ["FunctionGroupName"] = "deployment:validation" },
                         },
                     });
                 }

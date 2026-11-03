@@ -97,6 +97,39 @@ public class RpcClientScriptHostStartupIntegrationTests
     }
 
     [Fact]
+    public async Task FirstLink_IndexingGroupDoesNotControlInvocationRouting()
+    {
+        await using TestWorker indexer = await TestWorker.StartAsync("durable-indexer", functionGroupName: "durable");
+        await using TestWorker http = await TestWorker.StartAsync("http-worker");
+        await using ClientTestHost testHost = new();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        await registry.LinkAsync("durable-indexer", indexer.Endpoint, timeout.Token);
+        await coordinator.ActivationTask!.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        await indexer.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        ScriptHost scriptHost = scriptServices.GetRequiredService<ScriptHost>();
+        Assert.Equal("http", Assert.Single(scriptHost.Functions).Metadata.GetFunctionGroup());
+        Assert.False(scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.FunctionGroupTargetingEnabled);
+
+        Task<string> invocation = InvokeHttpFunctionAsync(scriptHost, timeout.Token);
+        Assert.False(invocation.IsCompleted);
+        await registry.LinkAsync("http-worker", http.Endpoint, timeout.Token);
+        string selectedWorker = await invocation.WaitAsync(timeout.Token);
+
+        Assert.Equal("http-worker", selectedWorker);
+        Assert.Equal(0, indexer.Service.Invocations);
+        Assert.Equal(1, indexer.Service.MetadataRequests);
+        Assert.Equal(0, http.Service.MetadataRequests);
+        Assert.Equal(1, indexer.Service.FunctionLoadRequests);
+        Assert.Equal(1, http.Service.FunctionLoadRequests);
+    }
+
+    [Fact]
     public async Task FirstLink_IndexesWorkerMetadataWithExistingHostConfiguration_AndThreeWorkersServeInvocations()
     {
         await using TestWorker firstWorker = await TestWorker.StartAsync("first", maxHttpConcurrency: 7);
@@ -656,13 +689,14 @@ public class RpcClientScriptHostStartupIntegrationTests
         public TestWorkerService Service { get; } = service;
 
         public static async Task<TestWorker> StartAsync(
-            string workerId, string language = "dotnet-isolated", RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10)
+            string workerId, string language = "dotnet-isolated", RpcHostConfiguration? hostConfiguration = null,
+            int maxHttpConcurrency = 10, string functionGroupName = "http")
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency);
+            TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency, functionGroupName);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -681,7 +715,8 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId, string language, RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10)
+    public sealed class TestWorkerService(
+        string workerId, string language, RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10, string functionGroupName = "http")
         : FunctionRpc.FunctionRpcBase
     {
         private int _functionLoadRequests;
@@ -715,7 +750,7 @@ public class RpcClientScriptHostStartupIntegrationTests
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
                             InitRequest = request.WorkerInitRequest;
                             response.WorkerInitResponse = new() { Result = Success(), HostConfiguration = hostConfiguration };
-                            response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+                            response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
                             response.WorkerInitResponse.Capabilities.Add(
                                 RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency.ToString(CultureInfo.InvariantCulture));
                             break;

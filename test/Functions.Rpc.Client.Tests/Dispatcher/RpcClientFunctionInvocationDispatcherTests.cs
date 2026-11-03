@@ -19,11 +19,12 @@ using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public sealed class RpcClientFunctionInvocationDispatcherTests
+public sealed partial class RpcClientFunctionInvocationDispatcherTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly List<WorkerChannel> _initializedChannels = [];
     private readonly List<WorkerChannel> _readyChannels = [];
+    private readonly TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<IReadOnlyList<WorkerChannel>> _readySignal =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -33,6 +34,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
             .Returns(() => [.. _initializedChannels]);
+        _registry.Setup(registry => registry.GetChangeTask()).Returns(_changed.Task);
         _registry.Setup(registry => registry.GetReadyChannelsAsync())
             .Returns(() => _readyChannels.Count == 0
                 ? new ValueTask<IReadOnlyList<WorkerChannel>>(_readySignal.Task)
@@ -117,7 +119,8 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     [Fact]
     public async Task InvokeAsync_FunctionNotLoaded_Throws()
     {
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: "function:UnknownFunction");
         FunctionMetadata function = CreateFunction();
         await PrepareReadyChannelAsync(worker, function);
         PublishReady(worker.Channel);
@@ -415,6 +418,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 
         Task invocation = dispatcher.InvokeAsync(CreateInvocation(function));
         firstSignal.SetResult([stale.Channel]);
+        _changed.TrySetResult();
         secondSignal.SetResult([ready.Channel]);
         await invocation.WaitAsync(TestTimeout);
 
@@ -445,6 +449,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         if (!includesHealthyChannel)
         {
             Assert.False(invocation.IsCompleted);
+            _changed.TrySetResult();
             _readySignal.SetResult([healthy.Channel]);
         }
 
@@ -477,6 +482,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 
         Task invocation = dispatcher.InvokeAsync(CreateInvocation(function, cancellation.Token));
         signal.SetResult([stale.Channel]);
+        _changed.TrySetResult();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation.WaitAsync(TestTimeout));
         _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
