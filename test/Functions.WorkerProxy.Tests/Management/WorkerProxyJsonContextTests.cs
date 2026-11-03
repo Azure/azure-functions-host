@@ -25,8 +25,6 @@ public class WorkerProxyJsonContextTests
             FunctionGroupName = "group",
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
-            ConfigLastModifiedTime = 10,
-            ContentLastModifiedTime = 20,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
         };
 
@@ -40,9 +38,7 @@ public class WorkerProxyJsonContextTests
             "functionGroupName",
             "functionAppDirectory",
             "isAlwaysReady",
-            "environment",
-            "configLastModifiedTime",
-            "contentLastModifiedTime");
+            "environment");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
@@ -55,8 +51,6 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
         Assert.False(copy.IsAlwaysReady);
-        Assert.Equal(request.ConfigLastModifiedTime, copy.ConfigLastModifiedTime);
-        Assert.Equal(request.ContentLastModifiedTime, copy.ContentLastModifiedTime);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
     }
 

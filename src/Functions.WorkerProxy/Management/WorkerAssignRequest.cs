@@ -10,7 +10,6 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 /// <remarks>
 /// The directory may be empty for Preconfigured but must be nonblank for SpecializationRequired.
-/// Version timestamps are optional and default to zero.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -34,8 +33,4 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
-
-    public long? ConfigLastModifiedTime { get; init; }
-
-    public long? ContentLastModifiedTime { get; init; }
 }

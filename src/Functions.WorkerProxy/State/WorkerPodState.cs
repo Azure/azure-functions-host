@@ -21,10 +21,6 @@ internal sealed record WorkerPodState(
     bool? IsAlwaysReady,
     DateTimeOffset StartupTime)
 {
-    public long ConfigLastModifiedTime { get; init; }
-
-    public long ContentLastModifiedTime { get; init; }
-
     public SplitPodIdentity? RuntimeIdentity { get; init; }
 
     public bool RuntimeInitialized { get; init; }

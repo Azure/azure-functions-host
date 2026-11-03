@@ -171,8 +171,6 @@ public class ManagementApiHandlersTests
         Assert.Equal("app", manager.State.FunctionAppName);
         Assert.Equal("group", manager.State.FunctionGroupName);
         Assert.Equal(isAlwaysReady, manager.State.IsAlwaysReady);
-        Assert.Equal(10, manager.State.ConfigLastModifiedTime);
-        Assert.Equal(20, manager.State.ContentLastModifiedTime);
         Assert.Equal(before.SessionId, manager.State.SessionId);
         Assert.Equal(before.WorkerId, manager.State.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, before.AssignmentState);
@@ -382,8 +380,6 @@ public class ManagementApiHandlersTests
     [InlineData("environmentKey")]
     [InlineData("environmentValue")]
     [InlineData("startupMode")]
-    [InlineData("configLastModifiedTime")]
-    [InlineData("contentLastModifiedTime")]
     public void AssignWorker_DifferentIdentityConflictsBeforeAndAfterTermination(string field)
     {
         WorkerPodStateManager manager = CreateReadyManager();
@@ -397,8 +393,6 @@ public class ManagementApiHandlersTests
             "alwaysReady" => CreateRequest(isAlwaysReady: true),
             "environmentKey" => CreateRequest(environment: new() { ["setting"] = "private-value" }),
             "environmentValue" => CreateRequest(environment: new() { ["SETTING"] = "PRIVATE-VALUE" }),
-            "configLastModifiedTime" => CreateRequest(configLastModifiedTime: 11),
-            "contentLastModifiedTime" => CreateRequest(contentLastModifiedTime: 21),
             _ => throw new ArgumentException("Unknown field.", nameof(field))
         };
         WorkerPodState assigned = manager.State;
@@ -646,9 +640,7 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured),
-        long? configLastModifiedTime = 10,
-        long? contentLastModifiedTime = 20) =>
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
         new()
         {
             StartupMode = startupMode,
@@ -656,9 +648,7 @@ public class ManagementApiHandlersTests
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" },
-            ConfigLastModifiedTime = configLastModifiedTime,
-            ContentLastModifiedTime = contentLastModifiedTime
+            Environment = environment ?? new() { ["SETTING"] = "private-value" }
         };
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)

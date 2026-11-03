@@ -25,8 +25,7 @@ public partial class FunctionRpcRelayTests
     private const string InfraStatePath = "/admin/infra/instanceState";
     private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot",
-         "configLastModifiedTime":111,"contentLastModifiedTime":222}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot"}
         """;
 
     private const string RuntimeIdentityJson = """
@@ -392,14 +391,15 @@ public partial class FunctionRpcRelayTests
             timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
         Assert.False(assignmentPoll.IsCompleted);
-        string discoveryAssignment = ManagementAssignment.Replace(
-            "\"functionGroupName\":\"test-group\"",
-            "\"functionGroupName\":\"deployment:validation\"",
-            StringComparison.Ordinal);
+        const string legacyStateFields =
+            "\"isAlwaysReady\":false,\"configLastModifiedTime\":111,\"contentLastModifiedTime\":222";
+        string legacyAssignment = ManagementAssignment
+            .Replace("\"functionGroupName\":\"test-group\"", "\"functionGroupName\":\"deployment:validation\"", StringComparison.Ordinal)
+            .Replace("\"isAlwaysReady\":false", legacyStateFields, StringComparison.Ordinal);
         using (HttpResponseMessage assignmentResponse = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",
-            discoveryAssignment,
+            legacyAssignment,
             timeout.Token))
         {
             Assert.Equal(HttpStatusCode.Created, assignmentResponse.StatusCode);
@@ -408,11 +408,11 @@ public partial class FunctionRpcRelayTests
         using HttpResponseMessage assignedResponse = await assignmentPoll;
         SplitWorkerOriginState assigned = await ReadSplitManagementStateAsync(assignedResponse, timeout.Token);
         Assert.Equal(placeholder.Self, assigned.Self);
-        Assert.True(assigned.IsDiscoveryPod);
+        Assert.False(assigned.IsDiscoveryPod);
         Assert.False(assigned.IsAlwaysReady);
         Assert.Equal("deployment:validation", assigned.FunctionGroup);
-        Assert.Equal(111, assigned.ConfigLastModifiedTime);
-        Assert.Equal(222, assigned.ContentLastModifiedTime);
+        Assert.Equal(0, assigned.ConfigLastModifiedTime);
+        Assert.Equal(0, assigned.ContentLastModifiedTime);
         Assert.Equal(placeholder.StartupTime, assigned.StartupTime);
         Assert.Equal(3, assigned.RevisionId);
         Assert.Equal(SplitWorkerStatus.Starting, assigned.Status);

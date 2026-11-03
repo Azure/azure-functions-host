@@ -344,9 +344,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady,
-                ConfigLastModifiedTime = assignment.ConfigLastModifiedTime,
-                ContentLastModifiedTime = assignment.ContentLastModifiedTime
+                IsAlwaysReady = assignment.IsAlwaysReady
             };
 
             // The gate and publication share the lifecycle lock so only one identity is reserved.

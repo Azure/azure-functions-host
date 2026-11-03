@@ -65,9 +65,7 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory,
-            request.ConfigLastModifiedTime ?? 0,
-            request.ContentLastModifiedTime ?? 0);
+            functionAppDirectory);
 
         return true;
     }
