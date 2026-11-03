@@ -7,7 +7,6 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -120,6 +119,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
+    internal Lock LifecycleLock => _lifecycleLock;
+
     internal int OngoingRequests
     {
         get
@@ -127,6 +128,15 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             lock (_lifecycleLock)
             {
                 return _ongoingRequests;
+            }
+        }
+
+        set
+        {
+            lock (_lifecycleLock)
+            {
+                _ongoingRequests = value;
+                _idleSince = null;
             }
         }
     }
@@ -148,54 +158,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
             _idleSince = null;
             RecordReadyIdleTime();
-        }
-    }
-
-    internal bool TryPostInvocation(ScriptInvocationContext context)
-    {
-        lock (_lifecycleLock)
-        {
-            if (!IsReadyForInvocations)
-            {
-                return false;
-            }
-
-            if (!FunctionInputBuffers.TryGetValue(context.FunctionMetadata.GetFunctionId(), out BufferBlock<ScriptInvocationContext> buffer))
-            {
-                throw new InvalidOperationException($"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
-            }
-
-            bool trackActivity = IsHttpFunctionGroup && IsAlwaysReady is false;
-            Task responseCompleted = Task.CompletedTask;
-            if (trackActivity)
-            {
-                HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
-                    .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
-                if (request is not null)
-                {
-                    TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    request.HttpContext.Response.OnCompleted(() =>
-                    {
-                        completion.TrySetResult();
-                        return Task.CompletedTask;
-                    });
-                    responseCompleted = completion.Task;
-                }
-            }
-
-            if (!buffer.Post(context))
-            {
-                throw new InvalidOperationException($"Worker '{Id}' rejected the invocation input.");
-            }
-
-            if (trackActivity)
-            {
-                _ongoingRequests++;
-                _idleSince = null;
-                _ = ObserveRequestCompletionAsync(context, responseCompleted);
-            }
-
-            return true;
         }
     }
 
@@ -350,7 +312,25 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    private async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
+    internal static Task GetHttpResponseCompletionTask(ScriptInvocationContext context)
+    {
+        HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
+            .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
+        if (request is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        TaskCompletionSource responseCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        request.HttpContext.Response.OnCompleted(() =>
+        {
+            responseCompleted.TrySetResult();
+            return Task.CompletedTask;
+        });
+        return responseCompleted.Task;
+    }
+
+    internal async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
     {
         try
         {
@@ -361,7 +341,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             catch (Exception)
             {
                 // The invoker owns failures; do not log customer exceptions on the system logger.
-                _activityLogger.LogDebug("Invocation on worker {WorkerId} ended unsuccessfully; waiting for HTTP completion.", Id);
+                _activityLogger.LogDebug("Invocation on worker {WorkerId} ended unsuccessfully.", Id);
             }
 
             if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)

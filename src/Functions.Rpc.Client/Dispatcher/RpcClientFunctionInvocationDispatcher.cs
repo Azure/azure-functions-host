@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -93,8 +94,36 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     {
         cancellationToken.ThrowIfCancellationRequested();
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
-        if (channel.TryPostInvocation(invocationContext))
+        lock (channel.LifecycleLock)
         {
+            if (!channel.IsReadyForInvocations)
+            {
+                return false;
+            }
+
+            if (!channel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.GetFunctionId(),
+                out BufferBlock<ScriptInvocationContext> buffer))
+            {
+                throw new InvalidOperationException($"Function '{invocationContext.FunctionMetadata.Name}' is not loaded by worker '{channel.Id}'.");
+            }
+
+            bool trackActivity = channel.IsHttpFunctionGroup && channel.IsAlwaysReady is false;
+            // Register before posting so a fast response cannot outrun its completion callback.
+            Task responseCompleted = trackActivity
+                ? RpcClientWorkerChannel.GetHttpResponseCompletionTask(invocationContext)
+                : Task.CompletedTask;
+
+            if (!buffer.Post(invocationContext))
+            {
+                throw new InvalidOperationException($"Worker '{channel.Id}' rejected the invocation input.");
+            }
+
+            if (trackActivity)
+            {
+                channel.OngoingRequests++;
+                _ = channel.ObserveRequestCompletionAsync(invocationContext, responseCompleted);
+            }
+
             if (_logger.IsEnabled(LogLevel.Trace))
             {
                 Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
@@ -102,8 +131,6 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
             return true;
         }
-
-        return false;
     }
 
     public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)

@@ -72,7 +72,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(retirement.IsCompleted);
         Assert.Equal(0, worker.DisposeCount);
         Assert.Empty(registry.GetInitializedChannels());
-        Assert.False(worker.Channel.TryPostInvocation(CreateIdleInvocation(CreateFunction("Function"))));
+        Assert.False(worker.Channel.IsReadyForInvocations);
 
         if (cancel)
         {
@@ -166,7 +166,7 @@ public sealed partial class WorkerChannelRegistryTests
         await worker.DisposeStarted.WaitAsync(TestTimeout);
         Assert.Empty(registry.GetInitializedChannels());
         Assert.False(registry.GetReadyChannelsAsync().IsCompleted);
-        Assert.False(worker.Channel.TryPostInvocation(CreateIdleInvocation(function)));
+        Assert.False(worker.Channel.IsReadyForInvocations);
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(1, worker.DisposeCount);
         WorkerLinkException replay = await Assert.ThrowsAsync<WorkerLinkException>(() =>
@@ -212,7 +212,8 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
-        Assert.True(busy.Channel.TryPostInvocation(invocation));
+        using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(busy, function);
+        await dispatcher.InvokeAsync(invocation);
         time.Advance(TimeSpan.FromMinutes(3));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
 
@@ -398,7 +399,8 @@ public sealed partial class WorkerChannelRegistryTests
         invocation.Inputs = [("req", DataType.String, httpContext.Request)];
         using CancellationTokenSource cancellation = new();
         invocation.CancellationToken = cancellation.Token;
-        Assert.True(worker.Channel.TryPostInvocation(invocation));
+        using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
+        await dispatcher.InvokeAsync(invocation);
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
         cancellation.Cancel();
@@ -466,7 +468,8 @@ public sealed partial class WorkerChannelRegistryTests
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
         invocation.Inputs = [("req", DataType.String, new DefaultHttpContext().Request)];
 
-        Assert.True(worker.Channel.TryPostInvocation(invocation));
+        using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
+        await dispatcher.InvokeAsync(invocation);
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await worker.Channel.InvokeResponse(new()
         {
@@ -493,8 +496,24 @@ public sealed partial class WorkerChannelRegistryTests
         await ReadyIdleWorkerAsync(registry, worker, function);
         worker.Channel.FunctionInputBuffers[function.GetFunctionId()].Complete();
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
+        DefaultHttpContext httpContext = new();
+        httpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = null;
+        Func<object, Task> completeResponse = null;
+        object completionState = null;
+        Mock<IHttpResponseFeature> response = new();
+        response.Setup(feature => feature.OnCompleted(It.IsAny<Func<object, Task>>(), It.IsAny<object>()))
+            .Callback((Func<object, Task> callback, object state) =>
+            {
+                completeResponse = callback;
+                completionState = state;
+            });
+        httpContext.Features.Set(response.Object);
+        invocation.Inputs = [("req", DataType.String, httpContext.Request)];
 
-        Assert.Throws<InvalidOperationException>(() => worker.Channel.TryPostInvocation(invocation));
+        using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.InvokeAsync(invocation));
+        invocation.ResultSource.TrySetResult(new());
+        await completeResponse(completionState);
 
         Assert.Equal(0, worker.Channel.OngoingRequests);
         Assert.False(worker.Channel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
@@ -515,11 +534,20 @@ public sealed partial class WorkerChannelRegistryTests
         await ReadyIdleWorkerAsync(registry, worker, function);
         time.Advance(TimeSpan.FromMinutes(3));
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
+        using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
         using ManualResetEventSlim start = new();
-        Task<bool> dispatch = Task.Run(() =>
+        Task<bool> dispatch = Task.Run(async () =>
         {
             start.Wait();
-            return worker.Channel.TryPostInvocation(invocation);
+            try
+            {
+                await dispatcher.InvokeAsync(invocation);
+                return true;
+            }
+            catch (TimeoutException)
+            {
+                return false;
+            }
         });
         Task retirement = Task.Run(async () =>
         {
@@ -620,6 +648,17 @@ public sealed partial class WorkerChannelRegistryTests
         harness.RegistryLogger.Verify(logger => logger.Log(
             LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), failure,
             It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+    }
+
+    private static async Task<RpcClientFunctionInvocationDispatcher> CreateIdleDispatcherAsync(ChannelControl worker, FunctionMetadata function)
+    {
+        Mock<IWorkerChannelRegistry> registry = new();
+        registry.Setup(value => value.GetReadyChannelsAsync())
+            .Returns(new ValueTask<IReadOnlyList<Microsoft.Azure.WebJobs.Script.Grpc.WorkerChannel>>([worker.Channel]));
+        RpcClientFunctionInvocationDispatcher dispatcher = new(
+            registry.Object, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance, TimeSpan.FromMilliseconds(100));
+        await dispatcher.InitializeAsync([function]);
+        return dispatcher;
     }
 
     private static ChannelControl CreateIdleWorker(string id, string group = "http", string alwaysReady = "False")
