@@ -20,7 +20,6 @@ internal sealed partial class RpcClientWorkerChannel
     private HashSet<string> _pendingFunctionLoads = [];
     private long? _idleSince;
     private int _ongoingRequests;
-    private bool _setupCompleted;
     private bool _retiring;
 
     // Unknown metadata is not evidence that an assigned worker is on-demand.
@@ -37,33 +36,13 @@ internal sealed partial class RpcClientWorkerChannel
         }
     }
 
-    internal bool IsIdleTrackingReady
-    {
-        get
-        {
-            lock (_lifecycleLock)
-            {
-                return _setupCompleted && _pendingFunctionLoads.Count == 0;
-            }
-        }
-    }
-
-    internal void PrepareIdleTracking(IReadOnlyList<FunctionMetadata> functions, TimeProvider timeProvider)
+    internal void StartIdleTracking(IReadOnlyList<FunctionMetadata> functions, TimeProvider timeProvider)
     {
         lock (_lifecycleLock)
         {
             _activityTimeProvider = timeProvider;
             _pendingFunctionLoads = functions.Select(function => function.GetFunctionId()).ToHashSet(StringComparer.Ordinal);
-            _setupCompleted = false;
             _idleSince = null;
-        }
-    }
-
-    internal void CompleteIdleTrackingSetup()
-    {
-        lock (_lifecycleLock)
-        {
-            _setupCompleted = true;
             RecordReadyIdleTime();
         }
     }
@@ -82,7 +61,7 @@ internal sealed partial class RpcClientWorkerChannel
 
     private void RecordReadyIdleTime()
     {
-        if (_setupCompleted && _pendingFunctionLoads.Count == 0 && _ongoingRequests == 0 && _idleSince is null)
+        if (_pendingFunctionLoads.Count == 0 && _ongoingRequests == 0 && _idleSince is null)
         {
             _idleSince = _activityTimeProvider.GetTimestamp();
         }
@@ -189,7 +168,7 @@ internal sealed partial class RpcClientWorkerChannel
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
             if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
-                !_setupCompleted || _pendingFunctionLoads.Count != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
+                _pendingFunctionLoads.Count != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
             {
                 return false;
             }

@@ -347,6 +347,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         return false;
     }
 
+    /// <inheritdoc />
     public async Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(threshold, TimeSpan.Zero);
@@ -844,10 +845,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         slot.SetupException = null;
         try
         {
-            channel.PrepareIdleTracking(setupContext.Functions, _timeProvider);
             channel.SetupFunctionInvocationBuffers(setupContext.Functions);
+            channel.StartIdleTracking(setupContext.Functions, _timeProvider);
             channel.SendFunctionLoadRequests(setupContext.ManagedDependencyOptions, setupContext.FunctionTimeout);
-            channel.CompleteIdleTrackingSetup();
             SignalReadyChannelsLocked();
         }
         catch (Exception exception)

@@ -32,6 +32,7 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
+    internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -162,7 +163,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
 
         HostConfiguration = response.HostConfiguration?.Clone();
-        IsAlwaysReady = response.Capabilities.TryGetValue("IsAlwaysReady", out string alwaysReady)
+        IsAlwaysReady = response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string alwaysReady)
             && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
     }
 

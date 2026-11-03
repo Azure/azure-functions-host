@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Xunit;
 using Yarp.ReverseProxy.Forwarder;
@@ -32,7 +33,7 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData(true, false)]
     public async Task IdleRetirement_CompletesRequestsBeforeDisposal_AndCleansUpOnCancellation(bool cancel, bool unavailable)
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = CreateIdleWorker("worker");
         harness.Enqueue(worker);
@@ -71,7 +72,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task IdleRetirement_PublishesZeroCapacityBeforeTransportDisposalCompletes()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = new("worker", blockDisposal: true)
         {
@@ -107,16 +108,27 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task IdleMonitor_ScansEachMinute_StrictThreshold_RemovesLastWorker_StopsWithRoot()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = CreateIdleWorker("http");
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("HttpFunction");
         await ReadyIdleWorkerAsync(registry, worker, function);
-        using HttpWorkerIdleMonitor monitor = new(registry, time);
+        TaskCompletionSource timerCreated = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<TimeProvider> monitorClock = new();
+        Mock<ITimer> timer = new();
+        monitorClock.Setup(clock => clock.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period) =>
+            {
+                ITimer scheduled = time.CreateTimer(callback, state, dueTime, period);
+                timer.Setup(value => value.Dispose()).Callback(scheduled.Dispose);
+                timerCreated.SetResult();
+                return timer.Object;
+            });
+        using HttpWorkerIdleMonitor monitor = new(registry, monitorClock.Object);
         await monitor.StartAsync(CancellationToken.None);
-        await WaitUntilAsync(() => time.HasPeriodicTimer);
+        await timerCreated.Task.WaitAsync(TestTimeout);
 
         time.Advance(TimeSpan.FromMinutes(1));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
@@ -138,7 +150,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, replay.Reason);
 
         await monitor.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
-        Assert.False(time.HasPeriodicTimer);
+        timer.Verify(value => value.Dispose(), Times.Once);
         time.Advance(TimeSpan.FromMinutes(10));
         Assert.Equal(1, worker.DisposeCount);
     }
@@ -146,7 +158,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task IdleRetirement_MixedWorkers_ExemptsAlwaysReadyUnknownNonHttpAndLoading()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl idle = CreateIdleWorker("idle");
         ChannelControl secondIdle = CreateIdleWorker("second-idle");
@@ -172,7 +184,6 @@ public sealed partial class WorkerChannelRegistryTests
             if (!ReferenceEquals(worker, loading))
             {
                 CompleteFunctionLoad(worker, function);
-                await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
             }
         }
 
@@ -189,17 +200,48 @@ public sealed partial class WorkerChannelRegistryTests
 
         time.Advance(TimeSpan.FromMinutes(10));
         CompleteFunctionLoad(loading, function);
-        await WaitUntilAsync(() => loading.Channel.IsIdleTrackingReady);
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         Assert.Equal(0, loading.DisposeCount);
         invocation.ResultSource.TrySetResult(new());
         await WaitUntilAsync(() => busy.Channel.OngoingRequests == 0);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task IdleRetirement_StartsIdleIntervalAfterAllFunctionsLoad(int functionCount)
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata[] functions = [.. Enumerable.Range(0, functionCount).Select(index => CreateFunction($"Function{index}"))];
+        await registry.ActivateAsync(functions, new ManagedDependencyOptions(), null);
+        await LinkAsync(registry, worker.Id);
+        await registry.GetReadyChannelsAsync().AsTask().WaitAsync(TestTimeout);
+
+        foreach (FunctionMetadata function in functions)
+        {
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+            time.Advance(TimeSpan.FromMinutes(3));
+            await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+            Assert.Equal(0, worker.DisposeCount);
+            CompleteFunctionLoad(worker, function);
+        }
+
+        time.Advance(IdleThreshold);
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(0, worker.DisposeCount);
+        time.Advance(TimeSpan.FromSeconds(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
     [Fact]
     public async Task IdleRetirement_QueuedAndOverlappingRequests_ResetContinuousIdleTime()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = CreateIdleWorker("worker");
         harness.Enqueue(worker);
@@ -222,7 +264,6 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(worker.Transport.Requests.TryRead(out _));
 
         CompleteFunctionLoad(worker, function);
-        await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
         StreamingMessage request1 = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         StreamingMessage request2 = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await worker.Channel.InvokeResponse(new() { InvocationId = request1.InvocationRequest.InvocationId, Result = new() { Status = StatusResult.Types.Status.Success } });
@@ -253,7 +294,7 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData(false, true)]
     public async Task IdleRetirement_WaitsForStreamingBodyAndResponseCompletion_EvenOnFailureOrCancellation(bool failure, bool canceled)
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         TaskCompletionSource<ForwarderError> body = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock<IHttpProxyService> proxy = new();
@@ -343,7 +384,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task IdleRetirement_AdmissionRace_EitherRetiresOrProtectsAcceptedInvocation()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = CreateIdleWorker("worker");
         harness.Enqueue(worker);
@@ -385,7 +426,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task IdleRetirement_WithdrawsBeforeDisposal_FencesStaleDispatcherSnapshot_ConcurrentUnlinkIsIdempotent()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl worker = new("retiring", blockDisposal: true)
         {
@@ -400,7 +441,6 @@ public sealed partial class WorkerChannelRegistryTests
         await LinkAsync(registry, replacement.Id);
         await replacement.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         CompleteFunctionLoad(replacement, function);
-        await WaitUntilAsync(() => replacement.Channel.IsIdleTrackingReady);
         time.Advance(TimeSpan.FromMinutes(3));
         Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         await worker.DisposeStarted.WaitAsync(TestTimeout);
@@ -431,7 +471,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task IdleRetirement_DisposalFailureIsLogged_AndRemainingWorkersAreStillRetired()
     {
-        IdleTestTimeProvider time = new();
+        FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
         ChannelControl failed = CreateIdleWorker("failed");
         ChannelControl healthy = CreateIdleWorker("healthy");
@@ -447,7 +487,6 @@ public sealed partial class WorkerChannelRegistryTests
             await LinkAsync(registry, worker.Id);
             await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
             CompleteFunctionLoad(worker, function);
-            await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
         }
 
         time.Advance(TimeSpan.FromMinutes(3));
@@ -481,7 +520,6 @@ public sealed partial class WorkerChannelRegistryTests
         await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         CompleteFunctionLoad(worker, function);
-        await WaitUntilAsync(() => worker.Channel.IsIdleTrackingReady);
     }
 
     private static ScriptInvocationContext CreateIdleInvocation(FunctionMetadata function)
@@ -502,98 +540,4 @@ public sealed partial class WorkerChannelRegistryTests
             FunctionId = function.GetFunctionId(),
             Result = new() { Status = StatusResult.Types.Status.Success },
         });
-
-    private sealed class IdleTestTimeProvider : TimeProvider
-    {
-        private readonly Lock _lock = new();
-        private readonly List<Timer> _timers = [];
-        private long _timestamp;
-
-        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
-
-        public bool HasPeriodicTimer
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _timers.Any(timer => timer.Period > TimeSpan.Zero);
-                }
-            }
-        }
-
-        public override long GetTimestamp()
-        {
-            lock (_lock)
-            {
-                return _timestamp;
-            }
-        }
-
-        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UnixEpoch + TimeSpan.FromTicks(GetTimestamp());
-
-        public override ITimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
-        {
-            Timer timer = new(this, callback, state);
-            timer.Change(dueTime, period);
-            return timer;
-        }
-
-        public void Advance(TimeSpan duration)
-        {
-            Timer[] due;
-            lock (_lock)
-            {
-                _timestamp += duration.Ticks;
-                due = [.. _timers.Where(timer => timer.Due <= _timestamp)];
-                foreach (Timer timer in due)
-                {
-                    timer.Due = timer.Period > TimeSpan.Zero ? _timestamp + timer.Period.Ticks : long.MaxValue;
-                }
-            }
-
-            foreach (Timer timer in due)
-            {
-                timer.Fire();
-            }
-        }
-
-        private sealed class Timer(IdleTestTimeProvider owner, TimerCallback callback, object state) : ITimer
-        {
-            public long Due { get; set; }
-
-            public TimeSpan Period { get; private set; }
-
-            public bool Change(TimeSpan dueTime, TimeSpan period)
-            {
-                lock (owner._lock)
-                {
-                    Due = dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : owner._timestamp + dueTime.Ticks;
-                    Period = period;
-                    if (!owner._timers.Contains(this))
-                    {
-                        owner._timers.Add(this);
-                    }
-
-                    return true;
-                }
-            }
-
-            public void Fire() => callback(state);
-
-            public void Dispose()
-            {
-                lock (owner._lock)
-                {
-                    owner._timers.Remove(this);
-                }
-            }
-
-            public ValueTask DisposeAsync()
-            {
-                Dispose();
-                return ValueTask.CompletedTask;
-            }
-        }
-    }
 }
