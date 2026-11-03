@@ -116,12 +116,14 @@ internal sealed partial class FunctionRpcRelay(
     /// <param name="requestStream">The messages produced by the attached peer.</param>
     /// <param name="responseStream">The messages relayed from the opposite peer.</param>
     /// <param name="cancellationToken">The gRPC call cancellation token.</param>
+    /// <param name="runtimeIdentity">Optional identity from the Runtime-facing stream metadata.</param>
     /// <returns>A task that returns the first terminal state after the session terminates and this attachment releases.</returns>
     /// <exception cref="FunctionRpcRelayAttachmentException">
     /// The side is already attached, the previous session is still tearing down, or shutdown has started.
     /// </exception>
     public Task<FunctionRpcRelayTerminalState> AttachAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
+        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken,
+        SplitPodIdentity? runtimeIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(requestStream);
         ArgumentNullException.ThrowIfNull(responseStream);
@@ -144,7 +146,7 @@ internal sealed partial class FunctionRpcRelay(
             session = _currentSession ??= new FunctionRpcRelaySession(
                 Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, tokenServiceProxy);
 
-            FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
+            FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, runtimeIdentity);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
             {
                 (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch

@@ -35,6 +35,8 @@ public class WorkerAssignmentTests
     [InlineData("value")]
     [InlineData("count")]
     [InlineData("startupMode")]
+    [InlineData("configLastModifiedTime")]
+    [InlineData("contentLastModifiedTime")]
     public void Equality_UsesEveryFieldAndOrdinalStrings(string changedField)
     {
         WorkerAssignment original = Create(new Dictionary<string, string> { ["KEY"] = "Value" });
@@ -55,7 +57,9 @@ public class WorkerAssignmentTests
             string.Equals(changedField, "group", StringComparison.Ordinal) ? "HTTP" : "http",
             string.Equals(changedField, "alwaysReady", StringComparison.Ordinal),
             environment,
-            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot");
+            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot",
+            configLastModifiedTime: string.Equals(changedField, "configLastModifiedTime", StringComparison.Ordinal) ? 123 : 0,
+            contentLastModifiedTime: string.Equals(changedField, "contentLastModifiedTime", StringComparison.Ordinal) ? 456 : 0);
 
         Assert.False(original.IsEquivalentTo(changed));
         Assert.False(changed.IsEquivalentTo(original));

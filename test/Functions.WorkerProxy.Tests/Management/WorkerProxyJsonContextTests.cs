@@ -247,16 +247,52 @@ public class WorkerProxyJsonContextTests
             "revisionId", "status", "link", "isUnhealthy");
         Assert.Equal("FunctionsSplitWorkerProxy", root.GetProperty("functionsContainerType").GetString());
         Assert.Equal("pod", root.GetProperty("self").GetProperty("podName").GetString());
+        AssertProperties(root.GetProperty("self"), "resourceNamespace", "podName", "app");
+        AssertProperties(root.GetProperty("self").GetProperty("app"),
+            "functionAppName", "functionAppSiteId", "antaresStampName");
         Assert.False(root.GetProperty("isDiscoveryPod").GetBoolean());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal(JsonValueKind.Null, root.GetProperty("functionGroup").ValueKind);
         Assert.Equal(DateTimeOffset.UnixEpoch, root.GetProperty("startupTime").GetDateTimeOffset());
         Assert.Equal(0, root.GetProperty("revisionId").GetInt32());
         Assert.Equal(removalRequested ? "RemovalRequested" : "Starting", root.GetProperty("status").GetString());
-        Assert.False(root.GetProperty("isUnhealthy").GetBoolean());
+        Assert.Equal(removalRequested, root.GetProperty("isUnhealthy").GetBoolean());
         AssertProperties(root.GetProperty("link"), "state");
         Assert.Equal("Unlinked", root.GetProperty("link").GetProperty("state").GetString());
         Assert.Equal(response, JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.SplitWorkerOriginState));
+    }
+
+    [Fact]
+    public void InfraState_DeserializesLegionCheckpointWithOmittedNullFields()
+    {
+        const string checkpoint = """
+            {
+              "functionsContainerType":"FunctionsSplitWorkerProxy",
+              "self":{"resourceNamespace":"worker-ns","podName":"worker-pod",
+                      "app":{"functionAppName":"app","functionAppSiteId":123,"antaresStampName":"stamp"}},
+              "isDiscoveryPod":false,
+              "isAlwaysReady":false,
+              "configLastModifiedTime":1793664000,
+              "contentLastModifiedTime":1793664000,
+              "startupTime":"2026-11-03T08:00:00+00:00",
+              "revisionId":2,
+              "status":"RemovalRequested",
+              "link":{"state":"Linked",
+                      "runtime":{"resourceNamespace":"runtime-ns","podName":"runtime-pod",
+                                 "app":{"functionAppName":"app","functionAppSiteId":123,"antaresStampName":"stamp"}}},
+              "isUnhealthy":true
+            }
+            """;
+
+        SplitWorkerOriginState restored = Assert.IsType<SplitWorkerOriginState>(
+            JsonSerializer.Deserialize(checkpoint, WorkerProxyJsonContext.Default.SplitWorkerOriginState));
+
+        Assert.Null(restored.FunctionGroup);
+        Assert.Equal(SplitWorkerStatus.RemovalRequested, restored.Status);
+        Assert.Equal(SplitWorkerLinkState.Linked, restored.Link.State);
+        Assert.Equal("runtime-pod", Assert.IsType<SplitPodIdentity>(restored.Link.Runtime).PodName);
+        Assert.Equal(123, restored.Self.App.FunctionAppSiteId);
+        Assert.Equal(1793664000, restored.ConfigLastModifiedTime);
     }
 
     [Fact]
@@ -264,6 +300,20 @@ public class WorkerProxyJsonContextTests
     {
         Assert.Throws<JsonException>(() =>
             JsonSerializer.Deserialize("{}", WorkerProxyJsonContext.Default.SplitWorkerOriginState));
+    }
+
+    [Theory]
+    [InlineData("deployment:validation", true)]
+    [InlineData("Deployment:Validation", false)]
+    [InlineData("http", false)]
+    public void InfraState_DiscoveryFlagUsesAssignedFunctionGroup(string functionGroup, bool discovery)
+    {
+        WorkerPodState state = WorkerPodState.CreateUnassigned("pod", DateTimeOffset.UnixEpoch) with
+        {
+            FunctionGroupName = functionGroup
+        };
+
+        Assert.Equal(discovery, SplitWorkerOriginState.FromState(state).IsDiscoveryPod);
     }
 
     [Theory]

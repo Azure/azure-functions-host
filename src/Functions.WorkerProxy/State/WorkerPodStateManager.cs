@@ -192,6 +192,57 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Records identity supplied by an admitted Runtime stream, not by worker messages.
+    /// </summary>
+    public bool OnRuntimeAttached(long sessionId, SplitPodIdentity? identity)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+        lock (_stateLock)
+        {
+            if (_state.RemovalRequested ||
+                sessionId < _lastSessionId ||
+                (identity is not null && _state.FunctionAppName is { } app &&
+                    !string.Equals(app, identity.App.FunctionAppName, StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
+            if (identity is not null)
+            {
+                UpdateStateAndNotifyWaitersLocked(_state with
+                {
+                    Revision = checked(_state.Revision + 1),
+                    RuntimeIdentity = identity
+                });
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Publishes a correlated successful WorkerInit handshake for the current identified Runtime.
+    /// </summary>
+    public bool OnRuntimeInitialized(long sessionId)
+    {
+        lock (_stateLock)
+        {
+            if (_state.SessionId != sessionId ||
+                !_state.IsWorkerReady || _state.RuntimeIdentity is null || _state.RuntimeInitialized)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RuntimeInitialized = true
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
     public bool OnSessionTerminated(long sessionId)
@@ -219,6 +270,17 @@ internal sealed class WorkerPodStateManager
             _lastSessionId = sessionId;
             if (!_state.IsWorkerAttached)
             {
+                if (_state.RuntimeIdentity is not null)
+                {
+                    UpdateStateAndNotifyWaitersLocked(_state with
+                    {
+                        Revision = checked(_state.Revision + 1),
+                        RuntimeIdentity = null,
+                        RuntimeInitialized = false
+                    });
+                    return true;
+                }
+
                 return false;
             }
 
@@ -226,6 +288,8 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
+                RuntimeIdentity = null,
+                RuntimeInitialized = false,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
@@ -234,7 +298,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Publishes sticky removal and clears live worker and assignment identity.
+    /// Publishes sticky removal and clears live worker and assignment identity while retaining Link history.
     /// </summary>
     public bool RequestRemoval()
     {
@@ -259,6 +323,7 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = null,
                 FunctionGroupName = null,
                 IsAlwaysReady = null,
+                RuntimeInitialized = _state.IsRuntimeInitialized,
                 RemovalRequested = true
             });
             return true;
@@ -292,6 +357,12 @@ internal sealed class WorkerPodStateManager
                 return WorkerAssignmentResult.WorkerNotReady;
             }
 
+            if (_state.RuntimeIdentity is { } runtime &&
+                !string.Equals(runtime.App.FunctionAppName, assignment.FunctionAppName, StringComparison.Ordinal))
+            {
+                return WorkerAssignmentResult.AssignmentConflict;
+            }
+
             // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
             WorkerPodState assigned = _state with
             {
@@ -300,7 +371,9 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                ConfigLastModifiedTime = assignment.ConfigLastModifiedTime,
+                ContentLastModifiedTime = assignment.ContentLastModifiedTime
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

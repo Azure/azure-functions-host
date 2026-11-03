@@ -14,6 +14,118 @@ namespace Azure.Functions.WorkerProxy.Tests.State;
 public partial class WorkerPodStateManagerTests
 {
     [Fact]
+    public void RuntimeInitialization_RequiresCurrentIdentifiedWorker()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        SplitPodIdentity runtime = new("runtime-ns", "runtime-pod", new("app", 42, "stamp"));
+        Assert.False(manager.OnRuntimeInitialized(1));
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.False(manager.OnRuntimeInitialized(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        Assert.False(manager.OnRuntimeInitialized(1));
+        Assert.True(manager.OnRuntimeAttached(1, runtime));
+        Assert.False(manager.OnRuntimeInitialized(2));
+        Assert.True(manager.OnRuntimeInitialized(1));
+        WorkerPodState initialized = manager.State;
+        Assert.True(initialized.IsRuntimeInitialized);
+        Assert.False(manager.OnRuntimeInitialized(1));
+        Assert.Same(initialized, manager.State);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Removal_RetainsOnlyEstablishedLinkWithoutRestoringReadiness(bool initialized)
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        SplitPodIdentity runtime = new("runtime-ns", "runtime-pod", new("app", 42, "stamp"));
+        Assert.True(manager.OnRuntimeAttached(1, runtime));
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        if (initialized)
+        {
+            Assert.True(manager.OnRuntimeInitialized(1));
+        }
+
+        WorkerPodState before = manager.State;
+        Assert.True(manager.RequestRemoval());
+        WorkerPodState removed = manager.State;
+        SplitWorkerOriginState checkpoint = SplitWorkerOriginState.FromState(removed);
+
+        Assert.Equal(before.Revision + 1, removed.Revision);
+        Assert.Equal(SplitWorkerStatus.RemovalRequested, checkpoint.Status);
+        Assert.Equal(initialized ? SplitWorkerLinkState.Linked : SplitWorkerLinkState.Unlinked, checkpoint.Link.State);
+        Assert.Equal(initialized ? runtime : null, checkpoint.Link.Runtime);
+        Assert.False(removed.IsWorkerReady);
+        Assert.False(removed.IsRuntimeInitialized);
+        Assert.Equal(WorkerPodStatus.None, removed.PodStatus);
+        Assert.False(manager.RequestRemoval());
+        Assert.False(manager.OnSessionTerminated(1));
+        Assert.False(manager.OnRuntimeAttached(2, runtime));
+        Assert.False(manager.OnWorkerAttached(2));
+        Assert.False(manager.OnWorkerStartStream(1, "late-worker"));
+        Assert.False(manager.OnRuntimeInitialized(1));
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment()));
+        Assert.Same(removed, manager.State);
+    }
+
+    [Fact]
+    public void WorkerTermination_ClearsRuntimeInitializationWithoutRequestingRemoval()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        Assert.True(manager.OnRuntimeAttached(1, new("ns", "runtime", new("app", 42, "stamp"))));
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        Assert.True(manager.OnRuntimeInitialized(1));
+
+        Assert.True(manager.OnSessionTerminated(1));
+
+        Assert.Null(manager.State.RuntimeIdentity);
+        Assert.False(manager.State.RuntimeInitialized);
+        Assert.False(manager.State.RemovalRequested);
+        Assert.Equal(SplitWorkerLinkState.Unlinked, SplitWorkerOriginState.FromState(manager.State).Link.State);
+    }
+
+    [Fact]
+    public void Removal_DoesNotInventLinkForInitializedButUnassignedWorker()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        Assert.True(manager.OnRuntimeAttached(1, new("ns", "runtime", new("app", 42, "stamp"))));
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.True(manager.OnRuntimeInitialized(1));
+        Assert.False(manager.State.IsRuntimeInitialized);
+        Assert.Equal(SplitWorkerLinkState.Unlinked, SplitWorkerOriginState.FromState(manager.State).Link.State);
+
+        Assert.True(manager.RequestRemoval());
+
+        SplitWorkerOriginState removed = SplitWorkerOriginState.FromState(manager.State);
+        Assert.Equal(SplitWorkerStatus.RemovalRequested, removed.Status);
+        Assert.Equal(SplitWorkerLinkState.Unlinked, removed.Link.State);
+        Assert.Null(removed.Link.Runtime);
+    }
+
+    [Fact]
+    public void RuntimeIdentity_RejectsAssignmentForDifferentApplication()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        Assert.True(manager.OnRuntimeAttached(1, new("ns", "runtime", new("app", 42, "stamp"))));
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        WorkerPodState before = manager.State;
+
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other-app")));
+        Assert.Same(before, manager.State);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        WorkerPodState assigned = manager.State;
+        Assert.False(manager.OnRuntimeAttached(1, new("ns", "other-runtime", new("other-app", 43, "stamp"))));
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Fact]
     public void InitialState_IsUnassignedAtRevisionZero()
     {
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);

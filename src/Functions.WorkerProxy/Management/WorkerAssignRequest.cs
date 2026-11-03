@@ -31,6 +31,16 @@ internal sealed class WorkerAssignRequest
 
     public bool? IsAlwaysReady { get; init; }
 
+    /// <summary>
+    /// Gets the optional configuration version as a Unix timestamp.
+    /// </summary>
+    public long? ConfigLastModifiedTime { get; init; }
+
+    /// <summary>
+    /// Gets the optional content version as a Unix timestamp.
+    /// </summary>
+    public long? ContentLastModifiedTime { get; init; }
+
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }

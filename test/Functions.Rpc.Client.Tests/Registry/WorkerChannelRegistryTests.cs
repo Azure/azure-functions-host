@@ -38,6 +38,41 @@ public sealed partial class WorkerChannelRegistryTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
+    public async Task LinkAsync_RuntimeIdentityIsForwardedAndParticipatesInRetryMatching()
+    {
+        const string identity = """{"resourceNamespace":"ns","podName":"runtime"}""";
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        Uri endpoint = CreateEndpoint("worker");
+        harness.DuplexFactory.Setup(factory => factory.ConnectAsync(endpoint, identity, It.IsAny<CancellationToken>()))
+            .Returns((Uri target, string _, CancellationToken token) => harness.DuplexFactory.Object.ConnectAsync(target, token));
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+
+        Task<WorkerLinkResult> first = linker.LinkAsync("worker", endpoint, identity);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Task<WorkerLinkResult> retry = linker.LinkAsync("worker", endpoint, identity);
+        Assert.False(retry.IsCompleted);
+        WorkerLinkException changedIdentity = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => linker.LinkAsync("worker", endpoint, "different"));
+        WorkerLinkException missingIdentity = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => linker.LinkAsync("worker", endpoint));
+        Assert.Equal(WorkerLinkFailureReason.Conflict, changedIdentity.Reason);
+        Assert.Equal(WorkerLinkFailureReason.Conflict, missingIdentity.Reason);
+        channel.AllowStart();
+
+        WorkerLinkResult linked = await first.WaitAsync(TestTimeout);
+        Assert.True(linked.IsNewLink);
+        Assert.Same(linked.Channel, (await retry.WaitAsync(TestTimeout)).Channel);
+        Assert.False((await linker.LinkAsync("worker", endpoint, identity)).IsNewLink);
+        WorkerLinkException completedConflict = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => linker.LinkAsync("worker", endpoint, "different"));
+        Assert.Equal(WorkerLinkFailureReason.Conflict, completedConflict.Reason);
+        harness.DuplexFactory.Verify(factory => factory.ConnectAsync(endpoint, identity, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task LinkAsync_PassesConnectedTransportToChannelFactory()
     {
         RegistryHarness harness = new();

@@ -18,6 +18,13 @@ public sealed class WorkerLinkRequest
     public string? WorkerGrpcEndpoint { get; set; }
 
     /// <summary>
+    /// Gets or sets the platform's serialized Runtime identity for Worker-state publication.
+    /// Omitted identities retain the legacy conservative Starting/Unlinked signal.
+    /// </summary>
+    [JsonProperty("runtimeIdentity", NullValueHandling = NullValueHandling.Ignore)]
+    public string? RuntimeIdentity { get; set; }
+
+    /// <summary>
     /// Gets or sets the reserved worker-pod container encryption key. It is not used to authenticate
     /// the outbound connection and must not be logged or returned to the caller.
     /// </summary>

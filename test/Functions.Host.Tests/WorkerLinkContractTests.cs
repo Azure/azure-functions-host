@@ -20,6 +20,19 @@ namespace Azure.Functions.Host.Tests;
 public class WorkerLinkContractTests
 {
     [Fact]
+    public void WorkerLinkRequest_RuntimeIdentity_RoundTripsSerializedContract()
+    {
+        const string identity = """{"resourceNamespace":"ns","podName":"pod","app":{"functionAppName":"app","functionAppSiteId":42,"antaresStampName":"stamp"}}""";
+        WorkerLinkRequest request = new() { WorkerGrpcEndpoint = "http://worker:5001", RuntimeIdentity = identity };
+
+        string json = JsonConvert.SerializeObject(request);
+        WorkerLinkRequest restored = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(json));
+
+        Assert.Equal(identity, JObject.Parse(json)["runtimeIdentity"]?.Value<string>());
+        Assert.Equal(identity, restored.RuntimeIdentity);
+    }
+
+    [Fact]
     public void WorkerLinkTypes_LiveInComputeProductAssembly()
     {
         Assembly compute = typeof(ClientWorkerComposition).Assembly;

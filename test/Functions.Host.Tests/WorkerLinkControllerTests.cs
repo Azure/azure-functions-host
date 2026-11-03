@@ -36,6 +36,27 @@ public class WorkerLinkControllerTests
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
 
     [Fact]
+    public async Task LinkWorker_RuntimeIdentity_IsForwardedToRegistry()
+    {
+        const string identity = """
+            {"resourceNamespace":"runtime-ns","podName":"runtime-pod",
+             "app":{"functionAppName":"app","functionAppSiteId":42,"antaresStampName":"stamp"}}
+            """;
+        using CancellationTokenSource cancellation = new();
+        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), identity, cancellation.Token))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        WorkerLinkRequest request = ValidRequest();
+        request.RuntimeIdentity = identity;
+
+        IActionResult result = await CreateController().LinkWorker(WorkerId, request, cancellation.Token);
+
+        Assert.Equal(StatusCodes.Status201Created, Assert.IsType<StatusCodeResult>(result).StatusCode);
+        _registry.Verify(registry => registry.LinkAsync(
+            WorkerId, new Uri(ValidGrpcEndpoint), identity, cancellation.Token), Times.Once);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public void Constructor_NullLoggerOrRegistry_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object));

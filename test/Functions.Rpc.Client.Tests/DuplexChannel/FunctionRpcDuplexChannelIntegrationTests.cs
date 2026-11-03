@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,6 +22,23 @@ public class FunctionRpcDuplexChannelIntegrationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
+    public async Task ConnectionForwardsRuntimeIdentityAsBinaryMetadata()
+    {
+        const string identity = """{"resourceNamespace":"ns","podName":"runtime","app":{"functionAppName":"app","functionAppSiteId":42,"antaresStampName":"stamp"}}""";
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, identity);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        Metadata.Entry header = Assert.Single(server.Service.RequestHeaders.Where(entry =>
+            string.Equals(entry.Key, "x-ms-functions-runtime-identity-bin", StringComparison.Ordinal)));
+        Assert.True(header.IsBinary);
+        Assert.Equal(identity, Encoding.UTF8.GetString(header.ValueBytes));
+    }
+
+    [Fact]
     public async Task ChannelExchangesArbitraryMessagesInBothDirections()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
@@ -27,6 +46,8 @@ public class FunctionRpcDuplexChannelIntegrationTests
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
         await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
         await server.Service.Connected.WaitAsync(TestTimeout);
+        Assert.DoesNotContain(server.Service.RequestHeaders, entry =>
+            string.Equals(entry.Key, "x-ms-functions-runtime-identity-bin", StringComparison.Ordinal));
 
         StreamingMessage outbound = new() { RequestId = "outbound" };
         await channel.Writer.WriteAsync(outbound);

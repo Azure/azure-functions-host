@@ -10,10 +10,21 @@ existing behavior, and application-owned shutdown is excluded from Runtime link-
 
 Removal clears live worker and assignment identity and publishes `RemovalRequested` through
 `POST /admin/infra/instanceState`. An empty body returns the current checkpoint; posting that
-checkpoint waits up to 60 seconds for changes (HTTP 204 if unchanged). Removal checkpoints always
-return immediately, including repeated polls. The existing worker state endpoint remains available.
-The infrastructure projection retains the source contract's placeholder identity fields and
-`Unlinked` link state; Runtime stream admission is not a full Link acknowledgment.
+checkpoint waits up to 60 seconds for changes (HTTP 204 if unchanged), including after removal.
+A new removal revision wakes existing polls immediately. The existing worker state endpoint remains available.
+
+The shared checkpoint contracts and Runtime identity/initialization wiring are aligned with
+`manikantanallagatla/azure-functions-host` PR #20 at `2c4b21bd`. Only the contract prerequisites
+are reused here; never-linked timeouts, Worker-side removal, scale-in, and drain are not included.
+The infrastructure `self` identity retains the shared contract's placeholders. Runtime identity
+comes from the Runtime-only `x-ms-functions-runtime-identity-bin` metadata. A correlated successful
+WorkerInit response written to that Runtime publishes `Running` / `Linked` for a ready assignment;
+stream admission alone does not. Assignment configuration/content timestamps populate the checkpoint.
+Host forwards the optional serialized `runtimeIdentity` from `PUT /admin/workers/{workerId}` through
+the registry to this binary metadata; exact link retries must retain the same identity.
+
+Removal preserves a previously established `Linked` relationship and its Runtime identity without
+preserving live readiness. A Worker that never completed initialization remains `Unlinked`.
 
 Removal withdraws worker readiness, rejects new Runtime and Worker FunctionRpc streams, and
 returns HTTP 503 for new forwarding requests, including those finishing endpoint-readiness checks.

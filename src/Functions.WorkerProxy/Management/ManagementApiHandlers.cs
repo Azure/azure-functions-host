@@ -55,7 +55,7 @@ internal static class ManagementApiHandlers
     }
 
     /// <summary>
-    /// Returns the infrastructure checkpoint, or polls until it changes unless removal is already requested.
+    /// Returns the infrastructure checkpoint, or polls until it changes.
     /// </summary>
     public static async Task<IResult> PostInfraInstanceStateAsync(
         SplitWorkerOriginState? previousState,
@@ -65,7 +65,7 @@ internal static class ManagementApiHandlers
         CancellationToken cancellationToken = request.HttpContext.RequestAborted;
         cancellationToken.ThrowIfCancellationRequested();
         SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
-        if (current.Status == SplitWorkerStatus.RemovalRequested || previousState is null || previousState != current)
+        if (previousState is null || previousState != current)
         {
             return SplitStateResponse(current);
         }
