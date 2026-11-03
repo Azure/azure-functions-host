@@ -151,6 +151,12 @@ AppHost sets the project's Host `MESH_INIT_URI` to the fake platform. After spec
 }
 ```
 
+Each publication also sends `fx-current-instance` from the Host's current `CONTAINER_NAME` (`aspire-runtime` in the
+local project and container profiles). A missing, empty, or whitespace-only Host identity fails before sending; there
+is no worker-pod identity fallback. The project-mode fake AppServer checks that value and returns HTTP 401 when it
+is missing or does not match the configured Host identity. This exercises the internal instance-identity convention
+for development; it is not full TLS or token authentication.
+
 `httpCapacity` is the total of registry-ready HTTP workers' assigned concurrency limits, not free slots after active
 requests or Frontend reservations. This sample explicitly assigns `maxHttpConcurrency: 16` to each HTTP worker, so one
 ready worker contributes 16 and two contribute 32; the Host does not assume equal limits or multiply worker count by 16.
@@ -172,12 +178,13 @@ exceptions are not swallowed. This does not guarantee delivery or establish an A
 HTTP 401/403 responses are logged as authentication rejections, not transient failures. The rejected snapshot is not sent
 again on a retry timer or unchanged shutdown; publication resumes only when runtime state changes. The Host keeps running.
 
-The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. Requests have no
-authentication or applied-version acknowledgement, and an AppServer restart is not repaired without a later Host state
-change. The client resolves and caches `MESH_INIT_URI` on its first publication after specialization, defaulting to
-`http://localhost:6060/` when unset. Later configuration changes do not replace that endpoint for the root Host's lifetime.
-Container mode has no fake AppServer receiver; its Host will log publication failures
-and retry the default endpoint without preventing the worker link or invocation.
+The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. The local
+identity check does not provide full TLS/token authentication or an applied-version acknowledgement, and an AppServer
+restart is not repaired without a later Host state change. The client reads `CONTAINER_NAME` per request, independently
+of endpoint resolution. It resolves and caches `MESH_INIT_URI` on its first publication after specialization, defaulting
+to `http://localhost:6060/` when unset; later configuration changes do not replace that endpoint for the root Host's
+lifetime. Container mode has no fake AppServer receiver; its Host will log publication failures and retry the default
+endpoint without preventing the worker link or invocation.
 
 ## Endpoints
 

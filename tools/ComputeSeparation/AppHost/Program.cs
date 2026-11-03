@@ -13,6 +13,7 @@ const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
 const string TokenServiceProxyEndpointName = "token-service-proxy";
+const string HostContainerName = "aspire-runtime";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -95,6 +96,7 @@ else
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
+        .WithEnvironment("CONTAINER_NAME", HostContainerName)
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
         .WithEnvironment("AzureWebJobsSecretStorageType", "Files")
         .WithEnvironment("AzureWebJobsScriptRoot", runDirectory!.ScriptPath)
@@ -130,7 +132,8 @@ else
     IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
         .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
-        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName));
+        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("FakePlatform__HostContainerName", HostContainerName);
 
     functionsHost.WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName));
 

@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -119,7 +120,10 @@ public class AppServerHostStateClientTests
     [Fact]
     public async Task PublishAsync_ReadsMeshInitUriReloadedBeforeFirstPublication()
     {
-        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        }).Build();
         AppServerHostStateClient client = CreateClient(configuration);
 
         configuration["MESH_INIT_URI"] = "http://appserver:7070";
@@ -134,6 +138,7 @@ public class AppServerHostStateClientTests
         string endpoint = "http://appserver:7070/base";
         Mock<IConfiguration> configuration = new(MockBehavior.Strict);
         configuration.SetupGet(config => config["MESH_INIT_URI"]).Returns(() => endpoint);
+        configuration.SetupGet(config => config[EnvironmentSettingNames.ContainerName]).Returns("runtime-container");
         AppServerHostStateClient client = CreateClient(configuration.Object);
         await client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None);
         Uri? firstUri = _handler.RequestUri;
@@ -144,6 +149,63 @@ public class AppServerHostStateClientTests
         Assert.Equal(new Uri("http://appserver:7070/base/admin/infra/host/state"), firstUri);
         Assert.Same(firstUri, _handler.RequestUri);
         configuration.VerifyGet(config => config["MESH_INIT_URI"], Times.Once());
+    }
+
+    [Fact]
+    public async Task PublishAsync_ReadsCurrentInstanceIdentityAfterConfigurationReload()
+    {
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-before-specialization",
+            ["MESH_INIT_URI"] = "http://appserver:7070",
+        }).Build();
+        AppServerHostStateClient client = CreateClient(configuration);
+        RuntimeState state = new(CreatedTime, 36, 3);
+
+        await client.PublishAsync(state, CancellationToken.None);
+
+        Assert.Equal("runtime-before-specialization", _handler.InstanceIdentity);
+        Uri? firstUri = _handler.RequestUri;
+        string? firstBody = _handler.Body;
+        configuration[EnvironmentSettingNames.ContainerName] = "runtime-after-specialization";
+        configuration["MESH_INIT_URI"] = "http://other-appserver:8080";
+        configuration.Reload();
+
+        await client.PublishAsync(state, CancellationToken.None);
+
+        Assert.Equal("runtime-after-specialization", _handler.InstanceIdentity);
+        Assert.Equal(firstUri, _handler.RequestUri);
+        Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);
+        Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""", firstBody);
+        Assert.Equal(firstBody, _handler.Body);
+    }
+
+    [Fact]
+    public async Task PublishAsync_RejectsMissingInstanceIdentityBeforeSending()
+    {
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        AppServerHostStateClient client = CreateClient(configuration);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
+
+        Assert.Null(_handler.Method);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t\r\n")]
+    public async Task PublishAsync_RejectsInvalidInstanceIdentityBeforeSending(string? containerName)
+    {
+        AppServerHostStateClient client = CreateClient(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = containerName,
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
+
+        Assert.Null(_handler.Method);
     }
 
     [Theory]
@@ -167,6 +229,7 @@ public class AppServerHostStateClientTests
         configuration.SetupSequence(config => config["MESH_INIT_URI"])
             .Returns("not an absolute URI")
             .Returns("http://appserver:7070/base/");
+        configuration.SetupGet(config => config[EnvironmentSettingNames.ContainerName]).Returns("runtime-container");
         AppServerHostStateClient client = CreateClient(configuration.Object);
 
         await Assert.ThrowsAsync<UriFormatException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
@@ -258,7 +321,21 @@ public class AppServerHostStateClientTests
     }
 
     private AppServerHostStateClient CreateClient(Dictionary<string, string?>? settings = null)
-        => CreateClient(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+    {
+        Dictionary<string, string?> values = new()
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        };
+        if (settings is not null)
+        {
+            foreach (KeyValuePair<string, string?> setting in settings)
+            {
+                values[setting.Key] = setting.Value;
+            }
+        }
+
+        return CreateClient(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+    }
 
     private AppServerHostStateClient CreateClient(IConfiguration configuration)
     {
@@ -283,6 +360,8 @@ public class AppServerHostStateClientTests
 
         public string? Body { get; private set; }
 
+        public string? InstanceIdentity { get; private set; }
+
         public Func<CancellationToken, Task>? OnRequest { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -290,6 +369,9 @@ public class AppServerHostStateClientTests
             Method = request.Method;
             RequestUri = request.RequestUri;
             ContentType = request.Content?.Headers.ContentType?.MediaType;
+            InstanceIdentity = request.Headers.TryGetValues(ScriptConstants.ContainerInstanceHeader, out IEnumerable<string>? values)
+                ? string.Join(",", values)
+                : null;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             if (OnRequest is not null)
             {

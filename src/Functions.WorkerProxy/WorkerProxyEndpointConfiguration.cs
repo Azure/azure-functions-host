@@ -19,8 +19,6 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
 {
     internal const string HttpListenerScheme = "http";
 
-    internal const string HttpListenerScheme = "http";
-
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;

@@ -8,6 +8,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").Get<FakePlatformOptions>()
@@ -32,8 +33,18 @@ HostState? acceptedHostState = null;
 app.MapHealthChecks("/health");
 
 // This local prototype records arrival order; timestamps do not establish causal order across Host restarts.
-app.MapPut("/admin/infra/host/state", (HostState state) =>
+app.MapPut("/admin/infra/host/state", (HttpRequest request, HostState state) =>
 {
+    if (!request.Headers.TryGetValue("fx-current-instance", out StringValues instanceHeader)
+        || instanceHeader.Count != 1
+        || string.IsNullOrWhiteSpace(instanceHeader[0])
+        || !string.Equals(instanceHeader[0], options.HostContainerName, StringComparison.Ordinal))
+    {
+        return Results.Text(
+            "Host instance identity is missing or does not match.",
+            statusCode: StatusCodes.Status401Unauthorized);
+    }
+
     lock (hostStateLock)
     {
         acceptedHostState = state;
@@ -159,6 +170,8 @@ internal partial class Program
     private sealed class FakePlatformOptions
     {
         public required Uri HostUri { get; init; }
+
+        public required string HostContainerName { get; init; }
 
         public required WorkerProxyOptions[] WorkerProxies { get; init; }
 
