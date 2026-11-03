@@ -59,7 +59,7 @@ public sealed partial class WorkerScaleInController : Controller
         string functionGroup = request!.FunctionGroup!;
         bool isAlwaysReady = request.IsAlwaysReady!.Value;
         int desiredWorkerCount = request.DesiredWorkerCount!.Value;
-        WorkerScaleInResult result = _registry.ScaleInWorkers(
+        int newlyDrainingWorkerCount = _registry.ScaleInWorkers(
             functionGroup,
             isAlwaysReady,
             desiredWorkerCount);
@@ -69,9 +69,9 @@ public sealed partial class WorkerScaleInController : Controller
             functionGroup,
             isAlwaysReady,
             desiredWorkerCount,
-            result.NewlyDrainingWorkerCount);
+            newlyDrainingWorkerCount);
 
-        return Ok(new WorkerScaleInResponse(result.NewlyDrainingWorkerCount));
+        return Ok(new WorkerScaleInResponse(newlyDrainingWorkerCount));
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(WorkerScaleInRequest? request)

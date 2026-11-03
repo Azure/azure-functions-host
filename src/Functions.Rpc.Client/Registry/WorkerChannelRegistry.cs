@@ -161,7 +161,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
         => new(await link.ConfigureAwait(false), isNewLink);
 
-    public WorkerScaleInResult ScaleInWorkers(
+    public int ScaleInWorkers(
         string functionGroup,
         bool isAlwaysReady,
         int desiredWorkerCount)
@@ -169,11 +169,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
         ArgumentOutOfRangeException.ThrowIfNegative(desiredWorkerCount);
 
-        List<WorkerScaleInSelection> selections = [];
+        List<(string WorkerId, Task DrainTask)> selections = [];
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            List<WorkerScaleInCandidate> candidates = [];
+            List<(string WorkerId, RpcClientWorkerChannel Channel)> candidates = [];
             foreach ((string workerId, WorkerSlot slot) in _slots)
             {
                 if (_activeSetupContext is null ||
@@ -187,28 +187,22 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 candidates.Add(new(workerId, channel));
             }
 
-            WorkerScaleInCandidate[] orderedCandidates = [.. candidates
-                .Where(candidate => candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady))
-                .OrderBy(static candidate => candidate.WorkerId, StringComparer.Ordinal)];
-            int remainingRemoveCount = Math.Max(0, orderedCandidates.Length - desiredWorkerCount);
+            candidates.RemoveAll(candidate => !candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady));
+            int matchingWorkerCount = candidates.Count;
 
-            foreach (WorkerScaleInCandidate candidate in orderedCandidates)
+            foreach ((string workerId, RpcClientWorkerChannel channel) in candidates)
             {
-                if (remainingRemoveCount == 0)
+                if (matchingWorkerCount <= desiredWorkerCount)
                 {
                     break;
                 }
 
-                if (candidate.Channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
+                if (channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
                 {
-                    selections.Add(new(candidate.WorkerId, drainTask));
-                    remainingRemoveCount--;
-                    continue;
+                    selections.Add(new(workerId, drainTask));
                 }
 
-                remainingRemoveCount = Math.Max(
-                    0,
-                    CountScaleInCandidates(orderedCandidates, functionGroup, isAlwaysReady) - desiredWorkerCount);
+                matchingWorkerCount--;
             }
 
             if (selections.Count > 0)
@@ -217,19 +211,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
         }
 
-        foreach (WorkerScaleInSelection selection in selections)
+        foreach ((string workerId, Task drainTask) in selections)
         {
-            _ = DrainAndUnlinkAsync(selection.WorkerId, selection.DrainTask);
+            _ = DrainAndUnlinkAsync(workerId, drainTask);
         }
 
-        return new(selections.Count);
+        return selections.Count;
     }
-
-    private static int CountScaleInCandidates(
-        IEnumerable<WorkerScaleInCandidate> candidates,
-        string functionGroup,
-        bool isAlwaysReady)
-        => candidates.Count(candidate => candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady));
 
     private async Task DrainAndUnlinkAsync(string workerId, Task drainTask)
     {
@@ -1014,12 +1002,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IReadOnlyList<FunctionMetadata> Functions,
         ManagedDependencyOptions ManagedDependencyOptions,
         TimeSpan? FunctionTimeout);
-
-    private sealed record WorkerScaleInCandidate(
-        string WorkerId,
-        RpcClientWorkerChannel Channel);
-
-    private sealed record WorkerScaleInSelection(string WorkerId, Task DrainTask);
 
     private static partial class Log
     {

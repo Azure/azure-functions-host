@@ -36,7 +36,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
 
-    private readonly Dictionary<Guid, Task> _committedInvocations = [];
+    private readonly HashSet<ScriptInvocationContext> _acceptedInvocations = [];
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
@@ -113,7 +113,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        Guid invocationId = context.ExecutionContext.InvocationId;
         lock (_invocationAdmissionLock)
         {
             if (!IsUsableForInvocationsLocked())
@@ -128,15 +127,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                     $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
             }
 
-            if (!_committedInvocations.TryAdd(invocationId, context.ResultSource.Task))
-            {
-                throw new InvalidOperationException(
-                    $"Invocation '{invocationId}' is already committed to worker '{Id}'.");
-            }
+            _acceptedInvocations.Add(context);
 
             if (!inputBuffer.Post(context))
             {
-                _committedInvocations.Remove(invocationId);
+                _acceptedInvocations.Remove(context);
                 return false;
             }
         }
@@ -144,10 +139,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         _ = context.ResultSource.Task.ContinueWith(
             static (_, state) =>
             {
-                (RpcClientWorkerChannel channel, Guid id) = ((RpcClientWorkerChannel, Guid))state;
-                channel.ReleaseCommittedInvocation(id);
+                (RpcClientWorkerChannel channel, ScriptInvocationContext invocation) =
+                    ((RpcClientWorkerChannel, ScriptInvocationContext))state;
+                channel.ReleaseAcceptedInvocation(invocation);
             },
-            (this, invocationId),
+            (this, context),
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
@@ -173,12 +169,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
 
             _draining = true;
-            return Task.WhenAll(_committedInvocations.Values.Select(
-                static task => task.ContinueWith(
-                    static _ => { },
-                    CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default)));
+            return Task.WhenAll(_acceptedInvocations.Select(static invocation => invocation.ResultSource.Task)).ContinueWith(
+                static _ => { },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
     }
 
@@ -247,8 +242,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         if (disposing)
         {
+            ObjectDisposedException exception = new(GetType().FullName);
             // Metadata callers did not request cancellation; fail so host startup can retry.
-            FailPendingMetadataRequest(new ObjectDisposedException(GetType().FullName));
+            FailPendingMetadataRequest(exception);
+            FailAcceptedInvocations(exception);
         }
 
         base.Dispose(disposing);
@@ -291,11 +288,27 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return startStreamTimeout;
     }
 
-    private void ReleaseCommittedInvocation(Guid invocationId)
+    private void FailAcceptedInvocations(Exception exception)
+    {
+        ScriptInvocationContext[] invocations;
+        lock (_invocationAdmissionLock)
+        {
+            _draining = true;
+            invocations = [.. _acceptedInvocations];
+            _acceptedInvocations.Clear();
+        }
+
+        foreach (ScriptInvocationContext invocation in invocations)
+        {
+            invocation.ResultSource.TrySetException(exception);
+        }
+    }
+
+    private void ReleaseAcceptedInvocation(ScriptInvocationContext invocation)
     {
         lock (_invocationAdmissionLock)
         {
-            _committedInvocations.Remove(invocationId);
+            _acceptedInvocations.Remove(invocation);
         }
     }
 

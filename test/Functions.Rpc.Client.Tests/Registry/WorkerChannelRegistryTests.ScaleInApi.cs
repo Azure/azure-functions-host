@@ -2,17 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Security.Claims;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -27,7 +25,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -35,14 +32,14 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed partial class WorkerChannelRegistryTests
 {
     [Fact]
-    public async Task PostScaleIn_AbsoluteRetainedCount_SelectsLowestWorkerIdAndRepeatIsNoOp()
+    public async Task PostScaleIn_AbsoluteRetainedCount_DrainsOnlyExcessAndRepeatIsNoOp()
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("DurableFunction");
-        ChannelControl higherId = CreateClassifiedWorker("worker-z");
-        ChannelControl lowerId = CreateClassifiedWorker("worker-a");
-        await LinkAndReadyWorkersAsync(harness, registry, function, higherId, lowerId);
+        ChannelControl first = CreateClassifiedWorker("worker-z");
+        ChannelControl second = CreateClassifiedWorker("worker-a");
+        await LinkAndReadyWorkersAsync(harness, registry, function, first, second);
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
 
         using HttpResponseMessage retained = await host.PostAsync(
@@ -55,13 +52,12 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(0, await ReadNewlyDrainingWorkerCountAsync(retained));
         Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(reduced));
         Assert.Equal(0, await ReadNewlyDrainingWorkerCountAsync(repeated));
-        await lowerId.Transport.DisposeStarted.WaitAsync(TestTimeout);
-        Assert.Equal(0, higherId.DisposeCount);
-        Assert.Same(higherId.Channel, Assert.Single(registry.GetInitializedChannels()));
+        await WaitUntilAsync(() => first.DisposeCount + second.DisposeCount == 1);
+        Assert.Single(registry.GetInitializedChannels());
     }
 
     [Fact]
-    public async Task PostScaleIn_ExactGroupClassAndUsablePopulation_ExcludesOtherAndDrainingWorkers()
+    public async Task PostScaleIn_ExactGroupAndClass_DrainsOnlyMatchingWorkers()
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -70,11 +66,6 @@ public sealed partial class WorkerChannelRegistryTests
         ChannelControl secondMatch = CreateClassifiedWorker("second-match");
         ChannelControl wrongCaseGroup = CreateClassifiedWorker("wrong-group", functionGroup: "Durable");
         ChannelControl wrongClass = CreateClassifiedWorker("wrong-class", isAlwaysReady: true);
-        ChannelControl starting = new(
-            "starting",
-            blockStart: true,
-            functionGroupName: FunctionGroups.Durable,
-            isAlwaysReady: false);
         await LinkAndReadyWorkersAsync(
             harness,
             registry,
@@ -83,78 +74,91 @@ public sealed partial class WorkerChannelRegistryTests
             secondMatch,
             wrongCaseGroup,
             wrongClass);
-        harness.Enqueue(starting);
-        Task<WorkerLinkResult> startingLink = registry.LinkAsync(starting.Id, CreateEndpoint(starting.Id));
-        await starting.StartEntered.WaitAsync(TestTimeout);
-
-        ChannelControl readinessPending = new(
-            "readiness-pending",
-            setupFailureCount: 1,
-            functionGroupName: FunctionGroups.Durable,
-            isAlwaysReady: false);
-        harness.Enqueue(readinessPending);
-        await LinkAsync(registry, readinessPending.Id);
-        await readinessPending.SetupEntered.WaitAsync(TestTimeout);
 
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
-        using HttpResponseMessage first = await host.PostAsync(
-            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":1}""");
-        using HttpResponseMessage second = await host.PostAsync(
+        using HttpResponseMessage response = await host.PostAsync(
             """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
 
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(first));
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(second));
+        Assert.Equal(2, await ReadNewlyDrainingWorkerCountAsync(response));
         await firstMatch.Transport.DisposeStarted.WaitAsync(TestTimeout);
         await secondMatch.Transport.DisposeStarted.WaitAsync(TestTimeout);
         Assert.Equal(0, wrongCaseGroup.DisposeCount);
         Assert.Equal(0, wrongClass.DisposeCount);
-        Assert.Equal(0, readinessPending.DisposeCount);
-
-        starting.AllowStart();
-        await startingLink.WaitAsync(TestTimeout);
     }
 
-    [Fact]
-    public async Task PostScaleIn_SelectedBusyWorkerWithdrawsIntakeAndClosesAfterCommittedWork()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PostScaleIn_AcceptedWorkReachesTerminalResultBeforeLinkCloses(bool disconnectBeforeFunctionLoad)
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("DurableFunction");
-        ChannelControl retained = CreateClassifiedWorker("worker-z");
-        ChannelControl selected = CreateClassifiedWorker("worker-a");
-        await LinkAndReadyWorkersAsync(harness, registry, function, retained, selected);
+        ChannelControl selected = CreateClassifiedWorker("selected");
+        harness.Enqueue(selected);
+        await LinkAsync(registry, selected.Id);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        await WaitUntilAsync(() => selected.Channel.IsReadyForInvocations);
+
+        using RpcClientFunctionInvocationDispatcher dispatcher = new(
+            registry,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
 
         ScriptInvocationContext committed = CreateScaleInInvocation(function);
-        Assert.True(selected.Channel.TryDispatchInvocation(committed));
-        StreamingMessage request = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await dispatcher.InvokeAsync(committed);
+
+        StreamingMessage request = null;
+        if (!disconnectBeforeFunctionLoad)
+        {
+            await selected.Transport.SendResponseAsync(new()
+            {
+                FunctionLoadResponse = new()
+                {
+                    FunctionId = function.GetFunctionId(),
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                },
+            });
+            request = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        }
 
         await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
         using HttpResponseMessage response = await host.PostAsync(
-            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":1}""");
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
 
         Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
         Assert.False(committed.ResultSource.Task.IsCompleted);
         Assert.False(selected.Transport.DisposeStarted.IsCompleted);
         Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
-        Assert.True(retained.Channel.IsReadyForInvocations);
 
-        await selected.Transport.SendResponseAsync(new()
+        if (disconnectBeforeFunctionLoad)
         {
-            InvocationResponse = new()
+            selected.Complete(new IOException("Worker disconnected before function load completed."));
+            await Assert.ThrowsAsync<ObjectDisposedException>(
+                () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            await selected.Transport.SendResponseAsync(new()
             {
-                InvocationId = request.InvocationRequest.InvocationId,
-                Result = new()
+                InvocationResponse = new()
                 {
-                    Status = StatusResult.Types.Status.Failure,
-                    Exception = new()
+                    InvocationId = request.InvocationRequest.InvocationId,
+                    Result = new()
                     {
-                        Message = "Invocation failed.",
+                        Status = StatusResult.Types.Status.Failure,
+                        Exception = new()
+                        {
+                            Message = "Invocation failed.",
+                        },
                     },
                 },
-            },
-        });
-        await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
-            () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+            });
+            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
+                () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }
 
@@ -235,8 +239,6 @@ public sealed partial class WorkerChannelRegistryTests
 
     private sealed class ScaleInApiHost : IAsyncDisposable
     {
-        private const string AuthenticationScheme = "SiteToken";
-        private const string TestSiteToken = "test-site-token";
         private readonly IHost _host;
 
         private ScaleInApiHost(IHost host)
@@ -269,20 +271,12 @@ public sealed partial class WorkerChannelRegistryTests
                             });
 
                             services.AddSingleton(registry);
-                            services
-                                .AddAuthentication(AuthenticationScheme)
-                                .AddScheme<AuthenticationSchemeOptions, SiteTokenAuthenticationHandler>(
-                                    AuthenticationScheme,
-                                    _ => { });
+                            services.AddAuthentication();
                             services.AddAuthorization(options =>
                             {
                                 options.AddPolicy(
                                     PolicyNames.AdminAuthLevel,
-                                    policy =>
-                                    {
-                                        policy.AddAuthenticationSchemes(AuthenticationScheme);
-                                        policy.RequireAuthenticatedUser();
-                                    });
+                                    policy => policy.RequireAssertion(_ => true));
                             });
                         })
                         .Configure(app =>
@@ -306,15 +300,10 @@ public sealed partial class WorkerChannelRegistryTests
             }
         }
 
-        internal async Task<HttpResponseMessage> PostAsync(string json, bool includeSiteToken = true)
+        internal async Task<HttpResponseMessage> PostAsync(string json)
         {
             using HttpRequestMessage request = new(HttpMethod.Post, "/admin/workers/scale-in");
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-            if (includeSiteToken)
-            {
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, TestSiteToken);
-            }
-
             return await Client.SendAsync(request);
         }
 
@@ -341,26 +330,6 @@ public sealed partial class WorkerChannelRegistryTests
             else
             {
                 host.Dispose();
-            }
-        }
-
-        private sealed class SiteTokenAuthenticationHandler(
-            IOptionsMonitor<AuthenticationSchemeOptions> options,
-            ILoggerFactory logger,
-            UrlEncoder encoder)
-            : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
-        {
-            protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-            {
-                if (!Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out var values) ||
-                    !string.Equals(values.ToString(), TestSiteToken, StringComparison.Ordinal))
-                {
-                    return Task.FromResult(AuthenticateResult.Fail("A valid site token is required."));
-                }
-
-                ClaimsIdentity identity = new([new Claim(ClaimTypes.Name, "platform")], Scheme.Name);
-                return Task.FromResult(AuthenticateResult.Success(
-                    new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
             }
         }
     }

@@ -78,7 +78,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="isAlwaysReady">The exact always-ready capacity class.</param>
     /// <param name="desiredWorkerCount">The absolute number of matching usable workers to retain.</param>
     /// <returns>The number of workers newly committed to drain.</returns>
-    WorkerScaleInResult ScaleInWorkers(
+    int ScaleInWorkers(
         string functionGroup,
         bool isAlwaysReady,
         int desiredWorkerCount);
@@ -142,9 +142,3 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <returns>An initialized channel.</returns>
     Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default);
 }
-
-/// <summary>
-/// Represents one count-only worker scale-in decision.
-/// </summary>
-/// <param name="NewlyDrainingWorkerCount">The number of workers newly committed to drain.</param>
-public sealed record WorkerScaleInResult(int NewlyDrainingWorkerCount);

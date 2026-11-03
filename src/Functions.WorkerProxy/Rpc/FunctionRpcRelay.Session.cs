@@ -361,14 +361,6 @@ internal sealed partial class FunctionRpcRelay
             return finalized;
         }
 
-        /// <summary>
-        /// Advertises the platform-assigned function group and capacity class, replacing worker-supplied values.
-        /// </summary>
-        /// <remarks>
-        /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
-        /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
-        /// the capabilities are omitted so the runtime never receives stale classification.
-        /// </remarks>
         private void ApplyWorkerClassificationCapabilities(IDictionary<string, string> capabilities)
         {
             capabilities.Remove(FunctionGroupNameCapability);
@@ -388,7 +380,7 @@ internal sealed partial class FunctionRpcRelay
                 return;
             }
 
-            Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
+            Log.WorkerClassificationNotAdvertised(logger, id, state.AssignmentState);
         }
 
         private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
@@ -611,8 +603,10 @@ internal sealed partial class FunctionRpcRelay
 
         [LoggerMessage(3, LogLevel.Warning,
             "FunctionRpc relay session {SessionId} received a WorkerInitResponse, but the session has no active worker " +
-            "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
-            "so the Host will treat the worker's function group as unknown.")]
-        public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+            "assignment (assignment state: {AssignmentState}). Worker classification capabilities were omitted.")]
+        public static partial void WorkerClassificationNotAdvertised(
+            ILogger logger,
+            long sessionId,
+            WorkerAssignmentState assignmentState);
     }
 }
