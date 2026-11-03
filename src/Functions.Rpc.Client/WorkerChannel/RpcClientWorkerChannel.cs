@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -29,7 +31,7 @@ namespace Azure.Functions.Rpc.Client;
 /// begin initialization. Once initialization begins, cancellation only stops the individual caller's wait; shared initialization continues
 /// until it succeeds, fails, times out, or the channel is disposed.
 /// </remarks>
-internal sealed partial class RpcClientWorkerChannel : WorkerChannel
+internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
@@ -41,6 +43,10 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private readonly ILogger _activityLogger;
     private readonly DuplexChannel<StreamingMessage> _transport;
     private LifecycleState _lifecycleState;
+    private TimeProvider _activityTimeProvider = TimeProvider.System;
+    private HashSet<string> _pendingFunctionLoads = [];
+    private long? _idleSince;
+    private bool _retiring;
 
     public RpcClientWorkerChannel(
         string workerId,
@@ -101,6 +107,9 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     /// </summary>
     internal int? MaxHttpConcurrency { get; private set; }
 
+    // Unknown metadata is not evidence that an assigned worker is on-demand.
+    internal bool? IsAlwaysReady { get; private set; }
+
     /// <summary>
     /// Gets a value indicating whether the captured startup assignment belongs to the HTTP function group.
     /// </summary>
@@ -108,12 +117,63 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
+    internal int OngoingRequests => TrackedInvocationCount;
+
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
     internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
 
     internal void CompleteRequests() => _transport.Writer.TryComplete();
+
+    internal void StartIdleTracking(IReadOnlyList<FunctionMetadata> functions, TimeProvider timeProvider)
+    {
+        lock (_lifecycleLock)
+        {
+            _activityTimeProvider = timeProvider;
+            _pendingFunctionLoads = functions.Select(function => function.GetFunctionId()).ToHashSet(StringComparer.Ordinal);
+            _idleSince = null;
+            RecordReadyIdleTime();
+        }
+    }
+
+    internal bool TryPostInvocation(ScriptInvocationContext context)
+    {
+        lock (_lifecycleLock)
+        {
+            if (!IsReadyForInvocations)
+            {
+                return false;
+            }
+
+            PostInvocation(context, trackRequestLifetime: IsHttpFunctionGroup);
+            return true;
+        }
+    }
+
+    internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration)
+    {
+        lock (_lifecycleLock)
+        {
+            idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
+            if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
+                _pendingFunctionLoads.Count != 0 || HasTrackedInvocations || idleDuration <= threshold)
+            {
+                return false;
+            }
+
+            _retiring = true;
+            return true;
+        }
+    }
+
+    internal void StopAcceptingInvocations()
+    {
+        lock (_lifecycleLock)
+        {
+            _retiring = true;
+        }
+    }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -168,6 +228,33 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
+
+    protected override void OnFunctionLoaded(FunctionLoadResponse response)
+    {
+        lock (_lifecycleLock)
+        {
+            if (response.Result.Status is StatusResult.Types.Status.Success)
+            {
+                _pendingFunctionLoads.Remove(response.FunctionId);
+                RecordReadyIdleTime();
+            }
+        }
+    }
+
+    protected override void OnInvocationActivityChanged()
+    {
+        lock (_lifecycleLock)
+        {
+            if (HasTrackedInvocations)
+            {
+                _idleSince = null;
+            }
+            else
+            {
+                RecordReadyIdleTime();
+            }
+        }
+    }
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
@@ -227,6 +314,14 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         catch (Exception exception)
         {
             _startCompletion.TrySetException(exception);
+        }
+    }
+
+    private void RecordReadyIdleTime()
+    {
+        if (_pendingFunctionLoads.Count == 0 && !HasTrackedInvocations && _idleSince is null)
+        {
+            _idleSince = _activityTimeProvider.GetTimestamp();
         }
     }
 
