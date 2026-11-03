@@ -98,6 +98,11 @@ Assignment 5xx responses and thrown failures emit `WorkerAssignmentRequestFailed
 remain `WorkerAssignmentRequestRejected`. Exceptions are rethrown, and assignment failure records include
 only the exception type. When a thrown failure has no known HTTP status, the log reports `unavailable`
 rather than the response's default status.
+An `OperationCanceledException` on an aborted assignment request instead emits
+`WorkerAssignmentRequestCanceled` at Information and is rethrown. Unrelated failures remain errors.
+Single and batched function loads log received/forwarded boundaries. Batch records contain counts,
+not per-function records or worker exception text; unsuccessful or missing result statuses produce a Warning.
+Expected Host shutdown during linking is Information/`Canceled`; initialization timeouts remain Warning/`Failed`.
 The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
 Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
 Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.

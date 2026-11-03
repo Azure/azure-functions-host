@@ -144,9 +144,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         Task<WorkerChannel> link = linkCompletion.Task;
         if (_registryOwnedAttempt)
         {
-            _ = link.ContinueWith(failed =>
-                _logger.LogWarning("Registry-owned worker link {WorkerId} failed ({ErrorType}).",
-                    workerId, failed.Exception.GetBaseException().GetType().Name),
+            // Observe background failures even when all callers have stopped waiting; LinkCoreAsync logs them.
+            _ = link.ContinueWith(static failed =>
+                {
+                    _ = failed.Exception;
+                },
                 CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
         }
@@ -303,8 +305,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         {
             var failure = linkFailure ?? (Stage: LinkStage.Unknown,
                 Reason: "UnexpectedFailure", ExceptionType: exception.GetType().FullName);
-            Log.LinkEnded(_logger, workerId,
-                exception is OperationCanceledException ? "Canceled" : "Failed",
+            bool expectedShutdown = string.Equals(failure.Reason, "HostShutdown", StringComparison.Ordinal)
+                && exception is ObjectDisposedException;
+            Log.LinkEnded(_logger, expectedShutdown ? LogLevel.Information : LogLevel.Warning, workerId,
+                expectedShutdown || exception is OperationCanceledException ? "Canceled" : "Failed",
                 failure.Stage, failure.Reason, failure.ExceptionType);
             throw;
         }
@@ -974,9 +978,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         [LoggerMessage(7, LogLevel.Information, "FunctionRpc link for worker {WorkerId} initialized.")]
         public static partial void LinkInitialized(ILogger logger, string workerId);
 
-        [LoggerMessage(8, LogLevel.Warning,
-            "FunctionRpc link for worker {WorkerId} ended with {Outcome} during {Stage}. Reason: {Reason}. Exception type: {ExceptionType}.")]
-        public static partial void LinkEnded(ILogger logger, string workerId, string outcome,
+        [LoggerMessage(EventId = 8,
+            Message = "FunctionRpc link for worker {WorkerId} ended with {Outcome} during {Stage}. Reason: {Reason}. Exception type: {ExceptionType}.")]
+        public static partial void LinkEnded(ILogger logger, LogLevel level, string workerId, string outcome,
             LinkStage stage, string reason, string exceptionType);
     }
 }

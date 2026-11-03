@@ -388,7 +388,7 @@ public partial class WorkerSystemLoggingTests
             eventGenerator.ProxyRecords,
             record => string.Equals(record.EventName, "WorkerAssignmentRequestRejected", StringComparison.Ordinal));
         Assert.Matches(
-            @"^Worker assignment request completed with HTTP status 400 in \d+(?:\.\d+)? ms\. Assignment state: Unassigned\. Worker attached with ID: False\.$",
+            @"^Worker assignment request completed with HTTP status 400 in \d+(?:\.\d+)? ms\. Assignment state: Unassigned\. Worker attached and identified: False\.$",
             record.Message);
     }
 
@@ -420,7 +420,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(LogLevel.Information, record.Level);
         Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
         Assert.Matches(
-            @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached with ID: True\.$",
+            @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
             record.Message);
         Assert.DoesNotContain("test-app", record.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("test-group", record.Message, StringComparison.Ordinal);

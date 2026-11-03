@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Management;
@@ -52,6 +53,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(statusCode, context.Response.StatusCode);
         Assert.Contains(statusCode.ToString(CultureInfo.InvariantCulture), record.Message, StringComparison.Ordinal);
         Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Contains("Worker attached and identified: True.", record.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -101,6 +103,50 @@ public partial class WorkerSystemLoggingTests
         if (!rejected)
         {
             Assert.Contains(failure.GetType().FullName!, record.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData(true, true, "WorkerAssignmentRequestCanceled", LogLevel.Information)]
+    [InlineData(false, true, "WorkerAssignmentRequestFailed", LogLevel.Error)]
+    [InlineData(true, false, "WorkerAssignmentRequestFailed", LogLevel.Error)]
+    public async Task AssignmentLogging_OnlyDowngradesCancellationForAbortedRequests(
+        bool requestAborted, bool cancellationException, string eventName, LogLevel level)
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        WorkerPodStateManager manager = new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System);
+        Assert.True(manager.OnWorkerAttached(7));
+        Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
+        using CancellationTokenSource cancellation = new();
+        if (requestAborted)
+        {
+            cancellation.Cancel();
+        }
+
+        DefaultHttpContext context = CreateAssignmentContext();
+        context.RequestAborted = cancellation.Token;
+        const string sentinel = "private-assignment-value";
+        Exception failure = cancellationException
+            ? new OperationCanceledException(sentinel, cancellation.Token)
+            : new InvalidOperationException(sentinel);
+        WorkerAssignmentLoggingMiddleware middleware = new(_ => Task.FromException(failure),
+            factory.CreateLogger<WorkerAssignmentLoggingMiddleware>(), manager);
+
+        Exception? actual = await Record.ExceptionAsync(() => middleware.InvokeAsync(context));
+
+        Assert.Same(failure, actual);
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
+        Assert.Equal(eventName, record.EventName);
+        Assert.Equal(level, record.Level);
+        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
+        Assert.Empty(record.Details);
+        Assert.Empty(record.ExceptionMessage);
+        if (requestAborted && cancellationException)
+        {
+            Assert.Contains("canceled by the caller", record.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("HTTP status", record.Message, StringComparison.Ordinal);
         }
     }
 

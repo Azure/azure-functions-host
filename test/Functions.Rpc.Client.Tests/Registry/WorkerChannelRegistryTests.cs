@@ -294,6 +294,28 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task LinkAsync_RegistryOwnedFailureEmitsOnlyOneWarning()
+    {
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: true);
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        IOException failure = new("private-failure-sentinel");
+        channel.FailStart(failure);
+
+        IOException actual = await Assert.ThrowsAsync<IOException>(() => link.WaitAsync(TestTimeout));
+        await registry.DisposeAsync();
+
+        Assert.Same(failure, actual);
+        AssertLinkFailure(harness, "InitializingWorker", "WorkerInitializationFailed", typeof(IOException));
+        Assert.Single(harness.Logger.Invocations, call =>
+            string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal)
+            && call.Arguments[0] is LogLevel.Warning);
+    }
+
+    [Fact]
     public async Task LinkAsync_LogsPrimaryFailureAfterCleanupAndGateRelease()
     {
         RegistryHarness harness = new();
@@ -1804,11 +1826,13 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DisposeAsync_CancelsLinksAndDisposesChannelsOnce(bool initialized)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task DisposeAsync_CancelsLinksAndDisposesChannelsOnce(bool initialized, bool registryOwnedAttempt)
     {
-        RegistryHarness harness = new();
+        RegistryHarness harness = new(TimeSpan.FromMinutes(2), registryOwnedAttempt: registryOwnedAttempt);
         ChannelControl ready = new("ready");
         ChannelControl linking = new("worker", blockStart: true);
         harness.Enqueue(ready);
@@ -1830,10 +1854,13 @@ public sealed partial class WorkerChannelRegistryTests
         if (!initialized)
         {
             await Assert.ThrowsAsync<ObjectDisposedException>(() => link.WaitAsync(TestTimeout));
-            AssertLinkFailure(harness, "InitializingWorker", "HostShutdown", typeof(ObjectDisposedException));
+            AssertLinkFailure(harness, "InitializingWorker", "HostShutdown", typeof(ObjectDisposedException), "Canceled", LogLevel.Information);
         }
 
         await firstDispose.WaitAsync(TestTimeout);
+        Assert.DoesNotContain(harness.Logger.Invocations, call =>
+            string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal)
+            && call.Arguments[2].ToString().Contains("Registry-owned worker link", StringComparison.Ordinal));
         Assert.Equal(1, ready.DisposeCount);
         Assert.Equal(1, linking.DisposeCount);
         ObjectDisposedException exception =
@@ -1866,7 +1893,7 @@ public sealed partial class WorkerChannelRegistryTests
             await dispose.WaitAsync(TestTimeout);
         }
 
-        AssertLinkFailure(harness, "ConnectingToProxy", "HostShutdown", typeof(ObjectDisposedException));
+        AssertLinkFailure(harness, "ConnectingToProxy", "HostShutdown", typeof(ObjectDisposedException), "Canceled", LogLevel.Information);
         harness.DuplexFactory.Verify(
             factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Once);
         harness.ChannelFactory.VerifyNoOtherCalls();
@@ -1916,11 +1943,12 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, exception.ObjectName);
     }
 
-    private static void AssertLinkFailure(RegistryHarness harness, string stage, string reason, Type exceptionType, string outcome = "Failed")
+    private static void AssertLinkFailure(RegistryHarness harness, string stage, string reason, Type exceptionType,
+        string outcome = "Failed", LogLevel level = LogLevel.Warning)
     {
         var record = Assert.Single(harness.LinkFailures);
         var fields = record.Fields;
-        Assert.Equal(LogLevel.Warning, record.Level);
+        Assert.Equal(level, record.Level);
         Assert.Equal("worker", fields["WorkerId"]);
         Assert.Equal(stage, fields["Stage"].ToString());
         Assert.Equal(reason, fields["Reason"]);

@@ -17,6 +17,68 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     [Theory]
+    [InlineData(0, StatusResult.Types.Status.Success)]
+    [InlineData(500, StatusResult.Types.Status.Success)]
+    [InlineData(3, StatusResult.Types.Status.Failure)]
+    [InlineData(3, StatusResult.Types.Status.Cancelled)]
+    [InlineData(3, (StatusResult.Types.Status)123)]
+    [InlineData(3, null)]
+    public async Task Relay_LogsBatchLoadBoundariesWithoutPerFunctionRecords(int count, StatusResult.Types.Status? lastStatus)
+    {
+        const string sentinel = "private-function-content";
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        StreamingMessage startStream = CreateStartStream();
+        startStream.StartStream.WorkerId = "batch-worker";
+        await worker.WriteAsync(startStream, timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+        StreamingMessage request = new() { FunctionLoadRequestCollection = new() };
+        StreamingMessage response = new() { FunctionLoadResponseCollection = new() };
+        for (int index = 0; index < count; index++)
+        {
+            request.FunctionLoadRequestCollection.FunctionLoadRequests.Add(new FunctionLoadRequest { FunctionId = sentinel });
+            StatusResult.Types.Status? status = index == count - 1 ? lastStatus : StatusResult.Types.Status.Success;
+            response.FunctionLoadResponseCollection.FunctionLoadResponses.Add(new FunctionLoadResponse
+            {
+                FunctionId = sentinel,
+                Result = status is { } resultStatus ? new StatusResult
+                {
+                    Status = resultStatus,
+                    Exception = new() { Message = sentinel, StackTrace = sentinel }
+                }
+                : null
+            });
+        }
+
+        await runtime.WriteAsync(request, timeout.Token);
+        Assert.Equal(request, await worker.ReadAsync(timeout.Token));
+        await worker.WriteAsync(response, timeout.Token);
+        Assert.Equal(response, await runtime.ReadAsync(timeout.Token));
+        await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
+            record.EventName is "FunctionLoadBatchRequested" or "FunctionLoadBatchCompleted") == 4, timeout.Token);
+
+        CapturedProxyLog[] records = generator.ProxyRecords.Where(record =>
+            record.EventName is "FunctionLoadBatchRequested" or "FunctionLoadBatchCompleted").ToArray();
+        int unsuccessful = count > 0 && lastStatus is not StatusResult.Types.Status.Success ? 1 : 0;
+        foreach (string stage in new[] { "RequestReceived", "RequestForwarded", "ResponseReceived", "ResponseForwarded" })
+        {
+            bool isResponse = stage.StartsWith("Response", StringComparison.Ordinal);
+            string message = isResponse
+                ? $"FunctionRpc FunctionLoad batch reached {stage} with {count} results; {unsuccessful} unsuccessful or missing statuses."
+                : $"FunctionRpc FunctionLoad batch reached {stage} with {count} functions.";
+            CapturedProxyLog record = Assert.Single(records, record => string.Equals(record.Message, message, StringComparison.Ordinal));
+            Assert.Equal(isResponse && unsuccessful > 0 ? LogLevel.Warning : LogLevel.Information, record.Level);
+            Assert.Equal("batch-worker", record.Context!.WorkerId);
+            Assert.Equal(records[0].Context!.ProxySessionId, record.Context.ProxySessionId);
+        }
+
+        Assert.DoesNotContain(generator.ProxyRecords, record => record.ToString().Contains(sentinel, StringComparison.Ordinal));
+    }
+
+    [Theory]
     [InlineData(StatusResult.Types.Status.Failure)]
     [InlineData(StatusResult.Types.Status.Success)]
     [InlineData(StatusResult.Types.Status.Cancelled)]

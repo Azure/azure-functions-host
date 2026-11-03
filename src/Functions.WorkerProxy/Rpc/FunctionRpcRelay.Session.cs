@@ -434,6 +434,51 @@ internal sealed partial class FunctionRpcRelay
 
         private void LogProtocolMessage(StreamingMessage message, bool forwarded)
         {
+            if (message.FunctionLoadRequestCollection is { } requests)
+            {
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
+                    Log.FunctionLoadBatchRequested(logger, forwarded ? "RequestForwarded" : "RequestReceived", requests.FunctionLoadRequests.Count);
+                }
+
+                return;
+            }
+
+            if (message.FunctionLoadResponseCollection is { } responses)
+            {
+                if (!logger.IsEnabled(LogLevel.Information) && !logger.IsEnabled(LogLevel.Warning))
+                {
+                    return;
+                }
+
+                int unsuccessful = 0;
+                foreach (FunctionLoadResponse response in responses.FunctionLoadResponses)
+                {
+                    if (response.Result is not { Status: StatusResult.Types.Status.Success })
+                    {
+                        unsuccessful++;
+                    }
+                }
+
+                LogLevel batchLevel = unsuccessful > 0 ? LogLevel.Warning : LogLevel.Information;
+                if (logger.IsEnabled(batchLevel))
+                {
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
+                    string batchStage = forwarded ? "ResponseForwarded" : "ResponseReceived";
+                    if (unsuccessful > 0)
+                    {
+                        Log.FunctionLoadBatchFailed(logger, batchStage, responses.FunctionLoadResponses.Count, unsuccessful);
+                    }
+                    else
+                    {
+                        Log.FunctionLoadBatchCompleted(logger, batchStage, responses.FunctionLoadResponses.Count, unsuccessful);
+                    }
+                }
+
+                return;
+            }
+
             (string Operation, bool Response, StatusResult? Result)? operation = message.ContentCase switch
             {
                 StreamingMessage.ContentOneofCase.WorkerInitRequest => ("Initialization", false, null),
@@ -651,5 +696,17 @@ internal sealed partial class FunctionRpcRelay
         [LoggerMessage(8, LogLevel.Warning, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.",
             EventName = nameof(ProtocolMessageObserved))]
         public static partial void ProtocolMessageFailed(ILogger logger, string operation, string stage, string? rpcStatus);
+
+        [LoggerMessage(9, LogLevel.Information, "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} functions.")]
+        public static partial void FunctionLoadBatchRequested(ILogger logger, string stage, int functionCount);
+
+        [LoggerMessage(10, LogLevel.Information,
+            "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.")]
+        public static partial void FunctionLoadBatchCompleted(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
+
+        [LoggerMessage(10, LogLevel.Warning,
+            "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.",
+            EventName = nameof(FunctionLoadBatchCompleted))]
+        public static partial void FunctionLoadBatchFailed(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
     }
 }
