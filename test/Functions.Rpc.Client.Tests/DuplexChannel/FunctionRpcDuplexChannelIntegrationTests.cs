@@ -19,6 +19,30 @@ public class FunctionRpcDuplexChannelIntegrationTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{\"podName\":\"runtime-\u00e9\"}")]
+    public async Task ChannelConveysRuntimeIdentityAsBinaryMetadata(string runtimeIdentity)
+    {
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+        await using DuplexChannel<StreamingMessage> channel =
+            await channelFactory.ConnectAsync(server.Endpoint, runtimeIdentity);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        Grpc.Core.Metadata.Entry[] identityHeaders = [.. server.Service.RequestHeaders
+            .Where(header => string.Equals(header.Key, "x-ms-functions-runtime-identity-bin", StringComparison.Ordinal))];
+        if (runtimeIdentity is null)
+        {
+            Assert.Empty(identityHeaders);
+        }
+        else
+        {
+            Assert.Equal(runtimeIdentity, System.Text.Encoding.UTF8.GetString(Assert.Single(identityHeaders).ValueBytes));
+        }
+    }
+
     [Fact]
     public async Task ChannelExchangesArbitraryMessagesInBothDirections()
     {

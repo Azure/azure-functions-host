@@ -285,6 +285,40 @@ public sealed partial class WorkerChannelRegistryTests
         harness.ChannelFactory.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task LinkAsync_RuntimeIdentityIsSentAndComparedAcrossRetries()
+    {
+        const string runtimeIdentity = """{"podName":"runtime-pod"}""";
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        Uri endpoint = CreateEndpoint("worker");
+        harness.Enqueue(endpoint, channel);
+        harness.DuplexFactory
+            .Setup(factory => factory.ConnectAsync(endpoint, runtimeIdentity, It.IsAny<CancellationToken>()))
+            .Returns((Uri address, string identity, CancellationToken token) =>
+                harness.DuplexFactory.Object.ConnectAsync(address, token));
+        await using WorkerChannelRegistry registry = harness.Registry;
+
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", endpoint, runtimeIdentity);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        WorkerLinkException conflict = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => registry.LinkAsync("worker", endpoint, """{"podName":"different-runtime"}"""));
+        Assert.Equal(WorkerLinkFailureReason.Conflict, conflict.Reason);
+        Assert.False(link.IsCompleted);
+
+        channel.AllowStart();
+        WorkerLinkResult linked = await link.WaitAsync(TestTimeout);
+        WorkerLinkResult replay = await registry.LinkAsync("worker", endpoint, runtimeIdentity);
+
+        Assert.False(replay.IsNewLink);
+        Assert.Same(linked.Channel, replay.Channel);
+        Assert.Empty(harness.LinkFailures);
+        Assert.Single(harness.Transports);
+        harness.DuplexFactory.Verify(
+            factory => factory.ConnectAsync(endpoint, runtimeIdentity, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Theory]
     [InlineData("http://worker-proxy:28080", "http://worker-proxy:28080")]
     [InlineData("http://worker-proxy:28080", "http://other-proxy:28080")]
