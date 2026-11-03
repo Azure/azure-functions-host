@@ -88,6 +88,13 @@ public sealed partial class WorkerChannelRegistryTests
             harness.RegistryLogger.Verify(logger => logger.Log(
                 LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
+            if (unavailable)
+            {
+                harness.RegistryLogger.Verify(logger => logger.Log(
+                    LogLevel.Debug, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                    It.Is<Exception>(exception => exception is null),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+            }
         }
 
         Assert.Equal(1, worker.DisposeCount);
