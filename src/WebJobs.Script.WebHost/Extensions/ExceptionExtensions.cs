@@ -35,7 +35,7 @@ namespace System
         }
 
         /// <summary>
-        /// For FunctionInvocationException with innermost exception as RpcException, the remote message segment is replaced with a redacted
+        /// For exceptions with an innermost RpcException, the remote message segment is replaced with a redacted
         /// placeholder containing a stable hash so that occurrences can still be correlated without exposing the original content.
         /// </summary>
         /// <remarks>
@@ -66,7 +66,7 @@ namespace System
             var originalMessage = baseException.Message;
             var formattedDetails = exception.ToFormattedString();
 
-            if (exception is FunctionInvocationException && baseException is RpcException { RemoteMessage: var remoteMsg }
+            if (baseException is RpcException { RemoteMessage: var remoteMsg }
                 && !string.IsNullOrWhiteSpace(remoteMsg))
             {
                 var redacted = GetRedactedExceptionMessage(remoteMsg);
