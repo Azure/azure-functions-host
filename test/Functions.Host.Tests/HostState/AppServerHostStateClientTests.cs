@@ -21,15 +21,25 @@ public class AppServerHostStateClientTests
     private static readonly DateTimeOffset CreatedTime = new(2026, 10, 2, 12, 34, 56, 123, TimeSpan.Zero);
     private readonly RecordingHandler _handler = new();
 
+    [Fact]
+    public void Constructor_DoesNotReadMeshInitUri()
+    {
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+
+        _ = CreateClient(configuration.Object);
+
+        configuration.VerifyGet(config => config["MESH_INIT_URI"], Times.Never());
+    }
+
     [Theory]
-    [InlineData(36L, 3, 2, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""")]
-    [InlineData(4294967296L, 268435457, 268435456, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457}""")]
-    public async Task PublishAsync_SendsCreatedTimeCapacityAndWorkerCountButNotHttpWorkerCount(
-        long httpCapacity, int workerCount, int httpWorkerCount, string expectedBody)
+    [InlineData(36L, 3, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""")]
+    [InlineData(4294967296L, 268435457, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457}""")]
+    [InlineData(long.MaxValue, int.MaxValue, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":9223372036854775807,"linkedWorkerCount":2147483647}""")]
+    public async Task PublishAsync_SendsCreatedTimeCapacityAndLinkedWorkerCount(long httpCapacity, int workerCount, string expectedBody)
     {
         AppServerHostStateClient client = CreateClient();
 
-        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, httpCapacity, workerCount, httpWorkerCount), CancellationToken.None);
+        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, httpCapacity, workerCount), CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.Equal(HttpMethod.Put, _handler.Method);
@@ -42,7 +52,7 @@ public class AppServerHostStateClientTests
     public async Task PublishAsync_RetryPreservesCapturedCreatedTime()
     {
         AppServerHostStateClient client = CreateClient();
-        RuntimeState state = new(CreatedTime, 36, 3, 2);
+        RuntimeState state = new(CreatedTime, 36, 3);
         _handler.StatusCode = HttpStatusCode.InternalServerError;
         Assert.Equal(HttpStatusCode.InternalServerError, await client.PublishAsync(state, CancellationToken.None));
         string? firstBody = _handler.Body;
@@ -55,11 +65,14 @@ public class AppServerHostStateClientTests
     }
 
     [Theory]
+    [InlineData("http://localhost:6060/", "http://localhost:6060/admin/infra/host/state")]
     [InlineData("http://appserver:7070", "http://appserver:7070/admin/infra/host/state")]
     [InlineData("http://appserver:7070/", "http://appserver:7070/admin/infra/host/state")]
+    [InlineData("http://appserver:7070////", "http://appserver:7070/admin/infra/host/state")]
     [InlineData("http://appserver:7070/base", "http://appserver:7070/base/admin/infra/host/state")]
     [InlineData("http://appserver:7070/base/", "http://appserver:7070/base/admin/infra/host/state")]
-    [InlineData(" ", "http://localhost:6060/admin/infra/host/state")]
+    [InlineData("http://appserver:7070/base////", "http://appserver:7070/base/admin/infra/host/state")]
+    [InlineData("https://appserver:7070/base/nested/", "https://appserver:7070/base/nested/admin/infra/host/state")]
     public async Task PublishAsync_UsesConfiguredMeshInitUri(string endpoint, string expectedUri)
     {
         AppServerHostStateClient client = CreateClient(new Dictionary<string, string?>
@@ -67,9 +80,24 @@ public class AppServerHostStateClientTests
             ["MESH_INIT_URI"] = endpoint,
         });
 
-        await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
+        await client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None);
 
         Assert.Equal(new Uri(expectedUri), _handler.RequestUri);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t\r\n")]
+    public async Task PublishAsync_UsesDefaultEndpointWhenMeshInitUriIsMissingOrBlank(string? endpoint)
+    {
+        Dictionary<string, string?>? settings = endpoint is null ? null : new() { ["MESH_INIT_URI"] = endpoint };
+        AppServerHostStateClient client = CreateClient(settings);
+
+        await client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None);
+
+        Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), _handler.RequestUri);
     }
 
     [Theory]
@@ -81,34 +109,74 @@ public class AppServerHostStateClientTests
         _handler.StatusCode = responseStatusCode;
         AppServerHostStateClient client = CreateClient();
 
-        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
+        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None);
 
         Assert.Equal(responseStatusCode, statusCode);
     }
 
     [Fact]
-    public async Task PublishAsync_ReadsMeshInitUriReloadedAtSpecialization()
+    public async Task PublishAsync_ReadsMeshInitUriReloadedBeforeFirstPublication()
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
         AppServerHostStateClient client = CreateClient(configuration);
-        await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
-        Uri? beforeSpecialization = _handler.RequestUri;
 
         configuration["MESH_INIT_URI"] = "http://appserver:7070";
-        await client.PublishAsync(new(CreatedTime, 0, 1, 1), CancellationToken.None);
+        await client.PublishAsync(new(CreatedTime, 0, 1), CancellationToken.None);
 
-        Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), beforeSpecialization);
         Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);
     }
 
     [Fact]
-    public async Task PublishAsync_InvalidEndpoint_ThrowsInsteadOfReportingSuccess()
+    public async Task PublishAsync_CachesResolvedMeshInitUriAcrossPublications()
     {
-        AppServerHostStateClient client = CreateClient(new Dictionary<string, string?> { ["MESH_INIT_URI"] = "not an absolute URI" });
+        string endpoint = "http://appserver:7070/base";
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        configuration.SetupGet(config => config["MESH_INIT_URI"]).Returns(() => endpoint);
+        AppServerHostStateClient client = CreateClient(configuration.Object);
+        await client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None);
+        Uri? firstUri = _handler.RequestUri;
 
-        await Assert.ThrowsAsync<UriFormatException>(() => client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None));
+        endpoint = "http://other-appserver:8080/";
+        await client.PublishAsync(new(CreatedTime, 0, 1), CancellationToken.None);
+
+        Assert.Equal(new Uri("http://appserver:7070/base/admin/infra/host/state"), firstUri);
+        Assert.Same(firstUri, _handler.RequestUri);
+        configuration.VerifyGet(config => config["MESH_INIT_URI"], Times.Once());
+    }
+
+    [Theory]
+    [InlineData("not an absolute URI")]
+    [InlineData("relative/base")]
+    [InlineData("http://appserver:invalid")]
+    [InlineData("http://[invalid")]
+    public async Task PublishAsync_InvalidEndpoint_ThrowsInsteadOfReportingSuccess(string endpoint)
+    {
+        AppServerHostStateClient client = CreateClient(new Dictionary<string, string?> { ["MESH_INIT_URI"] = endpoint });
+
+        await Assert.ThrowsAsync<UriFormatException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
 
         Assert.Null(_handler.Method);
+    }
+
+    [Fact]
+    public async Task PublishAsync_DoesNotCacheFailedMeshInitUriResolution()
+    {
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        configuration.SetupSequence(config => config["MESH_INIT_URI"])
+            .Returns("not an absolute URI")
+            .Returns("http://appserver:7070/base/");
+        AppServerHostStateClient client = CreateClient(configuration.Object);
+
+        await Assert.ThrowsAsync<UriFormatException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
+        Assert.Null(_handler.Method);
+
+        Assert.Equal(HttpStatusCode.OK, await client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
+        Uri? resolvedUri = _handler.RequestUri;
+        Assert.Equal(new Uri("http://appserver:7070/base/admin/infra/host/state"), resolvedUri);
+
+        Assert.Equal(HttpStatusCode.OK, await client.PublishAsync(new(CreatedTime, 0, 1), CancellationToken.None));
+        Assert.Same(resolvedUri, _handler.RequestUri);
+        configuration.VerifyGet(config => config["MESH_INIT_URI"], Times.Exactly(2));
     }
 
     [Fact]
@@ -121,7 +189,7 @@ public class AppServerHostStateClientTests
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         };
         using CancellationTokenSource cancellation = new();
-        Task<HttpStatusCode> publication = CreateClient().PublishAsync(new(CreatedTime, 0, 0, 0), cancellation.Token);
+        Task<HttpStatusCode> publication = CreateClient().PublishAsync(new(CreatedTime, 0, 0), cancellation.Token);
         await requested.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         cancellation.Cancel();

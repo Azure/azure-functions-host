@@ -3,9 +3,11 @@
 
 using System;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -20,7 +22,9 @@ namespace Azure.Functions.Host.HostState;
 /// Failed requests use exponential backoff, interrupted by a newer snapshot. Successful snapshots are not periodically
 /// resent; a successful HTTP response does not establish restart recovery or an exact applied-state acknowledgement.
 /// Snapshot identity, not timestamp ordering, drives local deduplication.
-/// When the root Host stops, the state manager withdraws capacity and the publisher makes one bounded final attempt.
+/// After specialization, normal root Host shutdown permits one bounded final attempt using the current snapshot.
+/// Unexpected publisher failures stop publication without another attempt or changing the borrowed state.
+/// Fatal exceptions are not handled as recoverable publication failures.
 /// </remarks>
 internal sealed partial class AppServerHostStatePublisher(
     IRuntimeStateManager stateManager,
@@ -33,7 +37,7 @@ internal sealed partial class AppServerHostStatePublisher(
 
     private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan ShutdownPublishTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan FinalPublishTimeout = TimeSpan.FromSeconds(2);
 
     private readonly IRuntimeStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
     private readonly IAppServerHostStateClient _client = client ?? throw new ArgumentNullException(nameof(client));
@@ -54,18 +58,18 @@ internal sealed partial class AppServerHostStatePublisher(
                 specialized = true;
                 await PublishUntilStoppedAsync(stoppingToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            catch (OperationCanceledException exception) when (stoppingToken.IsCancellationRequested && !Utility.IsFatal(exception))
             {
             }
 
+            // Only normal shutdown permits a final attempt, never an unexpected publication-loop failure.
             if (specialized)
             {
                 await PublishFinalSnapshotAsync();
             }
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!Utility.IsFatal(exception))
         {
-            // Publication, including its final attempt, must not fault the root Host's background service.
             Log.PublisherFailed(_logger, exception);
         }
     }
@@ -127,7 +131,7 @@ internal sealed partial class AppServerHostStatePublisher(
         {
             await changed.WaitAsync(delay, _timeProvider, cancellationToken);
         }
-        catch (TimeoutException)
+        catch (TimeoutException exception) when (!changed.IsFaulted && !Utility.IsFatal(exception))
         {
             // The retry delay elapsed without a newer snapshot.
         }
@@ -144,7 +148,7 @@ internal sealed partial class AppServerHostStatePublisher(
         {
             throw;
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!Utility.IsFatal(exception) && exception is HttpRequestException or OperationCanceledException)
         {
             Log.PublishFailed(_logger, exception, state.CreatedTime);
             return false;
@@ -153,7 +157,7 @@ internal sealed partial class AppServerHostStatePublisher(
         switch ((int)statusCode)
         {
             case >= 200 and < 300:
-                Log.Published(_logger, state.CreatedTime, state.HttpCapacity);
+                Log.Published(_logger, state.CreatedTime, state.HttpCapacity, state.WorkerCount);
                 _lastPublishedSnapshot = state;
                 return true;
             case (int)HttpStatusCode.Unauthorized or (int)HttpStatusCode.Forbidden or >= 500:
@@ -173,12 +177,12 @@ internal sealed partial class AppServerHostStatePublisher(
             return;
         }
 
-        using CancellationTokenSource timeout = new(ShutdownPublishTimeout, _timeProvider);
+        using CancellationTokenSource timeout = new(FinalPublishTimeout, _timeProvider);
         try
         {
             await TryPublishAsync(state, timeout.Token);
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        catch (OperationCanceledException exception) when (timeout.IsCancellationRequested && !Utility.IsFatal(exception))
         {
             Log.FinalPublishTimedOut(_logger, state.CreatedTime);
         }
@@ -191,8 +195,8 @@ internal sealed partial class AppServerHostStatePublisher(
     {
         // EventId range is 1000-1099.
         [LoggerMessage(1000, LogLevel.Information,
-            "Published Host state to AppServer: created time {CreatedTime}, HTTP capacity {HttpCapacity}.")]
-        public static partial void Published(ILogger logger, DateTimeOffset createdTime, long httpCapacity);
+            "Published Host state to AppServer: created time {CreatedTime}, HTTP capacity {HttpCapacity}, linked worker count {LinkedWorkerCount}.")]
+        public static partial void Published(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int linkedWorkerCount);
 
         [LoggerMessage(1001, LogLevel.Warning,
             "Failed to publish Host state snapshot created at {CreatedTime} to AppServer. The latest snapshot will be retried.")]
@@ -207,7 +211,7 @@ internal sealed partial class AppServerHostStatePublisher(
         public static partial void PublishRejected(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
         [LoggerMessage(1004, LogLevel.Warning,
-            "Timed out publishing the final Host state snapshot created at {CreatedTime} to AppServer during shutdown.")]
+            "Timed out publishing the final Host state snapshot created at {CreatedTime} to AppServer.")]
         public static partial void FinalPublishTimedOut(ILogger logger, DateTimeOffset createdTime);
 
         [LoggerMessage(1005, LogLevel.Error, "Host state publication to AppServer stopped unexpectedly.")]

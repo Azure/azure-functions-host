@@ -118,15 +118,17 @@ Use `GET /simulate/host/state` to inspect the latest received snapshot; `204` me
 arrival order without dropping timestamps that move backward. Timestamps are not versions and can be equal across
 distinct snapshots. Repeated matching worker links do not create another snapshot.
 
-Failed requests retry the latest snapshot with exponential backoff from 250 milliseconds to 30 seconds; a new snapshot
+Recoverable request failures retry the latest snapshot with exponential backoff from 250 milliseconds to 30 seconds; a new snapshot
 interrupts that wait. Each request is bounded to five seconds. After a successful HTTP response, the same snapshot is
-not periodically resent. Root Host shutdown withdraws capacity and makes one best-effort final attempt bounded to two
-seconds. This does not guarantee delivery or establish an AppServer admission policy.
+not periodically resent. After specialization, normal root Host shutdown withdraws capacity and makes one best-effort final
+attempt bounded to two seconds. An unexpected publisher failure is logged without attempting another publication; fatal
+exceptions are not swallowed. This does not guarantee delivery or establish an AppServer admission policy.
 
 The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. Requests have no
 authentication or applied-version acknowledgement, and an AppServer restart is not repaired without a later Host state
-change. The client reads `MESH_INIT_URI` per request, including changes loaded during specialization, and defaults to
-`http://localhost:6060/` when unset. Container mode has no fake AppServer receiver; its Host will log publication failures
+change. The client resolves and caches `MESH_INIT_URI` on its first publication after specialization, defaulting to
+`http://localhost:6060/` when unset. Later configuration changes do not replace that endpoint for the root Host's lifetime.
+Container mode has no fake AppServer receiver; its Host will log publication failures
 and retry the default endpoint without preventing the worker link or invocation.
 
 ## Endpoints

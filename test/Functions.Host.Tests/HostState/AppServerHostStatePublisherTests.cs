@@ -33,7 +33,7 @@ public sealed class AppServerHostStatePublisherTests
     private readonly Channel<(RuntimeState State, bool AlreadyPublished)> _samples = Channel.CreateUnbounded<(RuntimeState, bool)>();
     private readonly Channel<ScheduledTimer> _timers = Channel.CreateUnbounded<ScheduledTimer>();
     private readonly TaskCompletionSource _waitingForSpecialization = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private RuntimeState _current = new(CreatedTime, 0, 0, 0);
+    private RuntimeState _current = new(CreatedTime, 0, 0);
     private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private StandbyOptions _standby = new() { InStandbyMode = false };
     private Action<StandbyOptions, string?>? _standbyChanged;
@@ -116,7 +116,7 @@ public sealed class AppServerHostStatePublisherTests
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         await _waitingForSpecialization.Task.WaitAsync(TestTimeout);
         AssertNoMorePublications();
-        RuntimeState latest = new(CreatedTime, 36, 2, 2);
+        RuntimeState latest = new(CreatedTime, 36, 2);
         SetState(latest);
 
         Specialize();
@@ -149,14 +149,13 @@ public sealed class AppServerHostStatePublisherTests
     public async Task ExecuteAsync_PublishesConfiguredTotalsAndCountOnlyChanges()
     {
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
-        Assert.Equal(new(CreatedTime, 0, 0, 0), await TakePublishedAsync());
+        Assert.Equal(new(CreatedTime, 0, 0), await TakePublishedAsync());
         await WaitUntilIdleAsync(CurrentState);
         RuntimeState[] states =
         [
-            new(CreatedTime, 4, 1, 1),
-            new(CreatedTime, 36, 2, 2),
-            new(CreatedTime, 36, 3, 2),
-            new(CreatedTime, 36, 3, 3),
+            new(CreatedTime, 4, 1),
+            new(CreatedTime, 36, 2),
+            new(CreatedTime, 36, 3),
         ];
 
         foreach (RuntimeState state in states)
@@ -176,7 +175,7 @@ public sealed class AppServerHostStatePublisherTests
     public async Task ExecuteAsync_ChangeBetweenCaptureReadAndSend_IsNotMissedOrDuplicated(bool changeBeforeRead)
     {
         RuntimeState initial = CurrentState;
-        RuntimeState latest = new(CreatedTime, 4, 1, 1);
+        RuntimeState latest = new(CreatedTime, 4, 1);
         if (changeBeforeRead)
         {
             _onChangeCaptured = () => SetState(latest);
@@ -204,7 +203,7 @@ public sealed class AppServerHostStatePublisherTests
     public async Task ExecuteAsync_ChangeDuringPublish_SendsLatestSnapshotNext(HttpStatusCode firstStatus)
     {
         RuntimeState initial = CurrentState;
-        RuntimeState latest = new(CreatedTime, 36, 2, 2);
+        RuntimeState latest = new(CreatedTime, 36, 2);
         _client.Enqueue(_ =>
         {
             SetState(latest);
@@ -276,7 +275,7 @@ public sealed class AppServerHostStatePublisherTests
         Assert.Same(CurrentState, await TakePublishedAsync());
         await WaitUntilIdleAsync(CurrentState);
         _client.Enqueue(_ => Task.FromResult(HttpStatusCode.InternalServerError));
-        SetState(new(CreatedTime, 4, 1, 1));
+        SetState(new(CreatedTime, 4, 1));
         Assert.Same(CurrentState, await TakePublishedAsync());
         ScheduledTimer resetRetry = await TakeTimerAsync();
         Assert.Equal(TimeSpan.FromMilliseconds(250), resetRetry.DueTime);
@@ -297,7 +296,7 @@ public sealed class AppServerHostStatePublisherTests
         await TakePublishedAsync();
         ScheduledTimer retry = await TakeTimerAsync();
         Task sharedChange = ChangeTask;
-        RuntimeState latest = new(CreatedTime.AddSeconds(secondsOffset), 36, 2, 2);
+        RuntimeState latest = new(CreatedTime.AddSeconds(secondsOffset), 36, 2);
 
         SetState(latest);
 
@@ -343,7 +342,17 @@ public sealed class AppServerHostStatePublisherTests
     [InlineData(HttpStatusCode.InternalServerError, LogLevel.Warning, 1002)]
     public async Task ExecuteAsync_PublishResponse_LogsAssignedEventId(HttpStatusCode statusCode, LogLevel level, int expectedEventId)
     {
+        SetState(new(CreatedTime, 36, 3));
         Mock<ILogger> logger = new();
+        List<KeyValuePair<string, object?>> publishedFields = [];
+        logger.Setup(value => value.Log(
+            LogLevel.Information, It.Is<EventId>(eventId => eventId.Id == 1000), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+            .Callback(new InvocationAction(invocation =>
+            {
+                // Source-generated log state is pooled, so copy its fields before the log call returns.
+                publishedFields.AddRange(Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object?>>>(invocation.Arguments[2]));
+            }));
         using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
         _client.Enqueue(_ => Task.FromResult(statusCode));
         using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
@@ -360,6 +369,122 @@ public sealed class AppServerHostStatePublisherTests
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         VerifyLog(logger, level, expectedEventId);
+        if (statusCode is HttpStatusCode.OK)
+        {
+            Assert.Contains(new("CreatedTime", CreatedTime), publishedFields);
+            Assert.Contains(new("HttpCapacity", 36L), publishedFields);
+            Assert.Contains(new("LinkedWorkerCount", 3), publishedFields);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExecuteAsync_UnexpectedStateFailure_StopsWithoutFinalPublication(bool changeTaskFailure)
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        InvalidOperationException failure = new("state tracking failed");
+        if (changeTaskFailure)
+        {
+            _stateManager.Setup(manager => manager.GetChangeTask()).Throws(failure);
+        }
+        else
+        {
+            _stateManager.SetupGet(manager => manager.Current).Throws(failure);
+        }
+
+        RuntimeState latest = new(CreatedTime, 36, 2);
+        SetState(latest);
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+        Assert.Same(latest, CurrentState);
+        _stateManager.Verify(manager => manager.GetChangeTask(), Times.Exactly(3));
+        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(changeTaskFailure ? 2 : 3));
+        Assert.Equal(1, _client.AttemptCount);
+        VerifyLog(logger, LogLevel.Error, 1005, failure);
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExecuteAsync_UnexpectedClientFailure_StopsWithoutFinalPublication(bool invalidConfiguration)
+    {
+        Exception failure = invalidConfiguration
+            ? new UriFormatException("invalid AppServer endpoint")
+            : new InvalidOperationException("client programming error");
+        RuntimeState latest = new(CreatedTime, 36, 2);
+        _client.Enqueue(_ =>
+        {
+            SetState(latest, notify: false);
+            return Task.FromException<HttpStatusCode>(failure);
+        });
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+        Assert.Same(latest, CurrentState);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Once());
+        Assert.Equal(1, _client.AttemptCount);
+        VerifyLog(logger, LogLevel.Error, 1005, failure);
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ExecuteAsync_FatalFailure_PropagatesWithoutFinalPublication(bool requestFailure, bool wrapped)
+    {
+        Exception fatalFailure = new OutOfMemoryException("simulated fatal failure");
+        Exception failure = wrapped
+            ? requestFailure
+                ? new HttpRequestException("fatal request failure", fatalFailure)
+                : new InvalidOperationException("fatal state failure", fatalFailure)
+            : fatalFailure;
+        if (requestFailure)
+        {
+            _client.Enqueue(_ => Task.FromException<HttpStatusCode>(failure));
+        }
+        else
+        {
+            _stateManager.SetupGet(manager => manager.Current).Throws(failure);
+        }
+
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        if (requestFailure)
+        {
+            await TakePublishedAsync();
+        }
+
+        Exception observed = await Assert.ThrowsAnyAsync<Exception>(() => publisher.ExecuteTask!.WaitAsync(TestTimeout));
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.Same(failure, observed);
+        Assert.True(publisher.ExecuteTask!.IsFaulted);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Once());
+        Assert.Equal(requestFailure ? 1 : 0, _client.AttemptCount);
+        logger.Verify(value => value.Log(
+            It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
     }
 
     [Fact]
@@ -381,12 +506,130 @@ public sealed class AppServerHostStatePublisherTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExecuteAsync_FaultedChangeTaskTimeoutDuringBackoff_IsNotTreatedAsRetryDelay(bool fatal)
+    {
+        TaskCompletionSource changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stateManager.Setup(manager => manager.GetChangeTask()).Returns(changed.Task);
+        _client.Enqueue(_ => Task.FromResult(HttpStatusCode.InternalServerError));
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        ScheduledTimer retry = await TakeTimerAsync();
+        TimeoutException failure = new("state tracking failed", fatal ? new OutOfMemoryException("simulated fatal failure") : null);
+        RuntimeState latest = new(CreatedTime, 36, 2);
+        SetState(latest, notify: false);
+
+        changed.SetException(failure);
+        if (fatal)
+        {
+            Exception observed = await Assert.ThrowsAsync<TimeoutException>(() => publisher.ExecuteTask!.WaitAsync(TestTimeout));
+            Assert.Same(failure, observed);
+            Assert.True(publisher.ExecuteTask!.IsFaulted);
+            logger.Verify(value => value.Log(
+                LogLevel.Error, It.Is<EventId>(eventId => eventId.Id == 1005), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+        }
+        else
+        {
+            await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+            Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+            VerifyLog(logger, LogLevel.Error, 1005, failure);
+        }
+
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.Same(latest, CurrentState);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Once());
+        Assert.Equal(1, _client.AttemptCount);
+        Assert.True(retry.Disposed.Task.IsCompletedSuccessfully);
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(36L)]
+    public async Task ExecuteAsync_FaultedChangeTask_DoesNotPublishLatestSnapshotAfterUnexpectedFailure(long latestCapacity)
+    {
+        TaskCompletionSource changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stateManager.Setup(manager => manager.GetChangeTask()).Returns(changed.Task);
+        SetState(new(CreatedTime, 4, 1));
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        RuntimeState latest = new(CreatedTime.AddSeconds(-1), latestCapacity, 3);
+        SetState(latest, notify: false);
+        InvalidOperationException failure = new("state tracking failed");
+
+        changed.SetException(failure);
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+        Assert.Same(latest, CurrentState);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(2));
+        VerifyLog(logger, LogLevel.Error, 1005, failure);
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_FailureBeforeSpecialization_DoesNotPublish()
+    {
+        InvalidOperationException failure = new("specialization options unavailable");
+        _standbyOptions.SetupGet(options => options.CurrentValue).Throws(failure);
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Never());
+        VerifyLog(logger, LogLevel.Error, 1005, failure);
+        AssertNoMorePublications();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_FaultedChangeTask_DoesNotReadFinalStateOrMaskOriginalFailure()
+    {
+        TaskCompletionSource changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stateManager.Setup(manager => manager.GetChangeTask()).Returns(changed.Task);
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        InvalidOperationException loopFailure = new("state tracking failed");
+        InvalidOperationException finalFailure = new("final state unavailable");
+        _stateManager.SetupGet(manager => manager.Current).Throws(finalFailure);
+
+        changed.SetException(loopFailure);
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(2));
+        VerifyLog(logger, LogLevel.Error, 1005, loopFailure);
+        logger.Verify(value => value.Log(
+            It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), finalFailure,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+        AssertNoMorePublications();
+    }
+
+    [Theory]
     [InlineData("zero")]
     [InlineData("count")]
     [InlineData("equal")]
     public async Task StopAsync_PublishesDistinctFinalSnapshotOnce(string change)
     {
-        SetState(new(CreatedTime, 4, 1, 1));
+        SetState(new(CreatedTime, 4, 1));
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         RuntimeState initial = await TakePublishedAsync();
         await WaitUntilIdleAsync(initial);
@@ -407,7 +650,7 @@ public sealed class AppServerHostStatePublisherTests
     [Fact]
     public async Task StopAsync_DoesNotRepublishAcceptedSnapshotOrWithdrawBorrowedState()
     {
-        SetState(new(CreatedTime, 4, 1, 1));
+        SetState(new(CreatedTime, 4, 1));
         Task sharedChange = ChangeTask;
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         RuntimeState published = await TakePublishedAsync();
@@ -423,7 +666,7 @@ public sealed class AppServerHostStatePublisherTests
     [Fact]
     public async Task StopAsync_CancelsInFlightRequestBeforeIndependentFinalRequest()
     {
-        SetState(new(CreatedTime, 4, 1, 1));
+        SetState(new(CreatedTime, 4, 1));
         TaskCompletionSource<CancellationToken> regularRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource regularCanceled = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<CancellationToken> finalRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -451,7 +694,7 @@ public sealed class AppServerHostStatePublisherTests
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         await TakePublishedAsync();
         CancellationToken regularToken = await regularRequest.Task.WaitAsync(TestTimeout);
-        RuntimeState final = new(CreatedTime, 0, 1, 1);
+        RuntimeState final = new(CreatedTime, 0, 1);
         SetState(final, notify: false);
 
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
@@ -460,6 +703,45 @@ public sealed class AppServerHostStatePublisherTests
         Assert.False((await finalRequest.Task.WaitAsync(TestTimeout)).IsCancellationRequested);
         Assert.Same(final, await TakePublishedAsync());
         Assert.True(publisher.ExecuteTask!.IsCompletedSuccessfully);
+        AssertNoMorePublications();
+    }
+
+    [Fact]
+    public async Task StopAsync_WrappedFatalRequestCancellation_DoesNotPublishFinalSnapshot()
+    {
+        OperationCanceledException failure = new("fatal request cancellation", new OutOfMemoryException("simulated fatal failure"));
+        TaskCompletionSource requestStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _client.Enqueue(async cancellationToken =>
+        {
+            requestStarted.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw failure;
+            }
+
+            return HttpStatusCode.OK;
+        });
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await requestStarted.Task.WaitAsync(TestTimeout);
+        SetState(new(CreatedTime, 0, 1), notify: false);
+
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        Exception observed = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => publisher.ExecuteTask!.WaitAsync(TestTimeout));
+
+        Assert.Same(failure, observed);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Once());
+        Assert.Equal(1, _client.AttemptCount);
+        logger.Verify(value => value.Log(
+            It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+        Assert.False(_timers.Reader.TryRead(out _));
         AssertNoMorePublications();
     }
 
@@ -476,7 +758,7 @@ public sealed class AppServerHostStatePublisherTests
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             return HttpStatusCode.OK;
         });
-        RuntimeState final = new(CreatedTime, 0, 1, 1);
+        RuntimeState final = new(CreatedTime, 0, 1);
         SetState(final, notify: false);
 
         Task stopping = publisher.StopAsync(CancellationToken.None);
@@ -522,6 +804,132 @@ public sealed class AppServerHostStatePublisherTests
 
         Assert.True(publisher.ExecuteTask!.IsCompletedSuccessfully);
         VerifyLog(logger, LogLevel.Error, 1005, failure);
+        AssertNoMorePublications();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StopAsync_FailedFinalRequest_IsLoggedWithoutFaultingHost(bool transportFailure)
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        Exception failure = transportFailure
+            ? new HttpRequestException("connection refused")
+            : new InvalidOperationException("client programming error");
+        _client.Enqueue(_ => Task.FromException<HttpStatusCode>(failure));
+        RuntimeState final = new(CreatedTime, 0, 1);
+        SetState(final, notify: false);
+
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask!.IsCompletedSuccessfully);
+        Assert.Same(final, await TakePublishedAsync());
+        Assert.Same(final, CurrentState);
+        Assert.Equal(2, _client.AttemptCount);
+        VerifyLog(logger, transportFailure ? LogLevel.Warning : LogLevel.Error, transportFailure ? 1001 : 1005, failure);
+        ScheduledTimer timeout = await TakeTimerAsync();
+        Assert.Equal(TimeSpan.FromSeconds(2), timeout.DueTime);
+        Assert.True(timeout.Disposed.Task.IsCompletedSuccessfully);
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StopAsync_FatalFinalFailure_Propagates(bool requestFailure, bool wrapped)
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        Exception fatalFailure = new OutOfMemoryException("simulated fatal failure");
+        Exception failure = wrapped
+            ? requestFailure
+                ? new HttpRequestException("fatal final request failure", fatalFailure)
+                : new InvalidOperationException("fatal final state failure", fatalFailure)
+            : fatalFailure;
+        if (requestFailure)
+        {
+            _client.Enqueue(_ => Task.FromException<HttpStatusCode>(failure));
+        }
+        else
+        {
+            _stateManager.SetupGet(manager => manager.Current).Throws(failure);
+        }
+
+        RuntimeState final = new(CreatedTime, 0, 1);
+        SetState(final, notify: false);
+
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        Exception observed = await Assert.ThrowsAnyAsync<Exception>(() => publisher.ExecuteTask!.WaitAsync(TestTimeout));
+
+        Assert.Same(failure, observed);
+        Assert.True(publisher.ExecuteTask!.IsFaulted);
+        Assert.Same(final, CurrentState);
+        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(3));
+        Assert.Equal(requestFailure ? 2 : 1, _client.AttemptCount);
+        if (requestFailure)
+        {
+            Assert.Same(final, await TakePublishedAsync());
+            ScheduledTimer timeout = await TakeTimerAsync();
+            Assert.Equal(TimeSpan.FromSeconds(2), timeout.DueTime);
+            Assert.True(timeout.Disposed.Task.IsCompletedSuccessfully);
+        }
+
+        logger.Verify(value => value.Log(
+            It.Is<LogLevel>(level => level >= LogLevel.Warning), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+        Assert.False(_timers.Reader.TryRead(out _));
+        AssertNoMorePublications();
+    }
+
+    [Fact]
+    public async Task StopAsync_WrappedFatalFinalTimeout_Propagates()
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        OperationCanceledException failure = new("fatal final cancellation", new OutOfMemoryException("simulated fatal failure"));
+        _client.Enqueue(async cancellationToken =>
+        {
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw failure;
+            }
+
+            return HttpStatusCode.OK;
+        });
+        RuntimeState final = new(CreatedTime, 0, 1);
+        SetState(final, notify: false);
+
+        Task stopping = publisher.StopAsync(CancellationToken.None);
+        Assert.Same(final, await TakePublishedAsync());
+        ScheduledTimer timeout = await TakeTimerAsync();
+        Assert.Equal(TimeSpan.FromSeconds(2), timeout.DueTime);
+        timeout.Fire();
+        await stopping.WaitAsync(TestTimeout);
+        Exception observed = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => publisher.ExecuteTask!.WaitAsync(TestTimeout));
+
+        Assert.Same(failure, observed);
+        Assert.Equal(2, _client.AttemptCount);
+        logger.Verify(value => value.Log(
+            It.Is<LogLevel>(level => level >= LogLevel.Warning), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+        Assert.False(_timers.Reader.TryRead(out _));
         AssertNoMorePublications();
     }
 
@@ -612,8 +1020,20 @@ public sealed class AppServerHostStatePublisherTests
         private readonly Lock _lock = new();
         private readonly Queue<Func<CancellationToken, Task<HttpStatusCode>>> _responses = new();
         private RuntimeState? _lastSuccessfulSnapshot;
+        private int _attemptCount;
 
         public Channel<RuntimeState> Publications { get; } = Channel.CreateUnbounded<RuntimeState>();
+
+        public int AttemptCount
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _attemptCount;
+                }
+            }
+        }
 
         public RuntimeState? LastSuccessfulSnapshot
         {
@@ -639,6 +1059,7 @@ public sealed class AppServerHostStatePublisherTests
             Func<CancellationToken, Task<HttpStatusCode>>? response;
             lock (_lock)
             {
+                _attemptCount++;
                 _responses.TryDequeue(out response);
             }
 

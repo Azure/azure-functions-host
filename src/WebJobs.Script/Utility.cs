@@ -339,6 +339,18 @@ namespace Microsoft.Azure.WebJobs.Script
             return typeName;
         }
 
+        /// <summary>
+        /// Determines whether an exception or an exception in its inner-exception chain is fatal to the host.
+        /// </summary>
+        /// <param name="exception">The exception to classify.</param>
+        /// <returns><see langword="true"/> if recoverable failure handling must not suppress the exception.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="exception"/> is <see langword="null"/>.</exception>
+        public static bool IsFatal(Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+            return System.ExceptionExtensions.IsFatal(exception);
+        }
+
         public static string FlattenException(Exception ex, Func<string, string> sourceFormatter = null, bool includeSource = true)
         {
             StringBuilder flattenedErrorsBuilder = new StringBuilder();
