@@ -212,11 +212,11 @@ internal sealed partial class AppServerHostStatePublisher(
         public static partial void Published(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int linkedWorkerCount);
 
         [LoggerMessage(1001, LogLevel.Warning,
-            "Failed to publish Host state snapshot created at {CreatedTime} to AppServer. The latest snapshot will be retried.")]
+            "Failed to publish Host state snapshot created at {CreatedTime} to AppServer.")]
         public static partial void PublishFailed(ILogger logger, Exception exception, DateTimeOffset createdTime);
 
         [LoggerMessage(1002, LogLevel.Warning,
-            "AppServer returned status code {StatusCode} for Host state snapshot created at {CreatedTime}. The latest snapshot will be retried.")]
+            "AppServer returned status code {StatusCode} for Host state snapshot created at {CreatedTime}.")]
         public static partial void PublishRejectedTransient(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
         [LoggerMessage(1003, LogLevel.Error,

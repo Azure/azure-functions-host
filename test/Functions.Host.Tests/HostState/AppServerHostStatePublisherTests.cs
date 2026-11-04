@@ -514,6 +514,34 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StopAsync_RecoverableFinalFailure_DoesNotPromiseRetry(bool transportFailure)
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        _client.Enqueue(_ => transportFailure
+            ? Task.FromException<HttpStatusCode>(new HttpRequestException("connection refused"))
+            : Task.FromResult(HttpStatusCode.InternalServerError));
+        SetState(new(CreatedTime, 0, 1), notify: false);
+
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        Assert.Equal(2, _client.AttemptCount);
+        logger.Verify(value => value.Log(
+            LogLevel.Warning, It.Is<EventId>(value => value.Id == (transportFailure ? 1001 : 1002)),
+            It.Is<It.IsAnyType>((state, _) => !state.ToString()!.Contains("retried", StringComparison.OrdinalIgnoreCase)),
+            It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
+        ScheduledTimer timeout = await TakeTimerAsync();
+        Assert.Equal(TimeSpan.FromSeconds(2), timeout.DueTime);
+        Assert.True(timeout.Disposed.Task.IsCompletedSuccessfully);
+        Assert.False(_timers.Reader.TryRead(out _));
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]

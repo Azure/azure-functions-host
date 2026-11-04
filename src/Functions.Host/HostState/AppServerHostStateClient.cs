@@ -15,7 +15,7 @@ using Microsoft.Extensions.Configuration;
 namespace Azure.Functions.Host.HostState;
 
 /// <summary>
-/// Sends snapshots to the prototype AppServer <c>PUT /admin/infra/host/state</c> endpoint.
+/// Sends snapshots to the AppServer <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
 /// Requests are not authenticated. The endpoint is resolved on the first publication and reused for the client's lifetime.
@@ -23,8 +23,8 @@ namespace Azure.Functions.Host.HostState;
 internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
 {
     internal const string HttpClientName = "AppServerHostState";
-    internal const string HostStatePath = "admin/infra/host/state";
-    internal const string DefaultEndpoint = "http://localhost:6060/";
+    private const string HostStatePath = "admin/infra/host/state";
+    private const string DefaultEndpoint = "http://localhost:6060/";
 
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
