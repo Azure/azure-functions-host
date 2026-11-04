@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using Azure.Functions.WorkerProxy.Http;
 
 namespace Azure.Functions.WorkerProxy.State;
 
@@ -31,7 +32,8 @@ internal sealed class WorkerAssignment
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
         string functionAppDirectory,
-        int? maxHttpConcurrency = null)
+        int? maxHttpConcurrency = null,
+        string? httpProxyEndpoint = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -54,6 +56,14 @@ internal sealed class WorkerAssignment
                 "HTTP concurrency must be between 1 and 1000 for HTTP groups, or between 0 and 1000 for other groups.");
         }
 
+        Uri? resolvedHttpProxyEndpoint = null;
+        if (httpProxyEndpoint is not null
+            && !WorkerHttpProxyEndpointResolver.TryResolve(
+                httpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out resolvedHttpProxyEndpoint))
+        {
+            throw new ArgumentException("The HTTP proxy endpoint must be a scheme-less authority.", nameof(httpProxyEndpoint));
+        }
+
         foreach ((string key, string value) in environment)
         {
             ArgumentException.ThrowIfNullOrEmpty(key);
@@ -68,6 +78,8 @@ internal sealed class WorkerAssignment
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
+        HttpProxyEndpoint = httpProxyEndpoint;
+        ResolvedHttpProxyEndpoint = resolvedHttpProxyEndpoint;
     }
 
     /// <summary>
@@ -91,6 +103,16 @@ internal sealed class WorkerAssignment
     public string FunctionAppDirectory { get; }
 
     /// <summary>
+    /// Gets the optional scheme-less HTTP proxy authority, retained verbatim for retry identity.
+    /// </summary>
+    public string? HttpProxyEndpoint { get; }
+
+    /// <summary>
+    /// Gets the resolved HTTP proxy origin used to advertise the worker endpoint.
+    /// </summary>
+    public Uri? ResolvedHttpProxyEndpoint { get; }
+
+    /// <summary>
     /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
@@ -101,6 +123,7 @@ internal sealed class WorkerAssignment
             || !string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || MaxHttpConcurrency != other.MaxHttpConcurrency
+            || !string.Equals(HttpProxyEndpoint, other.HttpProxyEndpoint, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
             || Environment.Count != other.Environment.Count)

@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Identity;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -49,6 +50,7 @@ internal sealed partial class FunctionRpcRelay
         private bool _runtimeAttached;
         private bool _workerAttached;
         private string? _initializationRequestId;
+        private volatile string? _workerId;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -123,6 +125,28 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
+        public WorkerSystemLogContext GetLogContext()
+        {
+            return new()
+            {
+                WorkerId = _workerId,
+                ProxySessionId = id
+            };
+        }
+
+        public void LogAttachment(FunctionRpcRelaySide side, bool released)
+        {
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
+            if (released)
+            {
+                Log.PeerReleased(logger, id, side);
+            }
+            else
+            {
+                Log.PeerAttached(logger, id, side);
+            }
+        }
+
         /// <summary>
         /// Determines whether this session currently owns the specified side.
         /// </summary>
@@ -163,9 +187,16 @@ internal sealed partial class FunctionRpcRelay
                 _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
             };
 
-            Task readTask = ReadInboundAsync(side, requestStream, destination, proxyConnection, linkedSource.Token);
+            // Separate worker reads from initialization so an assignment wait cannot hide worker EOF.
+            Channel<StreamingMessage>? workerInbound = side is FunctionRpcRelaySide.Worker ? CreateChannel() : null;
+            Task readTask = ReadInboundAsync(side, requestStream, workerInbound?.Writer ?? destination, proxyConnection, linkedSource.Token);
+            Task? processTask = workerInbound is null
+                ? null
+                : ProcessWorkerMessagesAsync(workerInbound.Reader, destination, linkedSource.Token);
             Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
-            Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
+            Task firstCompletedTask = processTask is null
+                ? await Task.WhenAny(readTask, writeTask)
+                : await Task.WhenAny(readTask, processTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
             {
@@ -173,10 +204,16 @@ internal sealed partial class FunctionRpcRelay
                 TryTerminate(terminalState);
             }
 
+            workerInbound?.Writer.TryComplete();
             await linkedSource.CancelAsync();
             // Reads can remain blocked until the transport releases them, so observe that task
             // out of band. The write must finish before gRPC writes trailers to the same response.
             _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
+            if (processTask is not null)
+            {
+                _ = ObserveStreamOperationAfterTerminationAsync(side, "process", processTask);
+            }
+
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
             return await _completion.Task;
         }
@@ -284,6 +321,7 @@ internal sealed partial class FunctionRpcRelay
                     }
                 }
 
+                LogProtocolMessage(message, forwarded: false);
                 return message;
             }
 
@@ -297,21 +335,52 @@ internal sealed partial class FunctionRpcRelay
                         return null;
                     }
 
-                    if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
+                    if (message.StartStream is not { } startStream
+                        || string.IsNullOrWhiteSpace(startStream.WorkerId))
                     {
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
                     stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    _workerId = startStream.WorkerId;
                 }
+
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
+                Log.StartStreamValidated(logger, id);
             }
 
-            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
-                ? FinalizeCapabilities(message)
-                : message;
+            LogProtocolMessage(message, forwarded: false);
+            return message;
         }
 
-        private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
+        private async Task ProcessWorkerMessagesAsync(ChannelReader<StreamingMessage> source, ChannelWriter<StreamingMessage> destination,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await foreach (StreamingMessage current in source.ReadAllAsync(cancellationToken))
+                {
+                    StreamingMessage? message = current.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+                        ? await FinalizeCapabilitiesAsync(current, cancellationToken)
+                        : current;
+                    if (message is null)
+                    {
+                        return;
+                    }
+
+                    await destination.WriteAsync(message, cancellationToken);
+                }
+            }
+            finally
+            {
+                // This task owns queued messages; release them even if a finalizer faulted or initialization was canceled.
+                while (source.TryRead(out _))
+                {
+                }
+            }
+        }
+
+        private async Task<StreamingMessage?> FinalizeCapabilitiesAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             FrozenDictionary<string, string>? capabilities;
             lock (_stateLock)
@@ -324,12 +393,25 @@ internal sealed partial class FunctionRpcRelay
                 capabilities = _capabilities;
             }
 
-            // Only the worker reader finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
+            // Only the worker processor finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
-                Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
-                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities);
+                (WorkerPodState state, string? httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                if (finalized.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out string? httpUri)
+                    && !string.IsNullOrWhiteSpace(httpUri))
+                {
+                    // Keep the runtime reader available for startup token traffic while assignment catches up with StartStream.
+                    while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
+                    {
+                        await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
+                        (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                    }
+                }
+
+                Uri? destination = capabilityFinalizer.FinalizeCapabilities(
+                    finalized.WorkerInitResponse.Capabilities, httpProxyEndpoint);
+                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities, state);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -360,13 +442,12 @@ internal sealed partial class FunctionRpcRelay
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
         /// the capability is omitted so the runtime never receives an unassigned or stale group.
         /// </remarks>
-        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities)
+        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities, WorkerPodState state)
         {
             // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
 
-            WorkerPodState state = stateManager.State;
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {
@@ -379,6 +460,7 @@ internal sealed partial class FunctionRpcRelay
                 return;
             }
 
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
@@ -401,6 +483,8 @@ internal sealed partial class FunctionRpcRelay
                         _runtimeWrites.Written(message);
                         PublishRuntimeInitialization(message);
                     }
+
+                    LogProtocolMessage(message, forwarded: true);
                 }
             }
             finally
@@ -432,6 +516,92 @@ internal sealed partial class FunctionRpcRelay
                 {
                     stateManager.OnRuntimeInitialized(id);
                 }
+            }
+        }
+
+        private void LogProtocolMessage(StreamingMessage message, bool forwarded)
+        {
+            if (message.FunctionLoadRequestCollection is { } requests)
+            {
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
+                    Log.FunctionLoadBatchRequested(logger, forwarded ? "RequestForwarded" : "RequestReceived", requests.FunctionLoadRequests.Count);
+                }
+
+                return;
+            }
+
+            if (message.FunctionLoadResponseCollection is { } responses)
+            {
+                if (!logger.IsEnabled(LogLevel.Information) && !logger.IsEnabled(LogLevel.Warning))
+                {
+                    return;
+                }
+
+                int unsuccessful = 0;
+                foreach (FunctionLoadResponse response in responses.FunctionLoadResponses)
+                {
+                    if (response.Result is not { Status: StatusResult.Types.Status.Success })
+                    {
+                        unsuccessful++;
+                    }
+                }
+
+                LogLevel batchLevel = unsuccessful > 0 ? LogLevel.Warning : LogLevel.Information;
+                if (logger.IsEnabled(batchLevel))
+                {
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
+                    string batchStage = forwarded ? "ResponseForwarded" : "ResponseReceived";
+                    if (unsuccessful > 0)
+                    {
+                        Log.FunctionLoadBatchFailed(logger, batchStage, responses.FunctionLoadResponses.Count, unsuccessful);
+                    }
+                    else
+                    {
+                        Log.FunctionLoadBatchCompleted(logger, batchStage, responses.FunctionLoadResponses.Count, unsuccessful);
+                    }
+                }
+
+                return;
+            }
+
+            (string Operation, bool Response, StatusResult? Result)? operation = message.ContentCase switch
+            {
+                StreamingMessage.ContentOneofCase.WorkerInitRequest => ("Initialization", false, null),
+                StreamingMessage.ContentOneofCase.WorkerInitResponse => ("Initialization", true, message.WorkerInitResponse.Result),
+                StreamingMessage.ContentOneofCase.FunctionLoadRequest => ("FunctionLoad", false, null),
+                StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, message.FunctionLoadResponse.Result),
+                _ => null
+            };
+            if (operation is not { } value)
+            {
+                return;
+            }
+
+            LogLevel level = value.Result is { Status: not StatusResult.Types.Status.Success }
+                ? LogLevel.Warning : LogLevel.Information;
+            if (!logger.IsEnabled(level))
+            {
+                return;
+            }
+
+            string stage = (value.Response, forwarded) switch
+            {
+                (false, false) => "RequestReceived",
+                (false, true) => "RequestForwarded",
+                (true, false) => "ResponseReceived",
+                (true, true) => "ResponseForwarded"
+            };
+            string? rpcStatus = value.Result?.Status.ToString();
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
+            if (level == LogLevel.Warning)
+            {
+                Log.ProtocolMessageFailed(logger, value.Operation, stage, rpcStatus);
+            }
+            else
+            {
+                Log.ProtocolMessageObserved(logger, value.Operation, stage, rpcStatus);
             }
         }
 
@@ -492,6 +662,7 @@ internal sealed partial class FunctionRpcRelay
             _toRuntime.Writer.TryComplete(completionException);
             _toWorker.Writer.TryComplete(completionException);
 
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
                 Log.SessionFaulted(logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
@@ -530,6 +701,7 @@ internal sealed partial class FunctionRpcRelay
             }
             catch (Exception exception) when (_completion.Task.IsCompleted)
             {
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
                 Log.SecondaryStreamFailure(logger, exception, id, operationName, side);
             }
         }
@@ -578,7 +750,7 @@ internal sealed partial class FunctionRpcRelay
         [LoggerMessage(0, LogLevel.Warning, "FunctionRpc relay session {SessionId} faulted on the {Side} side.")]
         public static partial void SessionFaulted(ILogger logger, Exception? exception, long sessionId, FunctionRpcRelaySide? side);
 
-        [LoggerMessage(1, LogLevel.Debug, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.")]
+        [LoggerMessage(1, LogLevel.Information, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.")]
         public static partial void SessionTerminated(ILogger logger, Exception? exception, long sessionId,
             FunctionRpcRelayTerminationReason reason, FunctionRpcRelaySide? side);
 
@@ -592,5 +764,36 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+
+        [LoggerMessage(4, LogLevel.Information, "FunctionRpc session {SessionId} accepted the {Side} peer.")]
+        public static partial void PeerAttached(ILogger logger, long sessionId, FunctionRpcRelaySide side);
+
+        [LoggerMessage(5, LogLevel.Warning, "FunctionRpc rejected the {Side} peer: {Reason}.")]
+        public static partial void AttachmentRejected(ILogger logger, FunctionRpcRelaySide side, FunctionRpcRelayAttachmentFailure reason);
+
+        [LoggerMessage(6, LogLevel.Information, "FunctionRpc session {SessionId} validated worker StartStream.")]
+        public static partial void StartStreamValidated(ILogger logger, long sessionId);
+
+        [LoggerMessage(7, LogLevel.Information, "FunctionRpc session {SessionId} released the {Side} peer.")]
+        public static partial void PeerReleased(ILogger logger, long sessionId, FunctionRpcRelaySide side);
+
+        [LoggerMessage(8, LogLevel.Information, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.")]
+        public static partial void ProtocolMessageObserved(ILogger logger, string operation, string stage, string? rpcStatus);
+
+        [LoggerMessage(8, LogLevel.Warning, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.",
+            EventName = nameof(ProtocolMessageObserved))]
+        public static partial void ProtocolMessageFailed(ILogger logger, string operation, string stage, string? rpcStatus);
+
+        [LoggerMessage(9, LogLevel.Information, "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} functions.")]
+        public static partial void FunctionLoadBatchRequested(ILogger logger, string stage, int functionCount);
+
+        [LoggerMessage(10, LogLevel.Information,
+            "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.")]
+        public static partial void FunctionLoadBatchCompleted(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
+
+        [LoggerMessage(10, LogLevel.Warning,
+            "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.",
+            EventName = nameof(FunctionLoadBatchCompleted))]
+        public static partial void FunctionLoadBatchFailed(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
     }
 }

@@ -32,6 +32,11 @@ internal sealed class WorkerAssignRequest
     public string? FunctionGroupName { get; init; }
 
     /// <summary>
+    /// Gets the optional scheme-less authority used for the externally reachable HTTP origin.
+    /// </summary>
+    public string? HttpProxyEndpoint { get; init; }
+
+    /// <summary>
     /// Gets or sets the optional per-worker HTTP concurrency limit, from 1 through 1000 for HTTP groups.
     /// </summary>
     /// <remarks>

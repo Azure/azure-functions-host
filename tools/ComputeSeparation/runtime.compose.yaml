@@ -4,6 +4,7 @@ services:
       context: ../..
       dockerfile: tools/ComputeSeparation/FunctionsHost/Dockerfile
     environment:
+      CONTAINER_NAME: aspire-runtime
       AzureFunctionsWebHost__hostid: aspire-worker
       AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
       AzureFunctionsJobHost__logging__logLevel__default: Information
