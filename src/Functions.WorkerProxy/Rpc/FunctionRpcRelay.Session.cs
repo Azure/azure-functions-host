@@ -181,9 +181,16 @@ internal sealed partial class FunctionRpcRelay
                 _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
             };
 
-            Task readTask = ReadInboundAsync(side, requestStream, destination, proxyConnection, linkedSource.Token);
+            // Separate worker reads from initialization so an assignment wait cannot hide worker EOF.
+            Channel<StreamingMessage>? workerInbound = side is FunctionRpcRelaySide.Worker ? CreateChannel() : null;
+            Task readTask = ReadInboundAsync(side, requestStream, workerInbound?.Writer ?? destination, proxyConnection, linkedSource.Token);
+            Task? processTask = workerInbound is null
+                ? null
+                : ProcessWorkerMessagesAsync(workerInbound.Reader, destination, linkedSource.Token);
             Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
-            Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
+            Task firstCompletedTask = processTask is null
+                ? await Task.WhenAny(readTask, writeTask)
+                : await Task.WhenAny(readTask, processTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
             {
@@ -191,10 +198,16 @@ internal sealed partial class FunctionRpcRelay
                 TryTerminate(terminalState);
             }
 
+            workerInbound?.Writer.TryComplete();
             await linkedSource.CancelAsync();
             // Reads can remain blocked until the transport releases them, so observe that task
             // out of band. The write must finish before gRPC writes trailers to the same response.
             _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
+            if (processTask is not null)
+            {
+                _ = ObserveStreamOperationAfterTerminationAsync(side, "process", processTask);
+            }
+
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
             return await _completion.Task;
         }
@@ -323,12 +336,37 @@ internal sealed partial class FunctionRpcRelay
             }
 
             LogProtocolMessage(message, forwarded: false);
-            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
-                ? FinalizeCapabilities(message)
-                : message;
+            return message;
         }
 
-        private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
+        private async Task ProcessWorkerMessagesAsync(ChannelReader<StreamingMessage> source, ChannelWriter<StreamingMessage> destination,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await foreach (StreamingMessage current in source.ReadAllAsync(cancellationToken))
+                {
+                    StreamingMessage? message = current.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+                        ? await FinalizeCapabilitiesAsync(current, cancellationToken)
+                        : current;
+                    if (message is null)
+                    {
+                        return;
+                    }
+
+                    await destination.WriteAsync(message, cancellationToken);
+                }
+            }
+            finally
+            {
+                // This task owns queued messages; release them even if a finalizer faulted or initialization was canceled.
+                while (source.TryRead(out _))
+                {
+                }
+            }
+        }
+
+        private async Task<StreamingMessage?> FinalizeCapabilitiesAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             FrozenDictionary<string, string>? capabilities;
             lock (_stateLock)
@@ -341,12 +379,25 @@ internal sealed partial class FunctionRpcRelay
                 capabilities = _capabilities;
             }
 
-            // Only the worker reader finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
+            // Only the worker processor finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
-                Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
-                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities);
+                (WorkerPodState state, string? httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                if (finalized.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out string? httpUri)
+                    && !string.IsNullOrWhiteSpace(httpUri))
+                {
+                    // Keep the runtime reader available for startup token traffic while assignment catches up with StartStream.
+                    while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
+                    {
+                        await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
+                        (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                    }
+                }
+
+                Uri? destination = capabilityFinalizer.FinalizeCapabilities(
+                    finalized.WorkerInitResponse.Capabilities, httpProxyEndpoint);
+                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities, state);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -377,13 +428,12 @@ internal sealed partial class FunctionRpcRelay
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
         /// the capability is omitted so the runtime never receives an unassigned or stale group.
         /// </remarks>
-        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities)
+        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities, WorkerPodState state)
         {
             // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
 
-            WorkerPodState state = stateManager.State;
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {

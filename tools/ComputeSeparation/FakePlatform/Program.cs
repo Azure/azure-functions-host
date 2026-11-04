@@ -8,6 +8,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").Get<FakePlatformOptions>()
@@ -32,8 +33,18 @@ HostState? acceptedHostState = null;
 app.MapHealthChecks("/health");
 
 // This local prototype records arrival order; timestamps do not establish causal order across Host restarts.
-app.MapPut("/admin/infra/host/state", (HostState state) =>
+app.MapPut("/admin/infra/host/state", (HttpRequest request, HostState state) =>
 {
+    if (!request.Headers.TryGetValue("fx-current-instance", out StringValues instanceHeader)
+        || instanceHeader.Count != 1
+        || string.IsNullOrWhiteSpace(instanceHeader[0])
+        || !string.Equals(instanceHeader[0], options.HostContainerName, StringComparison.Ordinal))
+    {
+        return Results.Text(
+            "Host instance identity is missing or does not match.",
+            statusCode: StatusCodes.Status401Unauthorized);
+    }
+
     lock (hostStateLock)
     {
         acceptedHostState = state;
@@ -65,7 +76,8 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16,
+        HttpProxyEndpoint: $"{workerProxy.HttpProxyEndpoint.Host}:{workerProxy.HttpProxyEndpoint.Port}");
     using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -87,7 +99,7 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
     {
         Content = JsonContent.Create(new HostAssignmentRequest(Encrypt(key, context))),
     };
-    request.Headers.Authorization = new("Bearer", CreateAdminToken(key));
+    request.Headers.Authorization = new("Bearer", CreateAdminToken(key, options.HostContainerName));
 
     using HttpResponseMessage response = await clients.CreateClient(HostClient).SendAsync(request, cancellationToken);
     return await ToResultAsync("host assign", response, cancellationToken);
@@ -134,13 +146,13 @@ static string Encrypt(byte[] key, string value)
 }
 
 // Creates a short-lived token the Host accepts for admin requests: a JWT signed (HS256) with the shared key.
-static string CreateAdminToken(byte[] key)
+static string CreateAdminToken(byte[] key, string hostContainerName)
 {
     string header = Base64Url.EncodeToString("""{"alg":"HS256","typ":"JWT"}"""u8);
     string payload = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new
     {
         iss = "https://appservice.core.azurewebsites.net",
-        aud = $"https://{AppName}.azurewebsites.net/azurefunctions",
+        aud = hostContainerName,
         exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds(),
     }));
     string signature = Base64Url.EncodeToString(HMACSHA256.HashData(key, Encoding.ASCII.GetBytes($"{header}.{payload}")));
@@ -159,6 +171,8 @@ internal partial class Program
     {
         public required Uri HostUri { get; init; }
 
+        public required string HostContainerName { get; init; }
+
         public required WorkerProxyOptions[] WorkerProxies { get; init; }
 
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in placeholder profiles.
@@ -171,6 +185,8 @@ internal partial class Program
 
         public required Uri ManagementUri { get; init; }
 
+        public required Uri HttpProxyEndpoint { get; init; }
+
         public required Uri WorkerGrpcEndpoint { get; init; }
 
         public required string WorkerId { get; init; }
@@ -181,7 +197,8 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency,
+        string? HttpProxyEndpoint);
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
 
