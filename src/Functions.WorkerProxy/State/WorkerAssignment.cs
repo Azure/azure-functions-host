@@ -56,9 +56,10 @@ internal sealed class WorkerAssignment
                 "HTTP concurrency must be between 1 and 1000 for HTTP groups, or between 0 and 1000 for other groups.");
         }
 
+        Uri? resolvedHttpProxyEndpoint = null;
         if (httpProxyEndpoint is not null
             && !WorkerHttpProxyEndpointResolver.TryResolve(
-                httpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out _))
+                httpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out resolvedHttpProxyEndpoint))
         {
             throw new ArgumentException("The HTTP proxy endpoint must be a scheme-less authority.", nameof(httpProxyEndpoint));
         }
@@ -78,6 +79,7 @@ internal sealed class WorkerAssignment
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
         HttpProxyEndpoint = httpProxyEndpoint;
+        ResolvedHttpProxyEndpoint = resolvedHttpProxyEndpoint;
     }
 
     /// <summary>
@@ -104,6 +106,11 @@ internal sealed class WorkerAssignment
     /// Gets the optional scheme-less HTTP proxy authority, retained verbatim for retry identity.
     /// </summary>
     public string? HttpProxyEndpoint { get; }
+
+    /// <summary>
+    /// Gets the resolved HTTP proxy origin used to advertise the worker endpoint.
+    /// </summary>
+    public Uri? ResolvedHttpProxyEndpoint { get; }
 
     /// <summary>
     /// Compares all assignment fields without depending on dictionary order or the caller's comparer.

@@ -117,11 +117,10 @@ public partial class WorkerPodStateManagerTests
     {
         WorkerProxyOptions options = new() { PodName = "pod" };
         IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
-        WorkerHttpProxyEndpointState endpointState = new();
-        WorkerPodStateManager manager = new(configuredOptions, endpointState, TimeProvider.System);
+        WorkerPodStateManager manager = new(configuredOptions, TimeProvider.System);
 
         Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment(httpProxyEndpoint: "mapped.example:48801")));
-        Assert.Null(endpointState.Value);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
 
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "worker");
@@ -129,15 +128,16 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         WorkerPodState assigned = manager.State;
 
-        Assert.Equal("http://mapped.example:48801/", endpointState.Value);
+        Assert.Equal("http://mapped.example:48801/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
         Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(assignment));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment(httpProxyEndpoint: "mapped.example:48802")));
         Assert.Same(assigned, manager.State);
-        Assert.Equal("http://mapped.example:48801/", endpointState.Value);
+        Assert.Equal("http://mapped.example:48801/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
 
         manager.OnSessionTerminated(1);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
-        Assert.Equal("http://mapped.example:48801/", endpointState.Value);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+        Assert.Equal(new Uri("http://mapped.example:48801/"), assignment.ResolvedHttpProxyEndpoint);
     }
 
     [Fact]
@@ -145,14 +145,13 @@ public partial class WorkerPodStateManagerTests
     {
         WorkerProxyOptions options = new() { PodName = "pod" };
         IOptions<WorkerProxyOptions> configuredOptions = Options.Create(options);
-        WorkerHttpProxyEndpointState endpointState = new();
-        WorkerPodStateManager manager = new(configuredOptions, endpointState, TimeProvider.System);
+        WorkerPodStateManager manager = new(configuredOptions, TimeProvider.System);
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "worker");
 
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
 
-        Assert.Null(endpointState.Value);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
     [Fact]
@@ -265,7 +264,7 @@ public partial class WorkerPodStateManagerTests
     {
         IOptions<WorkerProxyOptions> options = CreateOptions(podName!);
         Assert.ThrowsAny<ArgumentException>(() =>
-            new WorkerPodStateManager(options, new WorkerHttpProxyEndpointState(), TimeProvider.System));
+            new WorkerPodStateManager(options, TimeProvider.System));
     }
 
     [Fact]
@@ -273,7 +272,7 @@ public partial class WorkerPodStateManagerTests
     {
         IOptions<WorkerProxyOptions> options = CreateOptions();
         Assert.Throws<ArgumentNullException>(() =>
-            new WorkerPodStateManager(options, new WorkerHttpProxyEndpointState(), null!));
+            new WorkerPodStateManager(options, null!));
     }
 
     [Fact]
@@ -281,7 +280,7 @@ public partial class WorkerPodStateManagerTests
     {
         IOptions<WorkerProxyOptions> options = CreateOptions();
         Assert.Throws<ArgumentNullException>(() =>
-            new WorkerPodStateManager(null!, new WorkerHttpProxyEndpointState(), TimeProvider.System));
+            new WorkerPodStateManager(null!, TimeProvider.System));
     }
 
     [Fact]
@@ -410,7 +409,7 @@ public partial class WorkerPodStateManagerTests
     }
 
     private static WorkerPodStateManager CreateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
-        => new(options, new WorkerHttpProxyEndpointState(), timeProvider);
+        => new(options, timeProvider);
 
     private static WorkerPodStateManager CreateReadyManager()
     {

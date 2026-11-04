@@ -310,7 +310,7 @@ public partial class FunctionRpcRelayTests
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(FunctionGroupNameCapability));
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(MaxHttpConcurrencyCapability));
         Assert.Equal("http://assigned.example:28080/",
-            factory.Services.GetRequiredService<WorkerHttpProxyEndpointState>().Value);
+            factory.Services.GetRequiredService<WorkerPodStateManager>().GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
     [Theory]

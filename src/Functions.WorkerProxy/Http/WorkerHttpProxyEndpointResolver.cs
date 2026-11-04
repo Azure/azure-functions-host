@@ -31,7 +31,7 @@ internal static class WorkerHttpProxyEndpointResolver
             return false;
         }
 
-        endpoint = new UriBuilder(scheme, parsed.Host, parsed.Port).Uri;
+        endpoint = parsed;
         return true;
     }
 

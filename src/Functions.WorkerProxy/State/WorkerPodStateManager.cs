@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Http;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.State;
@@ -26,7 +25,6 @@ internal sealed class WorkerPodStateManager
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
     private readonly TimeProvider _timeProvider;
-    private readonly WorkerHttpProxyEndpointState _httpProxyEndpointState;
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
@@ -35,17 +33,14 @@ internal sealed class WorkerPodStateManager
 
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
-        WorkerHttpProxyEndpointState httpProxyEndpointState,
         TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(httpProxyEndpointState);
         ArgumentNullException.ThrowIfNull(timeProvider);
 
         string podName = options.Value.PodName;
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
-        _httpProxyEndpointState = httpProxyEndpointState;
         _timeProvider = timeProvider;
         _state = WorkerPodState.CreateUnassigned(podName);
     }
@@ -86,7 +81,7 @@ internal sealed class WorkerPodStateManager
         {
             string? httpProxyEndpoint = _state.SessionId == sessionId
                 && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
-                    ? _httpProxyEndpointState.Value
+                    ? _assignment?.ResolvedHttpProxyEndpoint?.AbsoluteUri
                     : null;
 
             return (_state, httpProxyEndpoint);
@@ -288,26 +283,12 @@ internal sealed class WorkerPodStateManager
                 IsAlwaysReady = assignment.IsAlwaysReady
             };
 
-            string? httpProxyEndpoint = null;
-            if (assignment.HttpProxyEndpoint is { } authority)
-            {
-                if (!WorkerHttpProxyEndpointResolver.TryResolve(
-                    authority, WorkerProxyEndpointConfiguration.HttpListenerScheme, out Uri? endpoint))
-                {
-                    throw new InvalidOperationException("The validated HTTP proxy authority could not be resolved.");
-                }
-
-                httpProxyEndpoint = endpoint.AbsoluteUri;
-            }
-
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");
             }
 
-            // Publish the effective origin before the accepted assignment becomes observable.
-            _httpProxyEndpointState.Set(httpProxyEndpoint);
             _assignment = assignment;
             UpdateStateAndNotifyWaitersLocked(assigned);
             return WorkerAssignmentResult.Created;

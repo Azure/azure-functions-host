@@ -623,7 +623,7 @@ public class ManagementApiHandlersTests
     private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null)
     {
         IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions { PodName = "pod" });
-        return new(options, new WorkerHttpProxyEndpointState(), timeProvider ?? TimeProvider.System);
+        return new(options, timeProvider ?? TimeProvider.System);
     }
 
     private static WorkerPodStateManager CreateReadyManager(TimeProvider? timeProvider = null)

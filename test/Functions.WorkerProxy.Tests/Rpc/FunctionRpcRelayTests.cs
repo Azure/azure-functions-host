@@ -474,7 +474,7 @@ public partial class FunctionRpcRelayTests
     private static WorkerPodStateManager CreatePodStateManager()
     {
         IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" });
-        return new(options, new WorkerHttpProxyEndpointState(), TimeProvider.System);
+        return new(options, TimeProvider.System);
     }
 
     private static StreamingMessage CreateStartStream(string requestId = "worker-start")

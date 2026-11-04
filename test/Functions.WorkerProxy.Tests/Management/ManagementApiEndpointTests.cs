@@ -270,8 +270,7 @@ public class ManagementApiEndpointTests
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        WorkerHttpProxyEndpointState endpointState = factory.Services.GetRequiredService<WorkerHttpProxyEndpointState>();
-        Assert.Null(endpointState.Value);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "worker");
         using HttpClient client = factory.CreateWorkerProxyClient();
@@ -283,25 +282,25 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage accepted = await client.PutAsync(AssignPath, content, timeout.Token);
 
         await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
-        Assert.Equal("http://worker-pod:28080/", endpointState.Value);
+        Assert.Equal("http://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
 
         using StringContent replayContent = JsonBody(body.ToJsonString());
         using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
         await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
-        Assert.Equal("http://worker-pod:28080/", endpointState.Value);
+        Assert.Equal("http://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
 
         body["httpProxyEndpoint"] = "worker-pod:28081";
         using StringContent conflictingContent = JsonBody(body.ToJsonString());
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
         Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
-        Assert.Equal("http://worker-pod:28080/", endpointState.Value);
+        Assert.Equal("http://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
 
         manager.OnSessionTerminated(1);
         body["httpProxyEndpoint"] = "worker-pod:28080";
         using StringContent terminalReplayContent = JsonBody(body.ToJsonString());
         using HttpResponseMessage terminalReplay = await client.PutAsync(AssignPath, terminalReplayContent, timeout.Token);
         Assert.Equal(HttpStatusCode.Conflict, terminalReplay.StatusCode);
-        Assert.Equal("http://worker-pod:28080/", endpointState.Value);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
     [Theory]

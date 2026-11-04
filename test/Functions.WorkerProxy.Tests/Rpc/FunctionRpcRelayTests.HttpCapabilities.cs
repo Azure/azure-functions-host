@@ -122,8 +122,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_FinalizesCapabilitiesOnceOnAnOwnedCopy(string? firstHttpUri)
     {
         WorkerProxyOptions options = new() { PodName = "test-worker-pod" };
-        WorkerHttpProxyEndpointState endpointState = new();
-        WorkerPodStateManager manager = new(Options.Create(options), endpointState, TimeProvider.System);
+        WorkerPodStateManager manager = new(Options.Create(options), TimeProvider.System);
         await using FunctionRpcRelay relay = new(
             NullLogger<FunctionRpcRelay>.Instance,
             CreateCapabilityProvider(options),
@@ -163,8 +162,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(firstHttpUri is null ? null : new Uri(firstHttpUri), relay.WorkerHttpDestination);
         Assert.Equal(firstHttpUri, first.WorkerInitResponse.Capabilities.GetValueOrDefault("HttpUri"));
 
-        // A second finalization would fail without a proxy origin. Repeated responses must instead use the frozen capabilities.
-        endpointState.Set(null);
+        // Repeated responses reuse the first finalized capability snapshot.
         first.WorkerInitResponse.Capabilities.Clear();
         finalized.WorkerInitResponse.Capabilities.Clear();
         StreamingMessage repeated = CreateInitResponse("second-init", "http://localhost:5678");
