@@ -36,7 +36,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
         await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
 
         await registry.RetireIdleHttpWorkersAsync(TimeSpan.FromTicks(-1));
 
@@ -60,7 +60,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
         await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
 
         Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.True(worker.DisposeStarted.IsCompleted);
@@ -93,7 +93,7 @@ public sealed partial class WorkerChannelRegistryTests
         await manager.StartAsync(CancellationToken.None);
         await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
         await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 1 && state.HttpCapacity == 16);
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
         Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         try
         {
@@ -134,13 +134,13 @@ public sealed partial class WorkerChannelRegistryTests
         await monitor.StartAsync(CancellationToken.None);
         await timerCreated.Task.WaitAsync(TestTimeout);
 
-        time.Advance(TimeSpan.FromMinutes(1));
-        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
-        Assert.Single(registry.GetInitializedChannels());
-        time.Advance(TimeSpan.FromMinutes(1));
-        await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
-        Assert.Single(registry.GetInitializedChannels());
-        Assert.Equal(0, worker.DisposeCount);
+        for (int minute = 1; minute <= 5; minute++)
+        {
+            time.Advance(TimeSpan.FromMinutes(1));
+            await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
+            Assert.Single(registry.GetInitializedChannels());
+            Assert.Equal(0, worker.DisposeCount);
+        }
 
         time.Advance(TimeSpan.FromMinutes(1));
         await worker.DisposeStarted.WaitAsync(TestTimeout);
@@ -160,7 +160,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task IdleRetirement_MixedWorkers_ExemptsAlwaysReadyUnknownNonHttpAndLoading()
+    public async Task IdleRetirement_MixedWorkers_ExemptsAlwaysReadyUnknownNonHttpAndBusyWorkers()
     {
         FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
@@ -194,19 +194,19 @@ public sealed partial class WorkerChannelRegistryTests
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
         using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(busy, function);
         await dispatcher.InvokeAsync(invocation);
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
 
         Assert.Equal(1, idle.DisposeCount);
         Assert.Equal(1, secondIdle.DisposeCount);
-        Assert.Equal(6, registry.GetInitializedChannels().Count);
-        Assert.All(workers.Where(worker => !ReferenceEquals(worker, idle) && !ReferenceEquals(worker, secondIdle)),
+        Assert.Equal(1, loading.DisposeCount);
+        Assert.Equal(5, registry.GetInitializedChannels().Count);
+        Assert.All(workers.Where(worker => !ReferenceEquals(worker, idle) && !ReferenceEquals(worker, secondIdle) && !ReferenceEquals(worker, loading)),
             worker => Assert.Equal(0, worker.DisposeCount));
 
         time.Advance(TimeSpan.FromMinutes(10));
-        CompleteFunctionLoad(loading, function);
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
-        Assert.Equal(0, loading.DisposeCount);
+        Assert.Equal(5, registry.GetInitializedChannels().Count);
         invocation.ResultSource.TrySetResult(new());
         await WaitUntilAsync(() => busy.Channel.OngoingRequests == 0);
     }
@@ -214,7 +214,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Theory]
     [InlineData(0)]
     [InlineData(2)]
-    public async Task IdleRetirement_StartsIdleIntervalAfterAllFunctionsLoad(int functionCount)
+    public async Task IdleRetirement_InitialGraceDoesNotDependOnFunctionLoadResponses(int functionCount)
     {
         FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
@@ -229,16 +229,21 @@ public sealed partial class WorkerChannelRegistryTests
         foreach (FunctionMetadata function in functions)
         {
             await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-            time.Advance(TimeSpan.FromMinutes(3));
-            await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
-            Assert.Equal(0, worker.DisposeCount);
-            CompleteFunctionLoad(worker, function);
         }
 
         time.Advance(IdleThreshold);
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.Equal(0, worker.DisposeCount);
-        time.Advance(TimeSpan.FromSeconds(1));
+        time.Advance(TimeSpan.FromMinutes(2));
+        if (functionCount > 0)
+        {
+            CompleteFunctionLoad(worker, functions[0]);
+        }
+
+        time.Advance(TimeSpan.FromMinutes(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(0, worker.DisposeCount);
+        time.Advance(TimeSpan.FromTicks(1));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.Equal(1, worker.DisposeCount);
     }
@@ -246,7 +251,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public async Task IdleRetirement_OverlappingActivationsWaitForAllOutstandingLoads(int activationCount)
+    public async Task IdleRetirement_ReactivationRestartsInitialGrace(int activationCount)
     {
         FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
@@ -259,18 +264,41 @@ public sealed partial class WorkerChannelRegistryTests
         {
             await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
             await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-        }
-
-        for (int i = 0; i < activationCount - 1; i++)
-        {
-            CompleteFunctionLoad(worker, function);
-            time.Advance(TimeSpan.FromMinutes(3));
+            time.Advance(TimeSpan.FromMinutes(2));
             await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
             Assert.Equal(0, worker.DisposeCount);
             Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
         }
 
-        CompleteFunctionLoad(worker, function);
+        time.Advance(TimeSpan.FromMinutes(3));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(0, worker.DisposeCount);
+        time.Advance(TimeSpan.FromTicks(1));
+        await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.Equal(1, worker.DisposeCount);
+    }
+
+    [Fact]
+    public async Task IdleRetirement_FirstRequestSwitchesToTwoMinuteIdleThreshold()
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
+        ChannelControl worker = CreateIdleWorker("worker");
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("Function");
+        await ReadyIdleWorkerAsync(registry, worker, function);
+        time.Advance(TimeSpan.FromMinutes(1));
+        using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
+        await dispatcher.InvokeAsync(CreateIdleInvocation(function));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await worker.Channel.InvokeResponse(new()
+        {
+            InvocationId = request.InvocationRequest.InvocationId,
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        });
+        await WaitUntilAsync(() => worker.Channel.OngoingRequests == 0);
+
         time.Advance(IdleThreshold);
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.Equal(0, worker.DisposeCount);
@@ -497,7 +525,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         Assert.Equal(0, worker.Channel.OngoingRequests);
         Assert.False(worker.Channel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         Assert.Equal(1, worker.DisposeCount);
     }
@@ -512,7 +540,7 @@ public sealed partial class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("Function");
         await ReadyIdleWorkerAsync(registry, worker, function);
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
         ScriptInvocationContext invocation = CreateIdleInvocation(function);
         using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
         using ManualResetEventSlim start = new();
@@ -571,7 +599,7 @@ public sealed partial class WorkerChannelRegistryTests
         await LinkAsync(registry, replacement.Id);
         await replacement.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         CompleteFunctionLoad(replacement, function);
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
         Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
         await worker.DisposeStarted.WaitAsync(TestTimeout);
         Task<bool> unlink = registry.UnlinkAsync(worker.Id);
@@ -619,7 +647,7 @@ public sealed partial class WorkerChannelRegistryTests
             CompleteFunctionLoad(worker, function);
         }
 
-        time.Advance(TimeSpan.FromMinutes(3));
+        time.Advance(TimeSpan.FromMinutes(6));
         await registry.RetireIdleHttpWorkersAsync(IdleThreshold, CancellationToken.None);
 
         Assert.Empty(registry.GetInitializedChannels());

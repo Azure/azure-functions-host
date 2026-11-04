@@ -828,7 +828,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         try
         {
             channel.SetupFunctionInvocationBuffers(setupContext.Functions);
-            channel.StartIdleTracking(setupContext.Functions, _timeProvider);
+            channel.StartIdleTracking(_timeProvider);
             channel.SendFunctionLoadRequests(setupContext.ManagedDependencyOptions, setupContext.FunctionTimeout);
             SignalReadyChannelsLocked();
         }

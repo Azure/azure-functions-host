@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -38,6 +37,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
+    private static readonly TimeSpan InitialIdleThreshold = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -46,7 +46,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private long? _idleSince;
     private int _ongoingRequests;
-    private int _pendingFunctionLoadCount;
+    private bool _hasReceivedRequest;
     private bool _retiring;
 
     public RpcClientWorkerChannel(
@@ -134,6 +134,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             lock (_lifecycleLock)
             {
                 _ongoingRequests = value;
+                if (value > 0)
+                {
+                    _hasReceivedRequest = true;
+                }
+
                 _idleSince = null;
             }
         }
@@ -144,16 +149,13 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
     internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
 
-    internal void StartIdleTracking(IReadOnlyList<FunctionMetadata> functions, TimeProvider timeProvider)
+    internal void StartIdleTracking(TimeProvider timeProvider)
     {
         lock (_lifecycleLock)
         {
             _activityTimeProvider = timeProvider;
-            // Reactivation can overlap earlier loads; each response completes only one outstanding request.
-            _pendingFunctionLoadCount = checked(_pendingFunctionLoadCount + functions.Count);
-
             _idleSince = null;
-            RecordReadyIdleTime();
+            RecordIdleTime();
         }
     }
 
@@ -162,8 +164,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         lock (_lifecycleLock)
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
+            TimeSpan idleThreshold = _hasReceivedRequest ? threshold : InitialIdleThreshold;
             if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
-                _pendingFunctionLoadCount != 0 || _ongoingRequests != 0 || idleDuration <= threshold)
+                _ongoingRequests != 0 || idleDuration <= idleThreshold)
             {
                 return false;
             }
@@ -234,18 +237,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
-
-    protected override void OnFunctionLoaded(FunctionLoadResponse response)
-    {
-        lock (_lifecycleLock)
-        {
-            if (response.Result.Status is StatusResult.Types.Status.Success && _pendingFunctionLoadCount > 0)
-            {
-                _pendingFunctionLoadCount--;
-                RecordReadyIdleTime();
-            }
-        }
-    }
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
@@ -359,14 +350,14 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             lock (_lifecycleLock)
             {
                 _ongoingRequests--;
-                RecordReadyIdleTime();
+                RecordIdleTime();
             }
         }
     }
 
-    private void RecordReadyIdleTime()
+    private void RecordIdleTime()
     {
-        if (_pendingFunctionLoadCount == 0 && _ongoingRequests == 0 && _idleSince is null)
+        if (_ongoingRequests == 0 && _idleSince is null)
         {
             _idleSince = _activityTimeProvider.GetTimestamp();
         }
