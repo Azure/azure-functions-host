@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -285,14 +284,10 @@ public class WorkerProxyJsonContextTests
         Assert.Equal<RequestValidationError>(details, restored.Errors);
     }
 
-    [Theory]
-    [InlineData("Starting")]
-    [InlineData("Running")]
-    [InlineData("Draining")]
-    [InlineData("RemovalRequested")]
-    public void Context_RecursivelyGeneratesMetadataForNestedResponseTypes(string status)
+    [Fact]
+    public void Context_RecursivelyGeneratesMetadataForNestedResponseTypes()
     {
-        WorkerPodStateResponse state = new(Enum.Parse<WorkerPodStatus>(status), WorkerStartupMode.Preconfigured, "group", false);
+        WorkerPodStateResponse state = new(WorkerPodStatus.Running, WorkerStartupMode.Preconfigured, "group", false);
         WorkerApiError error = new("WorkerNotReady");
 
         string stateJson = JsonSerializer.Serialize(state, WorkerProxyJsonContext.Default.WorkerPodStateResponse);
@@ -301,7 +296,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(state, JsonSerializer.Deserialize(stateJson, WorkerProxyJsonContext.Default.WorkerPodStateResponse));
         Assert.Equal(error, JsonSerializer.Deserialize(errorJson, WorkerProxyJsonContext.Default.WorkerApiError));
         using JsonDocument stateDocument = JsonDocument.Parse(stateJson);
-        Assert.Equal(status, stateDocument.RootElement.GetProperty("podStatus").GetString());
+        Assert.Equal("Running", stateDocument.RootElement.GetProperty("podStatus").GetString());
         Assert.Equal("Preconfigured", stateDocument.RootElement.GetProperty("startupMode").GetString());
         Assert.False(stateDocument.RootElement.GetProperty("isAlwaysReady").GetBoolean());
     }

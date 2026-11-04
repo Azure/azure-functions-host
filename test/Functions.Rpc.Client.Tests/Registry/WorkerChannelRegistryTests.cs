@@ -2051,10 +2051,10 @@ public sealed partial class WorkerChannelRegistryTests
             IConfiguration configuration = null,
             IWorkerHostConfigurationParser workerHostConfigurationParser = null,
             bool registryOwnedAttempt = false,
-            TimeProvider timeProvider = null)
+            TimeProvider timeProvider = null,
+            ILogger<WorkerChannelRegistry> registryLogger = null)
         {
             HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-            RegistryLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
                 configuration ?? new ConfigurationBuilder().Build(),
                 HostConfigurationLogger.Object);
@@ -2098,10 +2098,11 @@ public sealed partial class WorkerChannelRegistryTests
 
                     return channel;
                 });
+            registryLogger ??= NullLogger<WorkerChannelRegistry>.Instance;
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object,
+                ? new(DuplexFactory.Object, ChannelFactory.Object, registryLogger,
                     linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider)
-                : new(DuplexFactory.Object, ChannelFactory.Object, RegistryLogger.Object, workerHostConfigurationParser);
+                : new(DuplexFactory.Object, ChannelFactory.Object, registryLogger, workerHostConfigurationParser);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();
@@ -2109,8 +2110,6 @@ public sealed partial class WorkerChannelRegistryTests
         internal Mock<IDuplexChannelFactory<StreamingMessage>> DuplexFactory { get; } = new();
 
         internal Mock<ILogger<WorkerHostConfigurationParser>> HostConfigurationLogger { get; } = new();
-
-        internal Mock<ILogger<WorkerChannelRegistry>> RegistryLogger { get; } = new();
 
         internal WorkerChannelRegistry Registry { get; }
 

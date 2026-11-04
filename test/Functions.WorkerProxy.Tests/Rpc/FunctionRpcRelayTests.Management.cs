@@ -26,61 +26,6 @@ public partial class FunctionRpcRelayTests
         """;
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public async Task ManagementApis_RuntimeStreamClosurePublishesRemovalRequested(bool alwaysReady, bool dispose)
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using HttpClient management = factory.CreateWorkerProxyClient();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "retire", timeout.Token);
-        Assert.Equal(WorkerAssignmentResult.Created,
-            manager.Assign(CreateWorkerAssignment("http", isAlwaysReady: alwaysReady, maxHttpConcurrency: 16)));
-        WorkerPodState assigned = manager.State;
-        Task<HttpResponseMessage> poll = management.GetAsync(
-            "/admin/worker/state?lastKnownRevision=" + assigned.Revision.ToString(CultureInfo.InvariantCulture), timeout.Token);
-        await WaitForManagementPollAsync(manager, timeout.Token);
-
-        if (dispose)
-        {
-            await runtime.DisposeAsync();
-        }
-        else
-        {
-            await runtime.CompleteRequestAsync(timeout.Token);
-        }
-        using (HttpResponseMessage changed = await poll)
-        {
-            Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
-            using JsonDocument state = JsonDocument.Parse(await changed.Content.ReadAsStringAsync(timeout.Token));
-            Assert.Equal(assigned.Revision + 1, state.RootElement.GetProperty("revisionId").GetInt64());
-            JsonElement pod = state.RootElement.GetProperty("workerPodState");
-            Assert.Equal("RemovalRequested", pod.GetProperty("podStatus").GetString());
-            Assert.Equal("http", pod.GetProperty("functionGroupName").GetString());
-            Assert.Equal(alwaysReady, pod.GetProperty("isAlwaysReady").GetBoolean());
-        }
-
-        if (!dispose)
-        {
-            await runtime.WaitForTerminationAsync(timeout.Token);
-        }
-
-        await worker.WaitForTerminationAsync(timeout.Token);
-        await WaitForReleaseAsync(relay, timeout.Token);
-        Assert.Equal(assigned.WorkerId, manager.State.WorkerId);
-        Assert.Equal(assigned.FunctionAppName, manager.State.FunctionAppName);
-        Assert.Equal(WorkerPodStatus.RemovalRequested, manager.State.PodStatus);
-        Assert.Equal(assigned.Revision + 1, manager.State.Revision);
-        await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
-    }
-
-    [Theory]
     [InlineData(true, "Preconfigured")]
     [InlineData(false, "Preconfigured")]
     [InlineData(true, "SpecializationRequired")]

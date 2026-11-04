@@ -39,8 +39,6 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     /// </summary>
     internal int DisposeCount => Interlocked.CompareExchange(ref _disposeCount, 0, 0);
 
-    internal Exception DisposeException { get; set; }
-
     /// <summary>
     /// Gets a task that completes when asynchronous disposal starts.
     /// </summary>
@@ -55,6 +53,8 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     /// Allows a blocked asynchronous disposal operation to complete.
     /// </summary>
     internal void AllowDispose() => _allowDispose.TrySetResult();
+
+    internal void FailDispose(Exception exception) => _allowDispose.TrySetException(exception);
 
     /// <summary>
     /// Completes both channel boundaries, optionally with a channel failure.
@@ -82,9 +82,5 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
         _responses.Writer.TryComplete();
         _disposeStarted.TrySetResult();
         await _allowDispose.Task;
-        if (DisposeException is not null)
-        {
-            throw DisposeException;
-        }
     }
 }

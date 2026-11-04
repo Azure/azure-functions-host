@@ -268,12 +268,12 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(null, "assigned-group", "assigned-group")]
-    [InlineData("worker-group", "assigned-group", "assigned-group")]
-    [InlineData(null, null, null)]
-    [InlineData("worker-group", null, null)]
+    [InlineData(null, "assigned-group", "assigned-group", false)]
+    [InlineData("worker-group", "assigned-group", "assigned-group", true)]
+    [InlineData(null, null, null, false)]
+    [InlineData("worker-group", null, null, false)]
     public async Task Relay_Initialization_AdvertisesOnlyAssignedFunctionGroup(string? workerSuppliedGroup,
-        string? platformSuppliedGroup, string? expectedAdvertisedGroup)
+        string? platformSuppliedGroup, string? expectedAdvertisedGroup, bool alwaysReady)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -283,10 +283,11 @@ public partial class FunctionRpcRelayTests
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
         if (platformSuppliedGroup is not null)
         {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(platformSuppliedGroup)));
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(platformSuppliedGroup, alwaysReady)));
         }
 
         StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.Capabilities["IsAlwaysReady"] = (!alwaysReady).ToString();
         if (workerSuppliedGroup is not null)
         {
             response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
@@ -296,7 +297,7 @@ public partial class FunctionRpcRelayTests
         if (expectedAdvertisedGroup is not null)
         {
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
-            expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
+            expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = alwaysReady.ToString();
         }
 
         await worker.WriteAsync(response, timeout.Token);
@@ -319,6 +320,7 @@ public partial class FunctionRpcRelayTests
         await runtime.ReadAsync(timeout.Token);
         StreamingMessage repeated = CreateInitResponse("repeated-init", null);
         repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
+        repeated.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.TrueString;
         StreamingMessage expected = repeated.Clone();
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
         expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
@@ -326,40 +328,6 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(repeated, timeout.Token);
 
         Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
-    }
-
-    [Theory]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(null, true)]
-    public async Task Relay_AlwaysReadyCapability_ComesOnlyFromAssignment_AndIsStable(bool? assigned, bool workerSupplied)
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
-        if (assigned is bool isAlwaysReady)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment("http", isAlwaysReady)));
-        }
-
-        foreach (bool supplied in new[] { workerSupplied, !workerSupplied })
-        {
-            StreamingMessage response = CreateInitResponse("init", null);
-            response.WorkerInitResponse.Capabilities["IsAlwaysReady"] = supplied.ToString();
-            await worker.WriteAsync(response, timeout.Token);
-            StreamingMessage received = await runtime.ReadAsync(timeout.Token);
-            if (assigned is bool expected)
-            {
-                Assert.Equal(expected.ToString(), received.WorkerInitResponse.Capabilities["IsAlwaysReady"]);
-            }
-            else
-            {
-                Assert.False(received.WorkerInitResponse.Capabilities.ContainsKey("IsAlwaysReady"));
-            }
-        }
     }
 
     [Fact]

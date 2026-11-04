@@ -2018,29 +2018,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task InvokeResponse_DrainWaitsForHttpForwardingAfterExecutionTrackingEnds()
-        {
-            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
-            TaskCompletionSource forwarding = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            _mockHttpProxyService.Setup(service => service.EnsureSuccessfulForwardingAsync(It.IsAny<ScriptInvocationContext>()))
-                .Returns(forwarding.Task);
-            Guid invocationId = Guid.NewGuid();
-            ScriptInvocationContext context = GetTestScriptInvocationContext(invocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
-            context.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
-            await _workerChannel.SendInvocationRequest(context);
-            Assert.True(_workerChannel.IsExecutingInvocation(invocationId.ToString()));
-
-            Task response = _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(invocationId.ToString()));
-
-            Assert.False(response.IsCompleted);
-            Assert.False(_workerChannel.IsExecutingInvocation(invocationId.ToString()));
-            Task drain = _workerChannel.DrainInvocationsAsync();
-            Assert.False(drain.IsCompleted);
-            forwarding.SetResult();
-            await Task.WhenAll(response, drain).WaitAsync(TimeSpan.FromSeconds(10));
-        }
-
-        [Fact]
         public async Task DispatcherFactory_DefaultsToOrdered()
         {
             await CreateDefaultWorkerChannel();

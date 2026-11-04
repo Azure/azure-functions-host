@@ -34,6 +34,7 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan IdleWorkerDisposalTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly Lock _disposeLock = new();
@@ -383,9 +384,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 removed = DetachChannelLocked(slot, channel);
             }
 
+            Task disposal = null;
             try
             {
-                await removed.DisposeAsync();
+                disposal = removed.DisposeAsync().AsTask();
+                _ = disposal.ContinueWith(failed =>
+                    Log.ChannelDisposalFailed(_logger, failed.Exception.GetBaseException(), workerId),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+                await disposal.WaitAsync(IdleWorkerDisposalTimeout, _timeProvider, cancellationToken);
                 _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _shutdownSource.IsCancellationRequested)
@@ -394,7 +402,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
             catch (Exception exception)
             {
-                Log.ChannelDisposalFailed(_logger, exception, workerId);
+                if (disposal is not { IsFaulted: true })
+                {
+                    Log.ChannelDisposalFailed(_logger, exception, workerId);
+                }
             }
             finally
             {

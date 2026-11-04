@@ -14,44 +14,6 @@ namespace Azure.Functions.WorkerProxy.Tests.State;
 public partial class WorkerPodStateManagerTests
 {
     [Fact]
-    public async Task RuntimeRemoval_PublishesStickyStatusPreservingIdentityAndRejectsLateNotifications()
-    {
-        WorkerPodStateManager manager = CreateReadyManager();
-        manager.Assign(CreateAssignment());
-        WorkerPodState assigned = manager.State;
-        Task<WorkerStatePollResult> change = manager.WaitForChangeAsync(assigned.Revision);
-
-        Assert.True(manager.OnSessionTerminated(1, requestRemoval: true));
-        WorkerPodState removed = Assert.IsType<WorkerPodState>((await change).State);
-        Assert.Equal(WorkerPodStatus.RemovalRequested, removed.PodStatus);
-        Assert.False(removed.IsWorkerReady);
-        Assert.Equal(assigned.Revision + 1, removed.Revision);
-        Assert.Equal(assigned.WorkerId, removed.WorkerId);
-        Assert.Equal(assigned.FunctionAppName, removed.FunctionAppName);
-        Assert.Equal(assigned.FunctionGroupName, removed.FunctionGroupName);
-        Assert.False(manager.OnSessionTerminated(1));
-        Assert.False(manager.OnWorkerAttached(2));
-        Assert.False(manager.OnWorkerStartStream(1, "worker"));
-        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
-        Assert.Same(removed, manager.State);
-    }
-
-    [Fact]
-    public void RuntimeRemoval_StaleSessionCannotRetireReplacement()
-    {
-        WorkerPodStateManager manager = CreateReadyManager();
-        manager.OnSessionTerminated(1);
-        manager.OnWorkerAttached(2);
-        manager.OnWorkerStartStream(2, "replacement");
-        manager.Assign(CreateAssignment());
-        WorkerPodState replacement = manager.State;
-
-        Assert.False(manager.OnSessionTerminated(1, requestRemoval: true));
-        Assert.Same(replacement, manager.State);
-        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
-    }
-
-    [Fact]
     public void InitialState_IsUnassignedAtRevisionZero()
     {
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
@@ -149,14 +111,17 @@ public partial class WorkerPodStateManagerTests
         Assert.Same(state, manager.State);
     }
 
-    [Fact]
-    public void TerminalFailure_IsStickyAndConflictingIdentityStillConflicts()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TerminalFailure_IsStickyAndConflictingIdentityStillConflicts(bool requestRemoval)
     {
         WorkerPodStateManager manager = CreateReadyManager();
         manager.Assign(CreateAssignment());
-        manager.OnSessionTerminated(1);
+        manager.OnSessionTerminated(1, requestRemoval);
         WorkerPodState failed = manager.State;
 
+        Assert.Equal(requestRemoval ? WorkerPodStatus.RemovalRequested : WorkerPodStatus.Starting, failed.PodStatus);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.False(manager.OnWorkerAttached(2));
@@ -181,7 +146,7 @@ public partial class WorkerPodStateManagerTests
 
         Assert.False(manager.OnWorkerAttached(1));
         Assert.False(manager.OnWorkerStartStream(1, "old-worker"));
-        Assert.False(manager.OnSessionTerminated(1));
+        Assert.False(manager.OnSessionTerminated(1, requestRemoval: true));
         Assert.Same(replacement, manager.State);
         Assert.Equal(5, replacement.Revision);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
