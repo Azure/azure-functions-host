@@ -92,7 +92,7 @@ public sealed partial class WorkerChannelRegistryTests
             {
                 harness.RegistryLogger.Verify(logger => logger.Log(
                     LogLevel.Debug, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
-                    It.Is<Exception>(exception => exception is null),
+                    It.Is<Exception>(exception => exception == null),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
             }
         }
