@@ -1,3 +1,4 @@
 {
-    "azure-pipelines.1ESPipelineTemplatesSchemaFile": true
+    "azure-pipelines.1ESPipelineTemplatesSchemaFile": true,
+    "dotnet.defaultSolution": "Azure.Functions.Host.slnx"
 }
