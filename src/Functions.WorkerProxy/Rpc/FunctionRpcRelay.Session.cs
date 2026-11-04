@@ -279,7 +279,7 @@ internal sealed partial class FunctionRpcRelay
                     continue;
                 }
 
-                StreamingMessage? message = ProcessInboundMessage(side, current, isFirstMessage);
+                StreamingMessage? message = await ProcessInboundMessageAsync(side, current, isFirstMessage, cancellationToken);
                 if (message is null)
                 {
                     return;
@@ -290,7 +290,8 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
-        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
+        private async Task<StreamingMessage?> ProcessInboundMessageAsync(FunctionRpcRelaySide side, StreamingMessage message,
+            bool isFirstMessage, CancellationToken cancellationToken)
         {
             if (side != FunctionRpcRelaySide.Worker)
             {
@@ -324,11 +325,11 @@ internal sealed partial class FunctionRpcRelay
 
             LogProtocolMessage(message, forwarded: false);
             return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
-                ? FinalizeCapabilities(message)
+                ? await FinalizeCapabilitiesAsync(message, cancellationToken)
                 : message;
         }
 
-        private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
+        private async Task<StreamingMessage?> FinalizeCapabilitiesAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             FrozenDictionary<string, string>? capabilities;
             lock (_stateLock)
@@ -346,6 +347,17 @@ internal sealed partial class FunctionRpcRelay
             if (capabilities is null)
             {
                 (WorkerPodState state, string? httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                if (finalized.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out string? httpUri)
+                    && !string.IsNullOrWhiteSpace(httpUri))
+                {
+                    // Keep the runtime reader available for startup token traffic while assignment catches up with StartStream.
+                    while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
+                    {
+                        await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
+                        (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                    }
+                }
+
                 Uri? destination = capabilityFinalizer.FinalizeCapabilities(
                     finalized.WorkerInitResponse.Capabilities, httpProxyEndpoint);
                 ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities, state);

@@ -294,7 +294,7 @@ public partial class FunctionRpcRelayTests
 
         try
         {
-            await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+            await worker.WriteAsync(CreateInitResponse("init", null), timeout.Token);
             Assert.Null(await entered.Task.WaitAsync(timeout.Token));
 
             Assert.Equal(WorkerAssignmentResult.Created,
@@ -306,7 +306,7 @@ public partial class FunctionRpcRelayTests
         }
 
         StreamingMessage forwarded = await runtime.ReadAsync(timeout.Token);
-        Assert.Equal("http://localhost:1234/", forwarded.WorkerInitResponse.Capabilities["HttpUri"]);
+        Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(FunctionGroupNameCapability));
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(MaxHttpConcurrencyCapability));
         Assert.Equal("http://assigned.example:28080/",

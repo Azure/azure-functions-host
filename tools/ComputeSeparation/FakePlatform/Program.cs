@@ -77,7 +77,7 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
     }
 
     WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16,
-        HttpProxyEndpoint: workerProxy.HttpProxyEndpoint.Authority);
+        HttpProxyEndpoint: $"{workerProxy.HttpProxyEndpoint.Host}:{workerProxy.HttpProxyEndpoint.Port}");
     using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -99,7 +99,7 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
     {
         Content = JsonContent.Create(new HostAssignmentRequest(Encrypt(key, context))),
     };
-    request.Headers.Authorization = new("Bearer", CreateAdminToken(key));
+    request.Headers.Authorization = new("Bearer", CreateAdminToken(key, options.HostContainerName));
 
     using HttpResponseMessage response = await clients.CreateClient(HostClient).SendAsync(request, cancellationToken);
     return await ToResultAsync("host assign", response, cancellationToken);
@@ -146,13 +146,13 @@ static string Encrypt(byte[] key, string value)
 }
 
 // Creates a short-lived token the Host accepts for admin requests: a JWT signed (HS256) with the shared key.
-static string CreateAdminToken(byte[] key)
+static string CreateAdminToken(byte[] key, string hostContainerName)
 {
     string header = Base64Url.EncodeToString("""{"alg":"HS256","typ":"JWT"}"""u8);
     string payload = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new
     {
         iss = "https://appservice.core.azurewebsites.net",
-        aud = $"https://{AppName}.azurewebsites.net/azurefunctions",
+        aud = hostContainerName,
         exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds(),
     }));
     string signature = Base64Url.EncodeToString(HMACSHA256.HashData(key, Encoding.ASCII.GetBytes($"{header}.{payload}")));

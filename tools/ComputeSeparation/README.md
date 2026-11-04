@@ -122,13 +122,13 @@ Open the `fake-platform` console logs in the dashboard to watch the assign and l
 
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
 profile. Aspire supplies each entry's management address, mapped HTTP authority, runtime gRPC endpoint, and worker ID.
-The assignment sends that scheme-less HTTP authority before the worker is linked, and publishes it as the effective
+The assignment sends that scheme-less HTTP authority, including default ports, and publishes it as the effective
 runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
 `404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
 endpoints, and both link to the same Host.
 
 `httpProxyEndpoint` is optional for non-HTTP workers. HTTP-capable workers require it in the accepted assignment
-before linking; supply a scheme-less mapped DNS name or IPv4 address with an explicit nonzero port, such as
+before successful HTTP initialization; supply a scheme-less mapped DNS name or IPv4 address with an explicit nonzero port, such as
 `worker-proxy-1:28080`. IPv6 literals, including scoped addresses, are not supported for this assignment field.
 There is no startup fallback: `WorkerProxy:HttpProxyEndpoint` and `WORKERPROXY__HTTPPROXYENDPOINT` are no longer consumed.
 An accepted assignment without the field leaves the effective origin unset, so HTTP capability initialization fails
@@ -136,8 +136,11 @@ rather than advertising the worker's local address. The effective worker destina
 from the mapped proxy endpoint to prevent a forwarding loop.
 
 Roll out assignment producers together with this WorkerProxy version: each platform must send the mapped authority
-for HTTP workers before linking them. Older producers that rely on the startup setting are not compatible with this
-HTTP initialization flow. AppHost and FakePlatform implement that ordering for the local profiles.
+for HTTP workers before initialization completes. Older producers that rely on the startup setting are not compatible with this
+HTTP initialization flow. Most local profiles assign before linking. In `project-identity`, linking opens the runtime
+transport early for token acquisition; WorkerProxy holds a successful HTTP initialization response until assignment
+is accepted, without blocking runtime token traffic. Cancellation or relay termination cancels that wait.
+Placeholder assignment tokens use the configured Host container name as their audience, matching Host placeholder authentication.
 
 ## Host state publication (prototype)
 
