@@ -47,7 +47,7 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
-        private string? _workerId;
+        private volatile string? _workerId;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -119,14 +119,11 @@ internal sealed partial class FunctionRpcRelay
 
         public WorkerSystemLogContext GetLogContext()
         {
-            lock (_stateLock)
+            return new()
             {
-                return new()
-                {
-                    WorkerId = _workerId,
-                    ProxySessionId = id
-                };
-            }
+                WorkerId = _workerId,
+                ProxySessionId = id
+            };
         }
 
         public void LogAttachment(FunctionRpcRelaySide side, bool released)
