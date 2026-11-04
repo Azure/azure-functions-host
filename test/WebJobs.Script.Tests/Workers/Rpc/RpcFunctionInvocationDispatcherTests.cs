@@ -709,9 +709,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Mock<IDictionary<string, BufferBlock<ScriptInvocationContext>>> mockBufferBlocks = new();
             mockBufferBlocks.Setup(m => m.TryGetValue(It.IsAny<string>(), out inputBuffer)).Returns(true);
 
-            Mock<IRpcWorkerChannel> mockChannel = new();
-            mockChannel.Setup(m => m.FunctionInputBuffers).Returns(mockBufferBlocks.Object);
-
             IRpcWorkerChannel Create(
                 string workerRuntime, string language, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
             {

@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -52,6 +54,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         registry.Setup(value => value.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken token) => new TaskCompletionSource<WorkerChannel>().Task.WaitAsync(token));
         registry.Setup(value => value.GetInitializedChannels()).Returns(Array.Empty<WorkerChannel>());
+        registry.Setup(value => value.GetChangeTask()).Returns(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+        registry.Setup(value => value.GetReadyChannelsAsync()).Returns(
+            new ValueTask<IReadOnlyList<WorkerChannel>>(new TaskCompletionSource<IReadOnlyList<WorkerChannel>>(TaskCreationOptions.RunContinuationsAsynchronously).Task));
 
         using IHost host = CreateHost(registry.Object);
         await host.StartAsync();
@@ -87,6 +92,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                     services.AddWebJobsScriptHostAuthorization();
                     services.AddWebJobsScriptHost(context.Configuration, ClientWorkerComposition.Instance);
                     services.Replace(ServiceDescriptor.Singleton(registry));
+                    services.Replace(ServiceDescriptor.Singleton<IAppServerHostStateClient>(new StubAppServerHostStateClient()));
                 })
                 .Configure(app => app.UseWebJobsScriptHost()))
             .Build();
@@ -99,5 +105,11 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         };
 
         return await client.SendAsync(request, cancellationToken);
+    }
+
+    private sealed class StubAppServerHostStateClient : IAppServerHostStateClient
+    {
+        public Task<HttpStatusCode> PublishAsync(RuntimeState state, CancellationToken cancellationToken)
+            => Task.FromResult(HttpStatusCode.OK);
     }
 }
