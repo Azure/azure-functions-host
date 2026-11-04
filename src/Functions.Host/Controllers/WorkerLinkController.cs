@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
@@ -184,9 +185,18 @@ public sealed partial class WorkerLinkController : Controller
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
     }
 
-    // Accept only HTTP(S) authorities without credentials, non-root paths, queries, or fragments.
     private static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
-        => Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
+    {
+        if (value is not null &&
+            IPEndPoint.TryParse(value, out IPEndPoint? ipEndpoint) &&
+            ipEndpoint.AddressFamily == AddressFamily.InterNetwork &&
+            ipEndpoint.Port > 0 &&
+            string.Equals(value, ipEndpoint.ToString(), StringComparison.Ordinal))
+        {
+            value = $"{Uri.UriSchemeHttps}://{value}";
+        }
+
+        return Uri.TryCreate(value, UriKind.Absolute, out endpoint) &&
             (string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) &&
             !string.IsNullOrWhiteSpace(endpoint.Host) &&
@@ -194,6 +204,7 @@ public sealed partial class WorkerLinkController : Controller
             string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal) &&
             string.IsNullOrEmpty(endpoint.Query) &&
             string.IsNullOrEmpty(endpoint.Fragment);
+    }
 
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.
     private static class ErrorCodes

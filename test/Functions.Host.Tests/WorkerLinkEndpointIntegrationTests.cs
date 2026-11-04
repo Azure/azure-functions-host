@@ -42,6 +42,28 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     [Theory]
+    [InlineData("100.64.1.12:50053", "https://100.64.1.12:50053")]
+    [InlineData("10.0.0.1:1", "https://10.0.0.1:1")]
+    [InlineData("10.0.0.1:65535", "https://10.0.0.1:65535")]
+    [InlineData("http://worker-proxy:50053", "http://worker-proxy:50053")]
+    [InlineData("https://worker-proxy:50053", "https://worker-proxy:50053")]
+    public async Task Put_EndpointInSupportedFormat_PreservesAddressAndPort(string input, string expected)
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        Uri expectedEndpoint = new(expected);
+        _registry.Setup(value => value.LinkAsync(WorkerId, expectedEndpoint, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, true));
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+        string json = JsonSerializer.Serialize(new { workerGrpcEndpoint = input });
+
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
+
+        await AssertLinkResponseAsync(response, HttpStatusCode.Created, timeout.Token);
+        _registry.Verify(value => value.LinkAsync(WorkerId, expectedEndpoint, It.IsAny<CancellationToken>()), Times.Once);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
     [InlineData(true, HttpStatusCode.Created)]
     [InlineData(false, HttpStatusCode.OK)]
     public async Task Put_PendingRegistryResult_WaitsBeforeReturning(bool isNewLink, HttpStatusCode status)
@@ -120,6 +142,13 @@ public sealed class WorkerLinkEndpointIntegrationTests
     [InlineData("""{"workerHttpEndpoint":"{endpoint}"}""")]
     [InlineData("""{"workerGrpcEndpoint":"relative/path"}""")]
     [InlineData("""{"workerGrpcEndpoint":"ftp://127.0.0.1:5000"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"100.64.1.12"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"100.64.1.12:0"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"100.64.1.12:65536"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"100.64.1.12:50053/path"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"100.64.1.12:50053?query=1"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"user@100.64.1.12:50053"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"[::1]:50053"}""")]
     public async Task Put_InvalidRequest_ReturnsBadRequestWithoutCallingRegistry(string? json)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
