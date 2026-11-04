@@ -11,6 +11,7 @@ parameters:
 jobs:
 - job: RunLinuxTests
   displayName: Build and Test Azure Functions Host (Linux)
+  cancelTimeoutInMinutes: 10
 
   pool:
     name: ${{ parameters.linuxPoolName }}
@@ -19,9 +20,46 @@ jobs:
 
   variables:
     localImage: functions-worker-proxy-ci:latest
+    rpcTestResultsDirectory: $(Build.ArtifactStagingDirectory)/linux-rpc-client-diagnostics
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish Linux RPC client diagnostics
+      path: $(rpcTestResultsDirectory)
+      artifact: LinuxRpcClientDiagnostics_$(System.JobAttempt)
+      condition: always()
 
   steps:
+  - script: mkdir -p "$(rpcTestResultsDirectory)"
+    displayName: Create RPC client diagnostics directory
+
   - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: RPC Client Tests with hang diagnostics (Linux)
+    timeoutInMinutes: 20
+    inputs:
+      command: test
+      publishTestResults: false
+      arguments: >-
+        -v m -c release
+        --blame-hang --blame-hang-timeout 5m --blame-hang-dump-type full
+        --logger trx
+        --results-directory "$(rpcTestResultsDirectory)"
+        --diag "$(rpcTestResultsDirectory)/vstest.log"
+      projects: test/Functions.Rpc.Client.Tests/Functions.Rpc.Client.Tests.csproj
+
+  - task: PublishTestResults@2
+    displayName: Publish RPC client test results (Linux)
+    condition: always()
+    inputs:
+      testResultsFormat: VSTest
+      testResultsFiles: '**/*.trx'
+      searchFolder: $(rpcTestResultsDirectory)
+      testRunTitle: RPC Client Tests (Linux)
+      publishRunAttachments: false
 
   - task: DotNetCoreCLI@2
     displayName: Azure Functions Host Tests (Linux)
@@ -29,7 +67,9 @@ jobs:
       command: test
       arguments: -v m -c release
       # Build the product test graphs without bootstrapping the manual Aspire tool.
-      projects: test/Functions.*.Tests/*.csproj
+      projects: |
+        test/Functions.*.Tests/*.csproj
+        !test/Functions.Rpc.Client.Tests/*.csproj
 
   - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
     displayName: Install Native AOT prerequisites
