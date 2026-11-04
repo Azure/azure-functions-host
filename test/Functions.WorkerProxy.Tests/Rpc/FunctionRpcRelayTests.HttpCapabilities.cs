@@ -200,6 +200,9 @@ public partial class FunctionRpcRelayTests
         StreamingMessage runtimeMessage = CreateMessage("runtime-still-active");
         await runtime.WriteAsync(runtimeMessage, timeout.Token);
         Assert.Equal(runtimeMessage, await worker.ReadAsync(timeout.Token));
+        StreamingMessage queued = CreateMessage("worker-queued-behind-init");
+        StreamingMessage nextQueued = CreateMessage("worker-next-queued");
+        await worker.WriteAllAsync([queued, nextQueued], timeout.Token);
         Assert.Equal(WorkerAssignmentResult.Created,
             manager.Assign(CreateWorkerAssignment("http", 10, "assigned.example:80")));
 
@@ -207,8 +210,58 @@ public partial class FunctionRpcRelayTests
         Assert.Equal("http://assigned.example/", response.WorkerInitResponse.Capabilities["HttpUri"]);
         Assert.Equal("http", response.WorkerInitResponse.Capabilities["FunctionGroupName"]);
         Assert.Equal("10", response.WorkerInitResponse.Capabilities["MaxHttpConcurrency"]);
+        Assert.Equal(queued, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(nextQueued, await runtime.ReadAsync(timeout.Token));
         Assert.Equal(new Uri("http://localhost:1234/"), relay.WorkerHttpDestination);
         Assert.Equal(0, manager.PendingWaiterCount);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Relay_WorkerCompletionWhileWaitingForAssignment_TerminatesSession(bool queuedMessage)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        if (queuedMessage)
+        {
+            await worker.WriteAsync(CreateMessage("queued-behind-init"), timeout.Token);
+        }
+
+        await worker.CompleteRequestAsync(timeout.Token);
+
+        Task<Grpc.Core.RpcException> runtimeTermination = Assert.ThrowsAsync<Grpc.Core.RpcException>(() => runtime.ReadAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, (await runtimeTermination.WaitAsync(TimeSpan.FromSeconds(5))).StatusCode);
+        Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+        await WaitForReleaseAsync(relay, timeout.Token);
+        while (manager.PendingWaiterCount != 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Assert.False(timeout.IsCancellationRequested);
+        Assert.Equal(FunctionRpcRelayTerminationReason.PeerClosed, relay.LastTerminalState?.Reason);
+        Assert.Equal(FunctionRpcRelaySide.Worker, relay.LastTerminalState?.Side);
+        Assert.False(manager.State.IsWorkerReady);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Null(relay.WorkerHttpDestination);
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateWorkerAssignment()));
+
+        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
+        Assert.True(manager.State.IsWorkerReady);
     }
 
     [Theory]

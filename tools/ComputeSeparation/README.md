@@ -139,7 +139,8 @@ Roll out assignment producers together with this WorkerProxy version: each platf
 for HTTP workers before initialization completes. Older producers that rely on the startup setting are not compatible with this
 HTTP initialization flow. Most local profiles assign before linking. In `project-identity`, linking opens the runtime
 transport early for token acquisition; WorkerProxy holds a successful HTTP initialization response until assignment
-is accepted, without blocking runtime token traffic. Cancellation or relay termination cancels that wait.
+is accepted, without blocking runtime token traffic or worker EOF detection. Messages behind initialization remain
+ordered; worker request-stream completion terminates the session and cancels that wait, even without call cancellation.
 Placeholder assignment tokens use the configured Host container name as their audience, matching Host placeholder authentication.
 
 ## Host state publication (prototype)

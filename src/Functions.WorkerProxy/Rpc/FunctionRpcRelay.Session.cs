@@ -181,9 +181,16 @@ internal sealed partial class FunctionRpcRelay
                 _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
             };
 
-            Task readTask = ReadInboundAsync(side, requestStream, destination, proxyConnection, linkedSource.Token);
+            // Separate worker reads from initialization so an assignment wait cannot hide worker EOF.
+            Channel<StreamingMessage>? workerInbound = side is FunctionRpcRelaySide.Worker ? CreateChannel() : null;
+            Task readTask = ReadInboundAsync(side, requestStream, workerInbound?.Writer ?? destination, proxyConnection, linkedSource.Token);
+            Task? processTask = workerInbound is null
+                ? null
+                : ProcessWorkerMessagesAsync(workerInbound.Reader, destination, linkedSource.Token);
             Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
-            Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
+            Task firstCompletedTask = processTask is null
+                ? await Task.WhenAny(readTask, writeTask)
+                : await Task.WhenAny(readTask, processTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
             {
@@ -191,10 +198,16 @@ internal sealed partial class FunctionRpcRelay
                 TryTerminate(terminalState);
             }
 
+            workerInbound?.Writer.TryComplete();
             await linkedSource.CancelAsync();
             // Reads can remain blocked until the transport releases them, so observe that task
             // out of band. The write must finish before gRPC writes trailers to the same response.
             _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
+            if (processTask is not null)
+            {
+                _ = ObserveStreamOperationAfterTerminationAsync(side, "process", processTask);
+            }
+
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
             return await _completion.Task;
         }
@@ -279,7 +292,7 @@ internal sealed partial class FunctionRpcRelay
                     continue;
                 }
 
-                StreamingMessage? message = await ProcessInboundMessageAsync(side, current, isFirstMessage, cancellationToken);
+                StreamingMessage? message = ProcessInboundMessage(side, current, isFirstMessage);
                 if (message is null)
                 {
                     return;
@@ -290,8 +303,7 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
-        private async Task<StreamingMessage?> ProcessInboundMessageAsync(FunctionRpcRelaySide side, StreamingMessage message,
-            bool isFirstMessage, CancellationToken cancellationToken)
+        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
         {
             if (side != FunctionRpcRelaySide.Worker)
             {
@@ -324,9 +336,34 @@ internal sealed partial class FunctionRpcRelay
             }
 
             LogProtocolMessage(message, forwarded: false);
-            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
-                ? await FinalizeCapabilitiesAsync(message, cancellationToken)
-                : message;
+            return message;
+        }
+
+        private async Task ProcessWorkerMessagesAsync(ChannelReader<StreamingMessage> source, ChannelWriter<StreamingMessage> destination,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await foreach (StreamingMessage current in source.ReadAllAsync(cancellationToken))
+                {
+                    StreamingMessage? message = current.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+                        ? await FinalizeCapabilitiesAsync(current, cancellationToken)
+                        : current;
+                    if (message is null)
+                    {
+                        return;
+                    }
+
+                    await destination.WriteAsync(message, cancellationToken);
+                }
+            }
+            finally
+            {
+                // This task owns queued messages; release them even if a finalizer faulted or initialization was canceled.
+                while (source.TryRead(out _))
+                {
+                }
+            }
         }
 
         private async Task<StreamingMessage?> FinalizeCapabilitiesAsync(StreamingMessage message, CancellationToken cancellationToken)
@@ -342,7 +379,7 @@ internal sealed partial class FunctionRpcRelay
                 capabilities = _capabilities;
             }
 
-            // Only the worker reader finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
+            // Only the worker processor finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
