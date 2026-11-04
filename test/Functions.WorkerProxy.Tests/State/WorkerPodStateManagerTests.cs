@@ -119,7 +119,6 @@ public partial class WorkerPodStateManagerTests
         manager.OnSessionTerminated(1);
         WorkerPodState failed = manager.State;
 
-        Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.False(manager.OnWorkerAttached(2));

@@ -2051,8 +2051,7 @@ public sealed partial class WorkerChannelRegistryTests
             IConfiguration configuration = null,
             IWorkerHostConfigurationParser workerHostConfigurationParser = null,
             bool registryOwnedAttempt = false,
-            TimeProvider timeProvider = null,
-            ILogger<WorkerChannelRegistry> registryLogger = null)
+            TimeProvider timeProvider = null)
         {
             HostConfigurationLogger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             workerHostConfigurationParser ??= new WorkerHostConfigurationParser(
@@ -2098,11 +2097,10 @@ public sealed partial class WorkerChannelRegistryTests
 
                     return channel;
                 });
-            registryLogger ??= NullLogger<WorkerChannelRegistry>.Instance;
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, registryLogger,
+                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance,
                     linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt, timeProvider)
-                : new(DuplexFactory.Object, ChannelFactory.Object, registryLogger, workerHostConfigurationParser);
+                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, workerHostConfigurationParser);
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();

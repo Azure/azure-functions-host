@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +13,6 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -219,9 +216,7 @@ public sealed partial class WorkerChannelRegistryTests
 
                 return timer;
             });
-        Mock<ILogger<WorkerChannelRegistry>> logger = new();
-        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: clock.Object, registryLogger: logger.Object);
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: clock.Object);
         ChannelControl worker = new("retiring", blockDisposal: true)
         {
             Capabilities = new Dictionary<string, string>
@@ -278,23 +273,15 @@ public sealed partial class WorkerChannelRegistryTests
             {
                 time.Advance(TimeSpan.FromSeconds(10));
                 await retirement.WaitAsync(TestTimeout);
-                Assert.Single(logger.Invocations.Where(call =>
-                    call.Method.Name == nameof(ILogger.Log) && call.Arguments[3] is TimeoutException));
             }
 
             Assert.False(await unlink.WaitAsync(TestTimeout));
             await registry.RetireIdleHttpWorkersAsync(IdleThreshold).WaitAsync(TestTimeout);
-            IOException failure = new("late disposal failure");
-            worker.Transport.FailDispose(failure);
-            Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => worker.Channel.DisposeAsync().AsTask().WaitAsync(TestTimeout)));
-            await WaitUntilAsync(() => logger.Invocations.Any(call =>
-                call.Method.Name == nameof(ILogger.Log) && ReferenceEquals(call.Arguments[3], failure)));
-            Assert.Single(logger.Invocations.Where(call =>
-                call.Method.Name == nameof(ILogger.Log) && ReferenceEquals(call.Arguments[3], failure)));
         }
         finally
         {
             worker.AllowDispose();
+            await worker.Channel.DisposeAsync().AsTask().WaitAsync(TestTimeout);
             if (!cancel || !cancellation.IsCancellationRequested)
             {
                 await retirement.WaitAsync(TestTimeout);

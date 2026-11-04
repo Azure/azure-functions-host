@@ -54,8 +54,6 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     /// </summary>
     internal void AllowDispose() => _allowDispose.TrySetResult();
 
-    internal void FailDispose(Exception exception) => _allowDispose.TrySetException(exception);
-
     /// <summary>
     /// Completes both channel boundaries, optionally with a channel failure.
     /// </summary>
