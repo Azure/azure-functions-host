@@ -519,8 +519,8 @@ public sealed partial class WorkerChannelRegistryTests
         invocation.Inputs = [("req", DataType.String, httpContext.Request)];
 
         using RpcClientFunctionInvocationDispatcher dispatcher = await CreateIdleDispatcherAsync(worker, function);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.InvokeAsync(invocation));
-        invocation.ResultSource.TrySetResult(new());
+        await dispatcher.InvokeAsync(invocation);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => invocation.ResultSource.Task);
         await completeResponse(completionState);
 
         Assert.Equal(0, worker.Channel.OngoingRequests);

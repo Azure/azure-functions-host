@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using FunctionTimeoutAbortException = Microsoft.Azure.WebJobs.Host.FunctionTimeoutAbortException;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
@@ -584,6 +586,93 @@ public sealed partial class WorkerChannelRegistryTests
             () => registry.LinkAsync(failed.Id, CreateEndpoint(failed.Id)));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminated.Reason);
         Assert.Equal(2, harness.Transports.Count);
+    }
+
+    [Fact]
+    public async Task TransportCompletion_FailsInvocationQueuedBeforeFunctionLoadResponse()
+    {
+        RegistryHarness harness = new();
+        BlockingSharedMemory conversion = new();
+        ChannelControl channel = new("worker", sharedMemory: conversion);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, channel.Id);
+        FunctionMetadata function = CreateFunction("TestFunction");
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await channel.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        using RpcClientFunctionInvocationDispatcher dispatcher =
+            new(registry, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext firstInvocation = CreateInvocation(function, new byte[] { 1 });
+        ScriptInvocationContext secondInvocation = CreateInvocation(function, new byte[] { 2 });
+
+        await dispatcher.InvokeAsync(firstInvocation).WaitAsync(TestTimeout);
+        await dispatcher.InvokeAsync(secondInvocation).WaitAsync(TestTimeout);
+
+        try
+        {
+            await channel.SendFunctionLoadResponseAsync(function.GetFunctionId());
+            await conversion.Started.WaitAsync(TestTimeout);
+            await WaitUntilAsync(() => channel.Channel.FunctionInputBuffers[function.GetFunctionId()].Count == 0);
+            Assert.False(firstInvocation.ResultSource.Task.IsCompleted);
+            Assert.False(secondInvocation.ResultSource.Task.IsCompleted);
+
+            channel.Complete();
+
+            await Assert.ThrowsAsync<FunctionTimeoutAbortException>(
+                () => firstInvocation.ResultSource.Task.WaitAsync(TestTimeout));
+            await Assert.ThrowsAsync<FunctionTimeoutAbortException>(
+                () => secondInvocation.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+        finally
+        {
+            conversion.Release();
+        }
+    }
+
+    [Fact]
+    public async Task FunctionLoadFailure_FailsInvocationQueuedBeforeFunctionLoadResponse()
+    {
+        RegistryHarness harness = new();
+        BlockingSharedMemory conversion = new();
+        ChannelControl channel = new("worker", sharedMemory: conversion);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, channel.Id);
+        FunctionMetadata function = CreateFunction("TestFunction");
+        FunctionMetadata secondFunction = CreateFunction("SecondFunction");
+        await registry.ActivateAsync([function, secondFunction], new ManagedDependencyOptions(), functionTimeout: null);
+        await channel.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        await channel.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        using RpcClientFunctionInvocationDispatcher dispatcher =
+            new(registry, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function, secondFunction]);
+        ScriptInvocationContext firstInvocation = CreateInvocation(function, new byte[] { 1 });
+        ScriptInvocationContext secondInvocation = CreateInvocation(function, new byte[] { 2 });
+
+        await dispatcher.InvokeAsync(firstInvocation).WaitAsync(TestTimeout);
+        await dispatcher.InvokeAsync(secondInvocation).WaitAsync(TestTimeout);
+
+        try
+        {
+            await channel.SendFunctionLoadResponseAsync(function.GetFunctionId());
+            await conversion.Started.WaitAsync(TestTimeout);
+            await WaitUntilAsync(() => channel.Channel.FunctionInputBuffers[function.GetFunctionId()].Count == 0);
+            Assert.False(firstInvocation.ResultSource.Task.IsCompleted);
+            Assert.False(secondInvocation.ResultSource.Task.IsCompleted);
+
+            Exception failure = await channel.FailFunctionLoadAsync();
+            Exception firstFailure = await Assert.ThrowsAnyAsync<Exception>(
+                () => firstInvocation.ResultSource.Task.WaitAsync(TestTimeout));
+            Exception secondFailure = await Assert.ThrowsAnyAsync<Exception>(
+                () => secondInvocation.ResultSource.Task.WaitAsync(TestTimeout));
+            Assert.Same(failure, firstFailure);
+            Assert.Same(failure, secondFailure);
+        }
+        finally
+        {
+            conversion.Release();
+        }
     }
 
     [Fact]
@@ -1857,6 +1946,22 @@ public sealed partial class WorkerChannelRegistryTests
             Name = name,
         };
 
+    private static ScriptInvocationContext CreateInvocation(FunctionMetadata function, object input = null)
+        => new()
+        {
+            FunctionMetadata = function,
+            ExecutionContext = new()
+            {
+                FunctionName = function.Name,
+                InvocationId = Guid.NewGuid(),
+            },
+            BindingData = [],
+            Inputs = input is null ? [] : [("input", DataType.Binary, input)],
+            ResultSource = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            Logger = NullLogger.Instance,
+        };
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
         using CancellationTokenSource timeoutSource = new(TestTimeout);
@@ -1866,7 +1971,11 @@ public sealed partial class WorkerChannelRegistryTests
         }
     }
 
-    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(IMetricsLogger metricsLogger = null, IHttpProxyService httpProxyService = null)
+    private static RpcClientWorkerChannelFactory CreateRealChannelFactory(
+        IMetricsLogger metricsLogger = null,
+        IEnvironment environment = null,
+        ISharedMemoryManager sharedMemoryManager = null,
+        IHttpProxyService httpProxyService = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -1882,15 +1991,48 @@ public sealed partial class WorkerChannelRegistryTests
         return new(
             new ScriptEventManager(),
             hostManager.Object,
-            Mock.Of<IEnvironment>(),
+            environment ?? Mock.Of<IEnvironment>(),
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
-            Mock.Of<ISharedMemoryManager>(),
+            sharedMemoryManager ?? Mock.Of<ISharedMemoryManager>(),
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
             httpProxyService ?? Mock.Of<IHttpProxyService>(),
             metricsLogger ?? Mock.Of<IMetricsLogger>());
+    }
+
+    private sealed class BlockingSharedMemory
+    {
+        private readonly TaskCompletionSource _release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly TaskCompletionSource _started =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal BlockingSharedMemory()
+        {
+            Environment.Setup(environment => environment.GetEnvironmentVariable(
+                    RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName))
+                .Returns("1");
+            Manager.Setup(manager => manager.IsSupported(It.IsAny<object>()))
+                .Returns(true);
+            Manager.Setup(manager => manager.PutObjectAsync(It.IsAny<object>()))
+                .Returns(async (object _) =>
+                {
+                    _started.TrySetResult();
+                    await _release.Task;
+                    return null;
+                });
+        }
+
+        internal Mock<IEnvironment> Environment { get; } = new();
+
+        internal Mock<ISharedMemoryManager> Manager { get; } = new();
+
+        internal Task Started => _started.Task;
+
+        internal void Release() => _release.TrySetResult();
     }
 
     private sealed class RegistryHarness
@@ -1946,7 +2088,11 @@ public sealed partial class WorkerChannelRegistryTests
                         throw new InvalidOperationException($"No test channel was configured for worker '{workerId}'.");
                     }
 
-                    RpcClientWorkerChannel channel = CreateRealChannelFactory(control.MetricsLogger.Object, control.HttpProxyService)
+                    RpcClientWorkerChannel channel = CreateRealChannelFactory(
+                            control.MetricsLogger.Object,
+                            control.SharedMemory?.Environment.Object,
+                            control.SharedMemory?.Manager.Object,
+                            control.HttpProxyService)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
@@ -2004,11 +2150,13 @@ public sealed partial class WorkerChannelRegistryTests
             bool blockSetup = false,
             int setupFailureCount = 0,
             Exception setupFailure = null,
+            BlockingSharedMemory sharedMemory = null,
             string functionGroupName = null,
             int? maxHttpConcurrency = null)
         {
             Id = id;
             Transport = new(blockDisposal);
+            SharedMemory = sharedMemory;
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
             _functionGroupName = functionGroupName;
@@ -2059,6 +2207,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal string Id { get; }
 
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
+
+        internal BlockingSharedMemory SharedMemory { get; }
 
         internal int SetupAttempts => Interlocked.CompareExchange(ref _setupAttempts, 0, 0);
 
@@ -2119,6 +2269,16 @@ public sealed partial class WorkerChannelRegistryTests
             return await Channel.FunctionLoadFailure.WaitAsync(TestTimeout);
         }
 
+        internal ValueTask SendFunctionLoadResponseAsync(string functionId)
+            => Transport.SendResponseAsync(new()
+            {
+                FunctionLoadResponse = new()
+                {
+                    FunctionId = functionId,
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                },
+            });
+
         internal async Task<StreamingMessage> ReadRequestAsync(
             StreamingMessage.ContentOneofCase contentCase)
         {
@@ -2160,6 +2320,11 @@ public sealed partial class WorkerChannelRegistryTests
                     HostConfiguration = HostConfiguration,
                 };
                 response.Capabilities.Add(Capabilities);
+                if (SharedMemory is not null)
+                {
+                    response.Capabilities.Add(RpcWorkerConstants.SharedMemoryDataTransfer, "1");
+                }
+
                 if (_functionGroupName is not null)
                 {
                     response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroupName);

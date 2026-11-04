@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -101,21 +100,17 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 return false;
             }
 
-            if (!channel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.GetFunctionId(),
-                out BufferBlock<ScriptInvocationContext> buffer))
-            {
-                throw new InvalidOperationException($"Function '{invocationContext.FunctionMetadata.Name}' is not loaded by worker '{channel.Id}'.");
-            }
-
             bool trackActivity = channel.IsHttpFunctionGroup && channel.IsAlwaysReady is false;
             // Register before posting so a fast response cannot outrun its completion callback.
             Task responseCompleted = trackActivity
                 ? RpcClientWorkerChannel.GetHttpResponseCompletionTask(invocationContext)
                 : Task.CompletedTask;
 
-            if (!buffer.Post(invocationContext))
+            if (!channel.TryPostInvocation(invocationContext))
             {
-                throw new InvalidOperationException($"Worker '{channel.Id}' rejected the invocation input.");
+                invocationContext.ResultSource.TrySetException(
+                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));
+                return true;
             }
 
             if (trackActivity)
