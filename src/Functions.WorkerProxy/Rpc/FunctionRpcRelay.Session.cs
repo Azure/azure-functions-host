@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Identity;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -52,6 +53,7 @@ internal sealed partial class FunctionRpcRelay
         private bool _workerAttached;
         private long _runtimeGeneration;
         private bool _runtimeProtocolStarted;
+        private volatile string? _workerId;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -125,6 +127,28 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
+        public WorkerSystemLogContext GetLogContext()
+        {
+            return new()
+            {
+                WorkerId = _workerId,
+                ProxySessionId = id
+            };
+        }
+
+        public void LogAttachment(FunctionRpcRelaySide side, bool released)
+        {
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
+            if (released)
+            {
+                Log.PeerReleased(logger, id, side);
+            }
+            else
+            {
+                Log.PeerAttached(logger, id, side);
+            }
+        }
+
         /// <summary>
         /// Determines whether this session currently owns the specified side.
         /// </summary>
@@ -182,6 +206,7 @@ internal sealed partial class FunctionRpcRelay
                 if (side is FunctionRpcRelaySide.Runtime && TryDetachBeforeInitialization(runtimeGeneration))
                 {
                     detachedRuntime = terminalState;
+                    using IDisposable? scope = logger.BeginScope(GetLogContext());
                     Log.RuntimeDetachedBeforeInitialization(logger, id, terminalState.Reason);
                 }
                 else
@@ -331,9 +356,10 @@ internal sealed partial class FunctionRpcRelay
 
                     // Retrying after any runtime protocol input could replay init or mix responses across callers.
                     _runtimeProtocolStarted = true;
-
-                    return message;
                 }
+
+                LogProtocolMessage(message, forwarded: false);
+                return message;
             }
 
             if (isFirstMessage)
@@ -346,16 +372,22 @@ internal sealed partial class FunctionRpcRelay
                         return null;
                     }
 
-                    if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
+                    if (message.StartStream is not { } startStream
+                        || string.IsNullOrWhiteSpace(startStream.WorkerId))
                     {
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
                     stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    _workerId = startStream.WorkerId;
                     _startStream.TrySetResult(message.Clone());
                 }
+
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
+                Log.StartStreamValidated(logger, id);
             }
 
+            LogProtocolMessage(message, forwarded: false);
             if (message.WorkerInitResponse is not null)
             {
                 StreamingMessage sanitized = message.Clone();
@@ -466,6 +498,7 @@ internal sealed partial class FunctionRpcRelay
                 return;
             }
 
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
@@ -515,6 +548,8 @@ internal sealed partial class FunctionRpcRelay
                     {
                         runtimeWrites.Written(message);
                     }
+
+                    LogProtocolMessage(message, forwarded: true);
                 }
             }
             finally
@@ -529,6 +564,92 @@ internal sealed partial class FunctionRpcRelay
 
                     runtimeWrites.Complete(new IOException("The HTTP proxy transport closed."));
                 }
+            }
+        }
+
+        private void LogProtocolMessage(StreamingMessage message, bool forwarded)
+        {
+            if (message.FunctionLoadRequestCollection is { } requests)
+            {
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
+                    Log.FunctionLoadBatchRequested(logger, forwarded ? "RequestForwarded" : "RequestReceived", requests.FunctionLoadRequests.Count);
+                }
+
+                return;
+            }
+
+            if (message.FunctionLoadResponseCollection is { } responses)
+            {
+                if (!logger.IsEnabled(LogLevel.Information) && !logger.IsEnabled(LogLevel.Warning))
+                {
+                    return;
+                }
+
+                int unsuccessful = 0;
+                foreach (FunctionLoadResponse response in responses.FunctionLoadResponses)
+                {
+                    if (response.Result is not { Status: StatusResult.Types.Status.Success })
+                    {
+                        unsuccessful++;
+                    }
+                }
+
+                LogLevel batchLevel = unsuccessful > 0 ? LogLevel.Warning : LogLevel.Information;
+                if (logger.IsEnabled(batchLevel))
+                {
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
+                    string batchStage = forwarded ? "ResponseForwarded" : "ResponseReceived";
+                    if (unsuccessful > 0)
+                    {
+                        Log.FunctionLoadBatchFailed(logger, batchStage, responses.FunctionLoadResponses.Count, unsuccessful);
+                    }
+                    else
+                    {
+                        Log.FunctionLoadBatchCompleted(logger, batchStage, responses.FunctionLoadResponses.Count, unsuccessful);
+                    }
+                }
+
+                return;
+            }
+
+            (string Operation, bool Response, StatusResult? Result)? operation = message.ContentCase switch
+            {
+                StreamingMessage.ContentOneofCase.WorkerInitRequest => ("Initialization", false, null),
+                StreamingMessage.ContentOneofCase.WorkerInitResponse => ("Initialization", true, message.WorkerInitResponse.Result),
+                StreamingMessage.ContentOneofCase.FunctionLoadRequest => ("FunctionLoad", false, null),
+                StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, message.FunctionLoadResponse.Result),
+                _ => null
+            };
+            if (operation is not { } value)
+            {
+                return;
+            }
+
+            LogLevel level = value.Result is { Status: not StatusResult.Types.Status.Success }
+                ? LogLevel.Warning : LogLevel.Information;
+            if (!logger.IsEnabled(level))
+            {
+                return;
+            }
+
+            string stage = (value.Response, forwarded) switch
+            {
+                (false, false) => "RequestReceived",
+                (false, true) => "RequestForwarded",
+                (true, false) => "ResponseReceived",
+                (true, true) => "ResponseForwarded"
+            };
+            string? rpcStatus = value.Result?.Status.ToString();
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
+            if (level == LogLevel.Warning)
+            {
+                Log.ProtocolMessageFailed(logger, value.Operation, stage, rpcStatus);
+            }
+            else
+            {
+                Log.ProtocolMessageObserved(logger, value.Operation, stage, rpcStatus);
             }
         }
 
@@ -590,6 +711,7 @@ internal sealed partial class FunctionRpcRelay
             _toRuntime.Writer.TryComplete(completionException);
             _toWorker.Writer.TryComplete(completionException);
 
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
                 Log.SessionFaulted(logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
@@ -629,6 +751,7 @@ internal sealed partial class FunctionRpcRelay
             }
             catch (Exception exception) when (_completion.Task.IsCompleted || operationToken.IsCancellationRequested)
             {
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
                 Log.SecondaryStreamFailure(logger, exception, id, operationName, side);
             }
         }
@@ -681,7 +804,7 @@ internal sealed partial class FunctionRpcRelay
         [LoggerMessage(0, LogLevel.Warning, "FunctionRpc relay session {SessionId} faulted on the {Side} side.")]
         public static partial void SessionFaulted(ILogger logger, Exception? exception, long sessionId, FunctionRpcRelaySide? side);
 
-        [LoggerMessage(1, LogLevel.Debug, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.")]
+        [LoggerMessage(1, LogLevel.Information, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.")]
         public static partial void SessionTerminated(ILogger logger, Exception? exception, long sessionId,
             FunctionRpcRelayTerminationReason reason, FunctionRpcRelaySide? side);
 
@@ -695,5 +818,36 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+
+        [LoggerMessage(4, LogLevel.Information, "FunctionRpc session {SessionId} accepted the {Side} peer.")]
+        public static partial void PeerAttached(ILogger logger, long sessionId, FunctionRpcRelaySide side);
+
+        [LoggerMessage(5, LogLevel.Warning, "FunctionRpc rejected the {Side} peer: {Reason}.")]
+        public static partial void AttachmentRejected(ILogger logger, FunctionRpcRelaySide side, FunctionRpcRelayAttachmentFailure reason);
+
+        [LoggerMessage(6, LogLevel.Information, "FunctionRpc session {SessionId} validated worker StartStream.")]
+        public static partial void StartStreamValidated(ILogger logger, long sessionId);
+
+        [LoggerMessage(7, LogLevel.Information, "FunctionRpc session {SessionId} released the {Side} peer.")]
+        public static partial void PeerReleased(ILogger logger, long sessionId, FunctionRpcRelaySide side);
+
+        [LoggerMessage(8, LogLevel.Information, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.")]
+        public static partial void ProtocolMessageObserved(ILogger logger, string operation, string stage, string? rpcStatus);
+
+        [LoggerMessage(8, LogLevel.Warning, "FunctionRpc {Operation} reached {Stage} with RPC status {RpcStatus}.",
+            EventName = nameof(ProtocolMessageObserved))]
+        public static partial void ProtocolMessageFailed(ILogger logger, string operation, string stage, string? rpcStatus);
+
+        [LoggerMessage(9, LogLevel.Information, "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} functions.")]
+        public static partial void FunctionLoadBatchRequested(ILogger logger, string stage, int functionCount);
+
+        [LoggerMessage(10, LogLevel.Information,
+            "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.")]
+        public static partial void FunctionLoadBatchCompleted(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
+
+        [LoggerMessage(10, LogLevel.Warning,
+            "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.",
+            EventName = nameof(FunctionLoadBatchCompleted))]
+        public static partial void FunctionLoadBatchFailed(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
     }
 }

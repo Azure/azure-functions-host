@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private long _restartRequested;
         private bool _disposed = false;
         private bool _watchersStopped = false;
-        private object _stopWatchersLock = new object();
+        private Lock _stopWatchersLock = new();
         private long _suspensionRequestsCount = 0;
 
         public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IScriptApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager, IEnvironment environment)
@@ -207,11 +207,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void StopFileWatchers()
         {
-            if (_watchersStopped)
-            {
-                return;
-            }
-
             lock (_stopWatchersLock)
             {
                 if (_watchersStopped)
@@ -219,6 +214,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return;
                 }
 
+                // Prevent new sentinel callbacks from publishing while the watchers are stopped.
+                _watchersStopped = true;
                 _typedLogger.LogDebug("Stopping file watchers.");
 
                 _fileEventSource?.Dispose();
@@ -239,30 +236,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     subscription.Dispose();
                 }
-
-                _watchersStopped = true;
             }
         }
 
         /// <summary>
         /// Whenever the debug sentinel file changes we update our debug timeout.
         /// </summary>
-        private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
+        internal void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
         {
-            if (!_disposed)
+            lock (_stopWatchersLock)
             {
-                _eventManager.Publish(new DebugNotification(nameof(FileMonitoringService), DateTime.UtcNow));
+                if (!_watchersStopped)
+                {
+                    _eventManager.Publish(new DebugNotification(nameof(FileMonitoringService), DateTime.UtcNow));
+                }
             }
         }
 
         /// <summary>
         /// Whenever the diagnostic sentinel file changes we update our debug timeout.
         /// </summary>
-        private void OnDiagnosticModeFileChanged(object sender, FileSystemEventArgs e)
+        internal void OnDiagnosticModeFileChanged(object sender, FileSystemEventArgs e)
         {
-            if (!_disposed)
+            lock (_stopWatchersLock)
             {
-                _eventManager.Publish(new DiagnosticNotification(nameof(FileMonitoringService), DateTime.UtcNow));
+                if (!_watchersStopped)
+                {
+                    _eventManager.Publish(new DiagnosticNotification(nameof(FileMonitoringService), DateTime.UtcNow));
+                }
             }
         }
 
