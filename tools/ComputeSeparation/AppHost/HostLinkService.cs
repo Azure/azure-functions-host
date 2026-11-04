@@ -31,6 +31,7 @@ internal sealed partial class HostLinkService(
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
 {
+    private const string FunctionGroupName = "http";
     private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -70,28 +71,11 @@ internal sealed partial class HostLinkService(
 
     private async Task LinkDirectlyAsync(string hostAddress, CancellationToken cancellationToken)
     {
+        // Assignment must precede WorkerInit so the proxy can advertise its group and HTTP concurrency.
+        await AssignDirectlyAsync(cancellationToken);
+
         string grpcEndpoint = await proxyEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
-        string managementOrigin = await managementEndpoint.GetValueAsync(cancellationToken)
-            ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
-        using HttpClient management = new() { BaseAddress = new Uri(managementOrigin), Timeout = Timeout.InfiniteTimeSpan };
-        management.DefaultRequestHeaders.Add("x-ms-site-token", ManagementToken.Create(runtimeAccessKey, workerId));
-        string httpOrigin = await httpEndpoint.GetValueAsync(cancellationToken)
-            ?? throw new InvalidOperationException("The WorkerProxy HTTPS endpoint was not allocated.");
-        using HttpResponseMessage assignment = await management.PutAsJsonAsync("/admin/worker/assignment", new
-        {
-            startupMode = "Preconfigured",
-            functionAppName = "aspire-sample-app",
-            functionGroupName = "http",
-            isAlwaysReady = false,
-            functionAppDirectory = string.Empty,
-            environment = new Dictionary<string, string>(),
-            configLastModifiedTime = 0L,
-            contentLastModifiedTime = 0L,
-            maxHttpConcurrency = 16,
-            httpProxyEndpoint = new Uri(httpOrigin).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)
-        }, cancellationToken);
-        await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assignment, cancellationToken);
         using HttpClient client = new() { BaseAddress = new Uri(hostAddress), Timeout = Timeout.InfiniteTimeSpan };
         client.DefaultRequestHeaders.Add("x-ms-site-token", ManagementToken.Create(runtimeContainerKey, runtimePodName));
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
@@ -119,7 +103,7 @@ internal sealed partial class HostLinkService(
         using HttpResponseMessage assign = await client.PostAsync("/simulate/worker/worker-proxy-1/assign", null, cancellationToken);
         await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
 
-        Log.WorkerAssigned(logger, workerId);
+        Log.WorkerAssigned(logger, workerId, FunctionGroupName);
     }
 
     private async Task LinkThroughPlatformAsync(HttpClient client, CancellationToken cancellationToken)
@@ -154,6 +138,44 @@ internal sealed partial class HostLinkService(
         }
     }
 
+    private async Task AssignDirectlyAsync(CancellationToken cancellationToken)
+    {
+        string proxyAddress = await managementEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
+        string httpOrigin = await httpEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy HTTPS endpoint was not allocated.");
+        using HttpClient client = new() { BaseAddress = new Uri(proxyAddress), Timeout = Timeout.InfiniteTimeSpan };
+        client.DefaultRequestHeaders.Add("x-ms-site-token", ManagementToken.Create(runtimeAccessKey, workerId));
+        var assignment = new
+        {
+            startupMode = "Preconfigured",
+            functionAppName = "aspire-sample-app",
+            functionGroupName = FunctionGroupName,
+            isAlwaysReady = false,
+            environment = new Dictionary<string, string>(),
+            functionAppDirectory = string.Empty,
+            configLastModifiedTime = 0L,
+            contentLastModifiedTime = 0L,
+            maxHttpConcurrency = 16,
+            httpProxyEndpoint = new Uri(httpOrigin).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)
+        };
+
+        HttpResponseMessage assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+        while (assign.StatusCode is HttpStatusCode.ServiceUnavailable)
+        {
+            assign.Dispose();
+            await Task.Delay(AssignRetryDelay, cancellationToken);
+            assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+        }
+
+        using (assign)
+        {
+            await EnsureSuccessAsync("The WorkerProxy rejected the assignment of", assign, cancellationToken);
+        }
+
+        Log.WorkerAssigned(logger, workerId, FunctionGroupName);
+    }
+
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (!response.IsSuccessStatusCode)
@@ -175,7 +197,7 @@ internal sealed partial class HostLinkService(
         [LoggerMessage(2, LogLevel.Error, "Failed to link worker {WorkerId}. Resources remain running for diagnosis.")]
         public static partial void WorkerLinkFailed(ILogger logger, string workerId, Exception exception);
 
-        [LoggerMessage(3, LogLevel.Information, "Fake platform assigned the pod for worker {WorkerId} on the WorkerProxy.")]
-        public static partial void WorkerAssigned(ILogger logger, string workerId);
+        [LoggerMessage(3, LogLevel.Information, "WorkerProxy assigned worker {WorkerId} to function group {FunctionGroupName}.")]
+        public static partial void WorkerAssigned(ILogger logger, string workerId, string functionGroupName);
     }
 }

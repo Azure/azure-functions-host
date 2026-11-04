@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
 using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Hosting;
@@ -95,6 +96,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                     services.AddWebJobsScriptHostAuthorization();
                     services.AddWebJobsScriptHost(context.Configuration, ClientWorkerComposition.Instance);
                     services.Replace(ServiceDescriptor.Singleton(registry));
+                    services.Replace(ServiceDescriptor.Singleton<IAppServerHostStateClient>(new StubAppServerHostStateClient()));
                 })
                 .Configure(app => app.UseWebJobsScriptHost()))
             .Build();
@@ -111,5 +113,11 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
             ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName));
 
         return await client.SendAsync(request, cancellationToken);
+    }
+
+    private sealed class StubAppServerHostStateClient : IAppServerHostStateClient
+    {
+        public Task<HttpStatusCode> PublishAsync(RuntimeState state, CancellationToken cancellationToken)
+            => Task.FromResult(HttpStatusCode.OK);
     }
 }

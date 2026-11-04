@@ -49,6 +49,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
         Assert.Equal(expectedReason, exception.Message);
+        AssertLinkFailure(harness, "ValidatingHostConfiguration", "HostConfigurationValidationFailed", typeof(WorkerLinkException));
         Assert.Null(exception.InnerException);
         Assert.False(waiter.IsCompleted);
         Assert.Empty(registry.GetInitializedChannels());
@@ -157,6 +158,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
         Assert.Equal("The supplied Host configuration was rejected.", exception.Message);
+        AssertLinkFailure(harness, "ValidatingHostConfiguration", "HostConfigurationValidationFailed", typeof(WorkerLinkException));
         Assert.Null(exception.InnerException);
         Assert.False(waiter.IsCompleted);
         Assert.Empty(registry.GetInitializedChannels());
@@ -181,6 +183,7 @@ public sealed partial class WorkerChannelRegistryTests
             registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout));
 
         Assert.Same(failure, exception);
+        AssertLinkFailure(harness, "ValidatingHostConfiguration", "HostConfigurationValidationFailed", typeof(InvalidOperationException));
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, worker.DisposeCount);

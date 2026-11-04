@@ -25,6 +25,7 @@ internal sealed class ContainerTopology : IAsyncDisposable
         {
             ["COMPUTE_NETWORK_NAME"] = NetworkName,
             ["WORKER_PROXY_ALIAS"] = ProxyAlias,
+            ["WORKER_POD_NAME"] = "cleanup",
             ["WORKER_PROXY_MANAGEMENT_PORT"] = "0",
             ["WORKER_ID"] = "cleanup",
             ["WORKER_REQUEST_ID"] = "cleanup"

@@ -149,6 +149,8 @@ else
         .WithEnvironment("FakePlatform__RuntimeContainerKey", runtimeContainerKey)
         .WithEnvironment("FakePlatform__RuntimePodName", RuntimePodName);
 
+    functionsHost.WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName));
+
     if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))
     {
         // The platform assigns the app once; each worker is then assigned and linked independently.

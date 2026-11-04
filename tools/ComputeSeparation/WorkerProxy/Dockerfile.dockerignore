@@ -22,6 +22,11 @@ src/Functions.Host/*
 !src/Functions.Host/Authentication/
 src/Functions.Host/Authentication/*
 !src/Functions.Host/Authentication/ContainerManagementAuthenticationHandler.cs
+!src/WebJobs.Script.WebHost/
+src/WebJobs.Script.WebHost/*
+!src/WebJobs.Script.WebHost/Diagnostics/
+src/WebJobs.Script.WebHost/Diagnostics/*
+!src/WebJobs.Script.WebHost/Diagnostics/BufferedConsoleWriter.cs
 !src/Functions.Rpc.Client/
 src/Functions.Rpc.Client/*
 !src/Functions.Rpc.Client/Security/

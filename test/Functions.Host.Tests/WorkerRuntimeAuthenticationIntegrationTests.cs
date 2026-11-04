@@ -15,7 +15,6 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Azure.Functions.Rpc.Client;
 using Azure.Functions.Tests;
 using Grpc.Core;
@@ -506,7 +505,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
             Logger = NullLogger.Instance
         };
-        Assert.True(await channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation, cancellationToken));
+        Assert.True(channel.TryPostInvocation(invocation));
         StreamingMessage invoked = await ReadAsync(workerCall, cancellationToken);
         Assert.Equal(new RpcHttp(), Assert.Single(invoked.InvocationRequest.InputData).Data.Http);
         await workerCall.RequestStream.WriteAsync(new StreamingMessage

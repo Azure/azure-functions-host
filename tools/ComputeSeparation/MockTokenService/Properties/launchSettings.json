@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "MockTokenService": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:53422;http://localhost:53423"
+    }
+  }
+}
