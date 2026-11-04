@@ -159,7 +159,7 @@ public partial class FunctionRpcRelayTests
                 using JsonDocument state = JsonDocument.Parse(await changed.Content.ReadAsStringAsync(timeout.Token));
                 Assert.Equal(4, state.RootElement.GetProperty("revisionId").GetInt64());
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
-                Assert.Equal("Starting", pod.GetProperty("podStatus").GetString());
+                Assert.Equal("RemovalRequested", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
                 Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());

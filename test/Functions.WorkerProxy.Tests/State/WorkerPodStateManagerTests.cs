@@ -67,7 +67,7 @@ public partial class WorkerPodStateManagerTests
         Assert.False(failed.IsWorkerAttached);
         Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
         Assert.Equal(startupMode, failed.StartupMode);
-        Assert.Equal(WorkerPodStatus.Starting, failed.PodStatus);
+        Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
         Assert.Equal("app", failed.FunctionAppName);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
             new[] { initial.Revision, attached.Revision, started.Revision, assigned.Revision, failed.Revision });
@@ -111,17 +111,15 @@ public partial class WorkerPodStateManagerTests
         Assert.Same(state, manager.State);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TerminalFailure_IsStickyAndConflictingIdentityStillConflicts(bool requestRemoval)
+    [Fact]
+    public void TerminalFailure_IsStickyAndConflictingIdentityStillConflicts()
     {
         WorkerPodStateManager manager = CreateReadyManager();
         manager.Assign(CreateAssignment());
-        manager.OnSessionTerminated(1, requestRemoval);
+        manager.OnSessionTerminated(1);
         WorkerPodState failed = manager.State;
 
-        Assert.Equal(requestRemoval ? WorkerPodStatus.RemovalRequested : WorkerPodStatus.Starting, failed.PodStatus);
+        Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.False(manager.OnWorkerAttached(2));
@@ -146,7 +144,7 @@ public partial class WorkerPodStateManagerTests
 
         Assert.False(manager.OnWorkerAttached(1));
         Assert.False(manager.OnWorkerStartStream(1, "old-worker"));
-        Assert.False(manager.OnSessionTerminated(1, requestRemoval: true));
+        Assert.False(manager.OnSessionTerminated(1));
         Assert.Same(replacement, manager.State);
         Assert.Equal(5, replacement.Revision);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
@@ -345,15 +343,16 @@ public partial class WorkerPodStateManagerTests
 
             WorkerAssignmentResult result = await assignment;
             Assert.False(manager.State.IsWorkerReady);
-            Assert.Equal(WorkerPodStatus.Starting, manager.State.PodStatus);
             if (result == WorkerAssignmentResult.Created)
             {
+                Assert.Equal(WorkerPodStatus.RemovalRequested, manager.State.PodStatus);
                 Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
                 Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
                 Assert.Equal(4, manager.State.Revision);
             }
             else
             {
+                Assert.Equal(WorkerPodStatus.Starting, manager.State.PodStatus);
                 Assert.Equal(WorkerAssignmentResult.WorkerNotReady, result);
                 Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
                 Assert.Equal(3, manager.State.Revision);

@@ -225,7 +225,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal("Running", retainedDocument.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
         Assert.Equal(4, terminatedDocument.RootElement.GetProperty("revisionId").GetInt64());
         JsonElement terminatedPodState = terminatedDocument.RootElement.GetProperty("workerPodState");
-        Assert.Equal("Starting", terminatedPodState.GetProperty("podStatus").GetString());
+        Assert.Equal("RemovalRequested", terminatedPodState.GetProperty("podStatus").GetString());
         Assert.Equal("Preconfigured", terminatedPodState.GetProperty("startupMode").GetString());
         Assert.Equal("group", terminatedPodState.GetProperty("functionGroupName").GetString());
         Assert.False(terminatedPodState.GetProperty("isAlwaysReady").GetBoolean());
