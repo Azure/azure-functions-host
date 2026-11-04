@@ -112,10 +112,6 @@ public static class RpcClientServiceCollectionExtensions
         // fork the metadata cache used by the root metadata manager.
         services.AddSingleton(channelRegistry);
         services.AddSingleton(metadataProvider);
-        if (rootServiceProvider.GetService<IWorkerInvocationTracker>() is { } invocationTracker)
-        {
-            services.AddSingleton(invocationTracker);
-        }
 
         services.AddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
         services.AddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();

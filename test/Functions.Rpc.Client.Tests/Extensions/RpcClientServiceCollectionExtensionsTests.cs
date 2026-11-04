@@ -125,11 +125,9 @@ public sealed class RpcClientServiceCollectionExtensionsTests
     {
         var rootRegistry = new Mock<IWorkerChannelRegistry>(MockBehavior.Strict);
         var metadataProvider = new Mock<IWorkerFunctionMetadataProvider>(MockBehavior.Strict);
-        var invocationTracker = new Mock<IWorkerInvocationTracker>(MockBehavior.Strict);
         using ServiceProvider rootServiceProvider = new ServiceCollection()
             .AddSingleton(rootRegistry.Object)
             .AddSingleton(metadataProvider.Object)
-            .AddSingleton(invocationTracker.Object)
             .BuildServiceProvider();
         ServiceCollection services = new();
 
@@ -140,8 +138,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         Assert.Same(rootRegistry.Object, registryDescriptor.ImplementationInstance);
         ServiceDescriptor metadataDescriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(IWorkerFunctionMetadataProvider)));
         Assert.Same(metadataProvider.Object, metadataDescriptor.ImplementationInstance);
-        ServiceDescriptor trackerDescriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(IWorkerInvocationTracker)));
-        Assert.Same(invocationTracker.Object, trackerDescriptor.ImplementationInstance);
+        Assert.DoesNotContain(services, service => service.ServiceType == typeof(IWorkerInvocationTracker));
         Assert.True(services.IndexOf(registryDescriptor) <
             services.IndexOf(services.Single(service => service.ServiceType == typeof(IRpcClientFunctionInvocationDispatcher))));
         AssertSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>(services);

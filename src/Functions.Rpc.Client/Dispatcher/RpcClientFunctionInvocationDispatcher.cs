@@ -127,11 +127,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                     {
                         _invocationTracker.InvocationCompleted(invocationId, result.IsCompletedSuccessfully);
                     }
-                    catch (Exception exception) when (exception is not OutOfMemoryException
-                        and not StackOverflowException
-                        and not AccessViolationException
-                        and not System.Runtime.InteropServices.SEHException
-                        and not ThreadAbortException)
+                    catch (Exception exception) when (!Utility.IsFatal(exception))
                     {
                         Log.InvocationAccountingFailed(_logger, exception, invocationId, channel.Id);
                     }
