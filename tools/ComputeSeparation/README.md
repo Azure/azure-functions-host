@@ -81,6 +81,36 @@ Each worker gets an independently generated GUID-based ID, matching the identity
 Override the first with `ComputeSeparation:WorkerId` and the second with `ComputeSeparation:SecondWorker:WorkerId`;
 neither ID is derived from the other. The proxy names remain `worker-proxy-1` and `worker-proxy-2`.
 
+## System telemetry
+
+WorkerProxy emits only its own platform records, separately from ordinary ASP.NET Core/YARP console output.
+Worker `RpcLog` messages are forwarded unchanged, not processed by proxy telemetry.
+The local OpenTelemetry log exporter writes through the unchanged shared `BufferedConsoleWriter`
+to stdout; there is no OTLP exporter. Disposal uses the writer's existing best-effort drain
+(up to five seconds). Explicit `ForceFlush` is unsupported and returns `false`.
+
+Records use the existing `MS_FUNCTIONS_WORKER_POD_LOGS` prefix and 21-column positional format.
+Worker/session IDs (when known) and operation details are included in the message; the InvocationId column is empty.
+The shared log context contains only `WorkerId` and `ProxySessionId`. Event-specific details such as
+relay side, protocol stage/status, and assignment status/duration are written directly in the log message,
+not duplicated in context attributes.
+Assignment 5xx responses and thrown failures emit `WorkerAssignmentRequestFailed`; validation failures
+remain `WorkerAssignmentRequestRejected`. Exceptions are rethrown, and assignment failure records include
+only the exception type. When a thrown failure has no known HTTP status, the log reports `unavailable`
+rather than the response's default status.
+An `OperationCanceledException` on an aborted assignment request instead emits
+`WorkerAssignmentRequestCanceled` at Information and is rethrown. Unrelated failures remain errors.
+Single and batched function loads log received/forwarded boundaries. Batch records contain counts,
+not per-function records or worker exception text; unsuccessful or missing result statuses produce a Warning.
+Expected Host shutdown during linking is Information/`Canceled`; initialization timeouts remain Warning/`Failed`.
+The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
+Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
+Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.
+
+Fields are bounded and encoded without splitting valid UTF-16 surrogate pairs; unsafe identities are fingerprinted rather than truncated.
+Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs
+are excluded.
+
 ## Fake platform
 
 WorkerProxy uses `WEBSITE_POD_NAME`, falling back to `CONTAINER_NAME`, for pod identity.
