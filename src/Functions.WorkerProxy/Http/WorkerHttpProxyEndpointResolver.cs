@@ -26,8 +26,7 @@ internal static class WorkerHttpProxyEndpointResolver
             || parsed.Query.Length != 0
             || parsed.Fragment.Length != 0
             || parsed.Port == 0
-            || (IPAddress.TryParse(parsed.Host.Trim('[', ']'), out IPAddress? address)
-                && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
+            || (IPAddress.TryParse(parsed.Host, out IPAddress? address) && address.Equals(IPAddress.Any)))
         {
             return false;
         }
@@ -38,24 +37,10 @@ internal static class WorkerHttpProxyEndpointResolver
 
     private static bool TryGetExplicitPort(string authority)
     {
-        int separator;
-        if (authority[0] == '[')
+        int separator = authority.LastIndexOf(':');
+        if (separator <= 0 || authority.IndexOf(':') != separator)
         {
-            int closingBracket = authority.IndexOf(']');
-            if (closingBracket <= 0 || closingBracket + 1 >= authority.Length || authority[closingBracket + 1] != ':')
-            {
-                return false;
-            }
-
-            separator = closingBracket + 1;
-        }
-        else
-        {
-            separator = authority.LastIndexOf(':');
-            if (separator <= 0 || authority.IndexOf(':') != separator)
-            {
-                return false;
-            }
+            return false;
         }
 
         return int.TryParse(authority.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out int port)

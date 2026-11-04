@@ -128,7 +128,8 @@ runtime origin. No proxy origin is configured at startup. Assign and link reques
 endpoints, and both link to the same Host.
 
 `httpProxyEndpoint` is optional for non-HTTP workers. HTTP-capable workers require it in the accepted assignment
-before linking; supply a scheme-less mapped authority with an explicit nonzero port, such as `worker-proxy-1:28080`.
+before linking; supply a scheme-less mapped DNS name or IPv4 address with an explicit nonzero port, such as
+`worker-proxy-1:28080`. IPv6 literals, including scoped addresses, are not supported for this assignment field.
 There is no startup fallback: `WorkerProxy:HttpProxyEndpoint` and `WORKERPROXY__HTTPPROXYENDPOINT` are no longer consumed.
 An accepted assignment without the field leaves the effective origin unset, so HTTP capability initialization fails
 rather than advertising the worker's local address. The effective worker destination must have a different origin

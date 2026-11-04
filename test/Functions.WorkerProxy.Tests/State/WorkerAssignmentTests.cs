@@ -199,6 +199,12 @@ public class WorkerAssignmentTests
     [InlineData("worker-pod")]
     [InlineData("127.0.0.1")]
     [InlineData("[::1]")]
+    [InlineData("[::1]:28080")]
+    [InlineData("[2001:db8::1]:28080")]
+    [InlineData("[fe80::1%3]:28080")]
+    [InlineData("[fe80::1%253]:28080")]
+    [InlineData("[::ffff:127.0.0.1]:28080")]
+    [InlineData("fe80::1%3:28080")]
     [InlineData("https://worker-pod:28080")]
     [InlineData("worker-pod:28080/path")]
     [InlineData("worker-pod:0")]
@@ -211,7 +217,6 @@ public class WorkerAssignmentTests
     [Theory]
     [InlineData("worker-pod:28080")]
     [InlineData("127.0.0.1:28080")]
-    [InlineData("[::1]:28080")]
     public void Construction_AcceptsMappedHttpProxyAuthority(string endpoint)
     {
         WorkerAssignment assignment = Create(new Dictionary<string, string>(), endpoint);

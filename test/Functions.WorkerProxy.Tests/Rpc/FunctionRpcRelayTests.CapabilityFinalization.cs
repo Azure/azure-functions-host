@@ -92,7 +92,7 @@ public partial class FunctionRpcRelayTests
     [InlineData(100)]
     public async Task Relay_PreservesOpaqueHostConfigurationThroughInitialAndRepeatedCapabilityFinalization(int status)
     {
-        TestCapabilityFinalizer finalizer = new(capabilities =>
+        TestCapabilityFinalizer finalizer = new((capabilities, _) =>
         {
             capabilities["custom-capability"] = "finalized";
             return null;
