@@ -2,12 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -38,7 +35,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
-    private readonly HashSet<ScriptInvocationContext> _acceptedInvocations = [];
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
@@ -136,33 +132,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 return false;
             }
 
-            string functionId = context.FunctionMetadata.GetFunctionId();
-            if (!FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> inputBuffer))
+            if (!TryPostInvocation(context))
             {
-                throw new InvalidOperationException(
-                    $"Function '{context.FunctionMetadata.Name}' is not loaded by worker '{Id}'.");
-            }
-
-            _acceptedInvocations.Add(context);
-
-            if (!inputBuffer.Post(context))
-            {
-                _acceptedInvocations.Remove(context);
-                return false;
+                context.ResultSource.TrySetException(
+                    new InvalidOperationException($"Worker '{Id}' is no longer accepting invocations."));
             }
         }
-
-        _ = context.ResultSource.Task.ContinueWith(
-            static (_, state) =>
-            {
-                (RpcClientWorkerChannel channel, ScriptInvocationContext invocation) =
-                    ((RpcClientWorkerChannel, ScriptInvocationContext))state;
-                channel.ReleaseAcceptedInvocation(invocation);
-            },
-            (this, context),
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
 
         return true;
     }
@@ -185,8 +160,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
 
             _draining = true;
-            return Task.WhenAll(_acceptedInvocations.Select(static invocation => invocation.ResultSource.Task)).ContinueWith(
-                static _ => { },
+            // Scale-in needs every accepted result to become terminal, not necessarily successful.
+            return DrainInvocationsAsync().ContinueWith(
+                static completed =>
+                {
+                    _ = completed.Exception;
+                },
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
@@ -261,7 +240,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             ObjectDisposedException exception = new(GetType().FullName);
             // Metadata callers did not request cancellation; fail so host startup can retry.
             FailPendingMetadataRequest(exception);
-            FailAcceptedInvocations(exception);
+            lock (_invocationAdmissionLock)
+            {
+                _draining = true;
+            }
+
+            Shutdown(exception);
         }
 
         base.Dispose(disposing);
@@ -317,30 +301,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
 
         return startStreamTimeout;
-    }
-
-    private void FailAcceptedInvocations(Exception exception)
-    {
-        ScriptInvocationContext[] invocations;
-        lock (_invocationAdmissionLock)
-        {
-            _draining = true;
-            invocations = [.. _acceptedInvocations];
-            _acceptedInvocations.Clear();
-        }
-
-        foreach (ScriptInvocationContext invocation in invocations)
-        {
-            invocation.ResultSource.TrySetException(exception);
-        }
-    }
-
-    private void ReleaseAcceptedInvocation(ScriptInvocationContext invocation)
-    {
-        lock (_invocationAdmissionLock)
-        {
-            _acceptedInvocations.Remove(invocation);
-        }
     }
 
     private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)

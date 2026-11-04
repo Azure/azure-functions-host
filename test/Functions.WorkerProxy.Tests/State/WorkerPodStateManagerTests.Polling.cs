@@ -20,7 +20,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_StaleRevisionReturnsCurrentSnapshotWithoutWaiting()
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         manager.OnWorkerAttached(1);
         manager.OnWorkerStartStream(1, "worker");
         WorkerPodState state = manager.State;
@@ -42,7 +42,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_InvalidRevisionDoesNotRegisterWaiter(long lastKnownRevision)
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         WorkerPodState initial = manager.State;
 
         ArgumentOutOfRangeException exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
@@ -62,7 +62,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_EachPublishedTransitionNotifiesAllWaiters(string transition)
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         if (!string.Equals(transition, "attach", StringComparison.Ordinal))
         {
             manager.OnWorkerAttached(1);
@@ -115,7 +115,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_UnchangedStateReturnsNoChangeAtSixtySecondDeadline()
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         WorkerPodState initial = manager.State;
         Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(0);
 
@@ -140,7 +140,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_CancellationRemovesOnlyCanceledWaiter()
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         using CancellationTokenSource cancellation = new();
         Task<WorkerStatePollResult> canceledPoll = manager.WaitForChangeAsync(0, cancellation.Token);
         Task<WorkerStatePollResult> activePoll = manager.WaitForChangeAsync(0);
@@ -165,7 +165,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_TimeoutRemovesOnlyExpiredWaiter()
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         Task<WorkerStatePollResult> expiredPoll = manager.WaitForChangeAsync(0);
         Task<WorkerStatePollResult> activePoll = manager.WaitForChangeAsync(0);
 
@@ -186,7 +186,7 @@ public partial class WorkerPodStateManagerTests
     public async Task Poll_PreCanceledRequestDoesNotRegisterWaiter(bool staleRevision)
     {
         PollClock clock = new();
-        WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
         if (staleRevision)
         {
             manager.OnWorkerAttached(1);
@@ -229,7 +229,7 @@ public partial class WorkerPodStateManagerTests
         using CancellationTokenSource timeout = new(TestTimeout);
         for (int iteration = 0; iteration < 32; iteration++)
         {
-            WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+            WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
             TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
             Task<WorkerStatePollResult> poll = Task.Run(async () =>
             {
@@ -256,7 +256,7 @@ public partial class WorkerPodStateManagerTests
         using CancellationTokenSource timeout = new(TestTimeout);
         for (int iteration = 0; iteration < 32; iteration++)
         {
-            WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+            WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
             using CancellationTokenSource cancellation = new();
             Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(0, cancellation.Token);
             TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -293,7 +293,7 @@ public partial class WorkerPodStateManagerTests
         for (int iteration = 0; iteration < 32; iteration++)
         {
             PollClock clock = new();
-            WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
+            WorkerPodStateManager manager = CreateManager(CreateOptions(), clock.Provider);
             Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(0);
             TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
             Task expire = Task.Run(async () =>
@@ -332,7 +332,7 @@ public partial class WorkerPodStateManagerTests
         timeProvider.Setup(provider => provider.CreateTimer(
             It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
             .Throws(new InvalidOperationException("Timer unavailable."));
-        WorkerPodStateManager manager = new(CreateOptions(), timeProvider.Object);
+        WorkerPodStateManager manager = CreateManager(CreateOptions(), timeProvider.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => manager.WaitForChangeAsync(0));
 

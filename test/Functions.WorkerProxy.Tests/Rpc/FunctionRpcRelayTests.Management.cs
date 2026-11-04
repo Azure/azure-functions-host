@@ -25,7 +25,7 @@ public partial class FunctionRpcRelayTests
     private const string InfraStatePath = "/admin/infra/instanceState";
     private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot","httpProxyEndpoint":"worker-pod:28080"}
         """;
 
     private const string RuntimeIdentityJson = """
@@ -58,8 +58,8 @@ public partial class FunctionRpcRelayTests
 
         int? expectedConcurrency = maxHttpConcurrency ??
             (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) ? 16 : null);
+        await using WorkerProxyWebApplicationFactory factory = new();
         const string proxyEndpoint = "http://worker-pod:28080/";
-        await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory(proxyEndpoint);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);

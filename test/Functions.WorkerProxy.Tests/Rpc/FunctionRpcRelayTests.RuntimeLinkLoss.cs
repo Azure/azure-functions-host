@@ -114,6 +114,7 @@ public partial class FunctionRpcRelayTests
             StartupMode = startupMode,
             FunctionAppName = "test-app",
             FunctionGroupName = "http",
+            HttpProxyEndpoint = "worker-pod.example:48801",
             IsAlwaysReady = false,
             Environment = [],
             FunctionAppDirectory = "/home/site/wwwroot"
@@ -124,13 +125,16 @@ public partial class FunctionRpcRelayTests
         }
 
         StreamingMessage initialized = await InitializeAndAssignWorkerAsync(
-            worker, runtime, management, assignment, timeout.Token);
+            worker, runtime, management, assignment,
+            WorkerHttpForwardingTests.GetAddress(destination).AbsoluteUri, timeout.Token);
+        Assert.Equal("http://worker-pod.example:48801/", initialized.WorkerInitResponse.Capabilities["HttpUri"]);
         Assert.Equal("http", initialized.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
         Assert.Equal(
             expectedConcurrency.ToString(CultureInfo.InvariantCulture),
             initialized.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability]);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
+        long sessionId = Assert.IsType<long>(manager.State.SessionId);
         DateTimeOffset startupTime = manager.State.StartupTime;
 
         using (HttpResponseMessage before = await http.GetAsync("/before-removal", timeout.Token))
@@ -150,6 +154,7 @@ public partial class FunctionRpcRelayTests
         Assert.Null(removedState.FunctionAppName);
         Assert.Null(removedState.FunctionGroupName);
         Assert.Null(removedState.MaxHttpConcurrency);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(sessionId).HttpProxyEndpoint);
         Assert.Equal(startupTime, removedState.StartupTime);
         Assert.False(manager.RequestRemoval());
         Assert.Same(removedState, manager.State);
@@ -188,6 +193,7 @@ public partial class FunctionRpcRelayTests
         RelayClient runtime,
         HttpClient management,
         WorkerAssignRequest assignment,
+        string httpUri,
         CancellationToken cancellationToken)
     {
         StreamingMessage start = CreateStartStream();
@@ -206,7 +212,7 @@ public partial class FunctionRpcRelayTests
         };
         await runtime.WriteAsync(request, cancellationToken);
         Assert.Equal(request, await worker.ReadAsync(cancellationToken));
-        await worker.WriteAsync(CreateInitResponse(request.RequestId, httpUri: null), cancellationToken);
+        await worker.WriteAsync(CreateInitResponse(request.RequestId, httpUri), cancellationToken);
         StreamingMessage initialized = await runtime.ReadAsync(cancellationToken);
         Assert.NotNull(initialized.WorkerInitResponse);
         return initialized;

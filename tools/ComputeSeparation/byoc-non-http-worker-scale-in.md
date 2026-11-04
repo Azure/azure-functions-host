@@ -55,8 +55,10 @@ sees them. Host then uses the existing registry and channel lifecycle:
 1. The registry calculates the excess matching count under its state lock.
 2. The selected channel closes invocation admission under the same gate used by dispatch.
 3. Dispatch using an older ready snapshot rechecks that gate and tries another channel.
-4. The selected channel waits for every invocation accepted before the gate closed. Channel disposal fails
-   accepted work that cannot reach the worker, so neither the invocation nor drain can hang in the input buffer.
+4. The selected channel drains the base `WorkerChannel` accepted-invocation tracking used by `TryPostInvocation`
+   and shutdown, including queued inputs and input conversion. The drain waits for all accepted results even if
+   an earlier result fails or is canceled. Channel disposal uses that same shutdown completion path for work that
+   cannot reach the worker, so neither the invocation nor drain can hang in the input buffer.
 5. After those invocations reach a terminal result, the registry uses the existing unlink path to close and
    dispose the channel.
 

@@ -71,6 +71,24 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Captures the pod state and effective HTTP origin for one worker session under the assignment lock.
+    /// </summary>
+    public (WorkerPodState State, string? HttpProxyEndpoint) GetWorkerCapabilitySnapshot(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            string? httpProxyEndpoint = _state.SessionId == sessionId
+                && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
+                    ? _assignment?.ResolvedHttpProxyEndpoint?.AbsoluteUri
+                    : null;
+
+            return (_state, httpProxyEndpoint);
+        }
+    }
+
+    /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
     /// </summary>
     /// <returns>A changed snapshot, or <see cref="WorkerStatePollResult.NoChange"/> on timeout.</returns>

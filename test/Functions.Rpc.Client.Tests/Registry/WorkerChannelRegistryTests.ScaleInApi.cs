@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -140,9 +141,11 @@ public sealed partial class WorkerChannelRegistryTests
 
         if (disconnectBeforeFunctionLoad)
         {
-            selected.Complete(new IOException("Worker disconnected before function load completed."));
-            await Assert.ThrowsAsync<ObjectDisposedException>(
+            IOException failure = new("Worker disconnected before function load completed.");
+            selected.Complete(failure);
+            IOException actual = await Assert.ThrowsAsync<IOException>(
                 () => committed.ResultSource.Task.WaitAsync(TestTimeout));
+            Assert.Same(failure, actual);
         }
         else
         {
@@ -166,6 +169,130 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PostScaleIn_SharedTrackingWaitsForAllAcceptedWorkAfterFailureOrCancellation(bool cancelFirst)
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        ChannelControl selected = CreateClassifiedWorker("selected");
+        harness.Enqueue(selected);
+        await LinkAsync(registry, selected.Id);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        await WaitUntilAsync(() => selected.Channel.IsReadyForInvocations);
+        using CancellationTokenSource cancellation = new();
+        ScriptInvocationContext first = CreateScaleInInvocation(function);
+        first.CancellationToken = cancellation.Token;
+        ScriptInvocationContext remaining = CreateScaleInInvocation(function);
+        Assert.True(selected.Channel.TryDispatchInvocation(first));
+        Assert.True(selected.Channel.TryPostInvocation(remaining));
+        Task sharedDrain = selected.Channel.DrainInvocationsAsync();
+
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
+        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
+        if (cancelFirst)
+        {
+            cancellation.Cancel();
+        }
+
+        await selected.SendFunctionLoadResponseAsync(function.GetFunctionId());
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        if (cancelFirst)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => first.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            await selected.Channel.InvokeResponse(new()
+            {
+                InvocationId = first.ExecutionContext.InvocationId.ToString(),
+                Result = new()
+                {
+                    Status = StatusResult.Types.Status.Failure,
+                    Exception = new() { Message = "Invocation failed." },
+                },
+            });
+            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
+                () => first.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+
+        Assert.False(sharedDrain.IsCompleted);
+        Assert.False(remaining.ResultSource.Task.IsCompleted);
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+        Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
+
+        await selected.Channel.InvokeResponse(new()
+        {
+            InvocationId = remaining.ExecutionContext.InvocationId.ToString(),
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        });
+        Assert.NotNull(await remaining.ResultSource.Task.WaitAsync(TestTimeout));
+        if (cancelFirst)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sharedDrain.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
+                () => sharedDrain.WaitAsync(TestTimeout));
+        }
+
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PostScaleIn_DisposalUsesSharedShutdownCompletionAndTelemetry(bool functionLoaded)
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        ChannelControl selected = CreateClassifiedWorker("selected");
+        harness.Enqueue(selected);
+        await LinkAsync(registry, selected.Id);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        await WaitUntilAsync(() => selected.Channel.IsReadyForInvocations);
+        if (functionLoaded)
+        {
+            await selected.SendFunctionLoadResponseAsync(function.GetFunctionId());
+        }
+
+        using Activity activity = new Activity("ScaleInInvocation").Start();
+        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
+        Assert.True(selected.Channel.TryDispatchInvocation(invocation));
+        if (functionLoaded)
+        {
+            await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        }
+
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
+        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+
+        await selected.Channel.DisposeAsync();
+        ObjectDisposedException failure = await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        await selected.Channel.DisposeAsync();
+
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.Equal(failure.Message, activity.StatusDescription);
+        Assert.Single(activity.Events);
+        Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
+        Assert.False(selected.Channel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
+        Assert.Equal(1, selected.DisposeCount);
     }
 
     [Fact]

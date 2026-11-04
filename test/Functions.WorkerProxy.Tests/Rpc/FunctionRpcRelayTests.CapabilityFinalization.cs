@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -99,7 +100,7 @@ public partial class FunctionRpcRelayTests
     [InlineData(100)]
     public async Task Relay_PreservesOpaqueHostConfigurationThroughInitialAndRepeatedCapabilityFinalization(int status)
     {
-        TestCapabilityFinalizer finalizer = new(capabilities =>
+        TestCapabilityFinalizer finalizer = new((capabilities, _) =>
         {
             capabilities["custom-capability"] = "finalized";
             return null;
@@ -145,7 +146,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_UsesInjectedFinalizerOnceIncludingEmptyCapabilities(bool rewrite)
     {
         Uri? destination = rewrite ? new("http://worker:1234/") : null;
-        TestCapabilityFinalizer finalizer = new(capabilities =>
+        TestCapabilityFinalizer finalizer = new((capabilities, _) =>
         {
             if (rewrite)
             {
@@ -196,7 +197,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_FinalizerFailureTerminatesAssignedWorkerWithoutForwardingResponse()
     {
         InvalidOperationException failure = new("Injected finalization failure.");
-        TestCapabilityFinalizer finalizer = new(capabilities =>
+        TestCapabilityFinalizer finalizer = new((capabilities, _) =>
         {
             capabilities["partial"] = "must-not-be-forwarded";
             throw failure;
@@ -235,7 +236,7 @@ public partial class FunctionRpcRelayTests
         using ManualResetEventSlim release = new(initialState: false);
         TaskCompletionSource<bool> entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> returned = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TestCapabilityFinalizer finalizer = new(capabilities =>
+        TestCapabilityFinalizer finalizer = new((capabilities, _) =>
         {
             entered.TrySetResult(true);
             release.Wait();
@@ -273,6 +274,51 @@ public partial class FunctionRpcRelayTests
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
         Assert.Equal(4, manager.State.Revision);
+    }
+
+    [Fact]
+    public async Task Relay_AssignmentDuringCapabilityFinalization_UsesOneConsistentSnapshot()
+    {
+        using ManualResetEventSlim release = new(initialState: false);
+        TaskCompletionSource<string?> entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TestCapabilityFinalizer finalizer = new((capabilities, httpProxyEndpoint) =>
+        {
+            entered.TrySetResult(httpProxyEndpoint);
+            release.Wait();
+            if (httpProxyEndpoint is not null && capabilities.ContainsKey("HttpUri"))
+            {
+                capabilities["HttpUri"] = httpProxyEndpoint;
+            }
+
+            return null;
+        });
+        await using WorkerProxyWebApplicationFactory factory = new(
+            configureServices: services => services.Replace(ServiceDescriptor.Singleton<IWorkerCapabilityFinalizer>(finalizer)));
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+
+        try
+        {
+            await worker.WriteAsync(CreateInitResponse("init", null), timeout.Token);
+            Assert.Null(await entered.Task.WaitAsync(timeout.Token));
+
+            Assert.Equal(WorkerAssignmentResult.Created,
+                manager.Assign(CreateWorkerAssignment("assigned-group", 10, "assigned.example:28080")));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        StreamingMessage forwarded = await runtime.ReadAsync(timeout.Token);
+        Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
+        Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(FunctionGroupNameCapability));
+        Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(MaxHttpConcurrencyCapability));
+        Assert.Equal("http://assigned.example:28080/",
+            factory.Services.GetRequiredService<WorkerPodStateManager>().GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
     [Theory]
@@ -380,16 +426,17 @@ public partial class FunctionRpcRelayTests
         return assignment;
     }
 
-    private sealed class TestCapabilityFinalizer(Func<IDictionary<string, string>, Uri?> finalize) : IWorkerCapabilityFinalizer
+    private sealed class TestCapabilityFinalizer(
+        Func<IDictionary<string, string>, string?, Uri?> finalize) : IWorkerCapabilityFinalizer
     {
         private int _callCount;
 
         public int CallCount => Volatile.Read(ref _callCount);
 
-        public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities)
+        public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, string? httpProxyEndpoint)
         {
             Interlocked.Increment(ref _callCount);
-            return finalize(capabilities);
+            return finalize(capabilities, httpProxyEndpoint);
         }
     }
 }
