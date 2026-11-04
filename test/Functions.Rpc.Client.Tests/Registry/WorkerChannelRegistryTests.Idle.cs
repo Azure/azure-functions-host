@@ -231,12 +231,17 @@ public sealed partial class WorkerChannelRegistryTests
                 ["MaxHttpConcurrency"] = "16",
             },
         };
+        ChannelControl other = CreateIdleWorker("other");
         ChannelControl replacement = CreateIdleWorker("replacement", alwaysReady: "True");
         harness.Enqueue(worker);
+        harness.Enqueue(other);
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("Function");
         await ReadyIdleWorkerAsync(registry, worker, function);
+        await LinkAsync(registry, other.Id);
+        await other.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        CompleteFunctionLoad(other, function);
         await LinkAsync(registry, replacement.Id);
         await replacement.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         CompleteFunctionLoad(replacement, function);
@@ -246,9 +251,12 @@ public sealed partial class WorkerChannelRegistryTests
         await worker.DisposeStarted.WaitAsync(TestTimeout);
         try
         {
+            await other.DisposeStarted.WaitAsync(TestTimeout);
+            Assert.Equal(1, other.DisposeCount);
+            Assert.False(other.Channel.IsReadyForInvocations);
             Mock<IWorkerChannelRegistry> staleRegistry = new();
             staleRegistry.SetupSequence(value => value.GetReadyChannelsAsync())
-                .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>([worker.Channel]))
+                .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>([worker.Channel, other.Channel]))
                 .Returns(() => registry.GetReadyChannelsAsync());
             using RpcClientFunctionInvocationDispatcher dispatcher = new(staleRegistry.Object, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
             await dispatcher.InitializeAsync([function]);

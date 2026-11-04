@@ -364,8 +364,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             slots = _disposed ? [] : [.. _slots.Where(entry => entry.Value.Channel is { IsReadyForInvocations: true })];
         }
 
-        foreach ((string workerId, WorkerSlot slot) in slots)
+        await Task.WhenAll(slots.Select(async entry =>
         {
+            (string workerId, WorkerSlot slot) = entry;
             cancellationToken.ThrowIfCancellationRequested();
             using SemaphoreLock gate = await slot.Gate.LockAsync(cancellationToken);
             RpcClientWorkerChannel removed;
@@ -378,7 +379,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                     slot.SetupException is not null ||
                     !channel.TryClaimIdleRetirement(threshold, out idleDuration))
                 {
-                    continue;
+                    return;
                 }
 
                 removed = DetachChannelLocked(slot, channel);
@@ -411,7 +412,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             {
                 RemoveEmptySlot(workerId, slot);
             }
-        }
+        }));
     }
 
     /// <inheritdoc />
