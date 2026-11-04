@@ -111,7 +111,32 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         if (!accepted)
         {
             invocationContext.ResultSource.TrySetException(
-                new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));
+                new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations or is unavailable for attribution."));
+
+            return Task.CompletedTask;
+        }
+
+        if (_invocationTracker is not null)
+        {
+            // A cancellation request (or an early Host completion on timeout) does not stop Worker execution.
+            // The channel result also covers failures and invocations cancelled before they were sent.
+            _ = invocationContext.ResultSource.Task.ContinueWith(
+                result =>
+                {
+                    try
+                    {
+                        _invocationTracker.InvocationCompleted(invocationId, result.IsCompletedSuccessfully);
+                    }
+                    catch (Exception exception) when (exception is not OutOfMemoryException
+                        and not StackOverflowException
+                        and not AccessViolationException
+                        and not System.Runtime.InteropServices.SEHException
+                        and not ThreadAbortException)
+                    {
+                        Log.InvocationAccountingFailed(_logger, exception, invocationId, channel.Id);
+                    }
+                },
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         return Task.CompletedTask;
@@ -285,5 +310,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
         [LoggerMessage(2, LogLevel.Debug, "Draining client-backed worker invocations timed out during dispatcher shutdown.")]
         public static partial void DrainTimedOut(ILogger logger);
+
+        [LoggerMessage(3, LogLevel.Error, "Failed to finalize billing accounting for invocation {InvocationId} on worker {WorkerId}.")]
+        public static partial void InvocationAccountingFailed(ILogger logger, Exception exception, string invocationId, string workerId);
     }
 }

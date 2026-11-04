@@ -120,6 +120,25 @@ public class ClientWorkerCompositionTests
     }
 
     [Fact]
+    public void ConfigureWebHostServices_UsesSameComputeSeparatedPublisherForDispatchAndPublication()
+    {
+        var environment = new Mock<IEnvironment>();
+        environment.Setup(value => value.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku))
+            .Returns(ScriptConstants.FlexConsumptionSku);
+        using IHost rootHost = CreateRootHost(out _, configureServices: services =>
+        {
+            services.AddSingleton(environment.Object);
+            services.Configure<FlexConsumptionMetricsPublisherOptions>(options =>
+                options.InitialPublishDelayMS = (int)TimeSpan.FromDays(1).TotalMilliseconds);
+        });
+
+        var publisher = Assert.IsType<FlexConsumptionPerWorkerMetricsPublisher>(rootHost.Services.GetRequiredService<IMetricsPublisher>());
+
+        Assert.Same(publisher, rootHost.Services.GetRequiredService<IWorkerInvocationTracker>());
+        Assert.Same(publisher, rootHost.Services.GetRequiredService<IMetricsPublisher>());
+    }
+
+    [Fact]
     public void ConfigureWebHostServices_RegistersWorkerLinkControllerApplicationPart()
     {
         var services = new ServiceCollection();
@@ -367,7 +386,8 @@ public class ClientWorkerCompositionTests
         Assert.True(string.Equals("ComputeFilesToPublish", publishFilter.Attribute("AfterTargets")?.Value, StringComparison.Ordinal));
     }
 
-    private static IHost CreateRootHost(out IServiceCollection services, IConfiguration? rootConfiguration = null)
+    private static IHost CreateRootHost(out IServiceCollection services, IConfiguration? rootConfiguration = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         IServiceCollection capturedServices = null!;
         IConfiguration configuration = rootConfiguration ?? new ConfigurationBuilder().Build();
@@ -385,6 +405,7 @@ public class ClientWorkerCompositionTests
                         options.ScriptPath = Directory.GetCurrentDirectory();
                         options.SecretsPath = Path.GetTempPath();
                     });
+                    configureServices?.Invoke(rootServices);
                 });
                 webBuilder.Configure(_ =>
                 {

@@ -28,8 +28,15 @@ public interface IWorkerInvocationTracker
     /// </summary>
     /// <param name="invocationId">The invocation identifier.</param>
     /// <param name="workerId">The selected worker pod name.</param>
-    /// <param name="cancellationToken">The invocation cancellation or timeout token.</param>
+    /// <param name="cancellationToken">Checked before dispatch only; cancellation is not a completion signal.</param>
     /// <param name="dispatch">Posts the invocation to the selected worker's input buffer.</param>
     /// <returns>Whether the live worker accepted the invocation.</returns>
     bool TryDispatchInvocation(string invocationId, string workerId, CancellationToken cancellationToken, Func<bool> dispatch);
+
+    /// <summary>
+    /// Finalizes accounting when the channel's invocation result completes, not when cancellation is requested.
+    /// </summary>
+    /// <param name="invocationId">The invocation identifier.</param>
+    /// <param name="success">Whether the channel returned a successful result.</param>
+    void InvocationCompleted(string invocationId, bool success);
 }

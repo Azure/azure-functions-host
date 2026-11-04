@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -173,6 +174,54 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Assert.True(worker.Channel.IsReadyForInvocations);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_AccountingFailureIsLoggedWithoutChangingInvocationResult(bool success)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        var accountingError = new InvalidOperationException("Accounting failed.");
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
+            It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
+            .Returns((string invocationId, string workerId, CancellationToken token, Func<bool> dispatch) => dispatch());
+        tracker.Setup(metrics => metrics.InvocationCompleted(It.IsAny<string>(), success)).Throws(accountingError);
+        Mock<ILogger<RpcClientFunctionInvocationDispatcher>> logger = new();
+        logger.Setup(value => value.IsEnabled(LogLevel.Error)).Returns(true);
+        TaskCompletionSource<(Exception Exception, string Message)> logged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        logger.Setup(value => value.Log(LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(new InvocationAction(call =>
+                logged.TrySetResult(((Exception)call.Arguments[3], call.Arguments[2].ToString()))));
+        using RpcClientFunctionInvocationDispatcher dispatcher = new(_registry.Object, logger.Object, tracker.Object);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext invocation = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(invocation);
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId, succeeded: success);
+
+        if (success)
+        {
+            Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            Exception error = await Assert.ThrowsAnyAsync<Exception>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+            Assert.Contains("invocation failed", error.ToString(), StringComparison.Ordinal);
+            Assert.NotSame(accountingError, error);
+        }
+
+        var entry = await logged.Task.WaitAsync(TestTimeout);
+        Assert.Same(accountingError, entry.Exception);
+        Assert.Contains(request.InvocationRequest.InvocationId, entry.Message, StringComparison.Ordinal);
+        Assert.Contains("worker", entry.Message, StringComparison.Ordinal);
+        tracker.Verify(metrics => metrics.InvocationCompleted(request.InvocationRequest.InvocationId, success), Times.Once);
+    }
+
     [Fact]
     public async Task InvokeAsync_ReadyChannelPropagatesInvocationCancellation()
     {
@@ -216,15 +265,16 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     {
         await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("worker-a");
         await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("worker-b");
-        _channels.Add(first.Channel);
-        _channels.Add(second.Channel);
         Mock<IWorkerInvocationTracker> tracker = new();
         tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
             .Returns((string invocationId, string workerId, CancellationToken token, Func<bool> dispatch) => dispatch());
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
         FunctionMetadata function = CreateFunction();
-        await InitializeDispatcherAsync(dispatcher, function, first, second);
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(second, function);
+        PublishReady(first.Channel, second.Channel);
+        await dispatcher.InitializeAsync([function]);
         ScriptInvocationContext firstInvocation = CreateInvocation(function);
         ScriptInvocationContext secondInvocation = CreateInvocation(function);
 
@@ -244,10 +294,83 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task InvokeAsync_CancellationDoesNotCompleteAccountingBeforeWorkerResponse(bool success)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker", handlesInvocationCancel: true);
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
+            It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
+            .Returns((string invocationId, string workerId, CancellationToken token, Func<bool> dispatch) => dispatch());
+        TaskCompletionSource<bool> accounted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        tracker.Setup(metrics => metrics.InvocationCompleted(It.IsAny<string>(), It.IsAny<bool>()))
+            .Callback((string invocationId, bool succeeded) => accounted.TrySetResult(succeeded));
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
+        await dispatcher.InitializeAsync([function]);
+        using CancellationTokenSource cancellation = new();
+        ScriptInvocationContext invocation = CreateInvocation(function, cancellation.Token);
+
+        await dispatcher.InvokeAsync(invocation);
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        cancellation.Cancel();
+        StreamingMessage cancel = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationCancel);
+
+        Assert.Equal(request.InvocationRequest.InvocationId, cancel.InvocationCancel.InvocationId);
+        Assert.False(invocation.ResultSource.Task.IsCompleted);
+        tracker.Verify(metrics => metrics.InvocationCompleted(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId, succeeded: success);
+        Assert.Equal(success, await accounted.Task.WaitAsync(TestTimeout));
+        if (success)
+        {
+            await invocation.ResultSource.Task.WaitAsync(TestTimeout);
+        }
+        else
+        {
+            await Assert.ThrowsAnyAsync<Exception>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+
+        tracker.Verify(metrics => metrics.InvocationCompleted(request.InvocationRequest.InvocationId, success), Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CancelledBeforeSendingFinalizesAccountingFromChannelResult()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using CancellationTokenSource cancellation = new();
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
+            It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
+            .Returns((string invocationId, string workerId, CancellationToken token, Func<bool> dispatch) =>
+            {
+                cancellation.Cancel();
+
+                return dispatch();
+            });
+        TaskCompletionSource<bool> accounted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        tracker.Setup(metrics => metrics.InvocationCompleted(It.IsAny<string>(), It.IsAny<bool>()))
+            .Callback((string invocationId, bool success) => accounted.TrySetResult(success));
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext invocation = CreateInvocation(function, cancellation.Token);
+
+        await dispatcher.InvokeAsync(invocation);
+
+        Assert.False(await accounted.Task.WaitAsync(TestTimeout));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        tracker.Verify(metrics => metrics.InvocationCompleted(invocation.ExecutionContext.InvocationId.ToString(), false), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task InvokeAsync_RejectsMissingAttributionOrDeclinedBuffer(bool declineBuffer)
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
         Mock<IWorkerInvocationTracker> tracker = new();
         tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
             It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()))
@@ -255,16 +378,22 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
                 declineBuffer && dispatch());
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
         FunctionMetadata function = CreateFunction();
-        await InitializeDispatcherAsync(dispatcher, function, worker);
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        await dispatcher.InitializeAsync([function]);
         if (declineBuffer)
         {
             worker.Channel.FunctionInputBuffers[function.GetFunctionId()].Complete();
         }
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.InvokeAsync(CreateInvocation(function)));
+        ScriptInvocationContext invocation = CreateInvocation(function);
+        await dispatcher.InvokeAsync(invocation);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
 
         tracker.Verify(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), "worker",
             It.IsAny<CancellationToken>(), It.IsAny<Func<bool>>()), Times.Once);
+        tracker.Verify(metrics => metrics.InvocationCompleted(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+        await worker.Channel.DrainInvocationsAsync().WaitAsync(TestTimeout);
     }
 
     [Fact]

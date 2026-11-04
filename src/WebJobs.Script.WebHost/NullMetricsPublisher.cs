@@ -41,6 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <inheritdoc />
+        public void InvocationCompleted(string invocationId, bool success)
+        {
+        }
+
+        /// <inheritdoc />
         public bool TryDispatchInvocation(string invocationId, string workerId, CancellationToken cancellationToken, Func<bool> dispatch)
         {
             ArgumentNullException.ThrowIfNull(dispatch);

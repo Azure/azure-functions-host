@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         public string MetricsFilePath { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether billing is attributed to linked workers instead of the host.
+        /// Gets or sets a value indicating whether startup selects the Worker-attributed publisher instead of the host-wide publisher.
         /// </summary>
         public bool UseWorkerAttribution { get; set; }
 

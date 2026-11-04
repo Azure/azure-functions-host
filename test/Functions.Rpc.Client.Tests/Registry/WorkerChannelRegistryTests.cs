@@ -2259,6 +2259,7 @@ public sealed partial class WorkerChannelRegistryTests
         internal ConcurrentQueue<(LogLevel Level, Dictionary<string, object> Fields, Exception Exception, string Message)> LinkFailures { get; } = [];
 
         internal Action OnLinkFailure { get; set; }
+
         internal Mock<IWorkerInvocationTracker> InvocationTracker { get; } = new();
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();

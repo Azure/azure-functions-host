@@ -3,31 +3,89 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 
-public sealed partial class FlexConsumptionMetricsPublisher
+/// <summary>
+/// Publishes independently attributed billing metrics for compute-separated Workers.
+/// </summary>
+public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMetricsPublisherBase, IWorkerInvocationTracker
 {
     private readonly Dictionary<string, WorkerActivity> _workers = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, WorkerInvocation> _workerInvocations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, WorkerActivity> _workerInvocations = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FlexConsumptionPerWorkerMetricsPublisher"/> class.
+    /// Initializes a publisher that attributes billing to selected Worker channels.
+    /// </summary>
+    public FlexConsumptionPerWorkerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions,
+        IOptions<FlexConsumptionMetricsPublisherOptions> options, ILogger<FlexConsumptionPerWorkerMetricsPublisher> logger,
+        IFileSystem fileSystem, IHostMetricsProvider metricsProvider, TimeProvider timeProvider = null)
+        : base(environment, standbyOptions, options, logger, fileSystem, metricsProvider, timeProvider)
+    {
+        Initialize();
+    }
+
+    private protected override void OnStarted(DateTime now)
+    {
+        foreach (WorkerActivity worker in _workers.Values)
+        {
+            worker.IntervalStart = now;
+            worker.LastPublishTime = now;
+        }
+    }
+
+    /// <inheritdoc />
+    public override void Dispose()
+    {
+        base.Dispose();
+        lock (SyncLock)
+        {
+            _workerInvocations.Clear();
+            _workers.Clear();
+        }
+    }
+
+    internal override void OnFunctionStarted(string functionName, string invocationId, DateTime now)
+    {
+        // Host start precedes channel selection and is not Worker execution.
+    }
+
+    internal override void OnFunctionCompleted(string functionName, string invocationId, DateTime now, bool success = false)
+    {
+        // Host completion may precede actual Worker termination after a timeout.
+        // The channel result, not this event or a cancellation request, ends Worker billing.
+    }
+
+    /// <inheritdoc />
+    public void InvocationCompleted(string invocationId, bool success)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(invocationId);
+        lock (SyncLock)
+        {
+            if (!CompleteWorkerInvocation(invocationId, Clock.GetUtcNow().UtcDateTime, aborted: false, success))
+            {
+                Logger.LogWarning("No active Worker attribution for completed invocation {InvocationId}. It may have already completed or lost its Worker. No Runtime billing fallback will be emitted.", invocationId);
+            }
+        }
+    }
 
     /// <inheritdoc />
     public void WorkerLinked(string workerId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
-        if (!_options.UseWorkerAttribution)
+        lock (SyncLock)
         {
-            return;
-        }
-
-        lock (_lock)
-        {
-            _workers.TryAdd(workerId, new WorkerActivity(_timeProvider.GetUtcNow().UtcDateTime));
+            _workers.TryAdd(workerId, new WorkerActivity(Clock.GetUtcNow().UtcDateTime));
         }
     }
 
@@ -35,17 +93,17 @@ public sealed partial class FlexConsumptionMetricsPublisher
     public void WorkerUnlinked(string workerId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
-        lock (_lock)
+        lock (SyncLock)
         {
             if (!_workers.TryGetValue(workerId, out WorkerActivity worker) || worker.UnlinkedAt is not null)
             {
                 return;
             }
 
-            DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
+            DateTime now = Clock.GetUtcNow().UtcDateTime;
             worker.UnlinkedAt = now;
             foreach (string invocationId in _workerInvocations
-                .Where(pair => ReferenceEquals(pair.Value.Worker, worker)).Select(pair => pair.Key).ToArray())
+                .Where(pair => ReferenceEquals(pair.Value, worker)).Select(pair => pair.Key).ToArray())
             {
                 CompleteWorkerInvocation(invocationId, now, aborted: false);
             }
@@ -58,21 +116,20 @@ public sealed partial class FlexConsumptionMetricsPublisher
         ArgumentException.ThrowIfNullOrWhiteSpace(invocationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         ArgumentNullException.ThrowIfNull(dispatch);
-        lock (_lock)
+        lock (SyncLock)
         {
             if (!IsStarted || cancellationToken.IsCancellationRequested ||
                 !_workers.TryGetValue(workerId, out WorkerActivity worker) || worker.UnlinkedAt is not null ||
                 _workerInvocations.ContainsKey(invocationId))
             {
-                _logger.LogError("Cannot attribute invocation {InvocationId} to live Worker {WorkerId}.", invocationId, workerId);
+                Logger.LogError("Cannot attribute invocation {InvocationId} to live Worker {WorkerId}.", invocationId, workerId);
                 return false;
             }
 
-            WorkerInvocation invocation = new(worker);
-            _workerInvocations.Add(invocationId, invocation);
+            _workerInvocations.Add(invocationId, worker);
             if (worker.ActiveInvocationCount++ == 0)
             {
-                worker.ActivityIntervalStart = _timeProvider.GetUtcNow().UtcDateTime;
+                worker.ActivityIntervalStart = Clock.GetUtcNow().UtcDateTime;
             }
 
             worker.StartedInvocationCount++;
@@ -80,51 +137,27 @@ public sealed partial class FlexConsumptionMetricsPublisher
             {
                 if (!dispatch())
                 {
-                    CompleteWorkerInvocation(invocationId, _timeProvider.GetUtcNow().UtcDateTime, aborted: true);
+                    CompleteWorkerInvocation(invocationId, Clock.GetUtcNow().UtcDateTime, aborted: true);
                     return false;
                 }
             }
             catch
             {
-                CompleteWorkerInvocation(invocationId, _timeProvider.GetUtcNow().UtcDateTime, aborted: true);
+                CompleteWorkerInvocation(invocationId, Clock.GetUtcNow().UtcDateTime, aborted: true);
                 throw;
             }
-
-            if (!_workerInvocations.ContainsKey(invocationId))
-            {
-                return true;
-            }
-
-            CancellationTokenRegistration registration = cancellationToken.Register(() =>
-            {
-                lock (_lock)
-                {
-                    CompleteWorkerInvocation(invocationId, _timeProvider.GetUtcNow().UtcDateTime, aborted: false);
-                }
-            });
-
-            // Register can synchronously invoke the callback for a cancellation racing dispatch.
-            if (!_workerInvocations.ContainsKey(invocationId))
-            {
-                registration.Unregister();
-                return true;
-            }
-
-            invocation.CancellationRegistration = registration;
 
             return true;
         }
     }
 
-    private bool CompleteWorkerInvocation(string invocationId, DateTime now, bool aborted)
+    private bool CompleteWorkerInvocation(string invocationId, DateTime now, bool aborted, bool success = false)
     {
-        if (!_workerInvocations.Remove(invocationId, out WorkerInvocation invocation))
+        if (!_workerInvocations.Remove(invocationId, out WorkerActivity worker))
         {
             return false;
         }
 
-        invocation.CancellationRegistration.Unregister();
-        WorkerActivity worker = invocation.Worker;
         worker.ActiveInvocationCount--;
         if (aborted)
         {
@@ -138,6 +171,10 @@ public sealed partial class FlexConsumptionMetricsPublisher
             }
 
             worker.ExecutionCount++;
+            if (success)
+            {
+                worker.ExecutionSuccessCount++;
+            }
         }
 
         return true;
@@ -150,16 +187,22 @@ public sealed partial class FlexConsumptionMetricsPublisher
         worker.ActivityIntervalHighWatermark = highWatermark;
     }
 
-    private async Task PublishWorkerMetricsAsync(DateTime now)
+    private protected override async Task PublishMetricsAsync(DateTime now, ValueStopwatch stopwatch)
     {
-        _metricsFileManager.DeleteExpiredWorkerMetrics(now, _options.WorkerMetricsFileRetentionPeriod);
+        FileManager.DeleteExpiredWorkerMetrics(now, PublisherOptions.WorkerMetricsFileRetentionPeriod);
 
         List<Metrics> snapshots = [];
-        lock (_lock)
+        lock (SyncLock)
         {
             foreach ((string workerId, WorkerActivity worker) in _workers.ToArray())
             {
                 DateTime intervalEnd = worker.UnlinkedAt ?? now;
+                if (intervalEnd < worker.IntervalStart)
+                {
+                    // This Worker linked after the publication timestamp was captured.
+                    continue;
+                }
+
                 if (worker.ActiveInvocationCount > 0)
                 {
                     MeterWorkerActivity(worker, intervalEnd);
@@ -167,21 +210,22 @@ public sealed partial class FlexConsumptionMetricsPublisher
 
                 bool hasActivity = worker.ExecutionCount > 0 || worker.ExecutionTimeMS > 0 ||
                     worker.StartedInvocationCount > 0 || worker.ActiveInvocationCount > 0;
-                bool keepAlive = (now - worker.LastPublishTime).TotalMilliseconds >= _options.KeepAliveIntervalMS;
+                bool keepAlive = (now - worker.LastPublishTime).TotalMilliseconds >= PublisherOptions.KeepAliveIntervalMS;
                 if (hasActivity || keepAlive || IsAlwaysReady)
                 {
                     snapshots.Add(new Metrics
                     {
                         InstanceId = workerId,
-                        FunctionGroup = _metricsProvider.FunctionGroup,
+                        FunctionGroup = MetricsProvider.FunctionGroup,
                         ExecutionCount = worker.ExecutionCount,
+                        ExecutionSuccessCount = worker.ExecutionSuccessCount,
                         ExecutionTimeMS = worker.ExecutionTimeMS,
                         StartedInvocationCount = worker.StartedInvocationCount,
                         ActiveInvocationCount = worker.ActiveInvocationCount,
                         TotalTimeMS = Math.Max(0, (long)(intervalEnd - worker.IntervalStart).TotalMilliseconds),
                         IsAlwaysReady = IsAlwaysReady
                     });
-                    worker.ExecutionCount = worker.ExecutionTimeMS = worker.StartedInvocationCount = 0;
+                    worker.ExecutionCount = worker.ExecutionSuccessCount = worker.ExecutionTimeMS = worker.StartedInvocationCount = 0;
                     worker.LastPublishTime = now;
                 }
 
@@ -193,16 +237,16 @@ public sealed partial class FlexConsumptionMetricsPublisher
             }
 
             // Host meter counters identify the Runtime. Never replicate them into Worker billing records.
-            var hostMetrics = _metricsProvider.GetHostMetricsOrNull();
+            var hostMetrics = MetricsProvider.GetHostMetricsOrNull();
             if (hostMetrics is not null && hostMetrics.TryGetValue(HostMetrics.AppFailureCount, out long failures) && failures > 0)
             {
-                _logger.LogWarning("Not attributing {AppFailureCount} Runtime app failures to a Worker.", failures);
+                Logger.LogWarning("Not attributing {AppFailureCount} Runtime app failures to a Worker.", failures);
             }
         }
 
         foreach (Metrics metrics in snapshots)
         {
-            await _metricsFileManager.PublishMetricsAsync(metrics, metrics.InstanceId);
+            await FileManager.PublishMetricsAsync(metrics, metrics.InstanceId);
         }
     }
 
@@ -224,13 +268,8 @@ public sealed partial class FlexConsumptionMetricsPublisher
 
         public long ExecutionCount { get; set; }
 
+        public long ExecutionSuccessCount { get; set; }
+
         public long ExecutionTimeMS { get; set; }
-    }
-
-    private sealed class WorkerInvocation(WorkerActivity worker)
-    {
-        public WorkerActivity Worker { get; } = worker;
-
-        public CancellationTokenRegistration CancellationRegistration { get; set; }
     }
 }
