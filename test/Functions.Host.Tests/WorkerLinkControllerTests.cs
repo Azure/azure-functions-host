@@ -43,14 +43,17 @@ public class WorkerLinkControllerTests
     }
 
     [Theory]
-    [InlineData("http://100.64.1.12:50053")]
-    [InlineData("https://100.64.1.12:50053")]
-    public async Task LinkWorker_ValidRequest_AwaitsLinkAndReturnsCreated(string grpcEndpoint)
+    [InlineData("http://100.64.1.12:50053", "http://100.64.1.12:50053")]
+    [InlineData("https://100.64.1.12:50053", "https://100.64.1.12:50053")]
+    [InlineData("100.86.6.212:48800", "http://100.86.6.212:48800")]
+    [InlineData("0.0.0.0:1", "http://0.0.0.0:1")]
+    [InlineData("255.255.255.255:65535", "http://255.255.255.255:65535")]
+    public async Task LinkWorker_ValidRequest_AwaitsLinkAndReturnsCreated(string grpcEndpoint, string normalizedEndpoint)
     {
         using CancellationTokenSource cancellation = new();
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken registryToken = default;
-        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(grpcEndpoint), It.IsAny<CancellationToken>()))
+        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(normalizedEndpoint), It.IsAny<CancellationToken>()))
             .Callback<string, Uri, CancellationToken>((_, _, token) => registryToken = token)
             .Returns(completion.Task);
         WorkerLinkRequest request = ValidRequest();
@@ -410,6 +413,34 @@ public class WorkerLinkControllerTests
     [InlineData("http://100.64.1.12:50053/path")]
     [InlineData("http://100.64.1.12:50053?query=value")]
     [InlineData("http://100.64.1.12:50053#fragment")]
+    [InlineData("256.86.6.212:48800")]
+    [InlineData("-1.86.6.212:48800")]
+    [InlineData("100.86.6:48800")]
+    [InlineData("127.1:48800")]
+    [InlineData("2130706433:48800")]
+    [InlineData("0x7f.0.0.1:48800")]
+    [InlineData("0177.0.0.1:48800")]
+    [InlineData("100.86.6.212")]
+    [InlineData("100.86.6.212:")]
+    [InlineData("100.86.6.212:0")]
+    [InlineData("100.86.6.212:65536")]
+    [InlineData("100.86.6.212:99999999999999999999")]
+    [InlineData("100.86.6.212:+48800")]
+    [InlineData("100.86.6.212:0xBEA0")]
+    [InlineData("100.86.6.212:４８８００")]
+    [InlineData("worker.example:48800")]
+    [InlineData("[::1]:48800")]
+    [InlineData("::1:48800")]
+    [InlineData("user@100.86.6.212:48800")]
+    [InlineData("100.86.6.212:48800/")]
+    [InlineData("100.86.6.212:48800/path")]
+    [InlineData("100.86.6.212:48800?query=value")]
+    [InlineData("100.86.6.212:48800#fragment")]
+    [InlineData(" 100.86.6.212:48800")]
+    [InlineData("100.86.6.212:48800 ")]
+    [InlineData("100.86.6.212:48800\n")]
+    [InlineData("http://user:password@100.86.6.212:48800")]
+    [InlineData("https://100.86.6.212:48800/path")]
     public async Task LinkWorker_InvalidGrpcEndpoint_ReturnsBadRequest(string? grpcEndpoint)
     {
         WorkerLinkRequest request = ValidRequest();

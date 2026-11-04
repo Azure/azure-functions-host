@@ -12,7 +12,9 @@ public sealed class WorkerLinkRequest
 {
     /// <summary>
     /// Gets or sets the required HTTP or HTTPS authority of WorkerProxy's runtime-facing
-    /// gRPC listener. The endpoint must be reachable from this runtime.
+    /// gRPC listener, or a bare dotted-decimal IPv4 address and decimal port (1-65535).
+    /// Bare addresses must have four octets without leading zeros and are normalized to HTTP.
+    /// The endpoint must be reachable from this runtime.
     /// </summary>
     [JsonProperty("workerGrpcEndpoint")]
     public string? WorkerGrpcEndpoint { get; set; }

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Core;
@@ -49,6 +50,38 @@ public sealed class TokenServiceProxyIntegrationTests
     private const string LocalSecret = "worker-local-secret";
     private const string HostSecret = "host-only-secret";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(20);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LinkEndpoint_BareAndHttpReplay_ShareInitializedRegistryChannel(bool bareFirst)
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using Harness harness = await Harness.CreateAsync((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, harness.Registry);
+        Uri endpoint = harness.GrpcEndpoint;
+        string bare = endpoint.Authority;
+        string firstEndpoint = bareFirst ? bare : endpoint.AbsoluteUri;
+        string replayEndpoint = bareFirst ? endpoint.AbsoluteUri : bare;
+
+        Task<HttpResponseMessage> first = host.PutAsync(
+            JsonSerializer.Serialize(new { workerGrpcEndpoint = firstEndpoint }), timeout.Token, "customer-run-1");
+        await harness.RespondToWorkerHandshakeAsync(timeout.Token, async () =>
+        {
+            using HttpResponseMessage created = await first;
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var channel = Assert.Single(harness.Registry.GetInitializedChannels());
+
+            using HttpResponseMessage replay = await host.PutAsync(
+                JsonSerializer.Serialize(new { workerGrpcEndpoint = replayEndpoint }), timeout.Token, "customer-run-1");
+
+            Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+            Assert.Empty(await created.Content.ReadAsStringAsync(timeout.Token));
+            Assert.Empty(await replay.Content.ReadAsStringAsync(timeout.Token));
+            Assert.Same(channel, Assert.Single(harness.Registry.GetInitializedChannels()));
+        });
+    }
 
     [Fact]
     public async Task ManagedIdentityCredential_AcquiresTokenBeforeStartStream_ThenWorkerInitializesNormally()
@@ -566,6 +599,18 @@ public sealed class TokenServiceProxyIntegrationTests
 
         internal IWorkerChannelRegistry Registry { get; }
 
+        internal Uri GrpcEndpoint
+        {
+            get
+            {
+                UriBuilder endpoint = new(_proxy.Services.GetRequiredService<ProxyEndpoints>().GetRelayAddress(ProxySide.Runtime))
+                {
+                    Host = IPAddress.Loopback.ToString()
+                };
+                return endpoint.Uri;
+            }
+        }
+
         internal void DelayHostPreparation(Task preparation)
             => _environment.SetupGet(environment => environment.DelayCompletionTask).Returns(preparation);
 
@@ -591,11 +636,7 @@ public sealed class TokenServiceProxyIntegrationTests
 
         internal Task ConnectAsync(CancellationToken cancellationToken)
         {
-            UriBuilder endpoint = new(_proxy.Services.GetRequiredService<ProxyEndpoints>().GetRelayAddress(ProxySide.Runtime))
-            {
-                Host = IPAddress.Loopback.ToString()
-            };
-            _link = Registry.LinkAsync("customer-run-1", endpoint.Uri, cancellationToken);
+            _link = Registry.LinkAsync("customer-run-1", GrpcEndpoint, cancellationToken);
             return Task.CompletedTask;
         }
 
@@ -630,6 +671,16 @@ public sealed class TokenServiceProxyIntegrationTests
 
         internal async Task CompleteWorkerHandshakeAsync(CancellationToken cancellationToken)
         {
+            await RespondToWorkerHandshakeAsync(cancellationToken, async () =>
+            {
+                WorkerLinkResult initialized = await _link!.WaitAsync(cancellationToken);
+                Assert.Equal("customer-run-1", initialized.Channel.Id);
+                Assert.Single(Registry.GetInitializedChannels());
+            });
+        }
+
+        internal async Task RespondToWorkerHandshakeAsync(CancellationToken cancellationToken, Func<Task> verify)
+        {
             Uri address = _proxy.Services.GetRequiredService<ProxyEndpoints>().GetRelayAddress(ProxySide.Worker);
             using GrpcChannel channel = GrpcChannel.ForAddress(address);
             using var worker = new FunctionRpc.FunctionRpcClient(channel).EventStream(cancellationToken: cancellationToken);
@@ -640,9 +691,7 @@ public sealed class TokenServiceProxyIntegrationTests
             {
                 WorkerInitResponse = new() { Result = new() { Status = StatusResult.Types.Status.Success } }
             }, cancellationToken);
-            WorkerLinkResult initialized = await _link!.WaitAsync(cancellationToken);
-            Assert.Equal("customer-run-1", initialized.Channel.Id);
-            Assert.Single(Registry.GetInitializedChannels());
+            await verify();
         }
 
         public async ValueTask DisposeAsync()

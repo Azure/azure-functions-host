@@ -27,6 +27,53 @@ public sealed class WorkerLinkEndpointIntegrationTests
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
 
     [Theory]
+    [InlineData("100.86.6.212:48800", "http://100.86.6.212:48800")]
+    [InlineData("http://100.86.6.212:48800", "http://100.86.6.212:48800")]
+    [InlineData("https://100.86.6.212:48800", "https://100.86.6.212:48800")]
+    public async Task Put_ValidEndpoint_PassesNormalizedUriToRegistry(string endpoint, string normalizedEndpoint)
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        Uri expected = new(normalizedEndpoint);
+        _registry.Setup(value => value.LinkAsync(WorkerId, expected, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+        string json = JsonSerializer.Serialize(new { workerGrpcEndpoint = endpoint });
+
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
+
+        await AssertLinkResponseAsync(response, HttpStatusCode.Created, timeout.Token);
+        _registry.Verify(value => value.LinkAsync(WorkerId, expected, It.IsAny<CancellationToken>()), Times.Once);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("256.86.6.212:48800")]
+    [InlineData("127.1:48800")]
+    [InlineData("0177.0.0.1:48800")]
+    [InlineData("100.86.6.212")]
+    [InlineData("100.86.6.212:0")]
+    [InlineData("100.86.6.212:65536")]
+    [InlineData("worker.example:48800")]
+    [InlineData("[::1]:48800")]
+    [InlineData("user@100.86.6.212:48800")]
+    [InlineData("100.86.6.212:48800/")]
+    [InlineData("100.86.6.212:48800?query=value")]
+    [InlineData("100.86.6.212:48800#fragment")]
+    public async Task Put_InvalidBareEndpoint_ReturnsStableErrorWithoutCallingRegistry(string endpoint)
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+        string json = JsonSerializer.Serialize(new { workerGrpcEndpoint = endpoint });
+
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
+        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
+
+        Assert.Equal("InvalidEndpoint", error.GetProperty("code").GetString());
+        Assert.Equal("workerGrpcEndpoint", error.GetProperty("target").GetString());
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
     [InlineData(true, HttpStatusCode.Created)]
     [InlineData(false, HttpStatusCode.OK)]
     public async Task Put_ValidRequest_UsesRegistryCreationResult(bool isNewLink, HttpStatusCode status)
