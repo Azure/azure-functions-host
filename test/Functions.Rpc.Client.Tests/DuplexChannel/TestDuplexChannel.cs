@@ -26,7 +26,7 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
         _requests = Channel.CreateUnbounded<T>();
         _responses = Channel.CreateUnbounded<T>();
         Reader = _responses.Reader;
-        Writer = new RequestWriter(this);
+        Writer = _requests.Writer;
 
         if (!blockDisposal)
         {
@@ -40,8 +40,6 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     internal int DisposeCount => Interlocked.CompareExchange(ref _disposeCount, 0, 0);
 
     internal Exception DisposeException { get; set; }
-
-    internal bool CompleteResponsesOnRequestCompletion { get; set; }
 
     /// <summary>
     /// Gets a task that completes when asynchronous disposal starts.
@@ -88,24 +86,5 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
         {
             throw DisposeException;
         }
-    }
-
-    private sealed class RequestWriter(TestDuplexChannel<T> owner) : ChannelWriter<T>
-    {
-        public override bool TryComplete(Exception error = null)
-        {
-            bool completed = owner._requests.Writer.TryComplete(error);
-            if (completed && owner.CompleteResponsesOnRequestCompletion)
-            {
-                owner._responses.Writer.TryComplete(error);
-            }
-
-            return completed;
-        }
-
-        public override bool TryWrite(T item) => owner._requests.Writer.TryWrite(item);
-
-        public override ValueTask<bool> WaitToWriteAsync(CancellationToken cancellationToken = default)
-            => owner._requests.Writer.WaitToWriteAsync(cancellationToken);
     }
 }

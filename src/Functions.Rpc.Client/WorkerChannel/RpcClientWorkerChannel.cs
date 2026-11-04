@@ -42,7 +42,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _activityLogger;
-    private readonly DuplexChannel<StreamingMessage> _transport;
     private LifecycleState _lifecycleState;
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private long? _idleSince;
@@ -84,7 +83,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         Completion = ownedChannel.Reader.Completion;
-        _transport = ownedChannel;
         _activityLogger = logger;
     }
 
@@ -145,8 +143,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
     internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
-
-    internal void CompleteRequests() => _transport.Writer.TryComplete();
 
     internal void StartIdleTracking(IReadOnlyList<FunctionMetadata> functions, TimeProvider timeProvider)
     {

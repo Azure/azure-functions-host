@@ -385,32 +385,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             try
             {
-                try
-                {
-                    removed.CompleteRequests();
-                    using CancellationTokenSource completionSource =
-                        CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
-                    await removed.Completion.WaitAsync(TimeSpan.FromSeconds(10), completionSource.Token);
-                }
-                catch (TimeoutException exception)
-                {
-                    _logger.LogWarning(exception, "Worker {WorkerId} did not complete its stream after idle retirement; closing the transport.", workerId);
-                }
-                catch (global::Grpc.Core.RpcException exception) when (
-                    removed.Completion.IsCompleted && exception.StatusCode == global::Grpc.Core.StatusCode.Unavailable)
-                {
-                    // WorkerProxy reports peer closure as Unavailable, including an intentional Runtime half-close.
-                    _logger.LogDebug(exception, "Worker {WorkerId} stream closed during idle retirement.", workerId);
-                }
-                catch (Exception exception) when (removed.Completion.IsCompleted)
-                {
-                    Log.ChannelFailed(_logger, exception, workerId);
-                }
-                finally
-                {
-                    await removed.DisposeAsync();
-                }
-
+                await removed.DisposeAsync();
                 _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _shutdownSource.IsCancellationRequested)

@@ -26,9 +26,11 @@ public partial class FunctionRpcRelayTests
         """;
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ManagementApis_RuntimeStreamClosurePublishesRemovalRequested(bool alwaysReady)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ManagementApis_RuntimeStreamClosurePublishesRemovalRequested(bool alwaysReady, bool dispose)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -45,7 +47,14 @@ public partial class FunctionRpcRelayTests
             "/admin/worker/state?lastKnownRevision=" + assigned.Revision.ToString(CultureInfo.InvariantCulture), timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
 
-        await runtime.CompleteRequestAsync(timeout.Token);
+        if (dispose)
+        {
+            await runtime.DisposeAsync();
+        }
+        else
+        {
+            await runtime.CompleteRequestAsync(timeout.Token);
+        }
         using (HttpResponseMessage changed = await poll)
         {
             Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
@@ -57,7 +66,12 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(alwaysReady, pod.GetProperty("isAlwaysReady").GetBoolean());
         }
 
-        await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
+        if (!dispose)
+        {
+            await runtime.WaitForTerminationAsync(timeout.Token);
+        }
+
+        await worker.WaitForTerminationAsync(timeout.Token);
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.Equal(assigned.WorkerId, manager.State.WorkerId);
         Assert.Equal(assigned.FunctionAppName, manager.State.FunctionAppName);

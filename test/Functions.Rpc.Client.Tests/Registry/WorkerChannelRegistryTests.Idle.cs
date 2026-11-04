@@ -51,11 +51,8 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, worker.DisposeCount);
     }
 
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task IdleRetirement_CompletesRequestsBeforeDisposal_AndCleansUpOnCancellation(bool cancel, bool unavailable)
+    [Fact]
+    public async Task IdleRetirement_DisposesWithoutWaitingForPeerCompletion()
     {
         FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
@@ -63,34 +60,17 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
         await ReadyIdleWorkerAsync(registry, worker, CreateFunction("Function"));
-        worker.Transport.CompleteResponsesOnRequestCompletion = false;
         time.Advance(TimeSpan.FromMinutes(3));
-        using CancellationTokenSource cancellation = new();
 
-        Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold, cancellation.Token);
-        await worker.Transport.Requests.Completion.WaitAsync(TestTimeout);
-        Assert.False(retirement.IsCompleted);
-        Assert.Equal(0, worker.DisposeCount);
+        Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold);
+        Assert.True(worker.DisposeStarted.IsCompleted);
+        await retirement.WaitAsync(TestTimeout);
         Assert.Empty(registry.GetInitializedChannels());
         Assert.False(worker.Channel.IsReadyForInvocations);
-
-        if (cancel)
-        {
-            cancellation.Cancel();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => retirement);
-        }
-        else
-        {
-            worker.Complete(unavailable
-                ? new global::Grpc.Core.RpcException(new(global::Grpc.Core.StatusCode.Unavailable, "Relay peer closed."))
-                : null);
-            await retirement.WaitAsync(TestTimeout);
-            harness.RegistryLogger.Verify(logger => logger.Log(
-                LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
-        }
-
         Assert.Equal(1, worker.DisposeCount);
+        harness.RegistryLogger.Verify(logger => logger.Log(
+            LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
     }
 
     [Fact]
@@ -669,14 +649,11 @@ public sealed partial class WorkerChannelRegistryTests
             capabilities["IsAlwaysReady"] = alwaysReady;
         }
 
-        ChannelControl worker = new(id) { Capabilities = capabilities };
-        worker.Transport.CompleteResponsesOnRequestCompletion = true;
-        return worker;
+        return new(id) { Capabilities = capabilities };
     }
 
     private static async Task ReadyIdleWorkerAsync(WorkerChannelRegistry registry, ChannelControl worker, FunctionMetadata function)
     {
-        worker.Transport.CompleteResponsesOnRequestCompletion = true;
         await LinkAsync(registry, worker.Id);
         await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
