@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -42,6 +43,13 @@ internal static class WorkerAssignRequestValidator
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "maxHttpConcurrency"));
         }
 
+        if (request.HttpProxyEndpoint is { } httpProxyEndpoint
+            && !WorkerHttpProxyEndpointResolver.TryResolve(
+                httpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out _))
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
+        }
+
         if (request.IsAlwaysReady is null)
         {
             errors.Add(new(WorkerApiErrorCodes.Required, "isAlwaysReady"));
@@ -72,7 +80,8 @@ internal static class WorkerAssignRequestValidator
             isAlwaysReady,
             environment,
             functionAppDirectory,
-            request.MaxHttpConcurrency);
+            request.MaxHttpConcurrency,
+            request.HttpProxyEndpoint);
 
         return true;
     }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -10,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -119,6 +121,15 @@ public class ManagementApiEndpointTests
     [InlineData("maxHttpConcurrency", "2147483648", null)]
     [InlineData("maxHttpConcurrency", "true", null)]
     [InlineData("maxHttpConcurrency", "{}", null)]
+    [InlineData("httpProxyEndpoint", "\"https://worker-pod:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"worker-pod:28080/path\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"user@worker-pod:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"0.0.0.0:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[::1]:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[2001:db8::1]:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[fe80::1%3]:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[fe80::1%253]:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[::ffff:127.0.0.1]:28080\"", "InvalidValue")]
     [InlineData("functionAppDirectory", null, "Required")]
     [InlineData("functionAppDirectory", "null", "Required")]
     [InlineData("functionAppDirectory", "\"\"", "Required")]
@@ -253,6 +264,44 @@ public class ManagementApiEndpointTests
         using JsonDocument error = JsonDocument.Parse(await terminalReplay.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal("WorkerTerminated", error.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Same(failed, manager.State);
+    }
+
+    [Fact]
+    public async Task Assignment_PublishesHttpProxyEndpointAndPreservesAuthorityRetryIdentity()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["httpProxyEndpoint"] = "worker-pod:28080";
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        Assert.Equal("http://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+
+        using StringContent replayContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Equal("http://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+
+        body["httpProxyEndpoint"] = "worker-pod:28081";
+        using StringContent conflictingContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Equal("http://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+
+        manager.OnSessionTerminated(1);
+        body["httpProxyEndpoint"] = "worker-pod:28080";
+        using StringContent terminalReplayContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage terminalReplay = await client.PutAsync(AssignPath, terminalReplayContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, terminalReplay.StatusCode);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
     [Theory]

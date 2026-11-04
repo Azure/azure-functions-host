@@ -21,6 +21,121 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class FileMonitoringServiceTests
     {
         [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void SentinelFileChanged_PublishesNotification(bool diagnostic)
+        {
+            using TempDirectory directory = new();
+            Mock<IScriptEventManager> eventManager = new();
+            using FileMonitoringService service = GetFileMonitoringService(directory.Path, directory.Path, eventManager.Object);
+            FileSystemEventArgs change = new(WatcherChangeTypes.Changed, directory.Path, "sentinel");
+
+            if (diagnostic)
+            {
+                service.OnDiagnosticModeFileChanged(null, change);
+                eventManager.Verify(manager => manager.Publish(It.IsAny<DiagnosticNotification>()), Times.Once);
+            }
+            else
+            {
+                service.OnDebugModeFileChanged(null, change);
+                eventManager.Verify(manager => manager.Publish(It.IsAny<DebugNotification>()), Times.Once);
+            }
+
+            eventManager.VerifyNoOtherCalls();
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task SentinelFileChanged_AfterShutdownDoesNotPublish(bool diagnostic, bool dispose)
+        {
+            using TempDirectory directory = new();
+            using ScriptEventManager eventManager = new();
+            using FileMonitoringService service = GetFileMonitoringService(directory.Path, directory.Path, eventManager);
+            if (dispose)
+            {
+                service.Dispose();
+            }
+            else
+            {
+                await service.StopAsync(CancellationToken.None);
+            }
+
+            eventManager.Dispose();
+            FileSystemEventArgs change = new(WatcherChangeTypes.Changed, directory.Path, "sentinel");
+            if (diagnostic)
+            {
+                service.OnDiagnosticModeFileChanged(null, change);
+            }
+            else
+            {
+                service.OnDebugModeFileChanged(null, change);
+            }
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task Shutdown_WaitsForInFlightSentinelNotification(bool diagnostic, bool dispose)
+        {
+            using TempDirectory directory = new();
+            using ManualResetEventSlim release = new();
+            TaskCompletionSource publishing = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource stopping = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Mock<IScriptEventManager> eventManager = new();
+            eventManager.Setup(manager => manager.Publish(It.IsAny<ScriptEvent>()))
+                .Callback(() =>
+                {
+                    publishing.TrySetResult();
+                    Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+                });
+            using FileMonitoringService service = GetFileMonitoringService(directory.Path, directory.Path, eventManager.Object);
+            FileSystemEventArgs change = new(WatcherChangeTypes.Changed, directory.Path, "sentinel");
+            Task notification = Task.Run(() =>
+            {
+                if (diagnostic)
+                {
+                    service.OnDiagnosticModeFileChanged(null, change);
+                }
+                else
+                {
+                    service.OnDebugModeFileChanged(null, change);
+                }
+            });
+            Task shutdown = Task.CompletedTask;
+            try
+            {
+                await publishing.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                shutdown = Task.Run(async () =>
+                {
+                    stopping.TrySetResult();
+                    if (dispose)
+                    {
+                        service.Dispose();
+                    }
+                    else
+                    {
+                        await service.StopAsync(CancellationToken.None);
+                    }
+                });
+                await stopping.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+                await Assert.ThrowsAsync<TimeoutException>(() => shutdown.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            }
+            finally
+            {
+                release.Set();
+                await Task.WhenAll(notification, shutdown).WaitAsync(TimeSpan.FromSeconds(10));
+            }
+
+            eventManager.Verify(manager => manager.Publish(It.IsAny<ScriptEvent>()), Times.Once);
+        }
+
+        [Theory]
         [InlineData(@"C:\Functions\Scripts\Shared\Test.csx", "Shared")]
         [InlineData(@"C:\Functions\Scripts\Shared\Sub1\Sub2\Test.csx", "Shared")]
         [InlineData(@"C:\Functions\Scripts\Shared", "Shared")]
@@ -531,7 +646,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public FileMonitoringService GetFileMonitoringService(string tempDir, string rootScriptPath)
+        public FileMonitoringService GetFileMonitoringService(string tempDir, string rootScriptPath, IScriptEventManager eventManager = null)
         {
             File.Create(Path.Combine(tempDir, "host.json"));
 
@@ -544,7 +659,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggerFactory = new LoggerFactory();
             var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
-            var mockEventManager = new ScriptEventManager();
+            var mockEventManager = eventManager ?? new ScriptEventManager();
             var environment = new TestEnvironment();
 
             // Act

@@ -33,6 +33,7 @@ internal sealed partial class FunctionRpcRelay(
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -131,44 +132,56 @@ internal sealed partial class FunctionRpcRelay(
 
         FunctionRpcRelaySession session;
 
-        lock (_syncLock)
+        try
         {
-            if (_stopping || _stateManager.State.RemovalRequested)
+            lock (_syncLock)
             {
-                throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
-                    "The FunctionRpc relay is shutting down or the worker pod has requested removal.");
-            }
-
-            if (_currentSession?.IsTerminalAndReleased == true)
-            {
-                ClearCurrentSessionLocked();
-            }
-
-            bool createdSession = _currentSession is null;
-            session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, tokenServiceProxy);
-
-            FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, runtimeIdentity);
-            if (attachResult != FunctionRpcRelayAttachResult.Attached)
-            {
-                if (createdSession && attachResult == FunctionRpcRelayAttachResult.Rejected)
+                if (_stopping || _stateManager.State.RemovalRequested)
                 {
-                    _currentSession = null;
+                    throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
+                        "The FunctionRpc relay is shutting down or the worker pod has requested removal.");
                 }
 
-                (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
+                if (_currentSession?.IsTerminalAndReleased == true)
                 {
-                    FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
-                        $"A {side} FunctionRpc stream is already attached."),
-                    FunctionRpcRelayAttachResult.Rejected => (FunctionRpcRelayAttachmentFailure.PodStateRejected,
-                        $"A {side} FunctionRpc stream is not accepted for the current WorkerProxy state."),
-                    FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
-                        "The previous FunctionRpc relay session is still tearing down."),
-                    _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
-                };
+                    ClearCurrentSessionLocked();
+                }
 
-                throw new FunctionRpcRelayAttachmentException(side, failure, message);
+                bool createdSession = _currentSession is null;
+                session = _currentSession ??= new FunctionRpcRelaySession(
+                    Interlocked.Increment(ref _nextSessionId),
+                    logger,
+                    _capabilityFinalizer,
+                    _stateManager,
+                    tokenServiceProxy);
+
+                FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, runtimeIdentity);
+                if (attachResult != FunctionRpcRelayAttachResult.Attached)
+                {
+                    if (createdSession && attachResult == FunctionRpcRelayAttachResult.Rejected)
+                    {
+                        _currentSession = null;
+                    }
+
+                    (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
+                    {
+                        FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
+                            $"A {side} FunctionRpc stream is already attached."),
+                        FunctionRpcRelayAttachResult.Rejected => (FunctionRpcRelayAttachmentFailure.PodStateRejected,
+                            $"A {side} FunctionRpc stream is not accepted for the current WorkerProxy state."),
+                        FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
+                            "The previous FunctionRpc relay session is still tearing down."),
+                        _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
+                    };
+
+                    throw new FunctionRpcRelayAttachmentException(side, failure, message);
+                }
             }
+        }
+        catch (FunctionRpcRelayAttachmentException exception)
+        {
+            Log.AttachmentRejected(logger, side, exception.Failure);
+            throw;
         }
 
         return RunAttachmentAsync(session, side, requestStream, responseStream, cancellationToken);
@@ -214,12 +227,14 @@ internal sealed partial class FunctionRpcRelay(
     {
         try
         {
+            session.LogAttachment(side, released: false);
             return await session.RunAsync(side, requestStream, responseStream, cancellationToken);
         }
         finally
         {
             session.Detach(side);
             TryClearReleasedSession(session);
+            session.LogAttachment(side, released: true);
         }
     }
 

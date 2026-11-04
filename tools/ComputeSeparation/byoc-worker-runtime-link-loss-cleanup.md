@@ -61,6 +61,11 @@ flowchart TD
 The checks use the same `RemovalRequested` state. `/admin/instance/ready` remains available because
 it reports the WorkerProxy management process, not customer invocation admission.
 
+Runtime loss also terminates initialization waiting for an assigned HTTP proxy origin, releases its
+waiter and queued messages, and leaves no published destination. Session termination retains worker
+and session log correlation even though the removal snapshot clears live identity; rejected
+replacement streams still emit the existing admission diagnostic.
+
 ## Before and after
 
 | Scenario | Before | After |
@@ -92,7 +97,8 @@ theory injects transport read and write failures that loopback gRPC cannot produ
 | `RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval` | An admitted Runtime EOF is W2 before customer Worker initialization |
 | `RuntimeEventStream_CancellationRequestsRemoval` | Runtime call cancellation uses the same handler completion transition |
 | `ApplicationShutdown_DoesNotRequestRemoval` | Application-owned shutdown is excluded |
-| `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Default and explicit HTTP capacity are advertised before removal and cleared afterward in both startup modes; polling remains alive while gRPC, assignment, readiness, and HTTP admission remain closed |
+| `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Mapped HTTP origin and default/explicit capacity are advertised before removal and cleared afterward in both startup modes; polling remains alive while gRPC, assignment, readiness, and HTTP admission remain closed |
+| `Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter` | Runtime EOF/cancellation clears pending mapped-origin initialization and requests removal with correlated diagnostics; application shutdown releases the same wait without removal |
 | `Relay_RuntimeStreamFailureRequestsRemovalAndPreservesFault` | Runtime read and write faults preserve the terminal error and select W2 |
 
 ## Assumptions and limitations

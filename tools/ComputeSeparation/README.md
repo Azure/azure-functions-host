@@ -25,7 +25,7 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project`, `project-identity`, and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. The identity profile starts linking while assignment waits for the worker, avoiding a circular wait on startup token acquisition. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project`, `project-identity`, and `container` link the worker automatically. `project` and `container` assign the worker pod first: AppHost sends both calls through the fake platform in `project`, and calls the WorkerProxy and Host directly in `container`. The identity profile starts linking while assignment waits for the worker, avoiding a circular wait on startup token acquisition. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
@@ -81,19 +81,115 @@ Each worker gets an independently generated GUID-based ID, matching the identity
 Override the first with `ComputeSeparation:WorkerId` and the second with `ComputeSeparation:SecondWorker:WorkerId`;
 neither ID is derived from the other. The proxy names remain `worker-proxy-1` and `worker-proxy-2`.
 
+## System telemetry
+
+WorkerProxy emits only its own platform records, separately from ordinary ASP.NET Core/YARP console output.
+Worker `RpcLog` messages are forwarded unchanged, not processed by proxy telemetry.
+The local OpenTelemetry log exporter writes through the unchanged shared `BufferedConsoleWriter`
+to stdout; there is no OTLP exporter. Disposal uses the writer's existing best-effort drain
+(up to five seconds). Explicit `ForceFlush` is unsupported and returns `false`.
+
+Records use the existing `MS_FUNCTIONS_WORKER_POD_LOGS` prefix and 21-column positional format.
+Worker/session IDs (when known) and operation details are included in the message; the InvocationId column is empty.
+The shared log context contains only `WorkerId` and `ProxySessionId`. Event-specific details such as
+relay side, protocol stage/status, and assignment status/duration are written directly in the log message,
+not duplicated in context attributes.
+Assignment 5xx responses and thrown failures emit `WorkerAssignmentRequestFailed`; validation failures
+remain `WorkerAssignmentRequestRejected`. Exceptions are rethrown, and assignment failure records include
+only the exception type. When a thrown failure has no known HTTP status, the log reports `unavailable`
+rather than the response's default status.
+An `OperationCanceledException` on an aborted assignment request instead emits
+`WorkerAssignmentRequestCanceled` at Information and is rethrown. Unrelated failures remain errors.
+Single and batched function loads log received/forwarded boundaries. Batch records contain counts,
+not per-function records or worker exception text; unsuccessful or missing result statuses produce a Warning.
+Expected Host shutdown during linking is Information/`Canceled`; initialization timeouts remain Warning/`Failed`.
+The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
+Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
+Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.
+
+Fields are bounded and encoded without splitting valid UTF-16 surrogate pairs; unsafe identities are fingerprinted rather than truncated.
+Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs
+are excluded.
+
 ## Fake platform
 
 WorkerProxy uses `WEBSITE_POD_NAME`, falling back to `CONTAINER_NAME`, for pod identity.
 AppHost supplies `WEBSITE_POD_NAME` locally from `ComputeSeparation:PodName`.
 
-In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
+In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host, and receives Host state through a prototype AppServer endpoint.
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
-profile. Aspire supplies each entry's management address, runtime gRPC endpoint, and worker ID. Assign and link requests
-select an entry by name; an unknown name returns `404` instead of choosing a different worker. Each worker has a distinct
-worker ID, request ID, pod name, and proxy endpoints, and both link to the same Host.
+profile. Aspire supplies each entry's management address, mapped HTTP authority, runtime gRPC endpoint, and worker ID.
+The assignment sends that scheme-less HTTP authority, including default ports, and publishes it as the effective
+runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
+`404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
+endpoints, and both link to the same Host.
+
+`httpProxyEndpoint` is optional for non-HTTP workers. HTTP-capable workers require it in the accepted assignment
+before successful HTTP initialization; supply a scheme-less mapped DNS name or IPv4 address with an explicit nonzero port, such as
+`worker-proxy-1:28080`. IPv6 literals, including scoped addresses, are not supported for this assignment field.
+There is no startup fallback: `WorkerProxy:HttpProxyEndpoint` and `WORKERPROXY__HTTPPROXYENDPOINT` are no longer consumed.
+An accepted assignment without the field leaves the effective origin unset, so HTTP capability initialization fails
+rather than advertising the worker's local address. The effective worker destination must have a different origin
+from the mapped proxy endpoint to prevent a forwarding loop.
+
+Roll out assignment producers together with this WorkerProxy version: each platform must send the mapped authority
+for HTTP workers before initialization completes. Older producers that rely on the startup setting are not compatible with this
+HTTP initialization flow. Most local profiles assign before linking. In `project-identity`, linking opens the runtime
+transport early for token acquisition; WorkerProxy holds a successful HTTP initialization response until assignment
+is accepted, without blocking runtime token traffic or worker EOF detection. Messages behind initialization remain
+ordered; worker request-stream completion terminates the session and cancels that wait, even without call cancellation.
+Placeholder assignment tokens use the configured Host container name as their audience, matching Host placeholder authentication.
+
+## Host state publication (prototype)
+
+AppHost sets the project's Host `MESH_INIT_URI` to the fake platform. After specialization, the Host sends
+`PUT /admin/infra/host/state` with this JSON shape:
+
+```json
+{
+  "createdTime": "2026-10-02T12:34:56.123+00:00",
+  "httpCapacity": 16,
+  "linkedWorkerCount": 1
+}
+```
+
+Each publication also sends `fx-current-instance` from the Host's current `CONTAINER_NAME` (`aspire-runtime` in the
+local project and container profiles). A missing, empty, or whitespace-only Host identity fails before sending; there
+is no worker-pod identity fallback. The project-mode fake AppServer checks that value and returns HTTP 401 when it
+is missing or does not match the configured Host identity. This exercises the internal instance-identity convention
+for development; it is not full TLS or token authentication.
+
+`httpCapacity` is the total of registry-ready HTTP workers' assigned concurrency limits, not free slots after active
+requests or Frontend reservations. This sample explicitly assigns `maxHttpConcurrency: 16` to each HTTP worker, so one
+ready worker contributes 16 and two contribute 32; the Host does not assume equal limits or multiply worker count by 16.
+`linkedWorkerCount` includes initialized linked workers even before they are ready and includes non-HTTP workers.
+Publication waits for specialization, not for a ScriptHost or a positive capacity.
+
+Use `GET /simulate/host/state` to inspect the latest received snapshot; `204` means none has arrived. The fake records
+arrival order without dropping timestamps that move backward. Timestamps are not versions and can be equal across
+distinct snapshots. Repeated matching worker links do not create another snapshot.
+
+Recoverable request failures retry the latest snapshot through a DI-registered Polly policy with exponential backoff
+from 250 milliseconds to 30 seconds; a new snapshot interrupts that wait. `Microsoft.Extensions.Http.Polly` supplies
+the policy-registry integration. The named HTTP client bounds each request to five seconds and does not retry serialized
+requests. Each publication retry reads the latest runtime snapshot. After a successful HTTP response, the same snapshot is
+not periodically resent. After specialization, normal root Host shutdown withdraws capacity and makes one best-effort final
+attempt bounded to two seconds. An unexpected publisher failure is logged without attempting another publication; fatal
+exceptions are not swallowed. This does not guarantee delivery or establish an AppServer admission policy.
+
+HTTP 401/403 responses are logged as authentication rejections, not transient failures. The rejected snapshot is not sent
+again on a retry timer or unchanged shutdown; publication resumes only when runtime state changes. The Host keeps running.
+
+The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. The local
+identity check does not provide full TLS/token authentication or an applied-version acknowledgement, and an AppServer
+restart is not repaired without a later Host state change. The client reads `CONTAINER_NAME` per request, independently
+of endpoint resolution. It resolves and caches `MESH_INIT_URI` on its first publication after specialization, defaulting
+to `http://localhost:6060/` when unset; later configuration changes do not replace that endpoint for the root Host's
+lifetime. Container mode has no fake AppServer receiver; its Host will log publication failures and retry the default
+endpoint without preventing the worker link or invocation.
 
 ## Endpoints
 
@@ -119,6 +215,7 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 | Fake platform | `POST /simulate/worker/{workerProxyName}/assign` | Sends step 1 to the named WorkerProxy and returns its response. |
 | Fake platform | `POST /simulate/host/assign` | Sends step 2 to the Host and returns its response; see [Placeholder mode](#placeholder-mode). |
 | Fake platform | `POST /simulate/worker/{workerProxyName}/link` | Sends step 3 to the Host using the named proxy's worker ID and runtime gRPC endpoint. |
+| Fake platform | `GET /simulate/host/state` | Reads the latest prototype Host state publication, or returns `204` before one arrives. |
 
 ## Send requests manually
 
@@ -159,7 +256,7 @@ POST http://localhost:7060/simulate/worker/worker-proxy-2/link
 
 `project-placeholder-manual` runs the Host the way it starts before it is assigned to an app: in placeholder mode (`WEBSITE_PLACEHOLDER_MODE=1`), with placeholder content, until it is assigned. It exercises how the Host behaves when specialization and the worker link overlap.
 
-AppHost generates a random key for each run and gives it to both the Host and the fake platform. The fake platform uses it to authenticate and encrypt its `POST /admin/instance/assign` request, as the Host expects. The Host answers `202`, leaves placeholder mode, and specializes on its next request. Specialization completes only after the first worker links, so if the Host holds the link until specialization completes, step 3 never returns and the Host's health check stops responding.
+AppHost generates a random key for each run and gives it to both the Host and the fake platform. The fake platform uses it to authenticate and encrypt its `POST /admin/instance/assign` request, as the Host expects. The Host answers `202`, leaves placeholder mode, and specializes on its next request. Specialization reloads configuration without waiting for a linked worker or restarting a ScriptHost. Linking the first worker starts the ScriptHost independently.
 
 ## Container behavior
 
@@ -172,7 +269,7 @@ The dashboard has two independent resources, each backed by its own Compose proj
 
 Stopping `worker-pod-1` removes only that pod's containers, leaving the same Host and network running. Stopping `runtime` stops the Host but keeps the network until AppHost shutdown. A small adapter runs these Compose groups because Aspire's native containers do not support the Proxy/worker shared-network arrangement.
 
-`worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Aspire does not currently create additional container pods automatically; use the multiple-worker project profile above for the manual late-link flow.
+`worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, pod name (`WORKER_POD_NAME`, passed to WorkerProxy as `WEBSITE_POD_NAME`), worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Aspire does not currently create additional container pods automatically; use the multiple-worker project profile above for the manual late-link flow.
 
 Stop AppHost to stop the local run; normal shutdown removes worker pods before the runtime and its network. If AppHost is forcibly terminated, remove its `functions-aspire-...` groups in Docker Desktop. Relinking restarted workers is not automated; start a new AppHost session for another end-to-end run.
 
