@@ -112,7 +112,7 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData(10, 10, false)]
     [InlineData(7, 13, false)]
     [InlineData(7, 13, true)]
-    public async Task RuntimeState_SumsAssignedLimitsOnlyAfterSuccessfulRegistrySetup(int firstLimit, int secondLimit, bool failLaterSetup)
+    public Task RuntimeState_SumsAssignedLimitsOnlyAfterSuccessfulRegistrySetup(int firstLimit, int secondLimit, bool failLaterSetup) => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first", functionGroupName: "http", maxHttpConcurrency: firstLimit);
@@ -158,7 +158,7 @@ public sealed partial class WorkerChannelRegistryTests
         await registry.UnlinkAsync(first.Id);
         await WaitForRuntimeStateAsync(manager, state => state.WorkerCount == 2 && state.HttpCapacity == secondLimit);
         await manager.StopAsync(CancellationToken.None);
-    }
+    });
 
     [Fact]
     public async Task RuntimeState_PriorReadyContextCannotMaskReplacementSetupFailure()
@@ -225,8 +225,8 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task RuntimeState_TerminalCapacityIsWithdrawnWhileLaterSetupIsBlocked(
-        bool functionLoadFailure, bool failLaterSetup, bool keepHealthyWorker)
+    public Task RuntimeState_TerminalCapacityIsWithdrawnWhileLaterSetupIsBlocked(
+        bool functionLoadFailure, bool failLaterSetup, bool keepHealthyWorker) => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first", functionGroupName: "http", maxHttpConcurrency: 10);
@@ -289,7 +289,7 @@ public sealed partial class WorkerChannelRegistryTests
         await WaitForRuntimeStateAsync(manager,
             state => state.WorkerCount == (keepHealthyWorker ? 2 : 1) && state.HttpCapacity == finalCapacity);
         await manager.StopAsync(CancellationToken.None);
-    }
+    });
 
     private static RuntimeStateManager CreateRuntimeStateManager(IWorkerChannelRegistry registry)
         => new(registry, Mock.Of<IHostApplicationLifetime>(), TimeProvider.System, NullLogger<RuntimeStateManager>.Instance);

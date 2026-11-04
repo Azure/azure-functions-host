@@ -1145,7 +1145,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetReadyChannelsAsync_DuringSetupDoesNotBlockCaller(bool laterLink)
+    public Task GetReadyChannelsAsync_DuringSetupDoesNotBlockCaller(bool laterLink) => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker", blockSetup: true);
@@ -1187,12 +1187,12 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         Assert.Same(channel.Channel, Assert.Single(await readyChannels.AsTask().WaitAsync(TestTimeout)));
-    }
+    });
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetReadyChannelsAsync_DuringLaterSetupHandlesExistingSnapshot(bool stopFirst)
+    public Task GetReadyChannelsAsync_DuringLaterSetupHandlesExistingSnapshot(bool stopFirst) => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
@@ -1247,12 +1247,12 @@ public sealed partial class WorkerChannelRegistryTests
         {
             Assert.Same(second.Channel, Assert.Single(await readyChannels.AsTask().WaitAsync(TestTimeout)));
         }
-    }
+    });
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetReadyChannelsAsync_ExcludesTerminatedChannelDuringSetup(bool functionLoadFailure)
+    public Task GetReadyChannelsAsync_ExcludesTerminatedChannelDuringSetup(bool functionLoadFailure) => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
@@ -1290,12 +1290,12 @@ public sealed partial class WorkerChannelRegistryTests
             later.AllowSetup();
             await laterLink.WaitAsync(TestTimeout);
         }
-    }
+    });
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetReadyChannelsAsync_TerminatedChannelDuringSetupReturnsSharedWait(bool functionLoadFailure)
+    public Task GetReadyChannelsAsync_TerminatedChannelDuringSetupReturnsSharedWait(bool functionLoadFailure) => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
@@ -1332,7 +1332,7 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         Assert.Same(later.Channel, Assert.Single(await readyWait.WaitAsync(TestTimeout)));
-    }
+    });
 
     [Fact]
     public async Task GetReadyChannelsAsync_PendingWaitSurvivesContextReplacement()
@@ -1499,7 +1499,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task LinkAsync_AfterActivationReturnsBeforeBackgroundSetupCompletes()
+    public Task LinkAsync_AfterActivationReturnsBeforeBackgroundSetupCompletes() => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker", blockSetup: true);
@@ -1523,7 +1523,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         Assert.Same(channel.Channel, Assert.Single(
             await registry.GetReadyChannelsAsync().AsTask().WaitAsync(TestTimeout)));
-    }
+    });
 
     [Fact]
     public async Task LinkAsync_BackgroundSetupWinsLockBeforeLinkFinalization()
@@ -1686,7 +1686,7 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task ActivateAsync_RestartGapLateLinkIsReconfiguredForReplacementContext()
+    public Task ActivateAsync_RestartGapLateLinkIsReconfiguredForReplacementContext() => Task.Run(async () =>
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
@@ -1731,7 +1731,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(2, readyChannels.Count);
         Assert.Contains(first.Channel, readyChannels);
         Assert.Contains(late.Channel, readyChannels);
-    }
+    });
 
     [Theory]
     [InlineData(false)]
@@ -1842,6 +1842,18 @@ public sealed partial class WorkerChannelRegistryTests
         ObjectDisposedException exception = await Assert.ThrowsAsync<ObjectDisposedException>(
             () => registry.GetReadyChannelsAsync().AsTask());
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, exception.ObjectName);
+    }
+
+    [Fact]
+    public async Task ChannelControl_UnreleasedSetupTimesOutAndFailsCleanup()
+    {
+        ChannelControl channel = new("worker", blockSetup: true);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => Task.Run(() =>
+            channel.MetricsLogger.Object.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, null, null))
+            .WaitAsync(TestTimeout * 2));
+        await channel.SetupEntered.WaitAsync(TestTimeout);
+        Assert.Throws<TimeoutException>(channel.AllowSetup);
     }
 
     private static async Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)
@@ -2036,6 +2048,12 @@ public sealed partial class WorkerChannelRegistryTests
 
                     Interlocked.Increment(ref _setupAttempts);
                     _setupEntered.TrySetResult();
+                    // Deferred-setup tests must run off xUnit's context so this gate and lock waiters cannot exhaust it.
+                    if (!_setupRelease.Task.Wait(TestTimeout))
+                    {
+                        _setupRelease.TrySetException(new TimeoutException("The test did not release the channel setup gate."));
+                    }
+
                     _setupRelease.Task.GetAwaiter().GetResult();
                     if (Interlocked.Decrement(ref _remainingSetupFailures) >= 0)
                     {
@@ -2073,7 +2091,12 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal void AllowDispose() => Transport.AllowDispose();
 
-        internal void AllowSetup() => _setupRelease.TrySetResult();
+        internal void AllowSetup()
+        {
+            _setupRelease.TrySetResult();
+            // Surface a gate timeout even when the registry handles the setup exception.
+            _setupRelease.Task.GetAwaiter().GetResult();
+        }
 
         internal void AllowStart() => _startRelease.TrySetResult();
 
