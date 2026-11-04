@@ -54,6 +54,32 @@ internal static class ManagementApiHandlers
         return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 
+    /// <summary>
+    /// Returns the current infrastructure checkpoint, or polls when the caller's checkpoint is unchanged.
+    /// </summary>
+    /// <param name="previousState">The caller's last checkpoint, or <see langword="null"/> for an immediate snapshot.</param>
+    /// <param name="request">The HTTP request whose cancellation aborts the poll.</param>
+    /// <param name="manager">The owner of the current pod state.</param>
+    /// <returns>The current checkpoint, or HTTP 204 when the poll times out without a change.</returns>
+    public static async Task<IResult> PostInfraInstanceStateAsync(
+        WorkerOriginState? previousState,
+        HttpRequest request,
+        WorkerPodStateManager manager)
+    {
+        CancellationToken cancellationToken = request.HttpContext.RequestAborted;
+        cancellationToken.ThrowIfCancellationRequested();
+        WorkerOriginState current = WorkerOriginState.FromState(manager.State);
+        if (previousState is null || previousState != current)
+        {
+            return OriginStateResponse(current);
+        }
+
+        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.RevisionId, cancellationToken);
+        return result.State is { } state
+            ? OriginStateResponse(WorkerOriginState.FromState(state))
+            : TypedResults.NoContent();
+    }
+
     public static async Task<IResult> GetInstanceStateAsync(
         long? revision,
         WorkerPodStateManager manager,
@@ -110,4 +136,7 @@ internal static class ManagementApiHandlers
 
     private static IResult StateResponse(WorkerPodState state) =>
         TypedResults.Json(WorkerInstanceState.FromState(state), WorkerProxyJsonContext.Default.WorkerInstanceState);
+
+    private static IResult OriginStateResponse(WorkerOriginState state) =>
+        TypedResults.Json(state, WorkerProxyJsonContext.Default.WorkerOriginState);
 }
