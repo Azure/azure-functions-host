@@ -13,7 +13,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Logging;
-using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
@@ -90,13 +89,13 @@ public partial class FunctionRpcRelayTests
             await worker.WriteAsync(CreateStartStream("telemetry-worker"), timeout.Token);
             Assert.NotNull(await runtime.ReadAsync(timeout.Token));
 
-            WorkerAssignRequest assignment = new()
+            var assignment = new
             {
                 StartupMode = "Preconfigured",
                 FunctionAppName = "test-app",
                 FunctionGroupName = "test-group",
                 IsAlwaysReady = false,
-                Environment = new()
+                Environment = new Dictionary<string, string?>
                 {
                     ["AzureFunctionsJobHost__logging__logLevel__Worker"] = "Debug"
                 },
