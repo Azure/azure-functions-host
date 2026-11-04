@@ -1,0 +1,64 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Text.Json.Serialization;
+
+namespace Azure.Functions.WorkerProxy.State;
+
+/// <summary>
+/// Exposes the worker proxy checkpoint consumed by the platform's infrastructure instance-state endpoint.
+/// </summary>
+/// <param name="FunctionsContainerType">The platform discriminator for the container kind.</param>
+/// <param name="Self">The identity of this worker proxy pod.</param>
+/// <param name="IsDiscoveryPod">Whether the pod is used for discovery.</param>
+/// <param name="IsAlwaysReady">Whether the pod belongs to an always-ready allocation.</param>
+/// <param name="FunctionGroup">The assigned function group, or <see langword="null"/> before assignment.</param>
+/// <param name="ConfigLastModifiedTime">The platform configuration modification timestamp.</param>
+/// <param name="ContentLastModifiedTime">The platform content modification timestamp.</param>
+/// <param name="StartupTime">The worker proxy startup time.</param>
+/// <param name="RevisionId">The revision of this checkpoint.</param>
+/// <param name="Status">The platform-visible worker proxy lifecycle status.</param>
+/// <param name="Link">The worker proxy's runtime link state.</param>
+/// <param name="IsUnhealthy">Whether the worker proxy has entered a failed assignment state.</param>
+internal sealed record WorkerOriginState(
+    [property: JsonRequired] string FunctionsContainerType,
+    [property: JsonRequired] PodIdentity Self,
+    [property: JsonRequired] bool IsDiscoveryPod,
+    [property: JsonRequired] bool IsAlwaysReady,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
+    [property: JsonRequired] long ConfigLastModifiedTime,
+    [property: JsonRequired] long ContentLastModifiedTime,
+    [property: JsonRequired] DateTimeOffset StartupTime,
+    [property: JsonRequired] int RevisionId,
+    [property: JsonRequired] WorkerStatus Status,
+    [property: JsonRequired] WorkerLink Link,
+    [property: JsonRequired] bool IsUnhealthy)
+{
+    /// <summary>
+    /// Identifies worker proxy checkpoints in the platform's instance-state contract.
+    /// </summary>
+    // Legion's IFunctionsPodOriginState requires this exact functionsContainerType discriminator for polymorphic deserialization.
+    public const string ContainerType = "FunctionsSplitWorkerProxy";
+    private static readonly WorkerLink Unlinked = new(WorkerLinkState.Unlinked);
+
+    /// <summary>
+    /// Projects a pod snapshot into the platform checkpoint, retaining defaults for runtime linking and lifecycle status.
+    /// </summary>
+    /// <param name="state">The current immutable pod snapshot.</param>
+    /// <returns>The corresponding platform checkpoint.</returns>
+    public static WorkerOriginState FromState(WorkerPodState state) =>
+        new(
+            ContainerType,
+            new("unknown", state.PodName, new("unknown", 0, "unknown")),
+            IsDiscoveryPod: false,
+            IsAlwaysReady: state.IsAlwaysReady ?? false,
+            FunctionGroup: state.FunctionGroupName,
+            ConfigLastModifiedTime: 0,
+            ContentLastModifiedTime: 0,
+            state.StartupTime,
+            checked((int)state.Revision),
+            WorkerStatus.Starting,
+            Unlinked,
+            state.AssignmentState == WorkerAssignmentState.Failed);
+}

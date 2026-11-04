@@ -6,13 +6,16 @@ using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
+/// <summary>
+/// Provides source-generated JSON serialization metadata for worker management contracts.
+/// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     PropertyNameCaseInsensitive = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(WorkerAssignRequest))]
 [JsonSerializable(typeof(WorkerInstanceState))]
-[JsonSerializable(typeof(SplitWorkerOriginState))]
+[JsonSerializable(typeof(WorkerOriginState))]
 [JsonSerializable(typeof(WorkerApiErrorResponse))]
 [JsonSerializable(typeof(RequestValidationResponse))]
 internal sealed partial class WorkerProxyJsonContext : JsonSerializerContext;

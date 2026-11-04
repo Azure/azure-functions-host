@@ -21,6 +21,10 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </remarks>
 internal static class ManagementApiEndpoints
 {
+    /// <summary>
+    /// Registers the worker management and infrastructure instance-state routes.
+    /// </summary>
+    /// <param name="endpoints">The management listener's endpoint route builder.</param>
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady)

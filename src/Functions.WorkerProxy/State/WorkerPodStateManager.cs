@@ -31,6 +31,12 @@ internal sealed class WorkerPodStateManager
     private long _lastSessionId;
     private int _assignmentClaimed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
+    /// Creates the pod's initial state and captures its startup time.
+    /// </summary>
+    /// <param name="options">The worker proxy configuration containing the pod identity.</param>
+    /// <param name="timeProvider">The clock used for startup time and state-poll deadlines.</param>
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
         TimeProvider timeProvider)

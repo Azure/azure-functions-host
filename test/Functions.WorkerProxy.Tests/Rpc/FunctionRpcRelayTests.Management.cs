@@ -205,13 +205,13 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitInstanceState_Startup_PublishesFlattenedCheckpoint()
+    public async Task InfraInstanceState_Startup_PublishesFlattenedCheckpoint()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
 
-        using HttpResponseMessage placeholderResponse = await PollSplitManagementStateAsync(
+        using HttpResponseMessage placeholderResponse = await PollInfraManagementStateAsync(
             management,
             previousState: null,
             timeout.Token);
@@ -234,6 +234,7 @@ public partial class FunctionRpcRelayTests
             "status",
             "link",
             "isUnhealthy");
+        Assert.Equal("FunctionsSplitWorkerProxy", wireRoot.GetProperty("functionsContainerType").GetString());
         Assert.Equal(JsonValueKind.Null, wireRoot.GetProperty("functionGroup").ValueKind);
         Assert.False(wireRoot.TryGetProperty("staticState", out _));
         Assert.False(wireRoot.TryGetProperty("dynamicState", out _));
@@ -252,12 +253,12 @@ public partial class FunctionRpcRelayTests
         AssertProperties(wireLink, "state");
         Assert.Equal("Unlinked", wireLink.GetProperty("state").GetString());
 
-        SplitWorkerOriginState placeholder = Assert.IsType<SplitWorkerOriginState>(
-            JsonSerializer.Deserialize(placeholderJson, WorkerProxyJsonContext.Default.SplitWorkerOriginState));
-        Assert.Equal(SplitWorkerOriginState.ContainerType, placeholder.FunctionsContainerType);
+        WorkerOriginState placeholder = Assert.IsType<WorkerOriginState>(
+            JsonSerializer.Deserialize(placeholderJson, WorkerProxyJsonContext.Default.WorkerOriginState));
+        Assert.Equal(WorkerOriginState.ContainerType, placeholder.FunctionsContainerType);
         Assert.Equal("unknown", placeholder.Self.ResourceNamespace);
         Assert.Equal("test-worker-pod", placeholder.Self.PodName);
-        Assert.Equal(new SplitFunctionAppIdentity("unknown", 0, "unknown"), placeholder.Self.App);
+        Assert.Equal(new FunctionAppIdentity("unknown", 0, "unknown"), placeholder.Self.App);
         Assert.False(placeholder.IsDiscoveryPod);
         Assert.False(placeholder.IsAlwaysReady);
         Assert.Null(placeholder.FunctionGroup);
@@ -265,29 +266,29 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(0, placeholder.ContentLastModifiedTime);
         Assert.NotEqual(default(DateTimeOffset), placeholder.StartupTime);
         Assert.Equal(0, placeholder.RevisionId);
-        Assert.Equal(SplitWorkerStatus.Starting, placeholder.Status);
-        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), placeholder.Link);
+        Assert.Equal(WorkerStatus.Starting, placeholder.Status);
+        Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), placeholder.Link);
         Assert.False(placeholder.IsUnhealthy);
     }
 
     [Fact]
-    public async Task SplitInstanceState_Assignment_UpdatesLongPoll()
+    public async Task InfraInstanceState_Assignment_UpdatesLongPoll()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        SplitWorkerOriginState placeholder = await ReadSplitManagementStateAsync(management, timeout.Token);
+        WorkerOriginState placeholder = await ReadInfraManagementStateAsync(management, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await worker.WriteAsync(CreateStartStream(), timeout.Token);
         await WaitForWorkerReadyAsync(manager, timeout.Token);
 
-        SplitWorkerOriginState preAssignment = await ReadSplitManagementStateAsync(management, timeout.Token);
+        WorkerOriginState preAssignment = await ReadInfraManagementStateAsync(management, timeout.Token);
         Assert.Equal(2, preAssignment.RevisionId);
-        Assert.Equal(SplitWorkerStatus.Starting, preAssignment.Status);
-        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), preAssignment.Link);
+        Assert.Equal(WorkerStatus.Starting, preAssignment.Status);
+        Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), preAssignment.Link);
 
-        Task<HttpResponseMessage> assignmentPoll = PollSplitManagementStateAsync(
+        Task<HttpResponseMessage> assignmentPoll = PollInfraManagementStateAsync(
             management,
             preAssignment,
             timeout.Token);
@@ -303,25 +304,25 @@ public partial class FunctionRpcRelayTests
         }
 
         using HttpResponseMessage assignedResponse = await assignmentPoll;
-        SplitWorkerOriginState assigned = await ReadSplitManagementStateAsync(assignedResponse, timeout.Token);
+        WorkerOriginState assigned = await ReadInfraManagementStateAsync(assignedResponse, timeout.Token);
         Assert.Equal(placeholder.Self, assigned.Self);
         Assert.False(assigned.IsAlwaysReady);
         Assert.Equal("test-group", assigned.FunctionGroup);
         Assert.Equal(placeholder.StartupTime, assigned.StartupTime);
         Assert.Equal(3, assigned.RevisionId);
-        Assert.Equal(SplitWorkerStatus.Starting, assigned.Status);
-        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), assigned.Link);
+        Assert.Equal(WorkerStatus.Starting, assigned.Status);
+        Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), assigned.Link);
         Assert.False(assigned.IsUnhealthy);
 
-        using HttpResponseMessage differentStateResponse = await PollSplitManagementStateAsync(
+        using HttpResponseMessage differentStateResponse = await PollInfraManagementStateAsync(
             management,
-            assigned with { FunctionsContainerType = "FunctionsSplitRuntime" },
+            assigned with { FunctionsContainerType = "different-container-type" },
             timeout.Token);
-        Assert.Equal(assigned, await ReadSplitManagementStateAsync(differentStateResponse, timeout.Token));
+        Assert.Equal(assigned, await ReadInfraManagementStateAsync(differentStateResponse, timeout.Token));
     }
 
     [Fact]
-    public async Task SplitInstanceState_RuntimeAttachAndWorkerTermination_KeepsDeferredLinkDefaults()
+    public async Task InfraInstanceState_RuntimeAttachAndWorkerTermination_KeepsDeferredLinkDefaults()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -332,18 +333,18 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(CreateStartStream(), timeout.Token);
         await WaitForWorkerReadyAsync(manager, timeout.Token);
         await AssignWorkerAsync(management, timeout.Token);
-        SplitWorkerOriginState assigned = await ReadSplitManagementStateAsync(management, timeout.Token);
+        WorkerOriginState assigned = await ReadInfraManagementStateAsync(management, timeout.Token);
 
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await runtime.WriteAsync(CreateMessage("runtime-attach"), timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
 
         Assert.Equal(assigned.RevisionId, manager.State.Revision);
-        Assert.Equal(assigned, await ReadSplitManagementStateAsync(management, timeout.Token));
-        Assert.Equal(SplitWorkerStatus.Starting, assigned.Status);
-        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), assigned.Link);
+        Assert.Equal(assigned, await ReadInfraManagementStateAsync(management, timeout.Token));
+        Assert.Equal(WorkerStatus.Starting, assigned.Status);
+        Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), assigned.Link);
 
-        Task<HttpResponseMessage> terminationPoll = PollSplitManagementStateAsync(
+        Task<HttpResponseMessage> terminationPoll = PollInfraManagementStateAsync(
             management,
             assigned,
             timeout.Token);
@@ -355,14 +356,14 @@ public partial class FunctionRpcRelayTests
             worker.WaitForTerminationAsync(timeout.Token));
 
         using HttpResponseMessage terminatedResponse = await terminationPoll;
-        SplitWorkerOriginState terminated = await ReadSplitManagementStateAsync(terminatedResponse, timeout.Token);
+        WorkerOriginState terminated = await ReadInfraManagementStateAsync(terminatedResponse, timeout.Token);
         Assert.Equal(assigned.Self, terminated.Self);
         Assert.Equal(assigned.IsAlwaysReady, terminated.IsAlwaysReady);
         Assert.Equal(assigned.FunctionGroup, terminated.FunctionGroup);
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
-        Assert.Equal(SplitWorkerStatus.Starting, terminated.Status);
-        Assert.Equal(new SplitWorkerLink(SplitWorkerLinkState.Unlinked), terminated.Link);
+        Assert.Equal(WorkerStatus.Starting, terminated.Status);
+        Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), terminated.Link);
         Assert.True(terminated.IsUnhealthy);
     }
 
@@ -395,38 +396,38 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
-    private static async Task<SplitWorkerOriginState> ReadSplitManagementStateAsync(
+    private static async Task<WorkerOriginState> ReadInfraManagementStateAsync(
         HttpClient client,
         CancellationToken cancellationToken)
     {
-        using HttpResponseMessage response = await PollSplitManagementStateAsync(
+        using HttpResponseMessage response = await PollInfraManagementStateAsync(
             client,
             previousState: null,
             cancellationToken);
-        return await ReadSplitManagementStateAsync(response, cancellationToken);
+        return await ReadInfraManagementStateAsync(response, cancellationToken);
     }
 
-    private static async Task<SplitWorkerOriginState> ReadSplitManagementStateAsync(
+    private static async Task<WorkerOriginState> ReadInfraManagementStateAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
-        SplitWorkerOriginState? state = JsonSerializer.Deserialize(
+        WorkerOriginState? state = JsonSerializer.Deserialize(
             await response.Content.ReadAsStringAsync(cancellationToken),
-            WorkerProxyJsonContext.Default.SplitWorkerOriginState);
-        return Assert.IsType<SplitWorkerOriginState>(state);
+            WorkerProxyJsonContext.Default.WorkerOriginState);
+        return Assert.IsType<WorkerOriginState>(state);
     }
 
-    private static async Task<HttpResponseMessage> PollSplitManagementStateAsync(
+    private static async Task<HttpResponseMessage> PollInfraManagementStateAsync(
         HttpClient client,
-        SplitWorkerOriginState? previousState,
+        WorkerOriginState? previousState,
         CancellationToken cancellationToken)
     {
         using HttpContent? content = previousState is null
             ? null
             : new StringContent(
-                JsonSerializer.Serialize(previousState, WorkerProxyJsonContext.Default.SplitWorkerOriginState),
+                JsonSerializer.Serialize(previousState, WorkerProxyJsonContext.Default.WorkerOriginState),
                 Encoding.UTF8,
                 "application/json");
         return await client.PostAsync(InfraStatePath, content, cancellationToken);
