@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.State;
 using Xunit;
 
@@ -149,7 +150,8 @@ public class WorkerAssignmentTests
     [InlineData("background", 10, 10)]
     public void Construction_NormalizesOnlyMissingHttpConcurrency(string group, int? supplied, int? effective)
     {
-        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", group, false, new Dictionary<string, string>(), "/app", supplied);
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", group, false, new Dictionary<string, string>(), "/app",
+            maxHttpConcurrency: supplied);
 
         Assert.Equal(effective, assignment.MaxHttpConcurrency);
     }
@@ -164,15 +166,18 @@ public class WorkerAssignmentTests
     public void Construction_RejectsInvalidSuppliedConcurrency(string group, int supplied)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", group, false, new Dictionary<string, string>(), "/app", supplied));
+            new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", group, false, new Dictionary<string, string>(), "/app",
+                maxHttpConcurrency: supplied));
     }
 
     [Fact]
     public void Equality_UsesEffectiveConcurrency()
     {
         WorkerAssignment omitted = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app");
-        WorkerAssignment explicitDefault = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app", 16);
-        WorkerAssignment different = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app", 10);
+        WorkerAssignment explicitDefault = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app",
+            maxHttpConcurrency: 16);
+        WorkerAssignment different = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), "/app",
+            maxHttpConcurrency: 10);
 
         Assert.True(omitted.IsEquivalentTo(explicitDefault));
         Assert.True(explicitDefault.IsEquivalentTo(omitted));
@@ -181,7 +186,7 @@ public class WorkerAssignmentTests
     }
 
     [Fact]
-    public void Equality_PreservesOriginalHttpProxyAuthority()
+    public void Equality_PreservesNormalizedMappedHttpsOrigin()
     {
         WorkerAssignment first = Create(new Dictionary<string, string>(), "worker-pod:28080");
         WorkerAssignment same = Create(new Dictionary<string, string>(), "worker-pod:28080");
@@ -190,7 +195,7 @@ public class WorkerAssignmentTests
 
         Assert.True(first.IsEquivalentTo(same));
         Assert.False(first.IsEquivalentTo(differentAuthority));
-        Assert.False(first.IsEquivalentTo(differentCasing));
+        Assert.True(first.IsEquivalentTo(differentCasing));
     }
 
     [Theory]
@@ -199,29 +204,43 @@ public class WorkerAssignmentTests
     [InlineData("worker-pod")]
     [InlineData("127.0.0.1")]
     [InlineData("[::1]")]
-    [InlineData("[::1]:28080")]
-    [InlineData("[2001:db8::1]:28080")]
     [InlineData("[fe80::1%3]:28080")]
     [InlineData("[fe80::1%253]:28080")]
-    [InlineData("[::ffff:127.0.0.1]:28080")]
     [InlineData("fe80::1%3:28080")]
-    [InlineData("https://worker-pod:28080")]
+    [InlineData("http://worker-pod:28080")]
     [InlineData("worker-pod:28080/path")]
     [InlineData("worker-pod:0")]
     [InlineData("user@worker-pod:28080")]
-    public void Construction_RejectsInvalidHttpProxyAuthority(string endpoint)
+    public void Assignment_RejectsInvalidMappedHttpsAuthority(string endpoint)
     {
-        Assert.Throws<ArgumentException>(() => Create(new Dictionary<string, string>(), endpoint));
+        WorkerAssignRequest request = new()
+        {
+            StartupMode = nameof(WorkerStartupMode.Preconfigured),
+            FunctionAppName = "app",
+            FunctionGroupName = "http",
+            IsAlwaysReady = false,
+            FunctionAppDirectory = string.Empty,
+            Environment = new(),
+            HttpProxyEndpoint = endpoint
+        };
+
+        Assert.False(WorkerAssignRequestValidator.TryCreateAssignment(request, out _, out IReadOnlyList<RequestValidationError> errors));
+        Assert.Equal("httpProxyEndpoint", Assert.Single(errors).Target);
     }
 
     [Theory]
     [InlineData("worker-pod:28080")]
     [InlineData("127.0.0.1:28080")]
+    [InlineData("https://worker-pod:28080")]
+    [InlineData("[::1]:28080")]
+    [InlineData("[2001:db8::1]:28080")]
+    [InlineData("[::ffff:127.0.0.1]:28080")]
     public void Construction_AcceptsMappedHttpProxyAuthority(string endpoint)
     {
         WorkerAssignment assignment = Create(new Dictionary<string, string>(), endpoint);
 
-        Assert.Equal(endpoint, assignment.HttpProxyEndpoint);
+        Assert.Equal(new Uri(endpoint.StartsWith("https://", StringComparison.Ordinal) ? endpoint : $"https://{endpoint}"),
+            assignment.HttpProxyEndpoint);
     }
 
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment)
@@ -229,5 +248,5 @@ public class WorkerAssignmentTests
 
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment, string? httpProxyEndpoint)
         => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot",
-            httpProxyEndpoint: httpProxyEndpoint);
+            httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri(httpProxyEndpoint.StartsWith("https://", StringComparison.Ordinal) ? httpProxyEndpoint : $"https://{httpProxyEndpoint}"));
 }

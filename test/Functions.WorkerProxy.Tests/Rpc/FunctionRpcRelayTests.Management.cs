@@ -25,7 +25,8 @@ public partial class FunctionRpcRelayTests
     private const string InfraStatePath = "/admin/infra/instanceState";
     private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot","httpProxyEndpoint":"worker-pod:28080"}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot",
+         "configLastModifiedTime":1761868800,"contentLastModifiedTime":1761868801,"maxHttpConcurrency":0,"httpProxyEndpoint":"worker-pod:28080"}
         """;
 
     private const string RuntimeIdentityJson = """
@@ -51,15 +52,22 @@ public partial class FunctionRpcRelayTests
         if (maxHttpConcurrency is { } concurrency)
         {
             assignmentBody = assignmentBody.Replace(
-                "\"isAlwaysReady\":false",
-                "\"maxHttpConcurrency\":" + concurrency.ToString(CultureInfo.InvariantCulture) + ",\"isAlwaysReady\":false",
+                "\"maxHttpConcurrency\":0",
+                "\"maxHttpConcurrency\":" + concurrency.ToString(CultureInfo.InvariantCulture),
+                StringComparison.Ordinal);
+        }
+        else
+        {
+            assignmentBody = assignmentBody.Replace(
+                ",\"maxHttpConcurrency\":0",
+                string.Empty,
                 StringComparison.Ordinal);
         }
 
         int? expectedConcurrency = maxHttpConcurrency ??
             (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) ? 16 : null);
+        const string proxyEndpoint = "https://worker-pod:28080/";
         await using WorkerProxyWebApplicationFactory factory = new();
-        const string proxyEndpoint = "http://worker-pod:28080/";
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -81,6 +89,23 @@ public partial class FunctionRpcRelayTests
         {
             { "x-ms-functions-runtime-identity-bin", Encoding.UTF8.GetBytes(RuntimeIdentityJson) }
         };
+
+        string replayBody = assignmentBody.Replace(
+            "\"B\":\"private-value\",\"A\":\"1\"", "\"A\":\"1\",\"B\":\"private-value\"", StringComparison.Ordinal);
+        using (HttpResponseMessage replay = await PutManagementJsonAsync(
+            management, "/admin/worker/assignment", replayBody, timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, replay.StatusCode);
+        }
+        string conflictingBody = assignmentBody.Replace(
+            "\"functionGroupName\":\"" + functionGroupName + "\"",
+            "\"functionGroupName\":\"other-group\"",
+            StringComparison.Ordinal);
+        using (HttpResponseMessage conflict = await PutManagementJsonAsync(
+            management, "/admin/worker/assignment", conflictingBody, timeout.Token))
+        {
+            await AssertManagementErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        }
         StreamingMessage init = new()
         {
             RequestId = runtimeFirst ? string.Empty : "runtime-init",
@@ -98,7 +123,7 @@ public partial class FunctionRpcRelayTests
                 await runtime.WriteAsync(init, timeout.Token);
                 await WaitForAttachmentAsync(factory.Services.GetRequiredService<FunctionRpcRelay>(),
                     FunctionRpcRelaySide.Runtime, timeout.Token);
-                await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
+                Assert.False(manager.State.IsWorkerReady);
             }
 
             await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
@@ -109,10 +134,8 @@ public partial class FunctionRpcRelayTests
 
             long beforeStartRevision = manager.State.Revision;
             Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
-            Task<HttpResponseMessage> readinessPoll = management.GetAsync(
-                "/admin/worker/state?lastKnownRevision=" +
-                    beforeStartRevision.ToString(CultureInfo.InvariantCulture),
-                timeout.Token);
+            Task<HttpResponseMessage> readinessPoll =
+                PostManagementStateAsync(management, beforeStartRevision, timeout.Token);
             await WaitForManagementPollAsync(manager, timeout.Token);
             StreamingMessage start = CreateStartStream();
             await worker.WriteAsync(start, timeout.Token);
@@ -123,11 +146,8 @@ public partial class FunctionRpcRelayTests
                 string body = await changed.Content.ReadAsStringAsync(timeout.Token);
                 using JsonDocument assigned = JsonDocument.Parse(body);
                 Assert.Equal(beforeStartRevision + 1, assigned.RootElement.GetProperty("revisionId").GetInt64());
-                JsonElement pod = assigned.RootElement.GetProperty("workerPodState");
-                Assert.Equal("ReadyForRequest", pod.GetProperty("podStatus").GetString());
-                Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
-                Assert.Equal(functionGroupName, pod.GetProperty("functionGroupName").GetString());
-                Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
+                Assert.Equal(functionGroupName, assigned.RootElement.GetProperty("functionGroup").GetString());
+                Assert.False(assigned.RootElement.GetProperty("isAlwaysReady").GetBoolean());
                 Assert.DoesNotContain("private-value", body);
                 Assert.DoesNotContain("environment", body);
                 Assert.DoesNotContain("runtimePodName", body);
@@ -135,25 +155,6 @@ public partial class FunctionRpcRelayTests
 
             long readyRevision = manager.State.Revision;
             await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.OK, timeout.Token);
-            string replayBody = assignmentBody.Replace(
-                "\"B\":\"private-value\",\"A\":\"1\"", "\"A\":\"1\",\"B\":\"private-value\"", StringComparison.Ordinal);
-            using (HttpResponseMessage replay = await PutManagementJsonAsync(
-                management, "/admin/worker/assignment", replayBody, timeout.Token))
-            {
-                Assert.Equal(HttpStatusCode.NoContent, replay.StatusCode);
-                Assert.Empty(await replay.Content.ReadAsByteArrayAsync(timeout.Token));
-            }
-
-            string conflictingBody = assignmentBody.Replace(
-                "\"functionGroupName\":\"" + functionGroupName + "\"",
-                "\"functionGroupName\":\"other-group\"",
-                StringComparison.Ordinal);
-            using (HttpResponseMessage conflict = await PutManagementJsonAsync(
-                management, "/admin/worker/assignment", conflictingBody, timeout.Token))
-            {
-                await AssertManagementErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
-            }
-
             Assert.Equal(readyRevision, manager.State.Revision);
             if (runtime is null)
             {
@@ -163,17 +164,15 @@ public partial class FunctionRpcRelayTests
                     runtimeHeaders);
                 await runtime.WriteAsync(init, timeout.Token);
             }
-
             Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
-            StreamingMessage relayedInit = await worker.ReadAsync(timeout.Token);
-            Assert.Equal(init, relayedInit);
-            Assert.Equal("runtime-authoritative-directory", relayedInit.WorkerInitRequest.FunctionAppDirectory);
+            Assert.Equal(init, await worker.ReadAsync(timeout.Token));
             StreamingMessage initialized = CreateInitResponse(init.RequestId, "http://localhost:1234/");
             StreamingMessage expected = initialized.Clone();
             expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = functionGroupName;
             expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
-            if (expectedConcurrency is { } advertisedConcurrency)
+            if (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase)
+                && expectedConcurrency is { } advertisedConcurrency)
             {
                 expected.WorkerInitResponse.Capabilities["MaxHttpConcurrency"] =
                     advertisedConcurrency.ToString(CultureInfo.InvariantCulture);
@@ -194,10 +193,8 @@ public partial class FunctionRpcRelayTests
             Assert.Equal("test-app", running.Link.Runtime.App.FunctionAppName);
             Assert.Equal(42, running.Link.Runtime.App.FunctionAppSiteId);
 
-            Task<HttpResponseMessage> terminationPoll = management.GetAsync(
-                "/admin/worker/state?lastKnownRevision=" +
-                    manager.State.Revision.ToString(CultureInfo.InvariantCulture),
-                timeout.Token);
+            Task<HttpResponseMessage> terminationPoll =
+                PollManagementStateAsync(management, running, timeout.Token);
             await WaitForManagementPollAsync(manager, timeout.Token);
             await worker.CompleteRequestAsync(timeout.Token);
             Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
@@ -208,11 +205,9 @@ public partial class FunctionRpcRelayTests
                 Assert.True(changed.Headers.CacheControl?.NoStore);
                 using JsonDocument state = JsonDocument.Parse(await changed.Content.ReadAsStringAsync(timeout.Token));
                 Assert.Equal(manager.State.Revision, state.RootElement.GetProperty("revisionId").GetInt64());
-                JsonElement pod = state.RootElement.GetProperty("workerPodState");
-                Assert.Equal("None", pod.GetProperty("podStatus").GetString());
-                Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
-                Assert.Equal(functionGroupName, pod.GetProperty("functionGroupName").GetString());
-                Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
+                Assert.Equal("RemovalRequested", state.RootElement.GetProperty("status").GetString());
+                Assert.Equal(functionGroupName, state.RootElement.GetProperty("functionGroup").GetString());
+                Assert.True(state.RootElement.GetProperty("isUnhealthy").GetBoolean());
             }
 
             WorkerOriginState terminated = await ReadManagementStateAsync(management, timeout.Token);
@@ -248,11 +243,10 @@ public partial class FunctionRpcRelayTests
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-
         using HttpResponseMessage assignment = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
         Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
 
         Grpc.Core.RpcException exception = await worker.WriteAndReadRejectionAsync(CreateMessage("not-start-stream"), timeout.Token);
 
@@ -353,6 +347,23 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(initial, manager.State);
         Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
         Assert.Null(relay.LastTerminalState);
+    }
+
+    private static void AssertStartingState(JsonElement state, int revision, bool unhealthy)
+    {
+        Assert.Equal("FunctionsSplitWorkerProxy", state.GetProperty("functionsContainerType").GetString());
+        Assert.Equal(revision, state.GetProperty("revisionId").GetInt32());
+        Assert.Equal("Starting", state.GetProperty("status").GetString());
+        Assert.Equal("Unlinked", state.GetProperty("link").GetProperty("state").GetString());
+        Assert.False(state.GetProperty("link").TryGetProperty("runtime", out _));
+        Assert.Equal("test-group", state.GetProperty("functionGroup").GetString());
+        Assert.Equal(unhealthy, state.GetProperty("isUnhealthy").GetBoolean());
+        string json = state.GetRawText();
+        Assert.DoesNotContain("private-value", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("environment", json, StringComparison.Ordinal);
+        Assert.Equal("unknown", state.GetProperty("self").GetProperty("app").GetProperty("functionAppName").GetString());
+        Assert.Equal(0, state.GetProperty("configLastModifiedTime").GetInt64());
+        Assert.Equal(0, state.GetProperty("contentLastModifiedTime").GetInt64());
     }
 
     [Fact]
@@ -487,7 +498,7 @@ public partial class FunctionRpcRelayTests
         // Verify Legion NNA echo compatibility when null properties (e.g. functionGroup at Revision 0) are omitted.
         System.Text.Json.Nodes.JsonObject nnaEcho = System.Text.Json.Nodes.JsonNode.Parse(placeholderJson)!.AsObject();
         nnaEcho.Remove("functionGroup");
-        nnaEcho["revisionId"] = -1;
+        nnaEcho["isDiscoveryPod"] = true;
         using StringContent echoContent = new(nnaEcho.ToJsonString(), Encoding.UTF8, "application/json");
         using HttpResponseMessage echoResponse = await management.PostAsync(InfraStatePath, echoContent, timeout.Token);
         Assert.Equal(HttpStatusCode.OK, echoResponse.StatusCode);
@@ -546,7 +557,7 @@ public partial class FunctionRpcRelayTests
 
         using HttpResponseMessage differentStateResponse = await PollManagementStateAsync(
             management,
-            assigned with { FunctionsContainerType = "FunctionsSplitRuntime" },
+            assigned with { FunctionGroup = "stale-cached-group" },
             timeout.Token);
         Assert.Equal(assigned, await ReadManagementStateAsync(differentStateResponse, timeout.Token));
     }
@@ -601,18 +612,30 @@ public partial class FunctionRpcRelayTests
         HttpClient client, string path, string body, CancellationToken cancellationToken)
     {
         using StringContent content = new(body, Encoding.UTF8, "application/json");
+
         return await client.PutAsync(path, content, cancellationToken);
+    }
+
+    private static async Task<HttpResponseMessage> PostManagementStateAsync(
+        HttpClient client, long? revision, CancellationToken cancellationToken)
+    {
+        string body = revision is { } value
+            ? JsonSerializer.Serialize(
+                (await ReadManagementStateAsync(client, cancellationToken)) with { RevisionId = checked((int)value) },
+                WorkerProxyJsonContext.Default.WorkerOriginState)
+            : "null";
+        using StringContent content = new(body, Encoding.UTF8, "application/json");
+
+        return await client.PostAsync("/admin/infra/instanceState", content, cancellationToken);
     }
 
     private static async Task<JsonDocument> ReadManagementStateAsync(
         HttpClient client, long? lastKnownRevision, CancellationToken cancellationToken)
     {
-        string path = lastKnownRevision.HasValue
-            ? "/admin/worker/state?lastKnownRevision=" + lastKnownRevision.Value.ToString(CultureInfo.InvariantCulture)
-            : "/admin/worker/state";
-        using HttpResponseMessage response = await client.GetAsync(path, cancellationToken);
+        using HttpResponseMessage response = await PostManagementStateAsync(client, lastKnownRevision, cancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
+
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
     }
 

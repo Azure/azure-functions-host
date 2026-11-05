@@ -10,27 +10,27 @@ namespace Azure.Functions.WorkerProxy.State;
 /// Exposes the worker proxy checkpoint consumed by the platform's infrastructure instance-state endpoint.
 /// </summary>
 /// <param name="FunctionsContainerType">The platform discriminator for the container kind.</param>
-/// <param name="Self">The identity of this worker proxy pod.</param>
+/// <param name="Self">The trusted pod name, with unknown placeholders for platform-owned namespace and app identity.</param>
 /// <param name="IsDiscoveryPod">Whether the pod is used for discovery.</param>
 /// <param name="IsAlwaysReady">Whether the pod belongs to an always-ready allocation.</param>
 /// <param name="FunctionGroup">The assigned function group, or <see langword="null"/> before assignment.</param>
-/// <param name="ConfigLastModifiedTime">The platform configuration modification timestamp.</param>
-/// <param name="ContentLastModifiedTime">The platform content modification timestamp.</param>
+/// <param name="ConfigLastModifiedTime">Zero until confirmed loaded configuration versions are integrated.</param>
+/// <param name="ContentLastModifiedTime">Zero until confirmed loaded content versions are integrated.</param>
 /// <param name="StartupTime">The worker proxy startup time.</param>
 /// <param name="RevisionId">The revision of this checkpoint.</param>
 /// <param name="Status">The platform-visible worker proxy lifecycle status.</param>
 /// <param name="Link">The worker proxy's runtime link state.</param>
-/// <param name="IsUnhealthy">Whether the worker proxy has entered a failed assignment state.</param>
+/// <param name="IsUnhealthy">Whether known authentication configuration or an assigned session has failed.</param>
 internal sealed record WorkerOriginState(
-    [property: JsonRequired] string FunctionsContainerType,
+    [property: JsonRequired, JsonPropertyOrder(-1)] string FunctionsContainerType,
     [property: JsonRequired] PodIdentity Self,
     [property: JsonRequired] bool IsDiscoveryPod,
     [property: JsonRequired] bool IsAlwaysReady,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
-    [property: JsonRequired] long ConfigLastModifiedTime,
-    [property: JsonRequired] long ContentLastModifiedTime,
+    [property: JsonRequired, JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] long ConfigLastModifiedTime,
+    [property: JsonRequired, JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] long ContentLastModifiedTime,
     [property: JsonRequired] DateTimeOffset StartupTime,
-    [property: JsonRequired] int RevisionId,
+    [property: JsonRequired, JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] int RevisionId,
     [property: JsonRequired] WorkerStatus Status,
     [property: JsonRequired] WorkerLink Link,
     [property: JsonRequired] bool IsUnhealthy)
@@ -65,6 +65,6 @@ internal sealed record WorkerOriginState(
             checked((int)state.Revision),
             status,
             state.IsRuntimeInitialized ? new(WorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
-            state.RemovalRequested || state.AssignmentState == WorkerAssignmentState.Failed);
+            state.RemovalRequested || state.IsUnhealthy);
     }
 }

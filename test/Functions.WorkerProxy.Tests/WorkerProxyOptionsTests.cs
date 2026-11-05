@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.Tests;
+using Azure.Functions.WorkerProxy.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -43,6 +45,46 @@ public class WorkerProxyOptionsTests
         Assert.Equal(41002, options.WorkerGrpcPort);
         Assert.Equal(41003, options.HttpPort);
         Assert.Equal("http://localhost:41004", options.WorkerHttpEndpoint);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("relative")]
+    [InlineData("http://worker-pod:28080")]
+    [InlineData("ftp://worker-pod:28080")]
+    [InlineData("http://worker-pod:0")]
+    [InlineData("http://worker-pod:28080/worker-id")]
+    [InlineData("http://worker-pod:28080/?query=value")]
+    [InlineData("http://worker-pod:28080/#fragment")]
+    [InlineData("http://user:password@worker-pod:28080")]
+    [InlineData("http://0.0.0.0:28080")]
+    [InlineData("http://[::]:28080")]
+    [InlineData("http://*:28080")]
+    [InlineData("http://+:28080")]
+    public void Assignment_RejectsInvalidAdvertisedHttpsOrigin(string endpoint)
+    {
+        Assert.False(WorkerHttpProxyEndpointResolver.TryResolve(endpoint, Uri.UriSchemeHttps, out _));
+    }
+
+    [Theory]
+    [InlineData("https://localhost:28080")]
+    [InlineData("https://worker-pod.example:48801/")]
+    [InlineData("https://[::1]:28080")]
+    [InlineData("https://100.64.1.12:48801")]
+    [InlineData("https://[fd00::12]:48801")]
+    public void Assignment_AllowsCompatibleHttpsOrigins(string endpoint)
+    {
+        Assert.True(WorkerHttpProxyEndpointResolver.TryResolve(endpoint, Uri.UriSchemeHttps, out Uri? resolved));
+        Assert.Equal(new Uri(endpoint), resolved);
+    }
+
+    [Fact]
+    public void Assignment_RejectsCredentialsInAdvertisedHttpsOrigin()
+    {
+        UriBuilder endpoint = new("https://worker-pod:28080") { UserName = "user" };
+
+        Assert.False(WorkerHttpProxyEndpointResolver.TryResolve(endpoint.Uri.AbsoluteUri, Uri.UriSchemeHttps, out _));
     }
 
     [Theory]
@@ -88,7 +130,10 @@ public class WorkerProxyOptionsTests
 
     private static WorkerProxyOptions GetOptions(params string[] args)
     {
-        using WebApplication app = WorkerProxyApplication.Build(["--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
+        using TestCertificateFiles certificates = new();
+        using WebApplication app = WorkerProxyApplication.Build(
+            [.. certificates.Arguments, "--WEBSITE_POD_NAME", "test-worker-pod",
+             "--CONTAINER_ENCRYPTION_KEY", RuntimeAuthenticationTestData.EncodedWorkerKey, .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }

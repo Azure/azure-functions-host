@@ -127,7 +127,7 @@ public partial class FunctionRpcRelayTests
         StreamingMessage initialized = await InitializeAndAssignWorkerAsync(
             worker, runtime, management, assignment,
             WorkerHttpForwardingTests.GetAddress(destination).AbsoluteUri, timeout.Token);
-        Assert.Equal("http://worker-pod.example:48801/", initialized.WorkerInitResponse.Capabilities["HttpUri"]);
+        Assert.Equal("https://worker-pod.example:48801/", initialized.WorkerInitResponse.Capabilities["HttpUri"]);
         Assert.Equal("http", initialized.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
         Assert.Equal(
             expectedConcurrency.ToString(CultureInfo.InvariantCulture),

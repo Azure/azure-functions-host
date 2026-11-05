@@ -22,7 +22,7 @@ public partial class FunctionRpcRelayTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Relay_ReadinessRequiresStartStreamButNotRuntimeInitialization(bool runtimeFirst)
+    public async Task Relay_AcceptsAssignmentBeforeStartStreamAndPreservesItAcrossAttachment(bool runtimeFirst)
     {
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
@@ -61,12 +61,14 @@ public partial class FunctionRpcRelayTests
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
         Assert.Equal(WorkerAssignmentState.Ready, ready.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, ready.PodStatus);
+
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(3, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             CreateMessageReader(runtimeInbound.Reader), CreateMessageWriter(runtimeOutbound.Writer), timeout.Token);
-        Assert.Same(start, await runtimeOutbound.Reader.ReadAsync(timeout.Token));
+        Assert.Equal(start, await runtimeOutbound.Reader.ReadAsync(timeout.Token));
 
         StreamingMessage init = new()
         {
@@ -202,7 +204,6 @@ public partial class FunctionRpcRelayTests
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
-            Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
             Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
             Assert.Equal(expectedRemoval, failed.RemovalRequested);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
@@ -289,7 +290,7 @@ public partial class FunctionRpcRelayTests
         string? httpProxyEndpoint = null)
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
             environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", maxHttpConcurrency: maxHttpConcurrency,
-            httpProxyEndpoint: httpProxyEndpoint);
+            httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri($"https://{httpProxyEndpoint}"));
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

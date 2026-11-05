@@ -317,7 +317,7 @@ public partial class FunctionRpcRelayTests
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(FunctionGroupNameCapability));
         Assert.False(forwarded.WorkerInitResponse.Capabilities.ContainsKey(MaxHttpConcurrencyCapability));
-        Assert.Equal("http://assigned.example:28080/",
+        Assert.Equal("https://assigned.example:28080/",
             factory.Services.GetRequiredService<WorkerPodStateManager>().GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 

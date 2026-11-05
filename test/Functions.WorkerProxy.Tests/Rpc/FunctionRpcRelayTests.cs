@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -497,12 +499,44 @@ public partial class FunctionRpcRelayTests
             normalizedAddress.Host = IPAddress.Loopback.ToString();
         }
 
-        GrpcChannel channel = GrpcChannel.ForAddress(normalizedAddress.Uri);
+        GrpcChannel channel = GrpcChannel.ForAddress(normalizedAddress.Uri, new GrpcChannelOptions
+        {
+            HttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }
+        });
         AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> call =
             channel.CreateCallInvoker().AsyncDuplexStreamingCall(EventStreamMethod, host: null,
-                new CallOptions(headers: headers, cancellationToken: cancellationToken));
+                new CallOptions(
+                    headers: string.Equals(address.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
+                        ? AddRuntimeAuthentication(headers) : null,
+                    cancellationToken: cancellationToken));
 
         return new RelayClient(channel, call);
+    }
+
+    private static Metadata AddRuntimeAuthentication(Metadata? headers)
+    {
+        if (headers is not null &&
+            !headers.Any(static header => string.Equals(
+                header.Key,
+                "x-ms-functions-runtime-identity-bin",
+                StringComparison.Ordinal)))
+        {
+            return headers;
+        }
+
+        Metadata authenticated = RuntimeAuthenticationTestData.CreateHeaders();
+        if (headers is not null)
+        {
+            foreach (Metadata.Entry header in headers)
+            {
+                authenticated.Add(header);
+            }
+        }
+
+        return authenticated;
     }
 
     private static StreamingMessage CreateMessage(string requestId, string? payload = null)

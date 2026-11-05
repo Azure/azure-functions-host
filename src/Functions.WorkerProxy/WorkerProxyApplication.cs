@@ -6,6 +6,8 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
+using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Logging;
@@ -85,6 +87,7 @@ internal static partial class WorkerProxyApplication
         ArgumentNullException.ThrowIfNull(args);
 
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
+        builder.WebHost.UseKestrelHttpsConfiguration();
         // WorkerProxy owns all listener bindings and does not use the generic ASP.NET Core URL configuration.
         builder.WebHost.UseSetting(WebHostDefaults.ServerUrlsKey, string.Empty);
         builder.WebHost.UseSetting(WebHostDefaults.HttpPortsKey, string.Empty);
@@ -112,6 +115,7 @@ internal static partial class WorkerProxyApplication
             LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton(static _ => WorkerProxyStartupTime.Capture(TimeProvider.System));
+        ContainerManagementAuthenticationHandler.AddServices(builder.Services);
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();
         builder.Services.AddOptions<TokenServiceProxyWorkerOptions>()
@@ -122,6 +126,8 @@ internal static partial class WorkerProxyApplication
         builder.Services.AddSingleton<TokenServiceProxyMiddleware>();
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.AddHostedService<NeverLinkedTimeoutService>();
+        builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
+        RuntimeRequestAuthenticator.AddServices(builder.Services);
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
@@ -137,10 +143,14 @@ internal static partial class WorkerProxyApplication
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
+        _ = app.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>();
         RegisterLifecycleEvents(app);
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
-        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
+        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out FunctionRpcRelaySide side)
+            && side is FunctionRpcRelaySide.Runtime, static pipeline => ConfigureGrpcPipeline(pipeline, authenticate: true));
+        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out FunctionRpcRelaySide side)
+            && side is FunctionRpcRelaySide.Worker, static pipeline => ConfigureGrpcPipeline(pipeline, authenticate: false));
         app.MapWhen(context => endpoints.IsHttpPort(context.Connection.LocalPort), ConfigureHttpPipeline);
         app.MapWhen(context => endpoints.IsTokenServiceProxyPort(context.Connection.LocalPort), static pipeline =>
             pipeline.Run(context => context.RequestServices.GetRequiredService<TokenServiceProxyMiddleware>().InvokeAsync(context)));
@@ -170,6 +180,8 @@ internal static partial class WorkerProxyApplication
     {
         app.UseRouting();
         app.UseMiddleware<WorkerAssignmentLoggingMiddleware>();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.UseEndpoints(static endpoints =>
         {
             endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
@@ -177,12 +189,22 @@ internal static partial class WorkerProxyApplication
         });
     }
 
-    private static void ConfigureGrpcPipeline(IApplicationBuilder app)
+    private static void ConfigureGrpcPipeline(IApplicationBuilder app, bool authenticate)
     {
         app.UseRouting();
-        app.UseEndpoints(static endpoints =>
+        if (authenticate)
         {
-            endpoints.MapGrpcService<FunctionRpcRelayService>();
+            app.UseAuthentication();
+            app.UseAuthorization();
+        }
+
+        app.UseEndpoints(endpoints =>
+        {
+            var service = endpoints.MapGrpcService<FunctionRpcRelayService>();
+            if (authenticate)
+            {
+                service.RequireAuthorization(RuntimeRequestAuthenticator.SchemeName);
+            }
         });
     }
 
@@ -204,12 +226,16 @@ internal static partial class WorkerProxyApplication
             => middleware.InvokeAsync(context);
 
         app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.Use(UpdateMaxRequestBodySizeAsync);
         app.UseEndpoints(static endpoints =>
         {
             // Admin paths are reserved for the platform. We intentionally block them to make that clear.
-            endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
-            endpoints.Map("/{**path}", ForwardAsync).AllowAnonymous();
+            endpoints.Map("/admin/{**path}", static () => Results.NotFound())
+                .RequireAuthorization(RuntimeRequestAuthenticator.SchemeName);
+            endpoints.Map("/{**path}", ForwardAsync)
+                .RequireAuthorization(RuntimeRequestAuthenticator.SchemeName);
         });
     }
 

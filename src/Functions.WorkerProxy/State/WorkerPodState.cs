@@ -19,6 +19,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="FunctionGroupName">The assigned function group name.</param>
 /// <param name="IsAlwaysReady">Whether the assignment belongs to an always-ready allocation.</param>
 /// <param name="StartupTime">The worker proxy startup time, retained across state revisions.</param>
+/// <param name="HttpProxyEndpoint">The accepted externally mapped HTTPS origin, when supplied.</param>
 /// <param name="MaxHttpConcurrency">The assigned maximum HTTP concurrency, when specified.</param>
 internal sealed record WorkerPodState(
     string PodName,
@@ -32,6 +33,7 @@ internal sealed record WorkerPodState(
     string? FunctionGroupName,
     bool? IsAlwaysReady,
     DateTimeOffset StartupTime,
+    Uri? HttpProxyEndpoint = null,
     int? MaxHttpConcurrency = null)
 {
     /// <summary>
@@ -58,10 +60,9 @@ internal sealed record WorkerPodState(
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => !RemovalRequested && IsWorkerAttached && WorkerId is not null;
 
-    // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
-    public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
-        ? WorkerPodStatus.ReadyForRequest
-        : WorkerPodStatus.None;
+    public bool HasAuthenticationConfigurationError { get; init; }
+
+    public bool IsUnhealthy => HasAuthenticationConfigurationError || AssignmentState is WorkerAssignmentState.Failed;
 
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.

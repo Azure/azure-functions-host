@@ -28,11 +28,52 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(state.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
         Assert.Null(state.StartupMode);
-        Assert.Equal(WorkerPodStatus.None, state.PodStatus);
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
         Assert.Null(state.IsAlwaysReady);
+        Assert.False(state.HasAuthenticationConfigurationError);
+        Assert.False(state.IsUnhealthy);
         Assert.Same(state, manager.State);
+    }
+
+    [Fact]
+    public async Task AuthenticationConfigurationHealth_PublishesChangesWithoutFailingOrReplacingAssignment()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        WorkerPodState initial = manager.State;
+        manager.SetAuthenticationConfigurationError(true);
+        WorkerPodState unavailable = manager.State;
+        Assert.True(unavailable.IsUnhealthy);
+        Assert.False(initial.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Unassigned, unavailable.AssignmentState);
+        Assert.Equal(1, unavailable.Revision);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        WorkerPodState assigned = manager.State;
+        Assert.True(assigned.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Assigned, assigned.AssignmentState);
+        Assert.False(assigned.IsWorkerAttached);
+        manager.SetAuthenticationConfigurationError(true);
+        Assert.Same(assigned, manager.State);
+        Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(assigned.Revision);
+
+        manager.SetAuthenticationConfigurationError(false);
+        WorkerPodState recovered = Assert.IsType<WorkerPodState>((await poll.WaitAsync(TestTimeout)).State);
+
+        Assert.False(recovered.IsUnhealthy);
+        Assert.Equal(assigned.Revision + 1, recovered.Revision);
+        Assert.Equal(assigned.FunctionAppName, recovered.FunctionAppName);
+        Assert.Equal(assigned.FunctionGroupName, recovered.FunctionGroupName);
+        Assert.Equal(assigned.AssignmentState, recovered.AssignmentState);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
+        manager.OnWorkerAttached(1);
+        manager.OnSessionTerminated(1);
+        manager.SetAuthenticationConfigurationError(true);
+        manager.SetAuthenticationConfigurationError(false);
+        Assert.False(manager.State.HasAuthenticationConfigurationError);
+        Assert.True(manager.State.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
     }
 
     [Theory]
@@ -49,13 +90,11 @@ public partial class WorkerPodStateManagerTests
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
         WorkerPodState started = manager.State;
         Assert.True(started.IsWorkerReady);
-        Assert.Equal(WorkerPodStatus.None, started.PodStatus);
 
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment(startupMode: startupMode)));
         WorkerPodState assigned = manager.State;
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
         Assert.Equal(startupMode, assigned.StartupMode);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
         Assert.Equal("app", assigned.FunctionAppName);
         Assert.Equal("http", assigned.FunctionGroupName);
         Assert.False(assigned.IsAlwaysReady);
@@ -68,7 +107,6 @@ public partial class WorkerPodStateManagerTests
         Assert.False(failed.IsWorkerAttached);
         Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
         Assert.Equal(startupMode, failed.StartupMode);
-        Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
         Assert.Equal("app", failed.FunctionAppName);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
             new[] { initial.Revision, attached.Revision, started.Revision, assigned.Revision, failed.Revision });
@@ -81,27 +119,25 @@ public partial class WorkerPodStateManagerTests
     }
 
     [Fact]
-    public void AssignmentBeforeWorkerAttachment_ClaimsIdentityAndBecomesReadyAfterStartStream()
+    public void AssignmentBeforeWorkerStartup_PreservesConfigurationWhenWorkerAttaches()
     {
         WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);
-        Assert.Equal(
-            WorkerAssignmentResult.Created,
-            manager.Assign(CreateAssignment("accepted", WorkerStartupMode.SpecializationRequired)));
-        WorkerPodState assigned = manager.State;
-        Assert.Equal(1, assigned.Revision);
-        Assert.Equal(WorkerAssignmentState.Assigned, assigned.AssignmentState);
-        Assert.Equal("accepted", assigned.FunctionAppName);
-        Assert.Equal(WorkerStartupMode.SpecializationRequired, assigned.StartupMode);
-        Assert.False(assigned.IsWorkerReady);
-        Assert.Equal(WorkerPodStatus.None, assigned.PodStatus);
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "accepted", "http", false,
+            new Dictionary<string, string> { ["SETTING"] = "private-value" }, "/app", new Uri("https://127.0.0.1:48801/"));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
+        Assert.False(manager.State.IsWorkerReady);
+        Assert.Equal(1, manager.State.Revision);
 
-        Assert.True(manager.OnWorkerAttached(1));
-        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
-        Assert.True(manager.OnWorkerStartStream(1, "worker"));
-        Assert.Equal(3, manager.State.Revision);
-        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        Assert.True(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        manager.OnWorkerAttached(1);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(assignment));
+        Assert.False(manager.State.IsWorkerReady);
+
+        manager.OnWorkerStartStream(1, "worker");
+        Assert.Equal("accepted", manager.State.FunctionAppName);
+        Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
+        Assert.Equal(assignment.HttpProxyEndpoint, manager.State.HttpProxyEndpoint);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(assignment));
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
     }
 
     [Fact]
@@ -134,16 +170,16 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
         WorkerPodState assigned = manager.State;
 
-        Assert.Equal("http://mapped.example:48801/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+        Assert.Equal("https://mapped.example:48801/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
         Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(assignment));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment(httpProxyEndpoint: "mapped.example:48802")));
         Assert.Same(assigned, manager.State);
-        Assert.Equal("http://mapped.example:48801/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+        Assert.Equal("https://mapped.example:48801/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
 
         manager.OnSessionTerminated(1);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
         Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
-        Assert.Equal(new Uri("http://mapped.example:48801/"), assignment.ResolvedHttpProxyEndpoint);
+        Assert.Equal(new Uri("https://mapped.example:48801/"), assignment.HttpProxyEndpoint);
     }
 
     [Fact]
@@ -377,7 +413,7 @@ public partial class WorkerPodStateManagerTests
     }
 
     [Fact]
-    public async Task AssignmentRacingTermination_CannotLeaveReadyState()
+    public async Task AssignmentRacingTermination_CannotLeaveWorkerReady()
     {
         for (int iteration = 0; iteration < 32; iteration++)
         {
@@ -400,8 +436,8 @@ public partial class WorkerPodStateManagerTests
             WorkerAssignmentResult result = await assignment;
             Assert.Equal(WorkerAssignmentResult.Created, result);
             Assert.False(manager.State.IsWorkerReady);
-            Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
-            if (manager.State.AssignmentState == WorkerAssignmentState.Failed)
+            Assert.Equal(4, manager.State.Revision);
+            if (manager.State.AssignmentState is WorkerAssignmentState.Failed)
             {
                 Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
             }
@@ -431,7 +467,7 @@ public partial class WorkerPodStateManagerTests
         WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured,
         string? httpProxyEndpoint = null)
         => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot",
-            httpProxyEndpoint: httpProxyEndpoint);
+            httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri($"https://{httpProxyEndpoint}"));
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });
