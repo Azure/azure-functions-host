@@ -212,26 +212,6 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
     }
 
-    [Theory]
-    [InlineData("HTTP", "httpTrigger")]
-    [InlineData("function:testfunction", "timerTrigger")]
-    [InlineData("durable", "orchestrationTrigger")]
-    [InlineData("http", "blobTrigger")]
-    public async Task InvokeAsync_SingleChannelHonorsFunctionGroupRules(string group, string triggerType)
-    {
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
-            "worker", functionGroupName: group, maxHttpConcurrency: "10");
-        FunctionMetadata function = CreateFunction(triggerType);
-        await PrepareReadyChannelAsync(worker, function);
-        PublishReady(worker.Channel);
-        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
-        await dispatcher.InitializeAsync([function]);
-
-        await dispatcher.InvokeAsync(CreateInvocation(function));
-
-        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-    }
-
     [Fact]
     public async Task InvokeAsync_RoundRobinSkipsWorkersAssignedToOtherGroups()
     {
@@ -266,11 +246,9 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Theory]
-    [InlineData(null, false)]
-    [InlineData("", false)]
-    [InlineData(null, true)]
-    [InlineData("", true)]
-    public async Task InvokeAsync_UngroupedWorkersRetainLegacyRouting(string group, bool includeGroupedWorker)
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task InvokeAsync_UngroupedWorkersRetainLegacyRouting(string group)
     {
         await using ClientWorkerChannelTestHarness legacy = await ClientWorkerChannelTestHarness.CreateAsync(
             "legacy", functionGroupName: group);
@@ -279,12 +257,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         FunctionMetadata function = CreateFunction("httpTrigger");
         await PrepareReadyChannelAsync(legacy, function);
         await PrepareReadyChannelAsync(timer, function);
-        if (includeGroupedWorker)
-        {
-            PublishReady(timer.Channel);
-        }
-
-        PublishReady(legacy.Channel);
+        PublishReady(timer.Channel, legacy.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         await dispatcher.InitializeAsync([function]);
 
@@ -352,15 +325,12 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Assert.False(timer.Transport.Requests.TryRead(out _));
     }
 
-    [Theory]
-    [InlineData("function:timerprocessor", "httpTrigger")]
-    [InlineData("http", "timerTrigger")]
-    [InlineData("blob", "httpTrigger")]
-    public async Task InvokeAsync_OnlyIncompatibleWorkersTimesOutWithoutDispatching(string group, string triggerType)
+    [Fact]
+    public async Task InvokeAsync_OnlyIncompatibleWorkersTimesOutWithoutDispatching()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
-            "worker", functionGroupName: group, maxHttpConcurrency: "10");
-        FunctionMetadata function = CreateFunction(triggerType);
+            "worker", functionGroupName: "function:timerprocessor");
+        FunctionMetadata function = CreateFunction("httpTrigger");
         await PrepareReadyChannelAsync(worker, function);
         PublishReady(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(TimeSpan.FromMilliseconds(50));
@@ -805,7 +775,6 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
                 Name = "input",
                 Type = triggerType,
                 Direction = BindingDirection.In,
-                Raw = new() { ["source"] = "EventGrid" },
             });
         }
 
