@@ -852,6 +852,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(result.Status, TaskStatus.RanToCompletion);
         }
 
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task Drain_FailedOrCanceledInvocationStillWaitsForRemainingInvocation(bool canceled, bool completeBeforeDrain)
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            TaskCompletionSource<ScriptInvocationResult> failed = new();
+            TaskCompletionSource<ScriptInvocationResult> remaining = new();
+            Assert.True(_workerChannel.TryPostInvocation(GetTestScriptInvocationContext(Guid.NewGuid(), failed)));
+            Assert.True(_workerChannel.TryPostInvocation(GetTestScriptInvocationContext(Guid.NewGuid(), remaining)));
+
+            void CompleteFailedInvocation()
+            {
+                if (canceled)
+                {
+                    failed.SetCanceled();
+                }
+                else
+                {
+                    failed.SetException(new InvalidOperationException("Invocation failed."));
+                }
+            }
+
+            if (completeBeforeDrain)
+            {
+                CompleteFailedInvocation();
+            }
+
+            Task drain = _workerChannel.DrainInvocationsAsync();
+            if (!completeBeforeDrain)
+            {
+                CompleteFailedInvocation();
+            }
+
+            Assert.False(drain.IsCompleted);
+            remaining.SetResult(new());
+            await drain.WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.True(drain.IsCompletedSuccessfully);
+            Assert.Equal(canceled, failed.Task.IsCanceled);
+            Assert.Equal(!canceled, failed.Task.IsFaulted);
+        }
+
         [Fact]
         public async Task SendLoadRequests_PublishesOutboundEvents()
         {
