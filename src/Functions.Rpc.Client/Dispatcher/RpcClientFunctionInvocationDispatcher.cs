@@ -206,6 +206,12 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             return null;
         }
 
+        if (channels.Count == 1 &&
+            channels[0] is RpcClientWorkerChannel { FunctionGroupName: null or "" } ungroupedChannel)
+        {
+            return ungroupedChannel.IsReadyForInvocations ? ungroupedChannel : null;
+        }
+
         string functionGroup = function.GetFunctionGroup();
         if (channels.Count == 1)
         {
