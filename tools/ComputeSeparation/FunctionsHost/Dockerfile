@@ -27,6 +27,7 @@ RUN mkdir -p /app/workers /app-content /tmp/functions/logs /tmp/functions/secret
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Development \
     AZURE_FUNCTIONS_ENVIRONMENT=Development \
+    Functions__TokenServiceProxy__Enabled=true \
     FUNCTIONS_WORKER_RUNTIME=dotnet-isolated \
     AzureWebJobsSecretStorageType=Files \
     AzureWebJobsScriptRoot=/app-content \

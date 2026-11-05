@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.State;
@@ -194,6 +195,24 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
 
         Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+    }
+
+    [Fact]
+    public async Task WaitForAssignment_CompletesOnlyAfterAcceptedAssignment()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        using CancellationTokenSource rejectedWait = new(TimeSpan.FromMilliseconds(100));
+        Task<WorkerAssignment> rejected = manager.WaitForAssignmentAsync(rejectedWait.Token);
+        manager.RequestRemoval();
+        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("rejected")));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => rejected);
+
+        manager = new(CreateOptions(), TimeProvider.System);
+        WorkerAssignment accepted = CreateAssignment("accepted");
+        Task<WorkerAssignment> wait = manager.WaitForAssignmentAsync();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(accepted));
+        Assert.Same(accepted, await wait.WaitAsync(TestTimeout));
+        Assert.Same(accepted, await manager.WaitForAssignmentAsync().WaitAsync(TestTimeout));
     }
 
     [Fact]
