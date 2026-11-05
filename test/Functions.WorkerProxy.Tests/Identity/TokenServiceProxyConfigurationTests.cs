@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Identity;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -46,13 +47,13 @@ public sealed class TokenServiceProxyConfigurationTests
     [Theory]
     [InlineData(null)]
     [InlineData("http://198.51.100.1:54321/another-path")]
-    public async Task Listener_UsesConfiguredLoopbackPort_WithoutDependingOnIdentityEndpoint(string? endpoint)
+    public async Task Listener_StartsWithoutAssignedIdentity_AndWaitsForAssignment(string? endpoint)
     {
         Dictionary<string, string?> configuration = new()
         {
             ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
             ["WorkerProxy:TokenServiceProxy:Port"] = "0",
-            ["IDENTITY_HEADER"] = "per-pod-secret",
+            ["WorkerProxy:TokenServiceProxy:RequestTimeout"] = "00:00:00.100",
             ["IDENTITY_ENDPOINT"] = endpoint
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
@@ -69,14 +70,14 @@ public sealed class TokenServiceProxyConfigurationTests
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
         using HttpResponseMessage response = await client.GetAsync("/MSI/token", timeout.Token);
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public async Task Options_EnabledProxyRequiresInjectedIdentityHeader(string? secret)
+    public async Task Options_EnabledProxyDoesNotRequireStartupIdentityHeader(string? secret)
     {
         Dictionary<string, string?> configuration = new()
         {
@@ -86,9 +87,8 @@ public sealed class TokenServiceProxyConfigurationTests
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
 
-        OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => factory.Services);
-
-        Assert.Contains("platform-injected IDENTITY_HEADER", error.Message, StringComparison.Ordinal);
+        WorkerProxyEndpointConfiguration endpoints = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
+        Assert.True(endpoints.IsTokenServiceProxyPort(endpoints.GetTokenServiceProxyAddress().Port));
     }
 
     [Theory]
@@ -130,9 +130,46 @@ public sealed class TokenServiceProxyConfigurationTests
         Assert.Equal(
         [
             "The Token Service proxy Port must be between 0 and 65535.",
-            "The Token Service proxy TokenPath must specify a valid token-acquisition path.",
-            "The enabled Token Service proxy requires the platform-injected IDENTITY_HEADER."
+            "The Token Service proxy TokenPath must specify a valid token-acquisition path."
         ], error.Failures);
+    }
+
+    [Fact]
+    public async Task Listener_AuthenticatesAgainstAssignedIdentityHeader()
+    {
+        Dictionary<string, string?> configuration = new()
+        {
+            ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
+            ["WorkerProxy:TokenServiceProxy:RequestTimeout"] = "00:00:00.100"
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        WorkerPodStateManager stateManager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(stateManager.OnWorkerAttached(1));
+        Assert.True(stateManager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(
+            WorkerAssignmentResult.Created,
+            stateManager.Assign(new(
+                WorkerStartupMode.Preconfigured,
+                "app",
+                "http",
+                false,
+                new Dictionary<string, string> { ["IDENTITY_HEADER"] = "assigned-secret" },
+                "/home/site/wwwroot")));
+
+        using HttpClient client = new()
+        {
+            BaseAddress = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>().GetTokenServiceProxyAddress()
+        };
+        using HttpRequestMessage wrongRequest = new(HttpMethod.Get, "/MSI/token");
+        wrongRequest.Headers.Add("X-IDENTITY-HEADER", "startup-secret");
+        using HttpResponseMessage wrongResponse = await client.SendAsync(wrongRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, wrongResponse.StatusCode);
+
+        using HttpRequestMessage assignedRequest = new(HttpMethod.Get, "/MSI/token");
+        assignedRequest.Headers.Add("X-IDENTITY-HEADER", "assigned-secret");
+        using HttpResponseMessage assignedResponse = await client.SendAsync(assignedRequest);
+        Assert.Equal(HttpStatusCode.GatewayTimeout, assignedResponse.StatusCode);
     }
 
     [Theory]

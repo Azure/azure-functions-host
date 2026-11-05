@@ -131,8 +131,11 @@ MSI_SECRET=<host-only-token-service-secret>
 WorkerProxy__TokenServiceProxy__Enabled=true
 WorkerProxy__TokenServiceProxy__Port=8081
 WorkerProxy__TokenServiceProxy__TokenPath=/msi/token
-IDENTITY_HEADER=<random-per-pod-secret>
 ```
+
+The platform supplies `IDENTITY_HEADER=<random-per-pod-secret>` in `PUT /admin/worker/assignment`.
+WorkerProxy binds the loopback listener at startup, waits for assignment within the request deadline,
+and then authenticates requests against the assigned secret.
 
 **Customer/language-worker container**, sharing WorkerProxy's pod network:
 
