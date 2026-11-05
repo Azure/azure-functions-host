@@ -370,9 +370,10 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(TimeSpan.FromMilliseconds(50));
         await dispatcher.InitializeAsync([function]);
 
-        await Assert.ThrowsAsync<TimeoutException>(
+        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(
             () => dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout));
 
+        Assert.Contains("No client-backed worker channel became ready", exception.Message, StringComparison.Ordinal);
         Assert.False(worker.Transport.Requests.TryRead(out _));
         _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
     }
