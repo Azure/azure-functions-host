@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -137,6 +138,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         Assert.Same(rootRegistry.Object, registryDescriptor.ImplementationInstance);
         ServiceDescriptor metadataDescriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(IWorkerFunctionMetadataProvider)));
         Assert.Same(metadataProvider.Object, metadataDescriptor.ImplementationInstance);
+        Assert.DoesNotContain(services, service => service.ServiceType == typeof(IWorkerInvocationTracker));
         Assert.True(services.IndexOf(registryDescriptor) <
             services.IndexOf(services.Single(service => service.ServiceType == typeof(IRpcClientFunctionInvocationDispatcher))));
         AssertSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>(services);
