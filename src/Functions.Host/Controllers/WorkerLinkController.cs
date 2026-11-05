@@ -17,6 +17,7 @@ using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using GrpcException = Grpc.Core.RpcException;
 using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
 
@@ -89,7 +90,11 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, request!.RuntimeIdentity, started, cancellationToken);
+        string? runtimeIdentity = request!.RuntimeIdentity is null
+            ? null
+            : JsonConvert.SerializeObject(request.RuntimeIdentity);
+
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, runtimeIdentity, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,

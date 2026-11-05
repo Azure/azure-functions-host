@@ -68,6 +68,71 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     [Fact]
+    public async Task Put_NestedRuntimeIdentity_ForwardsCanonicalJson()
+    {
+        const string expectedIdentity = """
+            {"resourceNamespace":"functions","podName":"runtime-pod","app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"test-stamp","futureAppField":"preserved"},"futureRuntimeField":{"enabled":true}}
+            """;
+        const string request = """
+            {
+              "workerGrpcEndpoint": "http://worker-proxy:50053",
+              "runtimeIdentity": {
+                "resourceNamespace": "functions",
+                "podName": "runtime-pod",
+                "app": {
+                  "functionAppName": "test-app",
+                  "functionAppSiteId": 42,
+                  "antaresStampName": "test-stamp",
+                  "futureAppField": "preserved"
+                },
+                "futureRuntimeField": { "enabled": true }
+              }
+            }
+            """;
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, expectedIdentity, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+
+        using HttpResponseMessage response = await host.PutAsync(request, timeout.Token);
+
+        await AssertLinkResponseAsync(response, HttpStatusCode.Created, timeout.Token);
+        _registry.Verify(value => value.LinkAsync(
+            WorkerId,
+            Endpoint,
+            expectedIdentity,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Put_LegacySerializedRuntimeIdentity_ForwardsCanonicalJson()
+    {
+        const string expectedIdentity = """
+            {"resourceNamespace":"functions","podName":"runtime-pod","app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"test-stamp"}}
+            """;
+        string request = JsonSerializer.Serialize(new
+        {
+            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            runtimeIdentity = expectedIdentity,
+        });
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, expectedIdentity, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+
+        using HttpResponseMessage response = await host.PutAsync(request, timeout.Token);
+
+        await AssertLinkResponseAsync(response, HttpStatusCode.Created, timeout.Token);
+        _registry.Verify(value => value.LinkAsync(
+            WorkerId,
+            Endpoint,
+            expectedIdentity,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task Put_CanceledRequest_CancelsRegistryWait()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
@@ -117,6 +182,10 @@ public sealed class WorkerLinkEndpointIntegrationTests
     [InlineData("")]
     [InlineData("{}")]
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","broken":}""")]
+    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":"not-json"}""")]
+    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":42}""")]
+    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"resourceNamespace":123}}""")]
+    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":"{\"app\":{\"functionAppSiteId\":\"42\"}}"}""")]
     [InlineData("""{"workerHttpEndpoint":"{endpoint}"}""")]
     [InlineData("""{"workerGrpcEndpoint":"relative/path"}""")]
     [InlineData("""{"workerGrpcEndpoint":"ftp://127.0.0.1:5000"}""")]
