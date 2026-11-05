@@ -24,24 +24,8 @@ internal interface IDuplexChannelFactory<T>
     /// channel rather than from this method.
     /// </remarks>
     /// <param name="endpoint">The service endpoint.</param>
+    /// <param name="runtimeIdentity">Optional Runtime identity serialized as binary gRPC metadata by the transport.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
-    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Connects with the platform's serialized Runtime identity.
-    /// </summary>
-    /// <param name="endpoint">The service endpoint.</param>
-    /// <param name="runtimeIdentity">Optional serialized identity forwarded as binary gRPC metadata.</param>
-    /// <param name="cancellationToken">A token that bounds connection establishment.</param>
-    /// <returns>The connected duplex channel.</returns>
-    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, string runtimeIdentity, CancellationToken cancellationToken = default)
-    {
-        if (runtimeIdentity is null)
-        {
-            return ConnectAsync(endpoint, cancellationToken);
-        }
-
-        throw new NotSupportedException("This channel factory does not support identified Runtime links.");
-    }
+    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, WorkerLinkRuntimeIdentity runtimeIdentity = null, CancellationToken cancellationToken = default);
 }

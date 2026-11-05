@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using Azure.Functions.Rpc.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -22,7 +22,9 @@ public sealed class WorkerLinkRequest
 
     /// <summary>
     /// Gets or sets the platform's Runtime identity for Worker-state publication.
-    /// Omitted identities retain the conservative Starting/Unlinked signal.
+    /// The identity must be a nested JSON object; serialized JSON strings are not accepted.
+    /// Omitted or null identities retain the conservative Starting/Unlinked signal.
+    /// Unknown identity fields are ignored.
     /// </summary>
     [JsonProperty("runtimeIdentity", NullValueHandling = NullValueHandling.Ignore)]
     [JsonConverter(typeof(WorkerLinkRuntimeIdentityConverter))]
@@ -36,66 +38,7 @@ public sealed class WorkerLinkRequest
     public string? WorkerContainerEncryptionKey { get; set; }
 }
 
-/// <summary>
-/// Identifies the Runtime pod linking to a WorkerProxy.
-/// </summary>
-public sealed class WorkerLinkRuntimeIdentity
-{
-    /// <summary>
-    /// Gets or sets the namespace containing the Runtime pod.
-    /// </summary>
-    [JsonProperty("resourceNamespace")]
-    public string? ResourceNamespace { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Runtime pod name.
-    /// </summary>
-    [JsonProperty("podName")]
-    public string? PodName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the function app associated with the Runtime pod.
-    /// </summary>
-    [JsonProperty("app")]
-    public WorkerLinkFunctionAppIdentity? App { get; set; }
-
-    /// <summary>
-    /// Gets or sets additional platform identity fields.
-    /// </summary>
-    [JsonExtensionData]
-    public IDictionary<string, JToken>? AdditionalProperties { get; set; }
-}
-
-/// <summary>
-/// Identifies the function app associated with a Runtime pod.
-/// </summary>
-public sealed class WorkerLinkFunctionAppIdentity
-{
-    /// <summary>
-    /// Gets or sets the function app name.
-    /// </summary>
-    [JsonProperty("functionAppName")]
-    public string? FunctionAppName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the platform site identifier.
-    /// </summary>
-    [JsonProperty("functionAppSiteId")]
-    public int? FunctionAppSiteId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Antares stamp hosting the function app.
-    /// </summary>
-    [JsonProperty("antaresStampName")]
-    public string? AntaresStampName { get; set; }
-
-    /// <summary>
-    /// Gets or sets additional platform app-identity fields.
-    /// </summary>
-    [JsonExtensionData]
-    public IDictionary<string, JToken>? AdditionalProperties { get; set; }
-}
-
+// Newtonsoft otherwise coerces primitive JSON values into the declared identity field types.
 internal sealed class WorkerLinkRuntimeIdentityConverter : JsonConverter<WorkerLinkRuntimeIdentity>
 {
     public override bool CanWrite => false;
@@ -109,19 +52,6 @@ internal sealed class WorkerLinkRuntimeIdentityConverter : JsonConverter<WorkerL
         }
 
         JToken token = JToken.Load(reader);
-        if (token.Type == JTokenType.String)
-        {
-            string value = token.Value<string>()!;
-            try
-            {
-                token = JToken.Parse(value);
-            }
-            catch (JsonReaderException exception)
-            {
-                throw new JsonSerializationException("Runtime identity must contain a JSON object.", exception);
-            }
-        }
-
         if (token is not JObject identity)
         {
             throw new JsonSerializationException("Runtime identity must be a JSON object.");
