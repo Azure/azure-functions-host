@@ -5,6 +5,8 @@ using System;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
@@ -35,7 +37,77 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         // Internal access for testing only
         internal string MetricsFilePath { get; set;  }
 
-        private bool PrepareDirectoryForFile()
+        internal void DeleteExpiredWorkerMetrics(DateTime utcNow, TimeSpan retentionPeriod)
+        {
+            if (string.IsNullOrEmpty(MetricsFilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_fileSystem.Directory.Exists(MetricsFilePath))
+                {
+                    return;
+                }
+
+                int deletedCount = 0;
+                foreach (var file in _fileSystem.DirectoryInfo.FromDirectoryName(MetricsFilePath).GetFiles("*.json"))
+                {
+                    if (!IsWorkerMetricsFile(file.Name))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        if (utcNow - file.LastWriteTimeUtc > retentionPeriod)
+                        {
+                            file.Delete();
+                            deletedCount++;
+                        }
+                    }
+                    catch (Exception ex) when (!ex.IsFatal())
+                    {
+                        _logger.LogError(ex, "Error deleting expired Worker metrics file '{FilePath}'.", file.FullName);
+                    }
+                }
+
+                if (deletedCount > 0)
+                {
+                    _logger.LogDebug("Deleted {FileCount} expired Worker metrics file(s). Retention period: {RetentionPeriod}.",
+                        deletedCount, retentionPeriod);
+                }
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                _logger.LogError(ex, "Error cleaning expired Worker metrics files in '{MetricsFilePath}'.", MetricsFilePath);
+            }
+        }
+
+        private static bool IsWorkerMetricsFile(string name)
+        {
+            const int hashLength = 64;
+            const int guidLength = 36;
+            if (name.Length != hashLength + 1 + guidLength + ".json".Length ||
+                name[hashLength] != '-' || !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+                !Guid.TryParseExact(name.AsSpan(hashLength + 1, guidLength), "D", out _))
+            {
+                return false;
+            }
+
+            foreach (char character in name.AsSpan(0, hashLength))
+            {
+                if (!char.IsAsciiHexDigit(character))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool PrepareDirectoryForFile(string filePrefix)
         {
             if (string.IsNullOrEmpty(MetricsFilePath))
             {
@@ -46,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             var metricsDirectoryInfo = _fileSystem.Directory.CreateDirectory(MetricsFilePath);
 
             // ensure we're under the max file count
-            var files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
+            string searchPattern = string.IsNullOrEmpty(filePrefix) ? "*" : $"{filePrefix}*.json";
+            var files = metricsDirectoryInfo.GetFiles(searchPattern).OrderBy(p => p.CreationTime).ToList();
             if (files.Count < _maxFileCount)
             {
                 return true;
@@ -72,20 +145,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 }
             });
 
-            files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
+            files = metricsDirectoryInfo.GetFiles(searchPattern).OrderBy(p => p.CreationTime).ToList();
 
             // return true if we have space for a new file
             return files.Count < _maxFileCount;
         }
 
-        public async Task PublishMetricsAsync(object metrics)
+        public async Task PublishMetricsAsync(object metrics, string instanceId = null)
         {
             string fileName = string.Empty;
 
             try
             {
                 bool metricsPublishEnabled = !string.IsNullOrEmpty(MetricsFilePath);
-                if (metricsPublishEnabled && !PrepareDirectoryForFile())
+                string filePrefix = instanceId is null ? string.Empty : $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(instanceId)))}-";
+                if (metricsPublishEnabled && !PrepareDirectoryForFile(filePrefix))
                 {
                     return;
                 }
@@ -95,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
                 if (metricsPublishEnabled)
                 {
-                    fileName = $"{Guid.NewGuid().ToString().ToLowerInvariant()}.json";
+                    fileName = $"{filePrefix}{Guid.NewGuid().ToString().ToLowerInvariant()}.json";
                     string filePath = Path.Combine(MetricsFilePath, fileName);
 
                     using var streamWriter = _fileSystem.File.CreateText(filePath);

@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 
@@ -28,6 +29,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private static readonly TimeSpan DefaultShutdownTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IWorkerChannelRegistry _channelRegistry;
+    private readonly IWorkerInvocationTracker _invocationTracker;
     private readonly CancellationTokenSource _dispatcherStoppedSource = new();
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger;
     private readonly TimeSpan _channelWaitTimeout;
@@ -37,18 +39,21 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     public RpcClientFunctionInvocationDispatcher(
         IWorkerChannelRegistry channelRegistry,
-        ILogger<RpcClientFunctionInvocationDispatcher> logger)
-        : this(channelRegistry, logger, DefaultChannelWaitTimeout)
+        ILogger<RpcClientFunctionInvocationDispatcher> logger,
+        IWorkerInvocationTracker invocationTracker = null)
+        : this(channelRegistry, logger, DefaultChannelWaitTimeout, invocationTracker)
     {
     }
 
     internal RpcClientFunctionInvocationDispatcher(
         IWorkerChannelRegistry channelRegistry,
         ILogger<RpcClientFunctionInvocationDispatcher> logger,
-        TimeSpan channelWaitTimeout)
+        TimeSpan channelWaitTimeout,
+        IWorkerInvocationTracker invocationTracker = null)
     {
         _channelRegistry = channelRegistry ?? throw new ArgumentNullException(nameof(channelRegistry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _invocationTracker = invocationTracker;
 
         if (channelWaitTimeout <= TimeSpan.Zero)
         {
@@ -106,11 +111,35 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 ? RpcClientWorkerChannel.GetHttpResponseCompletionTask(invocationContext)
                 : Task.CompletedTask;
 
-            if (!channel.TryPostInvocation(invocationContext))
+            string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
+            bool accepted = _invocationTracker is null
+                ? channel.TryPostInvocation(invocationContext)
+                : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, invocationContext.CancellationToken,
+                    () => channel.TryPostInvocation(invocationContext));
+            if (!accepted)
             {
                 invocationContext.ResultSource.TrySetException(
-                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations."));
+                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations or is unavailable for attribution."));
                 return true;
+            }
+
+            if (_invocationTracker is not null)
+            {
+                // A cancellation request (or an early Host completion on timeout) does not stop Worker execution.
+                // The channel result also covers failures and invocations cancelled before they were sent.
+                _ = invocationContext.ResultSource.Task.ContinueWith(
+                    result =>
+                    {
+                        try
+                        {
+                            _invocationTracker.InvocationCompleted(invocationId, result.IsCompletedSuccessfully);
+                        }
+                        catch (Exception exception) when (!Utility.IsFatal(exception))
+                        {
+                            Log.InvocationAccountingFailed(_logger, exception, invocationId, channel.Id);
+                        }
+                    },
+                    CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
 
             if (trackActivity)
@@ -296,5 +325,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
         [LoggerMessage(2, LogLevel.Debug, "Draining client-backed worker invocations timed out during dispatcher shutdown.")]
         public static partial void DrainTimedOut(ILogger logger);
+
+        [LoggerMessage(3, LogLevel.Error, "Failed to finalize billing accounting for invocation {InvocationId} on worker {WorkerId}.")]
+        public static partial void InvocationAccountingFailed(ILogger logger, Exception exception, string invocationId, string workerId);
     }
 }
