@@ -7,7 +7,10 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Azure.Functions.Authentication;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -171,6 +174,57 @@ public class RuntimeWorkerAuthenticationTests
         Assert.False(RuntimeWorkerAuthentication.ValidateToken(
             proof, RuntimeAuthenticationTestData.AppKey, RuntimeWorkerAuthentication.AppAudience("mixed-case-app"),
             RuntimeWorkerAuthentication.WorkerPurpose, Now));
+    }
+
+    [Theory]
+    [InlineData("exp", "\"1762275900\"")]
+    [InlineData("exp", "1762275900.5")]
+    [InlineData("exp", "9223372036854775808")]
+    [InlineData("nbf", "\"1762275600\"")]
+    [InlineData("nbf", "1762275600.5")]
+    [InlineData("iat", "\"1762275600\"")]
+    public void DirectionalToken_RejectsCoercedOrOutOfRangeNumericDates(string claim, string value)
+    {
+        string payload = JsonSerializer.Serialize(CreateClaims());
+        using JsonDocument document = JsonDocument.Parse(payload);
+        string original = document.RootElement.GetProperty(claim).GetRawText();
+        payload = payload.Replace($"\"{claim}\":{original}", $"\"{claim}\":{value}", StringComparison.Ordinal);
+        string token = Sign(ValidHeader, payload);
+
+        Assert.False(RuntimeWorkerAuthentication.ValidateToken(
+            token, RuntimeAuthenticationTestData.WorkerKey, Audience, RuntimeWorkerAuthentication.WorkerPurpose, Now));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignedTokens_ValidateWithTheStandardLibraryEngine(bool proof)
+    {
+        byte[] key = proof ? RuntimeAuthenticationTestData.AppKey : RuntimeAuthenticationTestData.WorkerKey;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        string audience = proof ? RuntimeWorkerAuthentication.AppAudience("app") : RuntimeWorkerAuthentication.WorkerAudience(Audience);
+        string token = proof ? RuntimeWorkerAuthentication.CreateAppProof(key, "app", Audience, now)
+            : RuntimeWorkerAuthentication.CreateToken(key, audience, RuntimeWorkerAuthentication.WorkerPurpose, now);
+        JsonWebTokenHandler handler = new();
+        TokenValidationResult result = await handler.ValidateTokenAsync(token, new TokenValidationParameters
+        {
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = false,
+            ValidAudience = audience,
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            ValidTypes = ["JWT"],
+            ClockSkew = RuntimeWorkerAuthentication.ClockSkew
+        });
+
+        Assert.True(result.IsValid);
+        JsonWebToken parsed = handler.ReadJsonWebToken(token);
+        Assert.Equal(SecurityAlgorithms.HmacSha256, parsed.Alg);
+        Assert.Equal(now.ToUnixTimeSeconds(), parsed.IssuedAt.Subtract(DateTime.UnixEpoch).TotalSeconds);
+        Assert.Equal(now.AddMinutes(5).ToUnixTimeSeconds(), parsed.ValidTo.Subtract(DateTime.UnixEpoch).TotalSeconds);
+        if (proof)
+        {
+            Assert.Equal(Audience, parsed.GetPayloadValue<string>("worker_id"));
+        }
     }
 
     private static Dictionary<string, object> CreateClaims() => new()

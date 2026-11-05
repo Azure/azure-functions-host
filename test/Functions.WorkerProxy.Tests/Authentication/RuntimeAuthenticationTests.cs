@@ -11,6 +11,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
@@ -19,6 +20,7 @@ using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -86,19 +88,14 @@ public partial class FunctionRpcRelayTests
     [InlineData(null)]
     [InlineData("invalid")]
     [InlineData("c2hvcnQ=")]
-    public async Task RuntimeListeners_InvalidContainerKeyFailsClosed(string? key)
+    public async Task RuntimeListeners_InvalidContainerKeyFailsServerOptionsValidation(string? key)
     {
         await using WorkerProxyWebApplicationFactory factory = new(
             new Dictionary<string, string?> { [RuntimeWorkerAuthentication.WorkerKeySetting] = key },
             useTestAuthentication: false);
-        AssignForAuthentication(factory);
-        using CancellationTokenSource timeout = new(TestTimeout);
-        using HttpClient client = factory.CreateHttpForwardingClient();
-        using HttpResponseMessage response = await client.GetAsync("/invoke", timeout.Token);
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        Grpc.Core.RpcException exception = await runtime.WriteAndReadRejectionAsync(CreateMessage("rejected"), timeout.Token);
-        Assert.Equal(StatusCode.Unauthenticated, exception.StatusCode);
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => factory.Services);
+        Assert.Contains(RuntimeWorkerAuthentication.WorkerKeySetting, exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("c2hvcnQ=", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -238,7 +235,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public void CallerAuthentication_DoesNotReadAppKeyAfterStartup()
+    public async Task CallerAuthentication_DoesNotReadAppKeyAfterStartup()
     {
         Mock<IConfiguration> configuration = new(MockBehavior.Strict);
         configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppKeySetting])
@@ -247,7 +244,6 @@ public partial class FunctionRpcRelayTests
             Options.Create(new WorkerProxyOptions { PodName = RuntimeAuthenticationTestData.WorkerId }), TimeProvider.System);
         RuntimeAuthenticationKeyProvider provider = CreateAuthenticationKeyProvider(configuration.Object, manager);
         AssignAuthenticationState(manager);
-        RuntimeRequestAuthenticator authenticator = new(provider, TimeProvider.System, NullLogger<RuntimeRequestAuthenticator>.Instance);
         configuration.Invocations.Clear();
 
         for (int attempt = 0; attempt < 2; attempt++)
@@ -256,7 +252,16 @@ public partial class FunctionRpcRelayTests
             context.Request.Scheme = Uri.UriSchemeHttps;
             context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader] = RuntimeAuthenticationTestData.CreateCallerToken();
 
-            Assert.True(authenticator.TryAuthenticate(context));
+            Mock<IOptionsMonitor<AuthenticationSchemeOptions>> options = new();
+            options.Setup(value => value.Get(RuntimeRequestAuthenticator.SchemeName)).Returns(new AuthenticationSchemeOptions());
+            RuntimeRequestAuthenticator authenticator = new(
+                options.Object, NullLoggerFactory.Instance, UrlEncoder.Default, provider, TimeProvider.System);
+            await authenticator.InitializeAsync(
+                new AuthenticationScheme(RuntimeRequestAuthenticator.SchemeName, null, typeof(RuntimeRequestAuthenticator)), context);
+            AuthenticateResult result = await authenticator.AuthenticateAsync();
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(RuntimeAuthenticationTestData.WorkerId, result.Principal!.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
             Assert.False(context.Request.Headers.ContainsKey(RuntimeWorkerAuthentication.WorkerTokenHeader));
         }
 
@@ -274,12 +279,13 @@ public partial class FunctionRpcRelayTests
             Options.Create(new WorkerProxyOptions { PodName = RuntimeAuthenticationTestData.WorkerId }), TimeProvider.System);
         RuntimeAuthenticationKeyProvider provider = CreateAuthenticationKeyProvider(configuration.Object, manager);
         AssignAuthenticationState(manager);
-        RuntimeRequestAuthenticator authenticator = new(provider, TimeProvider.System, NullLogger<RuntimeRequestAuthenticator>.Instance);
         Assert.True(manager.State.HasAuthenticationConfigurationError);
         Assert.True(manager.State.IsUnhealthy);
 
         encodedKey = RuntimeAuthenticationTestData.EncodedAppKey;
-        string original = authenticator.CreateAppProof();
+        RuntimeAppAuthenticationKeys originalKeys = Assert.IsType<RuntimeAppAuthenticationKeys>(provider.GetAppKeys());
+        string original = RuntimeWorkerAuthentication.CreateAppProof(
+            originalKeys.AppKey.Span, originalKeys.AppName, originalKeys.WorkerId, DateTimeOffset.UtcNow);
 
         Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(original, RuntimeAuthenticationTestData.AppKey,
             RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
@@ -287,14 +293,16 @@ public partial class FunctionRpcRelayTests
         Assert.False(manager.State.IsUnhealthy);
         byte[] replacement = SHA256.HashData("replacement-live-proof-key"u8);
         encodedKey = Convert.ToHexString(replacement);
-        string updated = authenticator.CreateAppProof();
+        RuntimeAppAuthenticationKeys updatedKeys = Assert.IsType<RuntimeAppAuthenticationKeys>(provider.GetAppKeys());
+        string updated = RuntimeWorkerAuthentication.CreateAppProof(
+            updatedKeys.AppKey.Span, updatedKeys.AppName, updatedKeys.WorkerId, DateTimeOffset.UtcNow);
 
         Assert.True(RuntimeWorkerAuthentication.ValidateAppProof(updated, replacement,
             RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
         Assert.False(RuntimeWorkerAuthentication.ValidateAppProof(updated, RuntimeAuthenticationTestData.AppKey,
             RuntimeAuthenticationTestData.AppName, RuntimeAuthenticationTestData.WorkerId, DateTimeOffset.UtcNow));
         encodedKey = "invalid";
-        Assert.Throws<InvalidOperationException>(authenticator.CreateAppProof);
+        Assert.Throws<InvalidOperationException>(provider.GetAppKeys);
         Assert.True(manager.State.HasAuthenticationConfigurationError);
         Assert.True(manager.State.IsUnhealthy);
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
@@ -421,7 +429,7 @@ public partial class FunctionRpcRelayTests
             [RuntimeWorkerAuthentication.WorkerKeySetting] = RuntimeAuthenticationTestData.EncodedWorkerKey
         }).Build();
         ContainerManagementAuthenticationHandler.Credentials container = new();
-        container.Configure(containerConfiguration, NullLogger<ContainerManagementAuthenticationHandler.Credentials>.Instance);
+        container.Configure(containerConfiguration);
         Mock<IOptionsMonitor<ContainerManagementAuthenticationHandler.Credentials>> options = new();
         options.Setup(value => value.Get(ContainerManagementAuthenticationHandler.SchemeName)).Returns(container);
 

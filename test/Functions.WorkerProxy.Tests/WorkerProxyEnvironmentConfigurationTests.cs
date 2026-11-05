@@ -30,6 +30,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope explicitIdentity = new("WORKERPROXY__PODNAME", explicitPodName);
         using EnvironmentVariableScope platformIdentity = new("WEBSITE_POD_NAME", platformPodName);
         using EnvironmentVariableScope containerIdentity = new("CONTAINER_NAME", containerName);
+        using EnvironmentVariableScope containerKey = new("CONTAINER_ENCRYPTION_KEY", RuntimeAuthenticationTestData.EncodedWorkerKey);
         using TestCertificateFiles certificates = new();
         using EnvironmentVariableScope certificatePath = new("WORKERPROXY__CERTIFICATEPATH", certificates.CertificatePath);
         using EnvironmentVariableScope certificateKeyPath = new("WORKERPROXY__CERTIFICATEKEYPATH", certificates.KeyPath);

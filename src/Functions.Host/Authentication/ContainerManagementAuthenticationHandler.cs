@@ -32,8 +32,11 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
     {
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.AddOptions<Credentials>(SchemeName)
-            .Configure<IConfiguration, ILogger<Credentials>>(static (credentials, configuration, logger) =>
-                credentials.Configure(configuration, logger))
+            .Configure<IConfiguration>(static (credentials, configuration) => credentials.Configure(configuration))
+            .Validate(static credentials => credentials.Key.Length >= 32,
+                $"{RuntimeWorkerAuthentication.WorkerKeySetting} must decode to at least 32 bytes.")
+            .Validate(static credentials => !string.IsNullOrWhiteSpace(credentials.PodName),
+                "WEBSITE_POD_NAME or CONTAINER_NAME is required.")
             .ValidateOnStart();
         services.AddAuthentication()
             .AddScheme<Credentials, ContainerManagementAuthenticationHandler>(SchemeName, static _ => { });
@@ -44,21 +47,18 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
     /// <inheritdoc />
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.ContainsKey(RuntimeWorkerAuthentication.SiteTokenHeader))
+        if (!Request.Headers.TryGetValue(RuntimeWorkerAuthentication.SiteTokenHeader, out var token))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        AuthenticationFailureReason reason = Options.Failure;
-        if (reason is AuthenticationFailureReason.None
-            && (Request.Headers[RuntimeWorkerAuthentication.SiteTokenHeader] is not [string]
-                || Request.Headers[RuntimeWorkerAuthentication.SiteTokenHeader].ToString().Contains(',', StringComparison.Ordinal)))
+        AuthenticationFailureReason reason;
+        if (token is not [string] || token.ToString().Contains(',', StringComparison.Ordinal))
         {
-            reason = AuthenticationFailureReason.DuplicateToken;
+            reason = AuthenticationFailureReason.MalformedToken;
         }
-        if (reason is AuthenticationFailureReason.None
-            && RuntimeWorkerAuthentication.ValidateManagementToken(Request.Headers[RuntimeWorkerAuthentication.SiteTokenHeader][0],
-                Options.Key, Options.PodName, timeProvider.GetUtcNow(), out reason))
+        else if (RuntimeWorkerAuthentication.ValidateManagementToken(
+            token[0], Options.Key, Options.PodName, timeProvider.GetUtcNow(), out reason))
         {
             ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, Options.PodName)], Scheme.Name);
 
@@ -73,7 +73,7 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
     /// <inheritdoc />
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        if (!Request.Headers.ContainsKey(RuntimeWorkerAuthentication.SiteTokenHeader))
+        if (!Request.Headers.TryGetValue(RuntimeWorkerAuthentication.SiteTokenHeader, out _))
         {
             Log.AuthenticationRejected(Logger, AuthenticationFailureReason.MissingToken);
         }
@@ -87,24 +87,13 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
 
         public byte[] Key { get; private set; } = [];
 
-        public AuthenticationFailureReason Failure { get; private set; }
-
-        internal void Configure(IConfiguration configuration, ILogger<Credentials> logger)
+        internal void Configure(IConfiguration configuration)
         {
             string? podName = configuration["WEBSITE_POD_NAME"];
             PodName = string.IsNullOrWhiteSpace(podName) ? configuration["CONTAINER_NAME"] ?? string.Empty : podName;
             string? encodedKey = configuration[RuntimeWorkerAuthentication.WorkerKeySetting];
-            if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(encodedKey, out byte[] key))
-            {
-                Failure = string.IsNullOrWhiteSpace(encodedKey) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey;
-                Log.ConfigurationUnavailable(logger, RuntimeWorkerAuthentication.WorkerKeySetting, Failure);
-            }
+            RuntimeWorkerAuthentication.TryDecodeWorkerKey(encodedKey, out byte[] key);
             Key = key;
-            if (string.IsNullOrWhiteSpace(PodName))
-            {
-                Failure = AuthenticationFailureReason.MissingIdentity;
-                Log.ConfigurationUnavailable(logger, "WEBSITE_POD_NAME/CONTAINER_NAME", Failure);
-            }
         }
     }
 
@@ -112,8 +101,5 @@ internal sealed partial class ContainerManagementAuthenticationHandler(
     {
         [LoggerMessage(0, LogLevel.Warning, "Container management authentication failed: {Reason}.")]
         public static partial void AuthenticationRejected(ILogger logger, AuthenticationFailureReason reason);
-
-        [LoggerMessage(1, LogLevel.Error, "Container management authentication configuration is unavailable: {Setting}, {Reason}.")]
-        public static partial void ConfigurationUnavailable(ILogger logger, string setting, AuthenticationFailureReason reason);
     }
 }
