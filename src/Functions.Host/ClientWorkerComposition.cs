@@ -36,6 +36,9 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
 
     public static ClientWorkerComposition Instance { get; } = new();
 
+    // Trigger discovery owns publication for split compute; serving hosts must not publish on startup.
+    public bool SupportsBackgroundTriggerSync => false;
+
     public void ConfigureWebHostServices(IServiceCollection services, IMvcBuilder mvcBuilder)
     {
         ArgumentNullException.ThrowIfNull(services);

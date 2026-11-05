@@ -144,7 +144,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
 
-                    if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
+                    if (composition.SupportsBackgroundTriggerSync &&
+                        FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
                     {
                         services.AddSingleton<IHostedService, FunctionsSyncService>();
                     }
