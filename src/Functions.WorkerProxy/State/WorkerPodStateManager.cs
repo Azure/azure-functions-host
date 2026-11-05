@@ -31,6 +31,12 @@ internal sealed class WorkerPodStateManager
     private long _lastSessionId;
     private int _assignmentClaimed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
+    /// Creates the pod's initial state and captures its startup time.
+    /// </summary>
+    /// <param name="options">The worker proxy configuration containing the pod identity.</param>
+    /// <param name="timeProvider">The clock used for startup time and state-poll deadlines.</param>
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
         TimeProvider timeProvider)
@@ -42,7 +48,7 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _state = WorkerPodState.CreateUnassigned(podName);
+        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
 
     /// <summary>
@@ -67,6 +73,24 @@ internal sealed class WorkerPodStateManager
             {
                 return _waiters.Count;
             }
+        }
+    }
+
+    /// <summary>
+    /// Captures the pod state and effective HTTP origin for one worker session under the assignment lock.
+    /// </summary>
+    public (WorkerPodState State, string? HttpProxyEndpoint) GetWorkerCapabilitySnapshot(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            string? httpProxyEndpoint = _state.SessionId == sessionId
+                && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
+                    ? _assignment?.ResolvedHttpProxyEndpoint?.AbsoluteUri
+                    : null;
+
+            return (_state, httpProxyEndpoint);
         }
     }
 

@@ -2,12 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 // Local stand-in for the platform in the compute harness. It sends the assign and link requests to the WorkerProxy and
-// Host.
+// Host, and receives the Host's capacity snapshots through a prototype AppServer endpoint.
 
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").Get<FakePlatformOptions>()
@@ -25,12 +26,44 @@ foreach (WorkerProxyOptions workerProxy in options.WorkerProxies)
 
 WebApplication app = builder.Build();
 ILogger logger = app.Logger;
+Lock hostStateLock = new();
+HostState? acceptedHostState = null;
 
 // Called by the AppHost health check.
 app.MapHealthChecks("/health");
 
+// This local prototype records arrival order; timestamps do not establish causal order across Host restarts.
+app.MapPut("/admin/infra/host/state", (HttpRequest request, HostState state) =>
+{
+    if (!request.Headers.TryGetValue("fx-current-instance", out StringValues instanceHeader)
+        || instanceHeader.Count != 1
+        || string.IsNullOrWhiteSpace(instanceHeader[0])
+        || !string.Equals(instanceHeader[0], options.HostContainerName, StringComparison.Ordinal))
+    {
+        return Results.Text(
+            "Host instance identity is missing or does not match.",
+            statusCode: StatusCodes.Status401Unauthorized);
+    }
+
+    lock (hostStateLock)
+    {
+        acceptedHostState = state;
+    }
+
+    Log.HostStateReceived(logger, state.CreatedTime, state.HttpCapacity, state.LinkedWorkerCount);
+    return Results.Ok();
+});
+
 // Simulation routes: harness-only, never called by the Host or WorkerProxy.
 RouteGroupBuilder simulate = app.MapGroup("/simulate");
+
+simulate.MapGet("/host/state", () =>
+{
+    lock (hostStateLock)
+    {
+        return acceptedHostState is null ? Results.NoContent() : Results.Ok(acceptedHostState);
+    }
+});
 
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyName, IHttpClientFactory clients, CancellationToken cancellationToken) =>
@@ -43,7 +76,8 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16,
+        HttpProxyEndpoint: $"{workerProxy.HttpProxyEndpoint.Host}:{workerProxy.HttpProxyEndpoint.Port}");
     using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -65,7 +99,7 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
     {
         Content = JsonContent.Create(new HostAssignmentRequest(Encrypt(key, context))),
     };
-    request.Headers.Authorization = new("Bearer", CreateAdminToken(key));
+    request.Headers.Authorization = new("Bearer", CreateAdminToken(key, options.HostContainerName));
 
     using HttpResponseMessage response = await clients.CreateClient(HostClient).SendAsync(request, cancellationToken);
     return await ToResultAsync("host assign", response, cancellationToken);
@@ -112,13 +146,13 @@ static string Encrypt(byte[] key, string value)
 }
 
 // Creates a short-lived token the Host accepts for admin requests: a JWT signed (HS256) with the shared key.
-static string CreateAdminToken(byte[] key)
+static string CreateAdminToken(byte[] key, string hostContainerName)
 {
     string header = Base64Url.EncodeToString("""{"alg":"HS256","typ":"JWT"}"""u8);
     string payload = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new
     {
         iss = "https://appservice.core.azurewebsites.net",
-        aud = $"https://{AppName}.azurewebsites.net/azurefunctions",
+        aud = hostContainerName,
         exp = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds(),
     }));
     string signature = Base64Url.EncodeToString(HMACSHA256.HashData(key, Encoding.ASCII.GetBytes($"{header}.{payload}")));
@@ -137,6 +171,8 @@ internal partial class Program
     {
         public required Uri HostUri { get; init; }
 
+        public required string HostContainerName { get; init; }
+
         public required WorkerProxyOptions[] WorkerProxies { get; init; }
 
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in placeholder profiles.
@@ -149,6 +185,8 @@ internal partial class Program
 
         public required Uri ManagementUri { get; init; }
 
+        public required Uri HttpProxyEndpoint { get; init; }
+
         public required Uri WorkerGrpcEndpoint { get; init; }
 
         public required string WorkerId { get; init; }
@@ -159,13 +197,20 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency,
+        string? HttpProxyEndpoint);
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
+
+    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Warning, "No worker proxy named {WorkerProxyName} is configured.")]
         public static partial void UnknownWorkerProxy(ILogger logger, string workerProxyName);
+
+        [LoggerMessage(1, LogLevel.Information,
+            "Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}, linked worker count {LinkedWorkerCount}.")]
+        public static partial void HostStateReceived(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int linkedWorkerCount);
     }
 }

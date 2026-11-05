@@ -4,6 +4,7 @@ trigger:
     include:
     - dev
     - in-proc
+    - feature/byoc
     - release/*
     - internal/release/*
 
