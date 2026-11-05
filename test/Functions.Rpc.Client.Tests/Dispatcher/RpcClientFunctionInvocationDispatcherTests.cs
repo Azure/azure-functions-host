@@ -26,11 +26,13 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Mock<IWorkerChannelRegistry> _registry = new();
+    private TaskCompletionSource _changedSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public RpcClientFunctionInvocationDispatcherTests()
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
             .Returns(() => [.. _initializedChannels]);
+        _registry.Setup(registry => registry.GetChangeTask()).Returns(() => _changedSignal.Task);
         _registry.Setup(registry => registry.GetReadyChannelsAsync())
             .Returns(() => _readyChannels.Count == 0
                 ? new ValueTask<IReadOnlyList<WorkerChannel>>(_readySignal.Task)
@@ -210,6 +212,196 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
     }
 
+    [Theory]
+    [InlineData("HTTP", "httpTrigger")]
+    [InlineData("function:testfunction", "timerTrigger")]
+    [InlineData("durable", "orchestrationTrigger")]
+    [InlineData("http", "blobTrigger")]
+    public async Task InvokeAsync_SingleChannelHonorsFunctionGroupRules(string group, string triggerType)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: group, maxHttpConcurrency: "10");
+        FunctionMetadata function = CreateFunction(triggerType);
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RoundRobinSkipsWorkersAssignedToOtherGroups()
+    {
+        await using ClientWorkerChannelTestHarness firstHttp = await ClientWorkerChannelTestHarness.CreateAsync(
+            "first-http", functionGroupName: "http", maxHttpConcurrency: "10");
+        await using ClientWorkerChannelTestHarness timer = await ClientWorkerChannelTestHarness.CreateAsync(
+            "timer", functionGroupName: "function:timerprocessor");
+        await using ClientWorkerChannelTestHarness secondHttp = await ClientWorkerChannelTestHarness.CreateAsync(
+            "second-http", functionGroupName: "http", maxHttpConcurrency: "10");
+        FunctionMetadata httpFunction = CreateFunction("httpTrigger");
+        FunctionMetadata timerFunction = CreateFunction("timerTrigger");
+        timerFunction.Name = "TimerProcessor";
+        FunctionMetadata[] functions = [httpFunction, timerFunction];
+        await PrepareReadyChannelAsync(firstHttp, functions);
+        await PrepareReadyChannelAsync(timer, functions);
+        await PrepareReadyChannelAsync(secondHttp, functions);
+        PublishReady(firstHttp.Channel, timer.Channel, secondHttp.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync(functions);
+
+        await dispatcher.InvokeAsync(CreateInvocation(httpFunction));
+        await dispatcher.InvokeAsync(CreateInvocation(httpFunction));
+        await dispatcher.InvokeAsync(CreateInvocation(timerFunction));
+
+        StreamingMessage firstRequest = await firstHttp.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        StreamingMessage secondRequest = await secondHttp.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        StreamingMessage timerRequest = await timer.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.Equal(httpFunction.GetFunctionId(), firstRequest.InvocationRequest.FunctionId);
+        Assert.Equal(httpFunction.GetFunctionId(), secondRequest.InvocationRequest.FunctionId);
+        Assert.Equal(timerFunction.GetFunctionId(), timerRequest.InvocationRequest.FunctionId);
+        Assert.False(timer.Transport.Requests.TryRead(out _));
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    public async Task InvokeAsync_UngroupedWorkersRetainLegacyRouting(string group, bool includeGroupedWorker)
+    {
+        await using ClientWorkerChannelTestHarness legacy = await ClientWorkerChannelTestHarness.CreateAsync(
+            "legacy", functionGroupName: group);
+        await using ClientWorkerChannelTestHarness timer = await ClientWorkerChannelTestHarness.CreateAsync(
+            "timer", functionGroupName: "function:timerprocessor");
+        FunctionMetadata function = CreateFunction("httpTrigger");
+        await PrepareReadyChannelAsync(legacy, function);
+        await PrepareReadyChannelAsync(timer, function);
+        if (includeGroupedWorker)
+        {
+            PublishReady(timer.Channel);
+        }
+
+        PublishReady(legacy.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+
+        await legacy.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await legacy.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.False(timer.Transport.Requests.TryRead(out _));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_IncompatibleReadyWorkerWaitsForMatchingWorker()
+    {
+        await using ClientWorkerChannelTestHarness timer = await ClientWorkerChannelTestHarness.CreateAsync(
+            "timer", functionGroupName: "function:timerprocessor");
+        await using ClientWorkerChannelTestHarness http = await ClientWorkerChannelTestHarness.CreateAsync(
+            "http", functionGroupName: "http", maxHttpConcurrency: "10");
+        FunctionMetadata function = CreateFunction("httpTrigger");
+        await PrepareReadyChannelAsync(timer, function);
+        await PrepareReadyChannelAsync(http, function);
+        PublishReady(timer.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+
+        Task invocation = dispatcher.InvokeAsync(CreateInvocation(function));
+
+        Assert.False(invocation.IsCompleted);
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
+        _registry.Verify(registry => registry.GetChangeTask(), Times.Once);
+        PublishReady(http.Channel);
+        await invocation.WaitAsync(TestTimeout);
+        await http.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.False(timer.Transport.Requests.TryRead(out _));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_MatchingWorkerLinkedDuringSnapshotReadIsNotMissed()
+    {
+        await using ClientWorkerChannelTestHarness timer = await ClientWorkerChannelTestHarness.CreateAsync(
+            "timer", functionGroupName: "function:timerprocessor");
+        await using ClientWorkerChannelTestHarness http = await ClientWorkerChannelTestHarness.CreateAsync(
+            "http", functionGroupName: "http", maxHttpConcurrency: "10");
+        FunctionMetadata function = CreateFunction("httpTrigger");
+        await PrepareReadyChannelAsync(timer, function);
+        await PrepareReadyChannelAsync(http, function);
+        PublishReady(timer.Channel);
+        int snapshotCount = 0;
+        _registry.Setup(registry => registry.GetReadyChannelsAsync()).Returns(() =>
+        {
+            WorkerChannel[] snapshot = [.. _readyChannels];
+            if (++snapshotCount == 2)
+            {
+                PublishReady(http.Channel);
+            }
+
+            return new ValueTask<IReadOnlyList<WorkerChannel>>(snapshot);
+        });
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+
+        await dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout);
+
+        await http.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.False(timer.Transport.Requests.TryRead(out _));
+    }
+
+    [Theory]
+    [InlineData("function:timerprocessor", "httpTrigger")]
+    [InlineData("http", "timerTrigger")]
+    [InlineData("blob", "httpTrigger")]
+    public async Task InvokeAsync_OnlyIncompatibleWorkersTimesOutWithoutDispatching(string group, string triggerType)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: group, maxHttpConcurrency: "10");
+        FunctionMetadata function = CreateFunction(triggerType);
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(TimeSpan.FromMilliseconds(50));
+        await dispatcher.InitializeAsync([function]);
+
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout));
+
+        Assert.False(worker.Transport.Requests.TryRead(out _));
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_CancellationWhileWaitingForMatchingWorkerIsCallerVisible(bool stopDispatcher)
+    {
+        await using ClientWorkerChannelTestHarness timer = await ClientWorkerChannelTestHarness.CreateAsync(
+            "timer", functionGroupName: "function:timerprocessor");
+        FunctionMetadata function = CreateFunction("httpTrigger");
+        await PrepareReadyChannelAsync(timer, function);
+        PublishReady(timer.Channel);
+        using CancellationTokenSource cancellation = new();
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        Task invocation = dispatcher.InvokeAsync(CreateInvocation(function, cancellation.Token));
+        Assert.False(invocation.IsCompleted);
+
+        if (stopDispatcher)
+        {
+            dispatcher.PreShutdown();
+        }
+        else
+        {
+            cancellation.Cancel();
+        }
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation.WaitAsync(TestTimeout));
+        Assert.False(timer.Transport.Requests.TryRead(out _));
+    }
+
     [Fact]
     public async Task InvokeAsync_StaleSignaledSnapshotRequestsAnotherSnapshot()
     {
@@ -223,17 +415,19 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         _registry.SetupSequence(registry => registry.GetReadyChannelsAsync())
             .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>(firstSignal.Task))
+            .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>(firstSignal.Task))
             .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>(secondSignal.Task));
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         await dispatcher.InitializeAsync([function]);
 
         Task invocation = dispatcher.InvokeAsync(CreateInvocation(function));
         firstSignal.SetResult([stale.Channel]);
+        _changedSignal.TrySetResult();
         secondSignal.SetResult([ready.Channel]);
         await invocation.WaitAsync(TestTimeout);
 
         await ready.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(3));
     }
 
     [Theory]
@@ -320,7 +514,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         _readySignal.SetResult(snapshot.Object);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation.WaitAsync(TestTimeout));
-        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Once);
+        _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Exactly(2));
     }
 
     [Fact]
@@ -572,25 +766,51 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         _readyChannels.AddRange(channels);
         _initializedChannels.AddRange(channels);
         _readySignal.TrySetResult(_readyChannels.ToArray());
+        TaskCompletionSource changed = _changedSignal;
+        _changedSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
     }
 
-    private static async Task PrepareReadyChannelAsync(
+    private static Task PrepareReadyChannelAsync(
         ClientWorkerChannelTestHarness worker,
         FunctionMetadata function,
         bool succeeded = true)
+        => PrepareReadyChannelAsync(worker, [function], succeeded);
+
+    private static async Task PrepareReadyChannelAsync(
+        ClientWorkerChannelTestHarness worker,
+        IReadOnlyList<FunctionMetadata> functions,
+        bool succeeded = true)
     {
-        worker.Channel.SetupFunctionInvocationBuffers([function]);
+        worker.Channel.SetupFunctionInvocationBuffers(functions);
         worker.Channel.SendFunctionLoadRequests(new ManagedDependencyOptions(), functionTimeout: null);
-        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-        await worker.SendFunctionLoadResponseAsync(function.GetFunctionId(), succeeded);
+        foreach (FunctionMetadata function in functions)
+        {
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+            await worker.SendFunctionLoadResponseAsync(function.GetFunctionId(), succeeded);
+        }
     }
 
-    private static FunctionMetadata CreateFunction()
-        => new()
+    private static FunctionMetadata CreateFunction(string triggerType = null)
+    {
+        FunctionMetadata function = new()
         {
             Language = "external",
             Name = "TestFunction",
         };
+        if (triggerType is not null)
+        {
+            function.Bindings.Add(new()
+            {
+                Name = "input",
+                Type = triggerType,
+                Direction = BindingDirection.In,
+                Raw = new() { ["source"] = "EventGrid" },
+            });
+        }
+
+        return function;
+    }
 
     private static ScriptInvocationContext CreateInvocation(
         FunctionMetadata function,
