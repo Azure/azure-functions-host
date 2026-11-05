@@ -12,6 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.Composition;
 public interface IWorkerComposition
 {
     /// <summary>
+    /// Gets whether the host performs automatic background trigger synchronization.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to true to preserve existing compositions. Explicit trigger synchronization is unaffected.
+    /// </remarks>
+    bool SupportsBackgroundTriggerSync => true;
+
+    /// <summary>
     /// Adds worker-specific services, MVC application parts, and ScriptHost activation to the root WebHost container.
     /// </summary>
     /// <param name="services">The root WebHost service collection.</param>

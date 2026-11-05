@@ -181,6 +181,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, composition.ScriptHostConfigurationCount);
         }
 
+        [Theory]
+        [InlineData(null, true, true)]
+        [InlineData(true, true, true)]
+        [InlineData(false, true, false)]
+        [InlineData(true, false, false)]
+        public void AddWebScriptHost_RegistersBackgroundSyncOnlyWhenSupported(
+            bool? supportsBackgroundTriggerSync, bool validSyncEnvironment, bool expected)
+        {
+            var environment = new TestEnvironment();
+            if (validSyncEnvironment)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, "test-key");
+            }
+
+            var composition = new RecordingWorkerComposition(addCommonRpcServices: false);
+            composition.SupportsBackgroundTriggerSync = supportsBackgroundTriggerSync ?? true;
+
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(
+                    configureWebJobs: null,
+                    configure: ConfigureScriptPath,
+                    runStartupHostedServices: true,
+                    configureRootServices: services => services.AddSingleton<IEnvironment>(environment),
+                    composition: supportsBackgroundTriggerSync.HasValue ? composition : null)
+                .ConfigureServices(services =>
+                {
+                    Assert.Equal(expected, services.Any(descriptor =>
+                        descriptor.ServiceType == typeof(IHostedService) &&
+                        descriptor.ImplementationType == typeof(FunctionsSyncService)));
+                })
+                .Build();
+        }
+
         [Fact]
         public void AddWebScriptHost_CompatibilityOverloadUsesRootSelection()
         {
@@ -316,6 +349,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             public int ScriptHostConfigurationCount { get; private set; }
+
+            public bool SupportsBackgroundTriggerSync { get; set; } = true;
 
             public void ConfigureWebHostServices(IServiceCollection services, IMvcBuilder mvcBuilder)
             {
