@@ -39,7 +39,7 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
 
         FunctionRpcRelayTerminalState terminalState;
         PodIdentity? runtimeIdentity = side == FunctionRpcRelaySide.Runtime
-            ? ReadRuntimeIdentity(context.RequestHeaders)
+            ? ReadRuntimeIdentity(context)
             : null;
         try
         {
@@ -114,6 +114,18 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
         }
 
         throw InvalidRuntimeIdentity();
+    }
+
+    private static PodIdentity? ReadRuntimeIdentity(ServerCallContext context)
+    {
+        try
+        {
+            return ReadRuntimeIdentity(context.RequestHeaders);
+        }
+        catch (FormatException)
+        {
+            throw InvalidRuntimeIdentity();
+        }
     }
 
     private static GrpcRpcException InvalidRuntimeIdentity()

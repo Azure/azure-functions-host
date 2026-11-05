@@ -324,6 +324,99 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(WorkerLinkState.Unlinked, state.Link.State);
     }
 
+    [Theory]
+    [InlineData("malformed")]
+    [InlineData("null")]
+    [InlineData("missing")]
+    [InlineData("blank")]
+    [InlineData("invalid-app")]
+    [InlineData("duplicate")]
+    public async Task EventStream_InvalidRuntimeIdentity_ReturnsInvalidArgumentWithoutChangingState(string testCase)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        WorkerPodState initial = manager.State;
+        Metadata headers = CreateRuntimeIdentityHeaders(testCase);
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            timeout.Token,
+            headers);
+
+        Grpc.Core.RpcException exception = await runtime.WriteAndReadRejectionAsync(
+            CreateMessage("invalid-runtime"),
+            timeout.Token);
+
+        Assert.Equal(StatusCode.InvalidArgument, exception.StatusCode);
+        Assert.Equal(initial, manager.State);
+        Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+        Assert.Null(relay.LastTerminalState);
+    }
+
+    [Fact]
+    public async Task EventStream_RuntimeFirstAppMismatch_ReturnsUnavailableWithoutChangingState()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await AssignWorkerAsync(management, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            timeout.Token,
+            CreateRuntimeIdentityHeaders("app-mismatch"));
+
+        Grpc.Core.RpcException exception = await runtime.WriteAndReadRejectionAsync(
+            CreateMessage("wrong-runtime"),
+            timeout.Token);
+
+        Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
+        Assert.Equal(assigned, manager.State);
+        Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+        Assert.Null(relay.LastTerminalState);
+    }
+
+    [Fact]
+    public async Task EventStream_WorkerFirstAppMismatch_DoesNotDisplaceWorker()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await AssignWorkerAsync(management, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        StreamingMessage start = CreateStartStream();
+        await worker.WriteAsync(start, timeout.Token);
+        await WaitForWorkerReadyAsync(manager, timeout.Token);
+        WorkerPodState ready = manager.State;
+        await using RelayClient rejectedRuntime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            timeout.Token,
+            CreateRuntimeIdentityHeaders("app-mismatch"));
+
+        Grpc.Core.RpcException exception = await rejectedRuntime.WriteAndReadRejectionAsync(
+            CreateMessage("wrong-runtime"),
+            timeout.Token);
+
+        Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
+        Assert.Equal(ready, manager.State);
+        Assert.True(relay.IsAttached(FunctionRpcRelaySide.Worker));
+        Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            timeout.Token,
+            CreateRuntimeIdentityHeaders("valid"));
+        StreamingMessage runtimeMessage = CreateMessage("valid-runtime");
+        await runtime.WriteAsync(runtimeMessage, timeout.Token);
+        Assert.Equal(runtimeMessage, await worker.ReadAsync(timeout.Token));
+        Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
+    }
+
     [Fact]
     public async Task InstanceState_Startup_PublishesFlattenedCheckpoint()
     {
@@ -530,6 +623,36 @@ public partial class FunctionRpcRelayTests
             ManagementAssignment,
             cancellationToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    private static Metadata CreateRuntimeIdentityHeaders(string testCase)
+    {
+        const string valid = """
+            {"resourceNamespace":"runtime-ns","podName":"runtime-pod",
+             "app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"test-stamp"}}
+            """;
+        string identity = testCase switch
+        {
+            "malformed" => "{",
+            "null" => "null",
+            "missing" => """{"podName":"runtime-pod","app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"test-stamp"}}""",
+            "blank" => """{"resourceNamespace":" ","podName":"runtime-pod","app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"test-stamp"}}""",
+            "invalid-app" => """{"resourceNamespace":"runtime-ns","podName":"runtime-pod","app":{"functionAppName":"test-app","functionAppSiteId":0,"antaresStampName":"test-stamp"}}""",
+            "app-mismatch" => """{"resourceNamespace":"runtime-ns","podName":"runtime-pod","app":{"functionAppName":"other-app","functionAppSiteId":42,"antaresStampName":"test-stamp"}}""",
+            "valid" => valid,
+            "duplicate" => valid,
+            _ => throw new ArgumentOutOfRangeException(nameof(testCase), testCase, "Unknown Runtime identity case.")
+        };
+        Metadata headers = new()
+        {
+            { "x-ms-functions-runtime-identity-bin", Encoding.UTF8.GetBytes(identity) }
+        };
+        if (string.Equals(testCase, "duplicate", StringComparison.Ordinal))
+        {
+            headers.Add("x-ms-functions-runtime-identity-bin", Encoding.UTF8.GetBytes(valid));
+        }
+
+        return headers;
     }
 
     private static async Task<WorkerOriginState> ReadManagementStateAsync(
