@@ -171,7 +171,8 @@ public partial class FunctionRpcRelayTests
             StreamingMessage initialized = CreateInitResponse(init.RequestId, "http://localhost:1234/");
             StreamingMessage expected = initialized.Clone();
             expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
-            expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = functionGroupName;
+            expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = functionGroupName;
+            expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
             if (expectedConcurrency is { } advertisedConcurrency)
             {
                 expected.WorkerInitResponse.Capabilities["MaxHttpConcurrency"] =

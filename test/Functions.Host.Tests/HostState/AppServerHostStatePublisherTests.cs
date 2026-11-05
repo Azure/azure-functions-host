@@ -114,6 +114,75 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     }
 
     [Fact]
+    public async Task PublishCurrentAsync_WaitsForOlderSendAndRequiresFreshSuccessfulPublication()
+    {
+        TaskCompletionSource releaseOlder = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _client.Enqueue(async token =>
+        {
+            await releaseOlder.Task.WaitAsync(token);
+            return HttpStatusCode.OK;
+        });
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        await TakePublishedAsync();
+        RuntimeState reduced = new(CreatedTime, 7, 2);
+        SetState(reduced);
+        _stateManager.Setup(manager => manager.RefreshAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken _) => Task.FromResult(CurrentState));
+
+        Task required = publisher.PublishCurrentAsync(CancellationToken.None);
+        Assert.False(required.IsCompleted);
+        _stateManager.Verify(manager => manager.RefreshAsync(It.IsAny<CancellationToken>()), Times.Never());
+        releaseOlder.TrySetResult();
+        await required.WaitAsync(TestTimeout);
+
+        Assert.Same(reduced, await TakePublishedAsync());
+        _stateManager.Verify(manager => manager.RefreshAsync(It.IsAny<CancellationToken>()), Times.Once());
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task PublishCurrentAsync_AuthenticationRejectionDoesNotReportSuccess(HttpStatusCode status)
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        _stateManager.Setup(manager => manager.RefreshAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken _) => Task.FromResult(CurrentState));
+        _client.Enqueue(_ => Task.FromResult(status));
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => publisher.PublishCurrentAsync(CancellationToken.None));
+
+        Assert.Same(CurrentState, await TakePublishedAsync());
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        Assert.False(_timers.Reader.TryRead(out _));
+    }
+
+    [Fact]
+    public async Task PublishCurrentAsync_TransientFailureUsesExistingBackoffBeforeSuccess()
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        await TakePublishedAsync();
+        await WaitUntilIdleAsync(CurrentState);
+        _stateManager.Setup(manager => manager.RefreshAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken _) => Task.FromResult(CurrentState));
+        _client.Enqueue(_ => Task.FromResult(HttpStatusCode.InternalServerError));
+
+        Task required = publisher.PublishCurrentAsync(CancellationToken.None);
+        await TakePublishedAsync();
+        ScheduledTimer retry = await TakeTimerAsync();
+        Assert.False(required.IsCompleted);
+        Assert.Equal(TimeSpan.FromMilliseconds(250), retry.DueTime);
+        retry.Fire();
+
+        await required.WaitAsync(TestTimeout);
+        Assert.Same(CurrentState, await TakePublishedAsync());
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_InStandbyMode_PublishesLatestSnapshotOnlyAfterSpecialization()
     {
         _standby = new() { InStandbyMode = true };
@@ -972,7 +1041,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         Assert.Same(failure, observed);
         Assert.True(publisher.ExecuteTask!.IsFaulted);
         Assert.Same(final, CurrentState);
-        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(3));
+        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(requestFailure ? 4 : 3));
         Assert.Equal(requestFailure ? 2 : 1, _client.AttemptCount);
         if (requestFailure)
         {

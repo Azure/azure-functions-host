@@ -2145,7 +2145,8 @@ public sealed partial class WorkerChannelRegistryTests
     private static RpcClientWorkerChannelFactory CreateRealChannelFactory(
         IMetricsLogger metricsLogger = null,
         IEnvironment environment = null,
-        ISharedMemoryManager sharedMemoryManager = null)
+        ISharedMemoryManager sharedMemoryManager = null,
+        IHttpProxyService httpProxyService = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -2168,7 +2169,7 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            httpProxyService ?? Mock.Of<IHttpProxyService>(),
             metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 
@@ -2275,7 +2276,8 @@ public sealed partial class WorkerChannelRegistryTests
                     RpcClientWorkerChannel channel = CreateRealChannelFactory(
                             control.MetricsLogger.Object,
                             control.SharedMemory?.Environment.Object,
-                            control.SharedMemory?.Manager.Object)
+                            control.SharedMemory?.Manager.Object,
+                            control.HttpProxyService)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
@@ -2327,6 +2329,7 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly TaskCompletionSource _setupRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Exception _setupFailure;
         private readonly string _functionGroupName;
+        private readonly bool? _isAlwaysReady;
         private readonly int? _maxHttpConcurrency;
         private int _remainingSetupFailures;
         private int _setupAttempts;
@@ -2342,6 +2345,7 @@ public sealed partial class WorkerChannelRegistryTests
             Exception setupFailure = null,
             BlockingSharedMemory sharedMemory = null,
             string functionGroupName = null,
+            bool? isAlwaysReady = null,
             int? maxHttpConcurrency = null)
         {
             Id = id;
@@ -2350,6 +2354,7 @@ public sealed partial class WorkerChannelRegistryTests
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
             _functionGroupName = functionGroupName;
+            _isAlwaysReady = isAlwaysReady;
             _maxHttpConcurrency = maxHttpConcurrency;
             if (!blockStart)
             {
@@ -2399,6 +2404,10 @@ public sealed partial class WorkerChannelRegistryTests
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
 
         internal BlockingSharedMemory SharedMemory { get; }
+
+        internal IHttpProxyService HttpProxyService { get; init; }
+
+        internal string HttpUri { get; init; }
 
         internal int SetupAttempts => Interlocked.CompareExchange(ref _setupAttempts, 0, 0);
 
@@ -2512,12 +2521,23 @@ public sealed partial class WorkerChannelRegistryTests
 
                 if (_functionGroupName is not null)
                 {
-                    response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroupName);
+                    response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = _functionGroupName;
+                }
+
+                if (_isAlwaysReady is not null)
+                {
+                    response.Capabilities[RpcClientWorkerChannel.IsAlwaysReadyCapability] =
+                        _isAlwaysReady.Value ? bool.TrueString : bool.FalseString;
                 }
 
                 if (_maxHttpConcurrency is { } concurrency)
                 {
                     response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, concurrency.ToString(CultureInfo.InvariantCulture));
+                }
+
+                if (HttpUri is not null)
+                {
+                    response.Capabilities.Add(RpcWorkerConstants.HttpUri, HttpUri);
                 }
 
                 await Transport.SendResponseAsync(new() { WorkerInitResponse = response });

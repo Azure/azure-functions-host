@@ -32,11 +32,16 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
+    internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private bool _draining;
+    private bool _httpCapacityReserved;
+    private bool? _isAlwaysReady;
     private LifecycleState _lifecycleState;
 
     public RpcClientWorkerChannel(
@@ -105,8 +110,108 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
+    internal bool IsHttpCapacityAvailable
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return !_httpCapacityReserved && IsUsableForInvocationsLocked();
+            }
+        }
+    }
+
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
+    internal bool IsReadyForInvocations
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return IsUsableForInvocationsLocked();
+            }
+        }
+    }
+
+    internal bool TryReserveHttpScaleIn()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            if (_httpCapacityReserved || !IsHttpFunctionGroup || _isAlwaysReady is not true || !IsUsableForInvocationsLocked())
+            {
+                return false;
+            }
+
+            _httpCapacityReserved = true;
+            return true;
+        }
+    }
+
+    internal void ReleaseHttpScaleInReservation()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            _httpCapacityReserved = false;
+        }
+    }
+
+    internal bool TryDispatchInvocation(ScriptInvocationContext context) =>
+        TryDispatchInvocation(context, static dispatch => dispatch());
+
+    internal bool TryDispatchInvocation(
+        ScriptInvocationContext context,
+        Func<Func<bool>, bool> dispatch)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(dispatch);
+
+        lock (_invocationAdmissionLock)
+        {
+            if (!IsUsableForInvocationsLocked())
+            {
+                return false;
+            }
+
+            if (!dispatch(() => TryPostInvocation(context)))
+            {
+                context.ResultSource.TrySetException(
+                    new InvalidOperationException(
+                        $"Worker '{Id}' is no longer accepting invocations or is unavailable for attribution."));
+            }
+        }
+
+        return true;
+    }
+
+    internal bool IsScaleInCandidate(string functionGroup, bool isAlwaysReady)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            return IsScaleInEligibleLocked(functionGroup, isAlwaysReady);
+        }
+    }
+
+    internal Task TryBeginScaleIn(string functionGroup, bool isAlwaysReady)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            if (!IsScaleInEligibleLocked(functionGroup, isAlwaysReady))
+            {
+                return null;
+            }
+
+            _draining = true;
+            // Scale-in needs every accepted result to become terminal, not necessarily successful.
+            return DrainInvocationsAsync().ContinueWith(
+                static completed =>
+                {
+                    _ = completed.Exception;
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+    }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -173,8 +278,15 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         if (disposing)
         {
+            ObjectDisposedException exception = new(GetType().FullName);
             // Metadata callers did not request cancellation; fail so host startup can retry.
-            FailPendingMetadataRequest(new ObjectDisposedException(GetType().FullName));
+            FailPendingMetadataRequest(exception);
+            lock (_invocationAdmissionLock)
+            {
+                _draining = true;
+            }
+
+            Shutdown(exception);
         }
 
         base.Dispose(disposing);
@@ -205,6 +317,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
             FunctionGroupName = functionGroupName;
             MaxHttpConcurrency = maxHttpConcurrency;
+            string isAlwaysReady = GetCapabilityState(IsAlwaysReadyCapability);
+            _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
+                ? parsedIsAlwaysReady
+                : null;
+
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)
@@ -226,4 +343,15 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         return startStreamTimeout;
     }
+
+    private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
+        => IsUsableForInvocationsLocked() &&
+            string.Equals(FunctionGroupName, functionGroup,
+                IsHttpFunctionGroup ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) &&
+            _isAlwaysReady == isAlwaysReady;
+
+    private bool IsUsableForInvocationsLocked()
+        => !_draining &&
+            !IsTerminated &&
+            IsChannelReadyForInvocations();
 }

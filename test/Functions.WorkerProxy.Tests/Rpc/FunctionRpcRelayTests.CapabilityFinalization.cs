@@ -24,18 +24,22 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
+    private const string IsAlwaysReadyCapability = "IsAlwaysReady";
     private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
     [Theory]
-    [InlineData("http", null, "16")]
-    [InlineData("HtTp", 10, "10")]
-    [InlineData("http", 1, "1")]
-    [InlineData("http", 1000, "1000")]
-    [InlineData("background", null, null)]
-    [InlineData("background", 0, null)]
-    [InlineData("background", 10, null)]
-    [InlineData(null, null, null)]
-    public async Task Relay_Initialization_UsesOnlyMatchingAssignmentHttpConcurrency(string? group, int? supplied, string? expected)
+    [InlineData("http", null, "16", false)]
+    [InlineData("HtTp", 10, "10", false)]
+    [InlineData("http", 1, "1", false)]
+    [InlineData("http", 1000, "1000", false)]
+    [InlineData("background", null, null, false)]
+    [InlineData("background", 0, null, false)]
+    [InlineData("background", 10, null, false)]
+    [InlineData(null, null, null, false)]
+    [InlineData("http", 10, "10", true)]
+    [InlineData("background", 10, null, true)]
+    public async Task Relay_Initialization_UsesOnlyMatchingAssignmentHttpConcurrency(
+        string? group, int? supplied, string? expected, bool isAlwaysReady)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -50,7 +54,7 @@ public partial class FunctionRpcRelayTests
                 StartupMode = nameof(WorkerStartupMode.Preconfigured),
                 FunctionAppName = "test-app",
                 FunctionGroupName = group,
-                IsAlwaysReady = false,
+                IsAlwaysReady = isAlwaysReady,
                 Environment = [],
                 FunctionAppDirectory = string.Empty,
             };
@@ -69,14 +73,18 @@ public partial class FunctionRpcRelayTests
         StreamingMessage response = CreateInitResponse("init", null);
         response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "worker-group";
         response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = "999";
+        response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = (!isAlwaysReady).ToString();
         await worker.WriteAsync(response, timeout.Token);
         StreamingMessage forwarded = await runtime.ReadAsync(timeout.Token);
         Assert.Equal(group, forwarded.WorkerInitResponse.Capabilities.TryGetValue(FunctionGroupNameCapability, out string? actualGroup) ? actualGroup : null);
         Assert.Equal(expected, forwarded.WorkerInitResponse.Capabilities.TryGetValue(MaxHttpConcurrencyCapability, out string? actual) ? actual : null);
+        Assert.Equal(group is null ? null : isAlwaysReady.ToString(),
+            forwarded.WorkerInitResponse.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string? actualClass) ? actualClass : null);
 
         response.RequestId = "repeated-init";
         response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "http";
         response.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability] = "123";
+        response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = (!isAlwaysReady).ToString();
         await worker.WriteAsync(response, timeout.Token);
         StreamingMessage replay = await runtime.ReadAsync(timeout.Token);
         Assert.Equal(forwarded.WorkerInitResponse.Capabilities, replay.WorkerInitResponse.Capabilities);
@@ -318,7 +326,7 @@ public partial class FunctionRpcRelayTests
     [InlineData("worker-group", "assigned-group", "assigned-group")]
     [InlineData(null, null, null)]
     [InlineData("worker-group", null, null)]
-    public async Task Relay_Initialization_AdvertisesOnlyAssignedFunctionGroup(string? workerSuppliedGroup,
+    public async Task Relay_Initialization_AdvertisesOnlyAssignedWorkerClassification(string? workerSuppliedGroup,
         string? platformSuppliedGroup, string? expectedAdvertisedGroup)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -338,10 +346,12 @@ public partial class FunctionRpcRelayTests
             response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
         }
 
+        response.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.TrueString;
         StreamingMessage expected = CreateInitResponse("init", null);
         if (expectedAdvertisedGroup is not null)
         {
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
+            expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
         }
 
         await worker.WriteAsync(response, timeout.Token);
@@ -350,7 +360,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_RepeatedInitialization_KeepsAssignedFunctionGroup()
+    public async Task Relay_RepeatedInitialization_KeepsAssignedWorkerClassification()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -364,8 +374,10 @@ public partial class FunctionRpcRelayTests
         await runtime.ReadAsync(timeout.Token);
         StreamingMessage repeated = CreateInitResponse("repeated-init", null);
         repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
+        repeated.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.TrueString;
         StreamingMessage expected = repeated.Clone();
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
+        expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = assignment.IsAlwaysReady.ToString();
 
         await worker.WriteAsync(repeated, timeout.Token);
 

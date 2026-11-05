@@ -14,6 +14,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" VersionOverride="10.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
@@ -21,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Functions.Host\Functions.Host.csproj" />
     <ProjectReference Include="..\..\src\Functions.Rpc.Client\Functions.Rpc.Client.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
   </ItemGroup>

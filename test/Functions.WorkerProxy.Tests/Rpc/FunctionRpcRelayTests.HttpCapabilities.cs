@@ -69,6 +69,7 @@ public partial class FunctionRpcRelayTests
         expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
         expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "http";
         expected.WorkerInitResponse.Capabilities["MaxHttpConcurrency"] = "16";
+        expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
 
         await worker.WriteAsync(response, timeout.Token);
 
@@ -154,6 +155,7 @@ public partial class FunctionRpcRelayTests
         }
 
         expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "background";
+        expected.WorkerInitResponse.Capabilities[IsAlwaysReadyCapability] = bool.FalseString;
 
         await inbound.Writer.WriteAsync(first, timeout.Token);
         StreamingMessage finalized = await outbound.Reader.ReadAsync(timeout.Token);

@@ -1939,10 +1939,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ScriptInvocationContext[] invocations = [.. _acceptedInvocations.Values];
 
             _workerChannelLogger.LogDebug("Count of accepted invocations waiting to be drained out: {invocationCount}", invocations.Length);
-            foreach (ScriptInvocationContext invocation in invocations)
-            {
-                await invocation.ResultSource.Task;
-            }
+            await Task.WhenAll(invocations.Select(static invocation => invocation.ResultSource.Task));
         }
 
         /// <inheritdoc />
