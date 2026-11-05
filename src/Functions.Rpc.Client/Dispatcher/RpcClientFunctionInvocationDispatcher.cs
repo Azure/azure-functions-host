@@ -105,7 +105,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 return false;
             }
 
-            bool trackActivity = channel.IsHttpFunctionGroup && channel.IsAlwaysReady is false;
+            bool trackActivity = channel.IsHttpFunctionGroup && channel.IsAlwaysReady is not true;
             // Register before posting so a fast response cannot outrun its completion callback.
             Task responseCompleted = trackActivity
                 ? RpcClientWorkerChannel.GetHttpResponseCompletionTask(invocationContext)

@@ -60,10 +60,8 @@ public sealed partial class WorkerChannelRegistryTests
 
     [Theory]
     [InlineData("http", "True")]
-    [InlineData("http", null)]
-    [InlineData("http", "not-a-bool")]
     [InlineData("function:timer", "False")]
-    public async Task IdleRetirement_ExemptsAlwaysReadyUnknownAndNonHttpWorkers(string group, string alwaysReady)
+    public async Task IdleRetirement_ExemptsAlwaysReadyAndNonHttpWorkers(string group, string alwaysReady)
     {
         FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
@@ -79,12 +77,15 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
     }
 
-    [Fact]
-    public async Task IdleRetirement_QueuedAndOverlappingRequestsResetTwoMinuteIdleTime()
+    [Theory]
+    [InlineData("False")]
+    [InlineData(null)]
+    [InlineData("not-a-bool")]
+    public async Task IdleRetirement_QueuedAndOverlappingRequestsResetTwoMinuteIdleTime(string alwaysReady)
     {
         FakeTimeProvider time = new();
         RegistryHarness harness = new(TimeSpan.FromSeconds(30), timeProvider: time);
-        ChannelControl worker = CreateIdleWorker("worker");
+        ChannelControl worker = CreateIdleWorker("worker", alwaysReady: alwaysReady);
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("Function");

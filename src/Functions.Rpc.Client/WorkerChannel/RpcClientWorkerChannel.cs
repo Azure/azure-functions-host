@@ -108,7 +108,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal int? MaxHttpConcurrency { get; private set; }
 
     // Assigned WorkerProxy instances advertise this. Null means missing or malformed handshake metadata.
-    // Keep unknown workers exempt from idle retirement rather than assume they are on-demand.
+    // Only explicit true exempts a worker from idle retirement.
     internal bool? IsAlwaysReady { get; private set; }
 
     /// <summary>
@@ -166,7 +166,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
             TimeSpan idleThreshold = _hasReceivedRequest ? threshold : InitialIdleThreshold;
-            if (!IsHttpFunctionGroup || IsAlwaysReady is not false || !IsReadyForInvocations ||
+            if (!IsHttpFunctionGroup || IsAlwaysReady is true || !IsReadyForInvocations ||
                 _ongoingRequests != 0 || idleDuration <= idleThreshold)
             {
                 return false;
@@ -286,7 +286,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             MaxHttpConcurrency = maxHttpConcurrency;
             if (IsHttpFunctionGroup && IsAlwaysReady is null)
             {
-                _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; idle retirement is disabled for this worker.", Id);
+                _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; treating this worker as on-demand for idle retirement.", Id);
             }
             _startCompletion.TrySetResult();
         }
