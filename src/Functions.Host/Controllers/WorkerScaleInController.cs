@@ -3,12 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerScaleIn;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -16,24 +21,28 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Host.Controllers;
 
 /// <summary>
-/// Provides count-only non-HTTP worker scale-in for compute separation mode.
+/// Provides count-only non-HTTP and HTTP Always Ready worker scale-in for compute separation mode.
 /// </summary>
 public sealed partial class WorkerScaleInController : Controller
 {
     private readonly ILogger<WorkerScaleInController> _logger;
     private readonly IWorkerChannelRegistry _registry;
+    private readonly IAppServerHostStatePublisher _publisher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerScaleInController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker selection and drain commitment.</param>
+    /// <param name="publisher">Publishes reduced HTTP capacity before drain commitment.</param>
     public WorkerScaleInController(
         ILogger<WorkerScaleInController> logger,
-        IWorkerChannelRegistry registry)
+        IWorkerChannelRegistry registry,
+        IAppServerHostStatePublisher publisher)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
     }
 
     /// <summary>
@@ -45,7 +54,7 @@ public sealed partial class WorkerScaleInController : Controller
     [HttpPost]
     [Route("admin/workers/scale-in")]
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public IActionResult ScaleInWorkers(
+    public async Task<IActionResult> ScaleInWorkers(
         [FromBody] WorkerScaleInRequest? request,
         CancellationToken cancellationToken = default)
     {
@@ -59,10 +68,23 @@ public sealed partial class WorkerScaleInController : Controller
         string functionGroup = request!.FunctionGroup!;
         bool isAlwaysReady = request.IsAlwaysReady!.Value;
         int desiredWorkerCount = request.DesiredWorkerCount!.Value;
-        int newlyDrainingWorkerCount = _registry.ScaleInWorkers(
-            functionGroup,
-            isAlwaysReady,
-            desiredWorkerCount);
+        int newlyDrainingWorkerCount;
+        try
+        {
+            newlyDrainingWorkerCount = await _registry.ScaleInWorkersAsync(
+                functionGroup, isAlwaysReady, desiredWorkerCount, _publisher.PublishCurrentAsync, cancellationToken);
+        }
+        catch (HttpRequestException exception) when (!Utility.IsFatal(exception))
+        {
+            Log.CapacityPublicationFailed(_logger, exception);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new RequestValidationResponse([new(ErrorCodes.CapacityPublicationFailed, "appServer")]));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            Log.ScaleInCanceled(_logger);
+            throw;
+        }
 
         Log.ScaleInCommitted(
             _logger,
@@ -87,7 +109,8 @@ public sealed partial class WorkerScaleInController : Controller
         {
             errors.Add(new(ErrorCodes.Required, "functionGroup"));
         }
-        else if (string.Equals(request.FunctionGroup, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(request.FunctionGroup, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase) &&
+            request.IsAlwaysReady is false)
         {
             errors.Add(new(ErrorCodes.InvalidValue, "functionGroup"));
         }
@@ -112,12 +135,19 @@ public sealed partial class WorkerScaleInController : Controller
     private static class ErrorCodes
     {
         public const string InvalidBody = nameof(InvalidBody);
+        public const string CapacityPublicationFailed = nameof(CapacityPublicationFailed);
         public const string InvalidValue = nameof(InvalidValue);
         public const string Required = nameof(Required);
     }
 
     private static partial class Log
     {
+        [LoggerMessage(711, LogLevel.Warning, "HTTP worker scale-in did not commit because AppServer capacity publication failed.")]
+        public static partial void CapacityPublicationFailed(ILogger logger, Exception exception);
+
+        [LoggerMessage(712, LogLevel.Information, "Worker scale-in was canceled before drain commitment.")]
+        public static partial void ScaleInCanceled(ILogger logger);
+
         [LoggerMessage(710, LogLevel.Information,
             "Worker scale-in for function group {FunctionGroup}, always-ready class {IsAlwaysReady}, and desired count {DesiredWorkerCount} newly committed {NewlyDrainingWorkerCount} workers.")]
         public static partial void ScaleInCommitted(

@@ -12,6 +12,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.HostState;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -26,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -382,7 +384,8 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal HttpClient Client { get; }
 
-        internal static async Task<ScaleInApiHost> StartAsync(IWorkerChannelRegistry registry)
+        internal static async Task<ScaleInApiHost> StartAsync(
+            IWorkerChannelRegistry registry, Action<IServiceCollection> configureServices = null)
         {
             IHost host = new HostBuilder()
                 .ConfigureWebHost(webBuilder =>
@@ -404,6 +407,8 @@ public sealed partial class WorkerChannelRegistryTests
                             });
 
                             services.AddSingleton(registry);
+                            services.AddSingleton(Mock.Of<IAppServerHostStatePublisher>());
+                            configureServices?.Invoke(services);
                             services.AddAuthentication();
                             services.AddAuthorization(options =>
                             {

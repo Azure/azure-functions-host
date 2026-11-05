@@ -57,7 +57,9 @@ internal static class AppServerServiceCollectionExtensions
                         }));
             });
             services.AddSingleton<IAppServerHostStateClient, AppServerHostStateClient>();
-            services.AddSingleton<IHostedService, AppServerHostStatePublisher>();
+            services.AddSingleton<AppServerHostStatePublisher>();
+            services.AddSingleton<IAppServerHostStatePublisher>(provider => provider.GetRequiredService<AppServerHostStatePublisher>());
+            services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<AppServerHostStatePublisher>());
 
             return services;
         }

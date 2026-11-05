@@ -47,6 +47,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
+    private readonly SemaphoreSlim _httpScaleInGate = new(1, 1);
     private readonly IWorkerHostConfigurationParser _workerHostConfigurationParser;
     // Snapshot readers use only _observationLock; writers take it after _stateLock.
     private readonly Lock _observationLock = new();
@@ -184,6 +185,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
         ArgumentOutOfRangeException.ThrowIfNegative(desiredWorkerCount);
+        if (string.Equals(functionGroup, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("HTTP scale-in requires successful capacity publication before drain.", nameof(functionGroup));
+        }
 
         List<(string WorkerId, Task DrainTask)> selections = [];
         lock (_stateLock)
@@ -224,6 +229,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             if (selections.Count > 0)
             {
                 SignalReadyChannelsLocked();
+                SignalChangeLocked();
             }
         }
 
@@ -233,6 +239,112 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
 
         return selections.Count;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ScaleInWorkersAsync(
+        string functionGroup,
+        bool isAlwaysReady,
+        int desiredWorkerCount,
+        Func<CancellationToken, Task> publishCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
+        ArgumentOutOfRangeException.ThrowIfNegative(desiredWorkerCount);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!string.Equals(functionGroup, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+        {
+            return ScaleInWorkers(functionGroup, isAlwaysReady, desiredWorkerCount);
+        }
+
+        if (!isAlwaysReady)
+        {
+            throw new ArgumentException("HTTP on-demand scale-in is unsupported.", nameof(isAlwaysReady));
+        }
+
+        ArgumentNullException.ThrowIfNull(publishCapacity);
+        using CancellationTokenSource operation =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
+        await _httpScaleInGate.WaitAsync(operation.Token);
+        List<(string WorkerId, RpcClientWorkerChannel Channel)> reserved = [];
+        List<(string WorkerId, Task DrainTask)> selections = [];
+        try
+        {
+            lock (_stateLock)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                var candidates = _slots
+                    .Where(pair => _activeSetupContext is not null &&
+                        ReferenceEquals(pair.Value.AttemptedSetupContext, _activeSetupContext) &&
+                        pair.Value.SetupException is null &&
+                        pair.Value.Channel is { } channel &&
+                        channel.IsScaleInCandidate(functionGroup, isAlwaysReady))
+                    .ToArray();
+                int excess = Math.Max(0, candidates.Length - desiredWorkerCount);
+                foreach (var candidate in candidates)
+                {
+                    if (reserved.Count == excess)
+                    {
+                        break;
+                    }
+
+                    if (candidate.Value.Channel.TryReserveHttpScaleIn())
+                    {
+                        reserved.Add((candidate.Key, candidate.Value.Channel));
+                    }
+                }
+
+                if (reserved.Count == 0)
+                {
+                    return 0;
+                }
+
+                // Withdraw advertised capacity, but keep admission open until the outbound publication succeeds.
+                SignalChangeLocked();
+            }
+
+            await publishCapacity(operation.Token);
+            lock (_stateLock)
+            {
+                operation.Token.ThrowIfCancellationRequested();
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                foreach ((string workerId, RpcClientWorkerChannel channel) in reserved)
+                {
+                    if (_slots.TryGetValue(workerId, out WorkerSlot slot) && ReferenceEquals(slot.Channel, channel) &&
+                        channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
+                    {
+                        selections.Add((workerId, drainTask));
+                    }
+                }
+
+                SignalReadyChannelsLocked();
+                SignalChangeLocked();
+            }
+
+            foreach ((string workerId, Task drainTask) in selections)
+            {
+                _ = DrainAndUnlinkAsync(workerId, drainTask);
+            }
+
+            return selections.Count;
+        }
+        finally
+        {
+            lock (_stateLock)
+            {
+                foreach ((_, RpcClientWorkerChannel channel) in reserved)
+                {
+                    channel.ReleaseHttpScaleInReservation();
+                }
+
+                if (reserved.Count > 0)
+                {
+                    SignalChangeLocked();
+                }
+            }
+
+            _httpScaleInGate.Release();
+        }
     }
 
     private async Task DrainAndUnlinkAsync(string workerId, Task drainTask)

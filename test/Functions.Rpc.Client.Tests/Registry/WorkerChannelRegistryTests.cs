@@ -2125,7 +2125,8 @@ public sealed partial class WorkerChannelRegistryTests
     private static RpcClientWorkerChannelFactory CreateRealChannelFactory(
         IMetricsLogger metricsLogger = null,
         IEnvironment environment = null,
-        ISharedMemoryManager sharedMemoryManager = null)
+        ISharedMemoryManager sharedMemoryManager = null,
+        IHttpProxyService httpProxyService = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -2148,7 +2149,7 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            httpProxyService ?? Mock.Of<IHttpProxyService>(),
             metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 
@@ -2255,7 +2256,8 @@ public sealed partial class WorkerChannelRegistryTests
                     RpcClientWorkerChannel channel = CreateRealChannelFactory(
                             control.MetricsLogger.Object,
                             control.SharedMemory?.Environment.Object,
-                            control.SharedMemory?.Manager.Object)
+                            control.SharedMemory?.Manager.Object,
+                            control.HttpProxyService)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
@@ -2379,6 +2381,10 @@ public sealed partial class WorkerChannelRegistryTests
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
 
         internal BlockingSharedMemory SharedMemory { get; }
+
+        internal IHttpProxyService HttpProxyService { get; init; }
+
+        internal string HttpUri { get; init; }
 
         internal int SetupAttempts => Interlocked.CompareExchange(ref _setupAttempts, 0, 0);
 
@@ -2504,6 +2510,11 @@ public sealed partial class WorkerChannelRegistryTests
                 if (_maxHttpConcurrency is { } concurrency)
                 {
                     response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, concurrency.ToString(CultureInfo.InvariantCulture));
+                }
+
+                if (HttpUri is not null)
+                {
+                    response.Capabilities.Add(RpcWorkerConstants.HttpUri, HttpUri);
                 }
 
                 await Transport.SendResponseAsync(new() { WorkerInitResponse = response });

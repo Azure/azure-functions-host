@@ -6,12 +6,12 @@ using Newtonsoft.Json;
 namespace Azure.Functions.Host.WorkerScaleIn;
 
 /// <summary>
-/// Requests one count-only non-HTTP worker scale-in decision.
+/// Requests one count-only non-HTTP or HTTP Always Ready worker scale-in decision.
 /// </summary>
 public sealed class WorkerScaleInRequest
 {
     /// <summary>
-    /// Gets or sets the exact trusted non-HTTP function group.
+    /// Gets or sets the trusted function group. Non-HTTP groups use exact matching; HTTP requires always-ready capacity.
     /// </summary>
     [JsonProperty("functionGroup")]
     public string? FunctionGroup { get; set; }

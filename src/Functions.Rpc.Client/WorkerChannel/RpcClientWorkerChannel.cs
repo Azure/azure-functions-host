@@ -40,6 +40,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _draining;
+    private bool _httpCapacityReserved;
     private bool? _isAlwaysReady;
     private LifecycleState _lifecycleState;
 
@@ -109,6 +110,17 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
+    internal bool IsHttpCapacityAvailable
+    {
+        get
+        {
+            lock (_invocationAdmissionLock)
+            {
+                return !_httpCapacityReserved && IsUsableForInvocationsLocked();
+            }
+        }
+    }
+
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
     internal bool IsReadyForInvocations
     {
@@ -118,6 +130,28 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             {
                 return IsUsableForInvocationsLocked();
             }
+        }
+    }
+
+    internal bool TryReserveHttpScaleIn()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            if (_httpCapacityReserved || !IsHttpFunctionGroup || _isAlwaysReady is not true || !IsUsableForInvocationsLocked())
+            {
+                return false;
+            }
+
+            _httpCapacityReserved = true;
+            return true;
+        }
+    }
+
+    internal void ReleaseHttpScaleInReservation()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            _httpCapacityReserved = false;
         }
     }
 
@@ -305,7 +339,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
         => IsUsableForInvocationsLocked() &&
-            string.Equals(FunctionGroupName, functionGroup, StringComparison.Ordinal) &&
+            string.Equals(FunctionGroupName, functionGroup,
+                IsHttpFunctionGroup ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) &&
             _isAlwaysReady == isAlwaysReady;
 
     private bool IsUsableForInvocationsLocked()

@@ -84,6 +84,23 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
         int desiredWorkerCount);
 
     /// <summary>
+    /// Selects excess workers, publishing reduced HTTP Always Ready capacity before committing their drain.
+    /// </summary>
+    /// <param name="functionGroup">The trusted function group; non-HTTP groups use exact matching.</param>
+    /// <param name="isAlwaysReady">The exact capacity class. HTTP on-demand scale-in is unsupported.</param>
+    /// <param name="desiredWorkerCount">The absolute number of matching usable workers to retain.</param>
+    /// <param name="publishCapacity">Publishes freshly computed capacity and completes only after a successful outbound response.</param>
+    /// <param name="cancellationToken">Cancels selection or publication before drain commitment.</param>
+    /// <returns>The number of newly draining workers, without waiting for accepted work to finish.</returns>
+    /// <remarks>HTTP selections are serialized. Failed publication releases reserved capacity without starting drain.</remarks>
+    Task<int> ScaleInWorkersAsync(
+        string functionGroup,
+        bool isAlwaysReady,
+        int desiredWorkerCount,
+        Func<CancellationToken, Task> publishCapacity,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Removes and disposes a linked worker when present.
     /// </summary>
     /// <remarks>The accepted worker ID remains terminal and cannot be linked again in this registry.</remarks>

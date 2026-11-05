@@ -36,7 +36,7 @@ internal sealed partial class AppServerHostStatePublisher(
     IOptionsMonitor<StandbyOptions> standbyOptions,
     TimeProvider timeProvider,
     IReadOnlyPolicyRegistry<string> policyRegistry,
-    ILoggerFactory loggerFactory) : BackgroundService
+    ILoggerFactory loggerFactory) : BackgroundService, IAppServerHostStatePublisher
 {
     internal const string PublicationPolicyName = "AppServerHostStatePublication";
     internal const string ChangeTaskKey = "AppServerHostStateChange";
@@ -53,6 +53,7 @@ internal sealed partial class AppServerHostStatePublisher(
     private readonly IAsyncPolicy<PublicationOutcome> _publicationPolicy =
         (policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry))).Get<IAsyncPolicy<PublicationOutcome>>(PublicationPolicyName);
 
+    private readonly SemaphoreSlim _publicationGate = new(1, 1);
     private RuntimeState? _lastCompletedSnapshot;
 
     internal enum PublicationOutcome
@@ -61,6 +62,40 @@ internal sealed partial class AppServerHostStatePublisher(
         Retry,
         Rejected,
         Unchanged,
+    }
+
+    /// <inheritdoc />
+    public async Task PublishCurrentAsync(CancellationToken cancellationToken)
+    {
+        await WaitForSpecializationAsync(cancellationToken);
+        Context context = new() { [CancellationTokenKey] = cancellationToken };
+        PublicationOutcome outcome = await _publicationPolicy.ExecuteAsync(async (retryContext, token) =>
+        {
+            await _publicationGate.WaitAsync(token);
+            try
+            {
+                // Sample after taking the publication gate so an older background send cannot overtake withdrawal.
+                Task changed = _stateManager.GetChangeTask();
+                RuntimeState state = await _stateManager.RefreshAsync(token);
+                retryContext[ChangeTaskKey] = changed;
+                PublicationOutcome result = await TryPublishAsync(state, token);
+                if (result is not PublicationOutcome.Retry)
+                {
+                    _lastCompletedSnapshot = state;
+                }
+
+                return result;
+            }
+            finally
+            {
+                _publicationGate.Release();
+            }
+        }, context, cancellationToken);
+
+        if (outcome is not PublicationOutcome.Published)
+        {
+            throw new HttpRequestException("AppServer rejected the capacity publication required for HTTP worker scale-in.");
+        }
     }
 
     /// <inheritdoc />
@@ -132,22 +167,31 @@ internal sealed partial class AppServerHostStatePublisher(
         cancellationToken.ThrowIfCancellationRequested();
 
         // Each retry samples again; the captured signal also lets a newer snapshot interrupt the retry delay.
-        Task changed = _stateManager.GetChangeTask();
-        RuntimeState state = _stateManager.Current;
-        context[ChangeTaskKey] = changed;
-        if (ReferenceEquals(_lastCompletedSnapshot, state))
+        Task changed;
+        await _publicationGate.WaitAsync(cancellationToken);
+        try
         {
-            await changed.WaitAsync(cancellationToken);
-            return PublicationOutcome.Unchanged;
+            changed = _stateManager.GetChangeTask();
+            RuntimeState state = _stateManager.Current;
+            context[ChangeTaskKey] = changed;
+            if (!ReferenceEquals(_lastCompletedSnapshot, state))
+            {
+                PublicationOutcome outcome = await TryPublishAsync(state, cancellationToken);
+                if (outcome is not PublicationOutcome.Retry)
+                {
+                    _lastCompletedSnapshot = state;
+                }
+
+                return outcome;
+            }
+        }
+        finally
+        {
+            _publicationGate.Release();
         }
 
-        PublicationOutcome outcome = await TryPublishAsync(state, cancellationToken);
-        if (outcome is not PublicationOutcome.Retry)
-        {
-            _lastCompletedSnapshot = state;
-        }
-
-        return outcome;
+        await changed.WaitAsync(cancellationToken);
+        return PublicationOutcome.Unchanged;
     }
 
     private async Task<PublicationOutcome> TryPublishAsync(RuntimeState state, CancellationToken cancellationToken)
@@ -187,16 +231,29 @@ internal sealed partial class AppServerHostStatePublisher(
 
     private async Task PublishFinalSnapshotAsync()
     {
-        RuntimeState state = _stateManager.Current;
-        if (ReferenceEquals(_lastCompletedSnapshot, state))
+        RuntimeState current = _stateManager.Current;
+        if (ReferenceEquals(_lastCompletedSnapshot, current))
         {
             return;
         }
 
         using CancellationTokenSource timeout = new(FinalPublishTimeout, _timeProvider);
+        RuntimeState state = current;
         try
         {
-            await TryPublishAsync(state, timeout.Token);
+            await _publicationGate.WaitAsync(timeout.Token);
+            try
+            {
+                state = _stateManager.Current;
+                if (!ReferenceEquals(_lastCompletedSnapshot, state))
+                {
+                    await TryPublishAsync(state, timeout.Token);
+                }
+            }
+            finally
+            {
+                _publicationGate.Release();
+            }
         }
         catch (OperationCanceledException exception) when (timeout.IsCancellationRequested && !Utility.IsFatal(exception))
         {
