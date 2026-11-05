@@ -18,8 +18,8 @@ namespace Azure.Functions.Host.HostState;
 /// Sends snapshots to the AppServer <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
-/// Sends the current mesh instance identity on each request. The endpoint is resolved on the first publication and reused
-/// for the client's lifetime.
+/// The named HTTP client supplies the container instance identity. The endpoint is resolved on the first publication
+/// and reused for this publisher client's lifetime.
 /// </remarks>
 internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
 {
@@ -35,12 +35,6 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        string? containerName = _configuration[EnvironmentSettingNames.ContainerName];
-        if (string.IsNullOrWhiteSpace(containerName))
-        {
-            throw new InvalidOperationException("CONTAINER_NAME is required for AppServer Host-state publication.");
-        }
-
         using HttpClient client = _httpClientFactory.CreateClient(HttpClientName);
         using HttpRequestMessage request = new(HttpMethod.Put, _hostStateUri ??= GetHostStateUri())
         {
@@ -48,7 +42,6 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
                 new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
                 AppServerJsonSerializerContext.Default.HostStateRequest),
         };
-        request.Headers.Add(ScriptConstants.ContainerInstanceHeader, containerName);
         // Only status is consumed; do not buffer an unused response body.
         using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 

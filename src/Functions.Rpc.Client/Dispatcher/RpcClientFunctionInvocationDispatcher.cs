@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -72,7 +73,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     public int ErrorEventsThreshold => 3;
 
     /// <summary>
-    /// Admits an invocation to a matching ready channel, waiting for one only when immediate selection fails.
+    /// Invokes a function on a matching ready channel, waiting only when immediate selection fails.
     /// Execution completion is reported separately through the invocation's result source.
     /// </summary>
     public Task InvokeAsync(ScriptInvocationContext invocationContext)
@@ -290,12 +291,12 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         // A selected channel may retire before its lifecycle lock is acquired; try other matching channels.
         for (int attempt = 0; attempt < channels.Count; attempt++)
         {
-            if (GetReadyChannel(channels, functionGroup) is not RpcClientWorkerChannel channel)
+            if (!TryGetReadyChannel(channels, functionGroup, out WorkerChannel channel))
             {
                 return false;
             }
 
-            if (DispatchInvocation(invocationContext, channel, cancellationToken))
+            if (DispatchInvocation(invocationContext, (RpcClientWorkerChannel)channel, cancellationToken))
             {
                 return true;
             }
@@ -306,34 +307,46 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     /// <summary>
     /// Rechecks a registry snapshot for eligible channels and rotates independently within the requested group.
-    /// Returns null when none match; traffic for other groups does not advance this group's cursor.
+    /// Traffic for other groups does not advance this group's cursor.
     /// </summary>
-    private WorkerChannel GetReadyChannel(IReadOnlyList<WorkerChannel> channels, string functionGroup)
+    /// <param name="channels">The registry's ready-channel snapshot.</param>
+    /// <param name="functionGroup">The group required by the invoked function.</param>
+    /// <param name="channel">The selected channel on success; otherwise, null.</param>
+    /// <returns>Whether an eligible channel was found.</returns>
+    private bool TryGetReadyChannel(IReadOnlyList<WorkerChannel> channels, string functionGroup, [NotNullWhen(true)] out WorkerChannel channel)
     {
+        channel = null;
         if (channels.Count == 0)
         {
-            return null;
+            return false;
         }
 
         if (channels.Count == 1)
         {
             // The common one-worker path avoids round-robin synchronization and scanning.
-            WorkerChannel channel = channels[0];
-            return IsEligible(channel, functionGroup) ? channel : null;
+            WorkerChannel candidate = channels[0];
+            if (!IsEligible(candidate, functionGroup))
+            {
+                return false;
+            }
+
+            channel = candidate;
+            return true;
         }
 
         List<WorkerChannel> matchingChannels = [];
         for (int i = 0; i < channels.Count; i++)
         {
-            if (IsEligible(channels[i], functionGroup))
+            WorkerChannel candidate = channels[i];
+            if (IsEligible(candidate, functionGroup))
             {
-                matchingChannels.Add(channels[i]);
+                matchingChannels.Add(candidate);
             }
         }
 
         if (matchingChannels.Count == 0)
         {
-            return null;
+            return false;
         }
 
         lock (_selectionLock)
@@ -341,8 +354,10 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             _nextChannelIndices.TryGetValue(functionGroup, out int next);
             next %= matchingChannels.Count;
             _nextChannelIndices[functionGroup] = (next + 1) % matchingChannels.Count;
-            return matchingChannels[next];
+            channel = matchingChannels[next];
         }
+
+        return true;
     }
 
     /// <summary>

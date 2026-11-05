@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -29,7 +30,17 @@ internal static class AppServerServiceCollectionExtensions
             ArgumentNullException.ThrowIfNull(services);
 
             services.TryAddSingleton(TimeProvider.System);
-            services.AddHttpClient(AppServerHostStateClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddHttpClient(AppServerHostStateClient.HttpClientName, (provider, client) =>
+            {
+                string? containerName = provider.GetRequiredService<IConfiguration>()[EnvironmentSettingNames.ContainerName];
+                if (string.IsNullOrWhiteSpace(containerName))
+                {
+                    throw new InvalidOperationException("CONTAINER_NAME is required for AppServer Host-state publication.");
+                }
+
+                client.Timeout = TimeSpan.FromSeconds(5);
+                client.DefaultRequestHeaders.Add(ScriptConstants.ContainerInstanceHeader, containerName);
+            });
             services.AddPolicyRegistry((provider, registry) =>
             {
                 TimeProvider clock = provider.GetRequiredService<TimeProvider>();
