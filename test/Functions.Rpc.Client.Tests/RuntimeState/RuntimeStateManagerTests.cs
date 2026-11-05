@@ -259,7 +259,7 @@ public sealed class RuntimeStateManagerTests
 
         await Task.Delay(50);
 
-        harness.Registry.Verify(registry => registry.GetInitializedChannels(), Times.Never);
+        harness.Registry.Verify(registry => registry.GetLinkedChannels(), Times.Never);
         harness.Registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Never);
     }
 
@@ -375,7 +375,7 @@ public sealed class RuntimeStateManagerTests
                     return _changed.Task;
                 }
             });
-            Registry.Setup(registry => registry.GetInitializedChannels()).Returns(() =>
+            Registry.Setup(registry => registry.GetLinkedChannels()).Returns(() =>
             {
                 IReadOnlyList<WorkerChannel> snapshot;
                 lock (_stateLock)

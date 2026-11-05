@@ -429,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             Logger.ChannelReceivedMessage(_workerChannelLogger, _workerId, msg.ContentCase);
                         }
 
-                        DispatchMessage(msg);
+                        await ProcessInboundMessageAsync(msg);
                     }
                 }
             }
@@ -456,6 +456,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _workerChannelLogger.LogError(ex, "Error disposing RPC message channel");
                 }
             }
+        }
+
+        /// <summary>
+        /// Processes an inbound message before the next transport message is consumed.
+        /// </summary>
+        /// <param name="message">The inbound message.</param>
+        /// <returns>A task completed after any ordered asynchronous processing has finished.</returns>
+        protected virtual ValueTask ProcessInboundMessageAsync(StreamingMessage message)
+        {
+            DispatchMessage(message);
+
+            return ValueTask.CompletedTask;
         }
 
         private void DispatchMessage(StreamingMessage msg)

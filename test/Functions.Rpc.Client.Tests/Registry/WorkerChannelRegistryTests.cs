@@ -2289,6 +2289,7 @@ public sealed partial class WorkerChannelRegistryTests
 
         public RegistryHarness(
             TimeSpan? linkTimeout,
+            WorkerExtensionPayloadManager extensionPayloads = null,
             IConfiguration configuration = null,
             IWorkerHostConfigurationParser workerHostConfigurationParser = null,
             bool registryOwnedAttempt = false,
@@ -2383,11 +2384,11 @@ public sealed partial class WorkerChannelRegistryTests
                 ? new(DuplexFactory.Object, ChannelFactory.Object, Logger.Object,
                     RuntimeWorkerTestData.CreateConfiguration(), timeProvider ?? TimeProvider.System,
                     linkTimeout.Value, workerHostConfigurationParser, registryOwnedAttempt,
-                    InvocationTracker.Object, runtimeDrainGracePeriod)
+                    InvocationTracker.Object, runtimeDrainGracePeriod, extensionPayloads)
                 : new(DuplexFactory.Object, ChannelFactory.Object, Logger.Object,
                     RuntimeWorkerTestData.CreateConfiguration(), timeProvider ?? TimeProvider.System,
                     workerHostConfigurationParser,
-                    invocationTracker: InvocationTracker.Object);
+                    invocationTracker: InvocationTracker.Object, extensionPayloads: extensionPayloads);
         }
 
         internal Mock<ILogger<WorkerChannelRegistry>> Logger { get; } = new();
@@ -2500,6 +2501,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal Task DisposeStarted => Transport.DisposeStarted;
 
         internal string Id { get; }
+
+        internal string ExtensionPayloadCapability { get; set; }
 
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
 
@@ -2638,6 +2641,11 @@ public sealed partial class WorkerChannelRegistryTests
                 if (HttpUri is not null)
                 {
                     response.Capabilities.Add(RpcWorkerConstants.HttpUri, HttpUri);
+                }
+
+                if (ExtensionPayloadCapability is not null)
+                {
+                    response.Capabilities.Add(WorkerExtensionPayloadManager.CapabilityName, ExtensionPayloadCapability);
                 }
 
                 await Transport.SendResponseAsync(new()

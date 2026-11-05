@@ -121,14 +121,6 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
 
     private async Task<WorkerChannel> GetInitializedChannelAsync()
     {
-        WorkerChannel channel = _channelRegistry.GetInitializedChannels()
-            .OrderBy(channel => channel.Id, StringComparer.Ordinal)
-            .FirstOrDefault();
-        if (channel is not null)
-        {
-            return channel;
-        }
-
         using CancellationTokenSource timeoutSource = new(_channelWaitTimeout);
         try
         {

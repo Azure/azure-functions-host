@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
@@ -76,6 +77,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
         AssertRegistryServices(services);
         AssertSingleton<IRuntimeDrainManager, RuntimeDrainManager>(services);
+        AssertSingleton<IExtensionPathProvider, RpcClientExtensionPathProvider>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostedService));
@@ -286,6 +288,30 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         using HttpRequestMessage request = new(HttpMethod.Get, "https://worker-proxy:28080/");
         await Assert.ThrowsAsync<ObjectDisposedException>(() => owned.SendAsync(request, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClientCompositionReplacesDefaultPathsRegardlessOfCommonRegistrationOrder(bool commonFirst)
+    {
+        ServiceCollection services = new();
+        services.AddLogging();
+        if (commonFirst)
+        {
+            ScriptHostBuilderExtensions.AddCommonServices(services);
+        }
+
+        services.AddRpcClientServices();
+        if (!commonFirst)
+        {
+            ScriptHostBuilderExtensions.AddCommonServices(services);
+        }
+
+        AssertSingleton<IExtensionPathProvider, RpcClientExtensionPathProvider>(services);
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.IsType<RpcClientExtensionPathProvider>(provider.GetRequiredService<IExtensionPathProvider>());
+        Assert.Same(provider.GetRequiredService<IExtensionPathProvider>(), provider.GetRequiredService<IExtensionPathProvider>());
     }
 
     [Fact]

@@ -176,9 +176,9 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
             bool invalidated = false;
             try
             {
-                IReadOnlyList<WorkerChannel> initializedChannels = _channelRegistry.GetInitializedChannels();
+                IReadOnlyList<WorkerChannel> linkedChannels = _channelRegistry.GetLinkedChannels();
                 int httpWorkerCount = 0;
-                foreach (WorkerChannel channel in initializedChannels)
+                foreach (WorkerChannel channel in linkedChannels)
                 {
                     if (channel is not RpcClientWorkerChannel clientChannel)
                     {
@@ -222,7 +222,7 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
 
                     if (!invalidated)
                     {
-                        snapshot = ReplaceSnapshotLocked(_stopping ? 0 : httpCapacity, initializedChannels.Count);
+                        snapshot = ReplaceSnapshotLocked(_stopping ? 0 : httpCapacity, linkedChannels.Count);
                         if (_refreshRequested.Task.IsCompleted)
                         {
                             _refreshed.TrySetResult(_current);
@@ -234,7 +234,7 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
 
                 if (!invalidated)
                 {
-                    Log.WorkerCountsObserved(_logger, initializedChannels.Count, httpWorkerCount);
+                    Log.WorkerCountsObserved(_logger, linkedChannels.Count, httpWorkerCount);
                     LogSnapshot(snapshot);
                 }
             }

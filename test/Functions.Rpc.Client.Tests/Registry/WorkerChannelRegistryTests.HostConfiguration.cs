@@ -377,7 +377,7 @@ public sealed partial class WorkerChannelRegistryTests
         var configuration = new Mock<IConfiguration>();
         configuration.SetupGet(value => value["AzureFunctionsJobHost:configurationProfile"])
             .Callback(() => cancellation.Cancel()).Returns((string)null);
-        RegistryHarness harness = new(null, configuration.Object);
+        RegistryHarness harness = new(null, configuration: configuration.Object);
         ChannelControl canceled = new("worker") { HostConfiguration = CreateHostConfiguration("canceled") };
         ChannelControl replacement = new("replacement") { HostConfiguration = CreateHostConfiguration("replacement") };
         harness.Enqueue(canceled);
@@ -400,7 +400,7 @@ public sealed partial class WorkerChannelRegistryTests
     {
         Task disposal = Task.CompletedTask;
         var configuration = new Mock<IConfiguration>();
-        RegistryHarness harness = new(null, configuration.Object);
+        RegistryHarness harness = new(null, configuration: configuration.Object);
         WorkerChannelRegistry registry = harness.Registry;
         configuration.SetupGet(value => value["AzureFunctionsJobHost:configurationProfile"])
             .Callback(() => disposal = registry.DisposeAsync().AsTask()).Returns((string)null);
@@ -424,7 +424,7 @@ public sealed partial class WorkerChannelRegistryTests
         var configuration = new Mock<IConfiguration>();
         configuration.SetupGet(value => value["AzureFunctionsJobHost:configurationProfile"])
             .Callback(() => worker.Complete()).Returns((string)null);
-        RegistryHarness harness = new(null, configuration.Object);
+        RegistryHarness harness = new(null, configuration: configuration.Object);
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
 
@@ -456,7 +456,7 @@ public sealed partial class WorkerChannelRegistryTests
                 }
             })
             .Returns((string)null);
-        RegistryHarness harness = new(null, configuration.Object);
+        RegistryHarness harness = new(null, configuration: configuration.Object);
         ChannelControl slow = new("slow") { HostConfiguration = CreateHostConfiguration("slow") };
         ChannelControl winner = new("winner") { HostConfiguration = winnerSuppliesConfiguration ? CreateHostConfiguration("winner") : null };
         harness.Enqueue(slow);

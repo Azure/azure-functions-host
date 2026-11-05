@@ -7,6 +7,7 @@ using System.Net.Http;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
@@ -60,6 +61,8 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
+        services.AddSingleton<WorkerExtensionPayloadManager>();
+        services.Replace(ServiceDescriptor.Singleton<IExtensionPathProvider, RpcClientExtensionPathProvider>());
         services.AddSingleton<WorkerChannelRegistry>();
         services.AddSingleton<IWorkerChannelRegistry>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
         services.AddSingleton<IHostConfigurationSourceProvider>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
