@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -34,8 +35,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private readonly CancellationTokenSource _dispatcherStoppedSource = new();
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger;
     private readonly TimeSpan _channelWaitTimeout;
-    private readonly Dictionary<string, int> _nextChannelIndices = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Lock _selectionLock = new();
+    private readonly ConcurrentDictionary<string, GroupSelectionState> _groupSelections = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _stopping;
 
@@ -307,13 +307,13 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     /// <summary>
     /// Rechecks a registry snapshot for eligible channels and rotates independently within the requested group.
-    /// Traffic for other groups does not advance this group's cursor.
+    /// One bounded scan avoids a temporary matching collection. Each group owns its cursor and selection lock.
     /// </summary>
     /// <param name="channels">The registry's ready-channel snapshot.</param>
     /// <param name="functionGroup">The group required by the invoked function.</param>
     /// <param name="channel">The selected channel on success; otherwise, null.</param>
     /// <returns>Whether an eligible channel was found.</returns>
-    private bool TryGetReadyChannel(IReadOnlyList<WorkerChannel> channels, string functionGroup, [NotNullWhen(true)] out WorkerChannel channel)
+    internal bool TryGetReadyChannel(IReadOnlyList<WorkerChannel> channels, string functionGroup, [NotNullWhen(true)] out WorkerChannel channel)
     {
         channel = null;
         if (channels.Count == 0)
@@ -334,30 +334,28 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             return true;
         }
 
-        List<WorkerChannel> matchingChannels = [];
-        for (int i = 0; i < channels.Count; i++)
+        // Publish state once per group; unrelated groups never share the scan's lock.
+        GroupSelectionState selection = _groupSelections.GetOrAdd(functionGroup, static _ => new());
+        lock (selection.Gate)
         {
-            WorkerChannel candidate = channels[i];
-            if (IsEligible(candidate, functionGroup))
+            // Resume after this group's previous selection without allocating a filtered list.
+            int next = selection.NextIndex % channels.Count;
+            // Visit each snapshot entry at most once, wrapping around when necessary.
+            for (int remaining = channels.Count; remaining > 0; remaining--)
             {
-                matchingChannels.Add(candidate);
+                WorkerChannel candidate = channels[next];
+                next = next == channels.Count - 1 ? 0 : next + 1;
+                if (IsEligible(candidate, functionGroup))
+                {
+                    // Advance past the selected worker, not merely past the previous starting position.
+                    selection.NextIndex = next;
+                    channel = candidate;
+                    return true;
+                }
             }
         }
 
-        if (matchingChannels.Count == 0)
-        {
-            return false;
-        }
-
-        lock (_selectionLock)
-        {
-            _nextChannelIndices.TryGetValue(functionGroup, out int next);
-            next %= matchingChannels.Count;
-            _nextChannelIndices[functionGroup] = (next + 1) % matchingChannels.Count;
-            channel = matchingChannels[next];
-        }
-
-        return true;
+        return false;
     }
 
     /// <summary>
@@ -421,6 +419,16 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private static bool IsEligible(WorkerChannel channel, string functionGroup)
         => channel is RpcClientWorkerChannel { IsReadyForInvocations: true } client
             && string.Equals(client.FunctionGroupName, functionGroup, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Serializes only selections for one function group; the owning dispatcher bounds this state's lifetime.
+    /// </summary>
+    private sealed class GroupSelectionState
+    {
+        internal Lock Gate { get; } = new();
+
+        internal int NextIndex { get; set; }
+    }
 
     private static partial class Log
     {

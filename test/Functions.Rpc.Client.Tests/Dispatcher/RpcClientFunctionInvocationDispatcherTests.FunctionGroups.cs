@@ -141,6 +141,201 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
+    public async Task TryGetReadyChannel_BlockedGroupDoesNotBlockAnotherGroup()
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("first", functionGroupName: "function:First");
+        await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("second", functionGroupName: "function:Second");
+        await PrepareReadyChannelAsync(first, new() { Name = "First", Language = "external" });
+        await PrepareReadyChannelAsync(second, new() { Name = "Second", Language = "external" });
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        using ManualResetEventSlim release = new(false);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IReadOnlyList<WorkerChannel>> blockedSnapshot = new(MockBehavior.Strict);
+        blockedSnapshot.SetupGet(channels => channels.Count).Returns(2);
+        blockedSnapshot.Setup(channels => channels[0]).Returns(() =>
+        {
+            entered.TrySetResult();
+            if (!release.Wait(TestTimeout))
+            {
+                throw new TimeoutException("Selection was not released.");
+            }
+
+            return first.Channel;
+        });
+        Task<WorkerChannel> blockedSelection = Task.Run(() =>
+        {
+            Assert.True(dispatcher.TryGetReadyChannel(blockedSnapshot.Object, "function:First", out WorkerChannel selected));
+            return selected;
+        });
+        Task<WorkerChannel> otherSelection = Task.FromResult<WorkerChannel>(null);
+
+        try
+        {
+            await entered.Task.WaitAsync(TestTimeout);
+            otherSelection = Task.Run(() =>
+            {
+                Assert.True(dispatcher.TryGetReadyChannel([first.Channel, second.Channel], "function:Second", out WorkerChannel selected));
+                return selected;
+            });
+
+            Assert.Same(second.Channel, await otherSelection.WaitAsync(TestTimeout));
+            Assert.False(blockedSelection.IsCompleted);
+        }
+        finally
+        {
+            release.Set();
+            await Task.WhenAll(blockedSelection, otherSelection).WaitAsync(TestTimeout);
+        }
+
+        Assert.Same(first.Channel, await blockedSelection);
+    }
+
+    [Fact]
+    public async Task TryGetReadyChannel_ConcurrentSelectionsKeepIndependentCaseInsensitiveRotation()
+    {
+        List<ClientWorkerChannelTestHarness> workers = [];
+        try
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                string group = $"function:Group{i % 4}";
+                ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync($"worker-{i}", functionGroupName: group);
+                workers.Add(worker);
+                await PrepareReadyChannelAsync(worker, new() { Name = $"Group{i % 4}", Language = "external" });
+            }
+
+            WorkerChannel[] snapshot = workers.ConvertAll(worker => (WorkerChannel)worker.Channel).ToArray();
+            using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+            int[] selections = new int[snapshot.Length];
+            Parallel.For(0, 4_000, i =>
+            {
+                int group = i % 4;
+                string requestedGroup = i % 8 < 4 ? $"function:Group{group}" : $"FUNCTION:GROUP{group}";
+                Assert.True(dispatcher.TryGetReadyChannel(snapshot, requestedGroup, out WorkerChannel selected));
+                int selectedIndex = Array.IndexOf(snapshot, selected);
+                Assert.Equal(group, selectedIndex % 4);
+                Interlocked.Increment(ref selections[selectedIndex]);
+            });
+
+            Assert.All(selections, count => Assert.Equal(500, count));
+        }
+        finally
+        {
+            foreach (ClientWorkerChannelTestHarness worker in workers)
+            {
+                await worker.DisposeAsync();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task TryGetReadyChannel_UnrelatedWorkerPositionsDoNotBiasRotation()
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("first");
+        await using ClientWorkerChannelTestHarness other = await ClientWorkerChannelTestHarness.CreateAsync("other", functionGroupName: "durable");
+        await using ClientWorkerChannelTestHarness last = await ClientWorkerChannelTestHarness.CreateAsync("last");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(other, function);
+        await PrepareReadyChannelAsync(last, function);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        WorkerChannel[] snapshot = [first.Channel, other.Channel, other.Channel, last.Channel];
+        string group = function.GetFunctionGroup();
+
+        for (int i = 0; i < 6; i++)
+        {
+            Assert.True(dispatcher.TryGetReadyChannel(snapshot, group, out WorkerChannel selected));
+            Assert.Same(i % 2 == 0 ? first.Channel : last.Channel, selected);
+        }
+    }
+
+    [Fact]
+    public async Task TryGetReadyChannel_WrapsAndSkipsWorkerThatStopsBeforeSelection()
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("first");
+        await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("second");
+        await using ClientWorkerChannelTestHarness third = await ClientWorkerChannelTestHarness.CreateAsync("third");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(second, function);
+        await PrepareReadyChannelAsync(third, function);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        string group = function.GetFunctionGroup();
+        WorkerChannel[] initialSnapshot = [first.Channel, second.Channel, third.Channel];
+        Assert.True(dispatcher.TryGetReadyChannel(initialSnapshot, group, out WorkerChannel initialFirst));
+        Assert.Same(first.Channel, initialFirst);
+        Assert.True(dispatcher.TryGetReadyChannel(initialSnapshot, group, out WorkerChannel initialSecond));
+        Assert.Same(second.Channel, initialSecond);
+        Mock<IReadOnlyList<WorkerChannel>> snapshot = new(MockBehavior.Strict);
+        snapshot.SetupGet(channels => channels.Count).Returns(3);
+        snapshot.Setup(channels => channels[0]).Returns(first.Channel);
+        snapshot.Setup(channels => channels[1]).Returns(second.Channel);
+        snapshot.Setup(channels => channels[2]).Returns(() =>
+        {
+            third.Channel.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            return third.Channel;
+        });
+
+        Assert.True(dispatcher.TryGetReadyChannel(snapshot.Object, group, out WorkerChannel selected));
+        Assert.Same(first.Channel, selected);
+
+        snapshot.Verify(channels => channels[2], Times.Once);
+        snapshot.Verify(channels => channels[0], Times.Once);
+        snapshot.Verify(channels => channels[1], Times.Never);
+        first.Channel.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        second.Channel.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        snapshot.Invocations.Clear();
+
+        Assert.False(dispatcher.TryGetReadyChannel(snapshot.Object, group, out WorkerChannel missing));
+        Assert.Null(missing);
+        snapshot.Verify(channels => channels[0], Times.Once);
+        snapshot.Verify(channels => channels[1], Times.Once);
+        snapshot.Verify(channels => channels[2], Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TryGetReadyChannel_DoesNotAllocateBeyondExistingReadinessChecks(bool multipleMatches)
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("first");
+        await using ClientWorkerChannelTestHarness other = await ClientWorkerChannelTestHarness.CreateAsync(
+            "other", functionGroupName: multipleMatches ? "function:TestFunction" : "durable");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(other, function);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        WorkerChannel[] snapshot = [first.Channel, other.Channel];
+        string group = function.GetFunctionGroup();
+        for (int i = 0; i < 10; i++)
+        {
+            Assert.True(dispatcher.TryGetReadyChannel(snapshot, group, out _));
+        }
+
+        // Debug builds can box enum flags in shared readiness checks; measure that existing cost separately.
+        bool allReady = true;
+        int readinessChecks = multipleMatches ? 1_000 : 2_000;
+        long beforeReadiness = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < readinessChecks; i++)
+        {
+            allReady &= first.Channel.IsReadyForInvocations;
+        }
+
+        long readinessAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeReadiness;
+        bool allSelected = true;
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 1_000; i++)
+        {
+            allSelected &= dispatcher.TryGetReadyChannel(snapshot, group, out _);
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(allReady);
+        Assert.True(allSelected);
+        Assert.Equal(readinessAllocated, allocated);
+    }
+
+    [Fact]
     public async Task InvokeAsync_MatchingLinkWakesWrongGroupWait()
     {
         await using ClientWorkerChannelTestHarness wrong = await ClientWorkerChannelTestHarness.CreateAsync("wrong", functionGroupName: "durable");
