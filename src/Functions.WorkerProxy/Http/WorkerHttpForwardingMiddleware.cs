@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
@@ -17,7 +18,8 @@ internal sealed class WorkerHttpForwardingMiddleware(
     IOptions<WorkerProxyOptions> options,
     WorkerEndpointReadinessProbe readinessProbe,
     WorkerHttpForwarder forwarder,
-    FunctionRpcRelay relay)
+    FunctionRpcRelay relay,
+    WorkerPodStateManager stateManager)
 {
     private readonly FunctionRpcRelay _relay = relay ?? throw new ArgumentNullException(nameof(relay));
 
@@ -26,6 +28,11 @@ internal sealed class WorkerHttpForwardingMiddleware(
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
+        if (TryRejectRemoval(context, stateManager))
+        {
+            return;
+        }
+
         Uri? destination = _relay.WorkerHttpDestination
             ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 
@@ -49,6 +56,11 @@ internal sealed class WorkerHttpForwardingMiddleware(
             }
         }
 
+        if (TryRejectRemoval(context, stateManager))
+        {
+            return;
+        }
+
         ForwarderError error = await forwarder.ForwardAsync(context, destination);
         if (error is ForwarderError.None || context.RequestAborted.IsCancellationRequested)
         {
@@ -62,5 +74,16 @@ internal sealed class WorkerHttpForwardingMiddleware(
         }
 
         WorkerHttpForwardingTelemetry.RecordForwarderError(error);
+    }
+
+    private static bool TryRejectRemoval(HttpContext context, WorkerPodStateManager stateManager)
+    {
+        if (!stateManager.State.RemovalRequested)
+        {
+            return false;
+        }
+
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        return true;
     }
 }

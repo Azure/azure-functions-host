@@ -35,6 +35,11 @@ internal sealed record WorkerPodState(
     int? MaxHttpConcurrency = null)
 {
     /// <summary>
+    /// Gets a value indicating whether the platform should remove this worker pod.
+    /// </summary>
+    public bool RemovalRequested { get; init; }
+
+    /// <summary>
     /// Gets the identity supplied by the current admitted Runtime stream.
     /// </summary>
     public PodIdentity? RuntimeIdentity { get; init; }
@@ -51,7 +56,7 @@ internal sealed record WorkerPodState(
         AssignmentState == WorkerAssignmentState.Ready && RuntimeInitialized && RuntimeIdentity is not null;
 
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
-    public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
+    public bool IsWorkerReady => !RemovalRequested && IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
     public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady

@@ -67,7 +67,7 @@ internal static class ManagementApiHandlers
         CancellationToken cancellationToken = request.HttpContext.RequestAborted;
         cancellationToken.ThrowIfCancellationRequested();
         WorkerOriginState current = WorkerOriginState.FromState(manager.State);
-        if (previousState is null || previousState != current)
+        if (current.Status == WorkerStatus.RemovalRequested || previousState is null || previousState != current)
         {
             return OriginStateResponse(current);
         }

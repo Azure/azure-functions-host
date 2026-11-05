@@ -47,8 +47,13 @@ internal sealed record WorkerOriginState(
     /// </summary>
     /// <param name="state">The current immutable pod snapshot.</param>
     /// <returns>The corresponding platform checkpoint.</returns>
-    public static WorkerOriginState FromState(WorkerPodState state) =>
-        new(
+    public static WorkerOriginState FromState(WorkerPodState state)
+    {
+        WorkerStatus status = state.RemovalRequested
+            ? WorkerStatus.RemovalRequested
+            : state.IsRuntimeInitialized ? WorkerStatus.Running : WorkerStatus.Starting;
+
+        return new(
             ContainerType,
             new("unknown", state.PodName, new("unknown", 0, "unknown")),
             IsDiscoveryPod: false,
@@ -58,7 +63,8 @@ internal sealed record WorkerOriginState(
             ContentLastModifiedTime: 0,
             state.StartupTime,
             checked((int)state.Revision),
-            state.IsRuntimeInitialized ? WorkerStatus.Running : WorkerStatus.Starting,
+            status,
             state.IsRuntimeInitialized ? new(WorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
-            state.AssignmentState == WorkerAssignmentState.Failed);
+            state.RemovalRequested || state.AssignmentState == WorkerAssignmentState.Failed);
+    }
 }
