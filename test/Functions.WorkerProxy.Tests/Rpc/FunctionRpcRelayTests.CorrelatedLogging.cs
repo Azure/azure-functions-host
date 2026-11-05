@@ -8,7 +8,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -110,6 +112,8 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         StreamingMessage forwardedStart = await runtime.ReadAsync(timeout.Token);
         Assert.Equal("telemetry-worker", forwardedStart.StartStream.WorkerId);
+        Assert.Equal(WorkerAssignmentResult.Created,
+            factory.Services.GetRequiredService<WorkerPodStateManager>().Assign(CreateWorkerAssignment("telemetry-group")));
         StreamingMessage init = new() { WorkerInitRequest = new() };
         await runtime.WriteAsync(init, timeout.Token);
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));

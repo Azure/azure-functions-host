@@ -415,11 +415,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     /// <summary>
     /// Requires a ready serving channel with the same assigned group, using case-insensitive platform identity.
-    /// Validation workers are excluded; listener-specific exceptions such as HTTP/blob sharing do not apply to invocation routing.
+    /// Metadata-derived groups cannot match the reserved validation group.
+    /// Listener-specific exceptions such as HTTP/blob sharing do not apply to invocation routing.
     /// </summary>
     private static bool IsEligible(WorkerChannel channel, string functionGroup)
         => channel is RpcClientWorkerChannel { IsReadyForInvocations: true } client
-            && !string.Equals(client.FunctionGroupName, FunctionGroups.ValidationWorker, StringComparison.OrdinalIgnoreCase)
             && string.Equals(client.FunctionGroupName, functionGroup, StringComparison.OrdinalIgnoreCase);
 
     private static partial class Log

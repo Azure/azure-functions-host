@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -133,6 +134,7 @@ public partial class FunctionRpcRelayTests
         await InitializeWorkerAsync(
             worker,
             runtime,
+            factory.Services.GetRequiredService<WorkerPodStateManager>(),
             new Dictionary<string, string> { [capability] = bool.TrueString },
             timeout.Token);
 
@@ -148,12 +150,14 @@ public partial class FunctionRpcRelayTests
     private static async Task InitializeWorkerAsync(
         RelayClient worker,
         RelayClient runtime,
+        WorkerPodStateManager stateManager,
         IDictionary<string, string>? capabilities,
         CancellationToken cancellationToken)
     {
         StreamingMessage startStream = CreateStartStream("telemetry-worker");
         await worker.WriteAsync(startStream, cancellationToken);
         Assert.Equal(startStream, await runtime.ReadAsync(cancellationToken));
+        Assert.Equal(WorkerAssignmentResult.Created, stateManager.Assign(CreateWorkerAssignment("telemetry-group")));
 
         StreamingMessage initResponse = CreateInitResponse("telemetry-init", httpUri: null);
         if (capabilities is not null)
@@ -162,7 +166,9 @@ public partial class FunctionRpcRelayTests
         }
 
         await worker.WriteAsync(initResponse, cancellationToken);
-        Assert.Equal(initResponse, await runtime.ReadAsync(cancellationToken));
+        StreamingMessage expected = initResponse.Clone();
+        expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "telemetry-group";
+        Assert.Equal(expected, await runtime.ReadAsync(cancellationToken));
     }
 
     private static WorkerProxyWebApplicationFactory CreateSystemLoggingFactory(
