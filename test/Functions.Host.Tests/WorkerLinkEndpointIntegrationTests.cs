@@ -16,7 +16,7 @@ using Xunit;
 namespace Azure.Functions.Host.Tests;
 
 /// <summary>
-/// Exercises the legacy MVC/Newtonsoft worker-link contract against the public registry interface.
+/// Exercises the MVC/System.Text.Json worker-link contract against the public registry interface.
 /// Fixture authorization is permissive and does not test production authentication.
 /// </summary>
 public sealed class WorkerLinkEndpointIntegrationTests
@@ -81,7 +81,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
                 "podName": "runtime-pod",
                 "app": {
                   "functionAppName": "test-app",
-                  "functionAppSiteId": 42,
+                  "functionAppSiteId": "42",
                   "antaresStampName": "test-stamp",
                   "futureAppField": "ignored"
                 },
@@ -195,7 +195,6 @@ public sealed class WorkerLinkEndpointIntegrationTests
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"podName":false}}""")]
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"app":[]}}""")]
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"app":{"functionAppName":123}}}""")]
-    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"app":{"functionAppSiteId":"42"}}}""")]
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"app":{"functionAppSiteId":42.5}}}""")]
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":{"app":{"antaresStampName":true}}}""")]
     [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtimeIdentity":"{\"resourceNamespace\":\"functions\",\"podName\":\"runtime-pod\",\"app\":{\"functionAppName\":\"test-app\",\"functionAppSiteId\":42,\"antaresStampName\":\"test-stamp\"}}"}""")]

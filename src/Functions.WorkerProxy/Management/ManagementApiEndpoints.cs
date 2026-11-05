@@ -13,13 +13,57 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Registers worker lifecycle APIs on the management listener.
 /// </summary>
 /// <remarks>
-/// Platform callers are expected to send UTF-8 JSON. Assignment uses framework JSON binding:
-/// malformed or incompatible JSON with a supported charset returns HTTP 400;
-/// unsupported media types return HTTP 415. Binding errors do not guarantee our validation envelope.
-/// Other binding failures follow framework behavior. Successfully bound requests use our
-/// field-validation envelope and lifecycle error codes.
-/// A valid assignment is accepted before the customer worker establishes StartStream; worker
-/// readiness remains a separate lifecycle state.
+/// <para>
+/// Assignment and Worker startup are independent inputs: the platform may send assignment before the Worker
+/// establishes its stream. Assignment is recorded as <c>Assigned</c> until a valid <c>StartStream</c> makes it
+/// <c>Ready</c>; if the Worker is already ready, assignment enters <c>Ready</c> directly. Requiring Worker readiness
+/// to accept assignment would impose the opposite startup ordering. Assignment success does not prove Worker
+/// readiness, Runtime initialization, function loading, or HTTP serving readiness.
+/// </para>
+/// <para>
+/// The supported platform sequence completes assignment before invoking Runtime's
+/// <c>PUT /admin/workers/{workerId}</c> link endpoint. Worker startup may occur on either side of assignment.
+/// Runtime linking establishes the stream used for <c>WorkerInitRequest</c>; an identified Runtime becomes
+/// <c>Running</c>/<c>Linked</c> only after its matching successful initialization response is written to that stream.
+/// The platform owns assignment-before-link ordering; the link endpoint does not enforce that precondition.
+/// </para>
+/// <list type="bullet">
+/// <item><description>
+/// <c>PUT /admin/worker/assignment</c>: <c>201</c> records a new assignment, with
+/// <c>Location: /admin/worker/assignment</c>; <c>204</c> replays an equivalent assignment. Both have no response body.
+/// Bound field-validation failures return <c>400</c> with an <c>errors</c> array containing
+/// <c>Required</c> or <c>InvalidValue</c> codes and field targets. Lifecycle failures return
+/// <c>409</c> with an <c>error</c> object containing <c>code</c> and <c>detail</c>:
+/// <c>AssignmentConflict</c> for a different assignment or an app mismatch with an attached Runtime,
+/// or <c>WorkerTerminated</c> for an equivalent retry after assigned-session failure.
+/// Retry an uncertain outcome with the same assignment values; changing values is not a retry.
+/// A failed assigned session requires pod replacement, not reassignment or a replacement stream on the same pod.
+/// </description></item>
+/// <item><description>
+/// <c>GET /admin/worker/ready</c>: <c>200</c> after a valid <c>StartStream</c> on an attached Worker stream;
+/// otherwise <c>503</c>. Neither status has a response body. Callers may poll while the Worker is starting.
+/// This endpoint does not require assignment or prove Runtime initialization.
+/// </description></item>
+/// <item><description>
+/// <c>GET /admin/worker/state</c>: <c>200</c> returns the current checkpoint. An optional
+/// <c>lastKnownRevision</c> returns a newer checkpoint immediately or polls for up to 60 seconds when unchanged;
+/// <c>204</c> means no change within that interval. Malformed, negative, or future revisions return
+/// <c>400</c> with an <c>errors</c> entry using <c>InvalidRevision</c> and target <c>lastKnownRevision</c>.
+/// After <c>204</c>, poll again with the same revision; after <c>200</c>, use the returned revision.
+/// </description></item>
+/// <item><description>
+/// <c>POST /admin/infra/instanceState</c>: an absent or null previous checkpoint, or one differing from current
+/// state, returns <c>200</c> with the current infrastructure checkpoint. An equal checkpoint polls for up to
+/// 60 seconds; <c>204</c> means no change. Repeat with the last returned checkpoint after either result.
+/// Nullable <c>functionGroup</c> may be omitted in the request and is explicitly emitted as null in the response.
+/// </description></item>
+/// </list>
+/// <para>
+/// Platform callers are expected to send UTF-8 JSON. JSON-body endpoints use framework binding:
+/// malformed or incompatible JSON with a supported charset returns <c>400</c>; unsupported media types return
+/// <c>415</c>. Binding errors do not guarantee the field-validation envelope. Other binding failures follow
+/// framework behavior. State/readiness responses disable caching, and request cancellation ends a pending poll.
+/// </para>
 /// </remarks>
 internal static class ManagementApiEndpoints
 {

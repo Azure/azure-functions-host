@@ -363,7 +363,7 @@ internal sealed class WorkerPodStateManager
                 return WorkerAssignmentResult.AssignmentConflict;
             }
 
-            // Assignment must precede StartStream so startup dependencies can use it.
+            // Accept either startup order; assignment acceptance alone does not make the Worker ready.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
