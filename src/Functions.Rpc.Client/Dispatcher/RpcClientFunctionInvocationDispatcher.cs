@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -31,7 +32,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private readonly CancellationTokenSource _dispatcherStoppedSource = new();
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger;
     private readonly TimeSpan _channelWaitTimeout;
-    private int _nextChannelIndex = -1;
+    private readonly ConcurrentDictionary<string, ChannelSelectionState> _channelSelectionStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _stopping;
 
@@ -206,21 +207,28 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             return null;
         }
 
+        string functionGroup = function.GetFunctionGroup();
         if (channels.Count == 1)
         {
             // The common one-worker path avoids round-robin synchronization and scanning.
             WorkerChannel channel = channels[0];
-            return IsReadyForFunction(channel, function) ? channel : null;
+            return IsReadyForFunction(channel, functionGroup) ? channel : null;
         }
 
-        // Start each scan at the next channel to spread work without allocating or locking.
-        int startIndex = (int)((uint)Interlocked.Increment(ref _nextChannelIndex) % (uint)channels.Count);
-        for (int offset = 0; offset < channels.Count; offset++)
+        ChannelSelectionState selection = _channelSelectionStates.GetOrAdd(functionGroup, static _ => new());
+        lock (selection.SyncRoot)
         {
-            WorkerChannel channel = channels[(startIndex + offset) % channels.Count];
-            if (IsReadyForFunction(channel, function))
+            int startIndex = selection.NextChannelIndex % channels.Count;
+            for (int offset = 0; offset < channels.Count; offset++)
             {
-                return channel;
+                int channelIndex = (startIndex + offset) % channels.Count;
+                WorkerChannel channel = channels[channelIndex];
+                if (IsReadyForFunction(channel, functionGroup))
+                {
+                    // Skip incompatible workers without letting their positions bias this group's next selection.
+                    selection.NextChannelIndex = channelIndex + 1;
+                    return channel;
+                }
             }
         }
 
@@ -265,10 +273,17 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     private static bool IsReadyForInvocations(WorkerChannel channel) => channel is RpcClientWorkerChannel { IsReadyForInvocations: true };
 
-    private static bool IsReadyForFunction(WorkerChannel channel, FunctionMetadata function)
+    private static bool IsReadyForFunction(WorkerChannel channel, string functionGroup)
         => channel is RpcClientWorkerChannel { IsReadyForInvocations: true } clientChannel
             && (string.IsNullOrEmpty(clientChannel.FunctionGroupName)
-                || FunctionGroups.IsEnabled(clientChannel.FunctionGroupName, function.GetFunctionGroup()));
+                || FunctionGroups.IsEnabled(clientChannel.FunctionGroupName, functionGroup));
+
+    private sealed class ChannelSelectionState
+    {
+        public Lock SyncRoot { get; } = new();
+
+        public int NextChannelIndex { get; set; }
+    }
 
     private static partial class Log
     {

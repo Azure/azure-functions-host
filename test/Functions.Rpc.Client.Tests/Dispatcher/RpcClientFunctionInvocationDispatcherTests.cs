@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -212,8 +213,10 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
     }
 
-    [Fact]
-    public async Task InvokeAsync_RoundRobinSkipsWorkersAssignedToOtherGroups()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_RoundRobinSkipsWorkersAssignedToOtherGroups(bool concurrent)
     {
         await using ClientWorkerChannelTestHarness firstHttp = await ClientWorkerChannelTestHarness.CreateAsync(
             "first-http", functionGroupName: "http", maxHttpConcurrency: "10");
@@ -232,16 +235,47 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         await dispatcher.InitializeAsync(functions);
 
-        await dispatcher.InvokeAsync(CreateInvocation(httpFunction));
-        await dispatcher.InvokeAsync(CreateInvocation(httpFunction));
-        await dispatcher.InvokeAsync(CreateInvocation(timerFunction));
+        const int invocationCount = 12;
+        ScriptInvocationContext[] invocations = new ScriptInvocationContext[invocationCount * 2];
+        for (int i = 0; i < invocationCount; i++)
+        {
+            invocations[i * 2] = CreateInvocation(httpFunction);
+            invocations[(i * 2) + 1] = CreateInvocation(timerFunction);
+        }
 
-        StreamingMessage firstRequest = await firstHttp.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        StreamingMessage secondRequest = await secondHttp.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        StreamingMessage timerRequest = await timer.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        Assert.Equal(httpFunction.GetFunctionId(), firstRequest.InvocationRequest.FunctionId);
-        Assert.Equal(httpFunction.GetFunctionId(), secondRequest.InvocationRequest.FunctionId);
-        Assert.Equal(timerFunction.GetFunctionId(), timerRequest.InvocationRequest.FunctionId);
+        if (concurrent)
+        {
+            await Task.WhenAll(invocations.Select(invocation => Task.Run(() => dispatcher.InvokeAsync(invocation))));
+        }
+        else
+        {
+            foreach (ScriptInvocationContext invocation in invocations)
+            {
+                await dispatcher.InvokeAsync(invocation);
+            }
+        }
+
+        for (int i = 0; i < invocationCount / 2; i++)
+        {
+            StreamingMessage firstRequest = await firstHttp.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            StreamingMessage secondRequest = await secondHttp.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            Assert.Equal(httpFunction.GetFunctionId(), firstRequest.InvocationRequest.FunctionId);
+            Assert.Equal(httpFunction.GetFunctionId(), secondRequest.InvocationRequest.FunctionId);
+            if (!concurrent)
+            {
+                Assert.Equal(invocations[i * 4].ExecutionContext.InvocationId.ToString(), firstRequest.InvocationRequest.InvocationId);
+                Assert.Equal(invocations[(i * 4) + 2].ExecutionContext.InvocationId.ToString(), secondRequest.InvocationRequest.InvocationId);
+            }
+        }
+
+        for (int i = 0; i < invocationCount; i++)
+        {
+            StreamingMessage timerRequest = await timer.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            Assert.Equal(timerFunction.GetFunctionId(), timerRequest.InvocationRequest.FunctionId);
+        }
+
+        Assert.False(firstHttp.Transport.Requests.TryRead(out _));
+        Assert.False(secondHttp.Transport.Requests.TryRead(out _));
         Assert.False(timer.Transport.Requests.TryRead(out _));
     }
 
