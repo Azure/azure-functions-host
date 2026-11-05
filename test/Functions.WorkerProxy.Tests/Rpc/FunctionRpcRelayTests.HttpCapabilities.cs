@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -282,26 +283,40 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter(bool shutdown)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter(bool shutdown, bool cancelRuntime)
     {
-        await using WorkerProxyWebApplicationFactory factory = new();
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        using CancellationTokenSource runtimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        Metadata runtimeHeaders = new()
+        {
+            { "x-ms-functions-runtime-identity-bin", Encoding.UTF8.GetBytes(RuntimeIdentityJson) }
+        };
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), runtimeCancellation.Token, runtimeHeaders);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        WorkerPodState attached = manager.State;
         await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
         while (manager.PendingWaiterCount == 0)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
         }
 
+        await worker.WriteAsync(CreateMessage("queued-behind-init"), timeout.Token);
         if (shutdown)
         {
             await relay.StopAsync(timeout.Token);
+        }
+        else if (cancelRuntime)
+        {
+            runtimeCancellation.Cancel();
         }
         else
         {
@@ -316,8 +331,31 @@ public partial class FunctionRpcRelayTests
 
         Assert.Null(relay.WorkerHttpDestination);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
-        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
+        Assert.Null(manager.State.RuntimeIdentity);
+        Assert.False(manager.State.RuntimeInitialized);
+        Assert.Equal(attached.StartupTime, manager.State.StartupTime);
+        Assert.Equal(!shutdown, manager.State.RemovalRequested);
+        Assert.Equal(
+            shutdown ? WorkerAssignmentResult.Created : WorkerAssignmentResult.WorkerNotReady,
+            manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(
+            shutdown ? WorkerAssignmentState.Assigned : WorkerAssignmentState.Unassigned,
+            manager.State.AssignmentState);
+        await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
+            string.Equals(record.EventName, "PeerReleased", StringComparison.Ordinal)) == 2, timeout.Token);
+        CapturedProxyLog terminated = Assert.Single(generator.ProxyRecords, record =>
+            string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal));
+        Assert.Equal(attached.WorkerId, terminated.Context!.WorkerId);
+        Assert.Equal(attached.SessionId, terminated.Context.ProxySessionId);
+        if (!shutdown)
+        {
+            await using RelayClient replacement = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+            Grpc.Core.RpcException rejected = await replacement.WriteAndReadRejectionAsync(
+                CreateMessage("replacement"), timeout.Token);
+            Assert.Equal(StatusCode.Unavailable, rejected.StatusCode);
+            await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+                string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal)), timeout.Token);
+        }
     }
 
     [Fact]
@@ -426,7 +464,7 @@ public partial class FunctionRpcRelayTests
             await worker.WriteAsync(first, timeout.Token);
             await runtime.ReadAsync(timeout.Token);
             Assert.Equal(new Uri("http://localhost:1234"), relay.WorkerHttpDestination);
-            await runtime.CompleteRequestAsync(timeout.Token);
+            await worker.CompleteRequestAsync(timeout.Token);
             await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
         }
 

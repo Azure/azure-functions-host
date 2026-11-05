@@ -261,7 +261,9 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (sessionId < _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            if (sessionId < _lastSessionId ||
+                _state.AssignmentState == WorkerAssignmentState.Failed ||
+                _state.RemovalRequested)
             {
                 return false;
             }
@@ -339,6 +341,11 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
+            if (_state.RemovalRequested)
+            {
+                return false;
+            }
+
             if (sessionId < _lastSessionId)
             {
                 return false;
@@ -383,6 +390,40 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Publishes sticky removal and clears live worker and assignment identity.
+    /// </summary>
+    public bool RequestRemoval()
+    {
+        lock (_stateLock)
+        {
+            if (_state.RemovalRequested)
+            {
+                return false;
+            }
+
+            _assignment = null;
+            _assignmentClaimed = 0;
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                SessionId = null,
+                IsWorkerAttached = false,
+                WorkerId = null,
+                AssignmentState = WorkerAssignmentState.Unassigned,
+                StartupMode = null,
+                FunctionAppName = null,
+                FunctionGroupName = null,
+                MaxHttpConcurrency = null,
+                IsAlwaysReady = null,
+                RuntimeIdentity = null,
+                RuntimeInitialized = false,
+                RemovalRequested = true
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Records or replays assignment atomically with worker lifecycle and terminal state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)
@@ -391,6 +432,12 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
+            if (_state.RemovalRequested &&
+                _neverLinkedOutcome != NeverLinkedOutcome.RemovalRequested)
+            {
+                return WorkerAssignmentResult.WorkerNotReady;
+            }
+
             // Replay/conflict takes precedence over current readiness, including after the assigned stream terminates.
             if (_assignment is not null)
             {

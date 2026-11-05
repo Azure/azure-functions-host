@@ -83,6 +83,29 @@ public partial class FunctionRpcRelayTests
         }
     }
 
+    private sealed class GatedFaultingServerStreamWriter(Task releaseFault, Exception exception)
+        : IServerStreamWriter<StreamingMessage>
+    {
+        private readonly TaskCompletionSource<bool> _writeEntered =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task WriteEntered => _writeEntered.Task;
+
+        public WriteOptions? WriteOptions { get; set; }
+
+        public Task WriteAsync(StreamingMessage message)
+        {
+            return WriteAsync(message, CancellationToken.None);
+        }
+
+        public async Task WriteAsync(StreamingMessage message, CancellationToken cancellationToken)
+        {
+            _writeEntered.TrySetResult(true);
+            await releaseFault.WaitAsync(cancellationToken);
+            throw exception;
+        }
+    }
+
     private sealed class BlockingServerStreamWriter : IServerStreamWriter<StreamingMessage>
     {
         private readonly TaskCompletionSource<bool> _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
