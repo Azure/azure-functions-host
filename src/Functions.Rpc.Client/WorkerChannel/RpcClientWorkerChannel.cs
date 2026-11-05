@@ -39,6 +39,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Task _drainTask;
     private bool _draining;
     private bool _httpCapacityReserved;
     private bool? _isAlwaysReady;
@@ -200,17 +201,37 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 return null;
             }
 
-            _draining = true;
-            // Scale-in needs every accepted result to become terminal, not necessarily successful.
-            return DrainInvocationsAsync().ContinueWith(
-                static completed =>
-                {
-                    _ = completed.Exception;
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+            return BeginDrainLocked();
         }
+    }
+
+    internal Task TryBeginRuntimeDrain()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            if (_draining)
+            {
+                return _drainTask;
+            }
+
+            if (IsTerminated)
+            {
+                return null;
+            }
+
+            return BeginDrainLocked();
+        }
+    }
+
+    internal void ExpireRuntimeDrain(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        lock (_invocationAdmissionLock)
+        {
+            _draining = true;
+        }
+
+        Shutdown(exception);
     }
 
     /// <summary>
@@ -342,6 +363,22 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
 
         return startStreamTimeout;
+    }
+
+    private Task BeginDrainLocked()
+    {
+        _draining = true;
+        // Drain needs every accepted result to become terminal, not necessarily successful.
+        _drainTask = DrainInvocationsAsync()
+            .ContinueWith(
+                static completed =>
+                {
+                    _ = completed.Exception;
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        return _drainTask;
     }
 
     private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
