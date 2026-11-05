@@ -20,6 +20,7 @@ internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
     EndpointReference proxyManagementEndpoint,
     ReferenceExpression proxyEndpoint,
+    ReferenceExpression proxyHttpEndpoint,
     EndpointReference? platformEndpoint,
     string workerId,
     string[] dependencies,
@@ -142,6 +143,9 @@ internal sealed partial class HostLinkService(
     {
         string proxyAddress = await proxyManagementEndpoint.GetValueAsync(cancellationToken)
             ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
+        string proxyHttpAddress = await proxyHttpEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy HTTP endpoint was not allocated.");
+        Uri proxyHttpUri = new(proxyHttpAddress);
         using HttpClient client = new() { BaseAddress = new Uri(proxyAddress), Timeout = Timeout.InfiniteTimeSpan };
         var assignment = new
         {
@@ -152,6 +156,7 @@ internal sealed partial class HostLinkService(
             environment = new Dictionary<string, string>(),
             functionAppDirectory = string.Empty,
             maxHttpConcurrency = 16,
+            httpProxyEndpoint = $"{proxyHttpUri.Host}:{proxyHttpUri.Port}",
         };
 
         HttpResponseMessage assign = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);

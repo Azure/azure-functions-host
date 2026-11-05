@@ -101,8 +101,8 @@ public class WorkerProxyApplicationTests
 
         using StringContent initialState = new("null", Encoding.UTF8, "application/json");
         using HttpResponseMessage readyResponse = await client.PostAsync("/admin/infra/instanceState", initialState, timeout.Token);
-        Assert.Equal(HttpStatusCode.NoContent, readyResponse.StatusCode);
-        Assert.Empty(await readyResponse.Content.ReadAsByteArrayAsync(timeout.Token));
+        Assert.Equal(HttpStatusCode.OK, readyResponse.StatusCode);
+        Assert.Contains("FunctionsSplitWorkerProxy", await readyResponse.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
 
         using HttpResponseMessage unsupportedMethodResponse = await client.PostAsync("/admin/instance/ready", content: null, timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, unsupportedMethodResponse.StatusCode);

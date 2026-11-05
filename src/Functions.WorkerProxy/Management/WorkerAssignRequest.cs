@@ -34,6 +34,11 @@ internal sealed class WorkerAssignRequest
     public string? FunctionGroupName { get; init; }
 
     /// <summary>
+    /// Gets the allocated runtime-facing HTTP authority, without a scheme, or a compatible HTTPS origin.
+    /// </summary>
+    public string? HttpProxyEndpoint { get; init; }
+
+    /// <summary>
     /// Gets or sets the optional per-worker HTTP concurrency limit, from 1 through 1000 for HTTP groups.
     /// </summary>
     /// <remarks>
@@ -52,11 +57,6 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
-
-    /// <summary>
-    /// Gets the allocated runtime-facing HTTP authority, without a scheme, or a compatible HTTPS origin.
-    /// </summary>
-    public string? HttpProxyEndpoint { get; init; }
 
     /// <summary>
     /// Gets the requested configuration version in Unix epoch seconds, or null when unspecified.

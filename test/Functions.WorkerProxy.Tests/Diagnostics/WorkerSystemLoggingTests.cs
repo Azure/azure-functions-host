@@ -499,7 +499,7 @@ public partial class WorkerSystemLoggingTests
         {
             using HttpClient client = factory.CreateWorkerProxyClient();
             using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", content: null);
-            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Contains(
                 eventGenerator.ProxyRecords,
                 record => record.EventName == "WorkerProxyStarted");

@@ -13,6 +13,7 @@ const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
 const string TokenServiceProxyEndpointName = "token-service-proxy";
+const string HostContainerName = "aspire-runtime";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -44,6 +45,7 @@ EndpointReference hostEndpoint;
 EndpointReference proxyManagementEndpoint;
 EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
+ReferenceExpression workerHttpEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -85,6 +87,7 @@ if (topology is not null)
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
     proxyManagementEndpoint = workerPod.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
+    workerHttpEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:28080");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
@@ -93,6 +96,7 @@ else
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
+        .WithEnvironment("CONTAINER_NAME", HostContainerName)
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
         .WithEnvironment("AzureWebJobsSecretStorageType", "Files")
         .WithEnvironment("AzureWebJobsScriptRoot", runDirectory!.ScriptPath)
@@ -128,7 +132,8 @@ else
     IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
         .WithHttpHealthCheck("/health", endpointName: HttpEndpointName)
-        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName));
+        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("FakePlatform__HostContainerName", HostContainerName);
 
     functionsHost.WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName));
 
@@ -154,6 +159,7 @@ else
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     proxyManagementEndpoint = proxyProject.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
+    workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
     dependencies = tokenServiceProxyScenario
         ? ["functions-host", "worker-proxy-1", "fake-platform", "mock-token-service"]
         : ["functions-host", "worker-proxy-1", "isolated-worker", "fake-platform"];
@@ -187,7 +193,6 @@ else
                 proxy.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
             context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
                 proxy.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
-            context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxy.GetEndpoint(HttpEndpointName);
             context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
         });
 
@@ -220,6 +225,7 @@ else
         fakePlatform
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__Name", proxyName)
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__ManagementUri", proxy.GetEndpoint(ManagementEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__HttpProxyEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", linkedWorkerId);
 
@@ -233,6 +239,7 @@ if (autoLink)
         hostEndpoint,
         proxyManagementEndpoint,
         workerGrpcEndpoint,
+        workerHttpEndpoint,
         platformEndpoint,
         workerId,
         dependencies,

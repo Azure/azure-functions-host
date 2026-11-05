@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
@@ -407,15 +408,7 @@ public class ManagementApiHandlersTests
 
         Assert.True(poll.IsCompletedSuccessfully);
         IResult result = await poll;
-        if (!assigned)
-        {
-            Assert.IsType<NoContent>(result);
-            Assert.Same(before, manager.State);
-
-            return;
-        }
-
-        WorkerInstanceState response = AssertState(result, before);
+        WorkerOriginState response = AssertState(result, before);
         Assert.Same(before, manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
         Assert.Empty(clock.Timers);
@@ -429,7 +422,7 @@ public class ManagementApiHandlersTests
             manager.OnWorkerAttached(1);
         }
 
-        Assert.Equal(WorkerInstanceState.FromState(before, manager.StartupTime), response);
+        Assert.Equal(WorkerOriginState.FromState(before), response);
         Assert.NotEqual(manager.State.Revision, response.RevisionId);
     }
 
@@ -505,7 +498,7 @@ public class ManagementApiHandlersTests
                 throw new ArgumentException("Unknown transition.", nameof(transition));
         }
 
-        WorkerInstanceState response = AssertState(await poll.WaitAsync(TestTimeout), manager.State);
+        WorkerOriginState response = AssertState(await poll.WaitAsync(TestTimeout), manager.State);
         Assert.Equal(revision + 1, response.RevisionId);
         Assert.Equal(0, manager.PendingWaiterCount);
         await clock.VerifyTimersDisposedAsync();
@@ -605,8 +598,11 @@ public class ManagementApiHandlersTests
         Assert.Empty(clock.Timers);
     }
 
-    private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null) =>
-        new(Options.Create(new WorkerProxyOptions { PodName = "pod" }), timeProvider ?? TimeProvider.System);
+    private static WorkerPodStateManager CreateManager(TimeProvider? timeProvider = null)
+    {
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions { PodName = "pod" });
+        return new(options, timeProvider ?? TimeProvider.System);
+    }
 
     private static WorkerPodStateManager CreateReadyManager(TimeProvider? timeProvider = null)
     {
@@ -658,24 +654,24 @@ public class ManagementApiHandlersTests
         return response.Errors;
     }
 
-    private static WorkerInstanceState AssertState(IResult result, WorkerPodState expected)
+    private static WorkerOriginState AssertState(IResult result, WorkerPodState expected)
     {
-        JsonHttpResult<WorkerInstanceState> json = Assert.IsType<JsonHttpResult<WorkerInstanceState>>(result);
+        JsonHttpResult<WorkerOriginState> json = Assert.IsType<JsonHttpResult<WorkerOriginState>>(result);
         Assert.Equal(200, json.StatusCode ?? StatusCodes.Status200OK);
-        WorkerInstanceState response = Assert.IsType<WorkerInstanceState>(json.Value);
+        WorkerOriginState response = Assert.IsType<WorkerOriginState>(json.Value);
         Assert.Equal(expected.Revision, response.RevisionId);
         Assert.Equal(expected.FunctionGroupName, response.FunctionGroup);
         Assert.Equal(expected.IsAlwaysReady ?? false, response.IsAlwaysReady);
-        Assert.Equal("Starting", response.Status);
-        WorkerLinkState link = Assert.IsType<WorkerLinkState>(response.Link);
-        Assert.Equal("Unlinked", link.State);
+        Assert.Equal(WorkerStatus.Starting, response.Status);
+        WorkerLink link = Assert.IsType<WorkerLink>(response.Link);
+        Assert.Equal(WorkerLinkState.Unlinked, link.State);
         Assert.Null(link.Runtime);
         Assert.Equal(expected.IsUnhealthy, response.IsUnhealthy);
         return response;
     }
 
-    private static WorkerInstanceState LastState(int revision, WorkerPodStateManager manager) =>
-        WorkerInstanceState.FromState(manager.State, manager.StartupTime) with { RevisionId = revision };
+    private static WorkerOriginState LastState(int revision, WorkerPodStateManager manager) =>
+        WorkerOriginState.FromState(manager.State) with { RevisionId = revision };
 
     private sealed class PollClock
     {

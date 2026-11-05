@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using Azure.Functions.WorkerProxy.Http;
 
 namespace Azure.Functions.WorkerProxy.State;
 
@@ -56,6 +57,13 @@ internal sealed class WorkerAssignment
         {
             throw new ArgumentOutOfRangeException(nameof(maxHttpConcurrency),
                 "HTTP concurrency must be between 1 and 1000 for HTTP groups, or between 0 and 1000 for other groups.");
+        }
+
+        if (httpProxyEndpoint is not null
+            && !WorkerHttpProxyEndpointResolver.TryResolve(
+                httpProxyEndpoint.AbsoluteUri, WorkerProxyEndpointConfiguration.HttpListenerScheme, out _))
+        {
+            throw new ArgumentException("The HTTP proxy endpoint must be a concrete HTTPS origin.", nameof(httpProxyEndpoint));
         }
 
         foreach ((string key, string value) in environment)

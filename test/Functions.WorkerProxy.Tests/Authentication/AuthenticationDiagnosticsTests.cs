@@ -47,7 +47,7 @@ public class AuthenticationDiagnosticsTests
         {
             using HttpClient client = factory.CreateWorkerProxyClient();
             using HttpResponseMessage initial = await client.PostAsync("/admin/infra/instanceState", content: null);
-            Assert.Equal(HttpStatusCode.NoContent, initial.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, initial.StatusCode);
             using StringContent assignment = new(
                 """{"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,"environment":{},"functionAppDirectory":""}""",
                 Encoding.UTF8, "application/json");
@@ -63,9 +63,9 @@ public class AuthenticationDiagnosticsTests
             Assert.True(state.RootElement.GetProperty("isUnhealthy").GetBoolean());
             Assert.Equal("Starting", state.RootElement.GetProperty("status").GetString());
             Assert.Equal("Unlinked", state.RootElement.GetProperty("link").GetProperty("state").GetString());
-            Assert.False(state.RootElement.TryGetProperty("self", out _));
-            Assert.False(state.RootElement.TryGetProperty("configLastModifiedTime", out _));
-            Assert.False(state.RootElement.TryGetProperty("contentLastModifiedTime", out _));
+            Assert.Equal("unknown", state.RootElement.GetProperty("self").GetProperty("app").GetProperty("functionAppName").GetString());
+            Assert.Equal(0, state.RootElement.GetProperty("configLastModifiedTime").GetInt64());
+            Assert.Equal(0, state.RootElement.GetProperty("contentLastModifiedTime").GetInt64());
         }
     }
 

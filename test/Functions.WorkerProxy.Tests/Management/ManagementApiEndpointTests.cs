@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -10,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -24,6 +26,7 @@ public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
     private const string StatePath = "/admin/infra/instanceState";
+    private const string InfraStatePath = "/admin/infra/instanceState";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
          "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot",
@@ -45,9 +48,18 @@ public class ManagementApiEndpointTests
             ? await PostStateAsync(client, "null", timeout.Token)
             : await client.PostAsync(StatePath, content: null, timeout.Token);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         AssertNoStore(response);
-        Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
+        WorkerOriginState initial = Assert.IsType<WorkerOriginState>(JsonSerializer.Deserialize(
+            await response.Content.ReadAsStringAsync(timeout.Token), WorkerProxyJsonContext.Default.WorkerOriginState));
+        Assert.Equal("test-worker-pod", initial.Self.PodName);
+        Assert.Equal(new FunctionAppIdentity("unknown", 0, "unknown"), initial.Self.App);
+        Assert.Null(initial.FunctionGroup);
+        Assert.Equal(0, initial.ConfigLastModifiedTime);
+        Assert.Equal(0, initial.ContentLastModifiedTime);
+        Assert.Equal(0, initial.RevisionId);
+        Assert.Equal(WorkerStatus.Starting, initial.Status);
+        Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), initial.Link);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
     }
 
@@ -62,11 +74,11 @@ public class ManagementApiEndpointTests
         Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
         const string previous = """
             {"functionsContainerType":"FunctionsSplitWorkerProxy",
-             "self":{"resourceNamespace":"ignored","podName":"caller-selected-pod","app":{"functionAppName":"caller-selected-app","functionAppSiteId":123}},
+             "self":{"resourceNamespace":"ignored","podName":"caller-selected-pod","app":{"functionAppName":"caller-selected-app","functionAppSiteId":123,"antaresStampName":"ignored"}},
              "isDiscoveryPod":true,"isAlwaysReady":true,"functionGroup":"caller-selected-group",
              "configLastModifiedTime":"999","contentLastModifiedTime":"999",
              "startupTime":"2026-10-29T23:00:00Z","revisionId":"0","status":"Running",
-             "link":{"state":"Linked","runtime":{"podName":"caller-selected-runtime"}},"isUnhealthy":true}
+             "link":{"state":"Linked","runtime":{"resourceNamespace":"ignored","podName":"caller-selected-runtime","app":{"functionAppName":"caller-selected-app","functionAppSiteId":123,"antaresStampName":"ignored"}}},"isUnhealthy":true}
             """;
 
         using HttpResponseMessage response = await PostStateAsync(client, previous, timeout.Token);
@@ -83,10 +95,11 @@ public class ManagementApiEndpointTests
         Assert.False(state.GetProperty("isUnhealthy").GetBoolean());
         Assert.Equal("Starting", state.GetProperty("status").GetString());
         Assert.Equal("Unlinked", state.GetProperty("link").GetProperty("state").GetString());
-        Assert.Equal(JsonValueKind.Null, state.GetProperty("link").GetProperty("runtime").ValueKind);
-        Assert.False(state.TryGetProperty("self", out _));
-        Assert.False(state.TryGetProperty("configLastModifiedTime", out _));
-        Assert.False(state.TryGetProperty("contentLastModifiedTime", out _));
+        Assert.False(state.GetProperty("link").TryGetProperty("runtime", out _));
+        Assert.Equal("test-worker-pod", state.GetProperty("self").GetProperty("podName").GetString());
+        Assert.Equal("unknown", state.GetProperty("self").GetProperty("app").GetProperty("functionAppName").GetString());
+        Assert.Equal(0, state.GetProperty("configLastModifiedTime").GetInt64());
+        Assert.Equal(0, state.GetProperty("contentLastModifiedTime").GetInt64());
         Assert.DoesNotContain("caller-selected", json, StringComparison.Ordinal);
     }
 
@@ -111,6 +124,35 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData("https://worker-pod:28080", "https://worker-pod:28080/")]
+    [InlineData("[::1]:28080", "https://[::1]:28080/")]
+    [InlineData("[2001:db8::1]:28080", "https://[2001:db8::1]:28080/")]
+    [InlineData("[::ffff:127.0.0.1]:28080", "https://[::ffff:127.0.0.1]:28080/")]
+    public async Task Assignment_CompatibleHttpsAndIpv6OriginsRetainNormalizedRetryIdentity(string origin, string expectedOrigin)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["httpProxyEndpoint"] = origin;
+        using StringContent content = JsonBody(body.ToJsonString());
+
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        WorkerPodState accepted = manager.State;
+        Assert.Equal(new Uri(expectedOrigin), accepted.HttpProxyEndpoint);
+        body["httpProxyEndpoint"] = expectedOrigin;
+        using StringContent retryContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage retry = await client.PutAsync(AssignPath, retryContent);
+        Assert.Equal(HttpStatusCode.NoContent, retry.StatusCode);
+        Assert.Same(accepted, manager.State);
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(new Uri(expectedOrigin).AbsoluteUri, manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+    }
+
+    [Theory]
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, true)]
@@ -126,15 +168,16 @@ public class ManagementApiEndpointTests
             Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
         }
         int revision = higherRevision ? int.MaxValue : 1;
-        string previous = $$"""
+        string previous = $$$"""
             {"functionsContainerType":"FunctionsSplitWorkerProxy","isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":"test-group",
+             "self":{"resourceNamespace":"unknown","podName":"prior-process","app":{"functionAppName":"unknown","functionAppSiteId":0,"antaresStampName":"unknown"}},
              "configLastModifiedTime":0,"contentLastModifiedTime":0,"startupTime":"2020-01-01T00:00:00Z",
-             "revisionId":{{revision}},"status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
+             "revisionId":{{{revision}}},"status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
             """;
 
         using HttpResponseMessage response = await PostStateAsync(client, previous, timeout.Token).WaitAsync(TimeSpan.FromSeconds(3), timeout.Token);
 
-        Assert.Equal(assigned ? HttpStatusCode.OK : HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
         if (assigned)
         {
@@ -381,6 +424,12 @@ public class ManagementApiEndpointTests
     [InlineData("maxHttpConcurrency", "2147483648", null)]
     [InlineData("maxHttpConcurrency", "true", null)]
     [InlineData("maxHttpConcurrency", "{}", null)]
+    [InlineData("httpProxyEndpoint", "\"http://worker-pod:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"worker-pod:28080/path\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"user@worker-pod:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"0.0.0.0:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[fe80::1%3]:28080\"", "InvalidValue")]
+    [InlineData("httpProxyEndpoint", "\"[fe80::1%253]:28080\"", "InvalidValue")]
     [InlineData("functionAppDirectory", null, "Required")]
     [InlineData("functionAppDirectory", "null", "Required")]
     [InlineData("functionAppDirectory", "\"\"", "Required")]
@@ -516,6 +565,44 @@ public class ManagementApiEndpointTests
         using JsonDocument error = JsonDocument.Parse(await terminalReplay.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal("WorkerTerminated", error.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Same(failed, manager.State);
+    }
+
+    [Fact]
+    public async Task Assignment_PublishesHttpProxyEndpointAndPreservesAuthorityRetryIdentity()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["httpProxyEndpoint"] = "worker-pod:28080";
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        Assert.Equal("https://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+
+        using StringContent replayContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Equal("https://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+
+        body["httpProxyEndpoint"] = "worker-pod:28081";
+        using StringContent conflictingContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Equal("https://worker-pod:28080/", manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
+
+        manager.OnSessionTerminated(1);
+        body["httpProxyEndpoint"] = "worker-pod:28080";
+        using StringContent terminalReplayContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage terminalReplay = await client.PutAsync(AssignPath, terminalReplayContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, terminalReplay.StatusCode);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
     [Theory]
@@ -788,21 +875,10 @@ public class ManagementApiEndpointTests
             using HttpResponseMessage accepted = await client.PutAsync(AssignPath, assignment, timeout.Token);
             Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
         }
-        string producerReplay = $$"""
-            {"functionsContainerType":"FunctionsSplitWorkerProxy","isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":"test-group",
-             "configLastModifiedTime":0,"contentLastModifiedTime":0,"startupTime":"{{factory.Services.GetRequiredService<WorkerPodStateManager>().StartupTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)}}",
-             "revisionId":1,"status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
-            """;
-        Task<HttpResponseMessage> poll = PostStateAsync(client, assigned ? producerReplay : StateBody(revision), timeout.Token);
-        if (!assigned)
-        {
-            using HttpResponseMessage initial = await poll;
-            Assert.Equal(HttpStatusCode.NoContent, initial.StatusCode);
-            Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
-            timer.Verify(instance => instance.Dispose(), Times.Never);
-
-            return;
-        }
+        WorkerOriginState snapshot = WorkerOriginState.FromState(factory.Services.GetRequiredService<WorkerPodStateManager>().State);
+        string producerReplay = JsonSerializer.Serialize(snapshot, WorkerProxyJsonContext.Default.WorkerOriginState)
+            .Replace($"\"revisionId\":{snapshot.RevisionId}", $"\"revisionId\":{revision}", StringComparison.Ordinal);
+        Task<HttpResponseMessage> poll = PostStateAsync(client, producerReplay, timeout.Token);
         Action fireTimer = await expire.Task.WaitAsync(timeout.Token);
         Assert.False(poll.IsCompleted);
 
@@ -813,6 +889,48 @@ public class ManagementApiEndpointTests
         Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
         Assert.Equal(assigned ? 1 : 0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
+        await disposed.Task.WaitAsync(timeout.Token);
+        timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task InfraState_UnchangedCheckpoint_ReturnsNoContentAtDeadline()
+    {
+        Mock<TimeProvider> clock = new();
+        clock.Setup(provider => provider.GetUtcNow()).Returns(DateTimeOffset.UtcNow);
+        Mock<ITimer> timer = new();
+        TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
+        TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        clock.Setup(provider => provider.CreateTimer(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object?>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object? state, TimeSpan _, TimeSpan _) =>
+            {
+                expire.TrySetResult(() => callback(state));
+                return timer.Object;
+            });
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+            services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock.Object)));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using HttpResponseMessage current = await client.PostAsync(InfraStatePath, content: null, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, current.StatusCode);
+        string body = await current.Content.ReadAsStringAsync(timeout.Token);
+        using StringContent content = JsonBody(body);
+
+        Task<HttpResponseMessage> poll = client.PostAsync(InfraStatePath, content, timeout.Token);
+        Action fireTimer = await expire.Task.WaitAsync(timeout.Token);
+        Assert.False(poll.IsCompleted);
+        fireTimer();
+
+        using HttpResponseMessage response = await poll;
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        AssertNoStore(response);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
         await disposed.Task.WaitAsync(timeout.Token);
         timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce);
     }
@@ -1094,7 +1212,12 @@ public class ManagementApiEndpointTests
     private static StringContent JsonBody(string body) => new(body, Encoding.UTF8, "application/json");
 
     private static string StateBody(string revision) =>
-        $$"""{"functionsContainerType":"FunctionsSplitWorkerProxy","revisionId":{{revision}}}""";
+        $$$"""
+        {"functionsContainerType":"FunctionsSplitWorkerProxy","revisionId":{{{revision}}},
+         "self":{"resourceNamespace":"unknown","podName":"test-worker-pod","app":{"functionAppName":"unknown","functionAppSiteId":0,"antaresStampName":"unknown"}},
+         "isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":null,"configLastModifiedTime":0,"contentLastModifiedTime":0,
+         "startupTime":"2026-01-01T00:00:00+00:00","status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
+        """;
 
     private static async Task<HttpResponseMessage> PostStateAsync(HttpClient client, string body, CancellationToken cancellationToken)
     {

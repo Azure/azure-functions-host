@@ -56,13 +56,4 @@ internal sealed class WorkerProxyOptions
     /// Gets or sets an optional explicit worker HTTP destination.
     /// </summary>
     public string? WorkerHttpEndpoint { get; set; }
-
-    /// <summary>
-    /// Gets or sets the externally reachable HTTPS origin advertised to the runtime.
-    /// Used when assignment does not supply an allocated origin. HTTP-capable workers require one of these trusted sources.
-    /// Each WorkerProxy owns a dedicated
-    /// address and port, so this URL must not include a path prefix. It must route to
-    /// <see cref="HttpPort"/>, but its external port may differ because of platform port mapping.
-    /// </summary>
-    public string? HttpProxyEndpoint { get; set; }
 }

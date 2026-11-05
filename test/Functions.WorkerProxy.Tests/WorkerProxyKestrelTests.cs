@@ -48,10 +48,11 @@ public class WorkerProxyKestrelTests
         Assert.Equal(port, client.BaseAddress!.Port);
         using StringContent initialState = new("null", Encoding.UTF8, "application/json");
         using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", initialState, timeout.Token);
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         WorkerProxyEndpointConfiguration endpoints = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         Uri workerAddress = endpoints.GetRelayAddress(FunctionRpcRelaySide.Worker);
+        Assert.Equal(WorkerProxyEndpointConfiguration.HttpListenerScheme, endpoints.GetHttpAddress().Scheme);
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(workerAddress.Host)));
         Assert.False(endpoints.TryGetRelaySide(endpoints.GetManagementAddress().Port, out _));
         Assert.True(endpoints.IsHttpPort(endpoints.GetHttpAddress().Port));
