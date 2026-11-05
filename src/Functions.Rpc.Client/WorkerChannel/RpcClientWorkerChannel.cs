@@ -107,7 +107,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     /// </summary>
     internal int? MaxHttpConcurrency { get; private set; }
 
-    // Unknown metadata is not evidence that an assigned worker is on-demand.
+    // Assigned WorkerProxy instances advertise this. Null means missing or malformed handshake metadata.
+    // Keep unknown workers exempt from idle retirement rather than assume they are on-demand.
     internal bool? IsAlwaysReady { get; private set; }
 
     /// <summary>
@@ -327,8 +328,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
             catch (Exception)
             {
-                // The invoker owns failures; do not log customer exceptions on the system logger.
-                _activityLogger.LogDebug("Invocation on worker {WorkerId} ended unsuccessfully.", Id);
+                // The invoker owns failure reporting; this observer only tracks request lifetime.
             }
 
             if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
@@ -339,7 +339,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 }
                 catch (Exception)
                 {
-                    _activityLogger.LogDebug("HTTP forwarding on worker {WorkerId} ended unsuccessfully.", Id);
+                    // The proxy/invoker owns failure reporting; still wait for response completion.
                 }
             }
 

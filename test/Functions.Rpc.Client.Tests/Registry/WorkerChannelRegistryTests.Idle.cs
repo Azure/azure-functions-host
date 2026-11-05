@@ -26,6 +26,16 @@ public sealed partial class WorkerChannelRegistryTests
     private static readonly TimeSpan IdleThreshold = TimeSpan.FromMinutes(2);
 
     [Fact]
+    public async Task IdleRetirement_RejectsNegativeThreshold()
+    {
+        RegistryHarness harness = new(TimeSpan.FromSeconds(30));
+        await using WorkerChannelRegistry registry = harness.Registry;
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => registry.RetireIdleHttpWorkersAsync(TimeSpan.FromTicks(-1)));
+    }
+
+    [Fact]
     public async Task IdleRetirement_UnusedWorkerGetsFiveMinuteGraceWithoutWaitingForFunctionLoads()
     {
         FakeTimeProvider time = new();
