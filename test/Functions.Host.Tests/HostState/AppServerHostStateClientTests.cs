@@ -19,10 +19,11 @@ using Xunit;
 
 namespace Azure.Functions.Host.Tests.HostState;
 
-public class AppServerHostStateClientTests
+public class AppServerHostStateClientTests : IDisposable
 {
     private static readonly DateTimeOffset CreatedTime = new(2026, 10, 2, 12, 34, 56, 123, TimeSpan.Zero);
     private readonly RecordingHandler _handler = new();
+    private readonly List<ServiceProvider> _providers = [];
 
     [Fact]
     public void Constructor_DoesNotReadMeshInitUri()
@@ -152,7 +153,7 @@ public class AppServerHostStateClientTests
     }
 
     [Fact]
-    public async Task PublishAsync_ReadsCurrentInstanceIdentityAfterConfigurationReload()
+    public async Task PublishAsync_NamedClientUsesConfiguredInstanceIdentity()
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -290,10 +291,16 @@ public class AppServerHostStateClientTests
     [Fact]
     public void AddAppServerHostStatePublisher_BoundsEachRequestToFiveSeconds()
     {
-        using ServiceProvider services = new ServiceCollection().AddAppServerHostStatePublisher().BuildServiceProvider();
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [EnvironmentSettingNames.ContainerName] = "runtime-container",
+            }).Build())
+            .AddAppServerHostStatePublisher().BuildServiceProvider();
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(AppServerHostStateClient.HttpClientName);
 
         Assert.Equal(TimeSpan.FromSeconds(5), client.Timeout);
+        Assert.Equal("runtime-container", Assert.Single(client.DefaultRequestHeaders.GetValues(ScriptConstants.ContainerInstanceHeader)));
     }
 
     [Theory]
@@ -309,6 +316,10 @@ public class AppServerHostStateClientTests
             return Task.CompletedTask;
         };
         ServiceCollection collection = new();
+        collection.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        }).Build());
         collection.AddAppServerHostStatePublisher();
         collection.AddHttpClient(AppServerHostStateClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => _handler);
         using ServiceProvider services = collection.BuildServiceProvider();
@@ -318,6 +329,27 @@ public class AppServerHostStateClientTests
 
         Assert.Equal(statusCode, response.StatusCode);
         Assert.Equal(1, requests);
+    }
+
+    [Fact]
+    public async Task AddAppServerHostStatePublisher_CapturesIdentityInNamedClientDefaultHeaders()
+    {
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        }).Build();
+        ServiceCollection collection = new();
+        collection.AddSingleton<IConfiguration>(configuration);
+        collection.AddAppServerHostStatePublisher();
+        collection.AddHttpClient(AppServerHostStateClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => _handler);
+        using ServiceProvider services = collection.BuildServiceProvider();
+        using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient(AppServerHostStateClient.HttpClientName);
+
+        configuration[EnvironmentSettingNames.ContainerName] = "changed-container";
+        using HttpResponseMessage response = await client.GetAsync("http://appserver/");
+
+        Assert.Equal("runtime-container", _handler.InstanceIdentity);
+        Assert.Equal("runtime-container", Assert.Single(client.DefaultRequestHeaders.GetValues(ScriptConstants.ContainerInstanceHeader)));
     }
 
     private AppServerHostStateClient CreateClient(Dictionary<string, string?>? settings = null)
@@ -339,11 +371,22 @@ public class AppServerHostStateClientTests
 
     private AppServerHostStateClient CreateClient(IConfiguration configuration)
     {
-        Mock<IHttpClientFactory> httpClientFactory = new(MockBehavior.Strict);
-        httpClientFactory.Setup(factory => factory.CreateClient(AppServerHostStateClient.HttpClientName))
-            .Returns(() => new HttpClient(_handler, disposeHandler: false));
+        ServiceCollection collection = new();
+        collection.AddSingleton(configuration);
+        collection.AddAppServerHostStatePublisher();
+        collection.AddHttpClient(AppServerHostStateClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => _handler);
+        ServiceProvider services = collection.BuildServiceProvider();
+        _providers.Add(services);
 
-        return new(httpClientFactory.Object, configuration);
+        return new(services.GetRequiredService<IHttpClientFactory>(), configuration);
+    }
+
+    public void Dispose()
+    {
+        foreach (ServiceProvider provider in _providers)
+        {
+            provider.Dispose();
+        }
     }
 
     private sealed class RecordingHandler : HttpMessageHandler

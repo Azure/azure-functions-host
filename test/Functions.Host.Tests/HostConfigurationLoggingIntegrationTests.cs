@@ -215,6 +215,7 @@ public sealed class HostConfigurationLoggingIntegrationTests
                             HostConfiguration = delivery,
                             Capabilities =
                             {
+                                ["FunctionGroupName"] = "deployment:validation",
                                 ["WorkerProxyAppToken"] = ProxyAuthentication.CreateAppProof(
                                     Convert.FromHexString(ManagementTokenTestData.AppKey), "test-app", "worker", DateTimeOffset.UtcNow)
                             }

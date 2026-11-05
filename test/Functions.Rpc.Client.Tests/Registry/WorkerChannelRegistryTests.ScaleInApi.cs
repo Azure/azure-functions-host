@@ -103,6 +103,7 @@ public sealed partial class WorkerChannelRegistryTests
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("DurableFunction");
+        function.Bindings.Add(new() { Name = "input", Type = "orchestrationTrigger", Direction = BindingDirection.In });
         ChannelControl selected = CreateClassifiedWorker("selected");
         harness.Enqueue(selected);
         await LinkAsync(registry, selected.Id);
@@ -238,15 +239,7 @@ public sealed partial class WorkerChannelRegistryTests
             Result = new() { Status = StatusResult.Types.Status.Success },
         });
         Assert.NotNull(await remaining.ResultSource.Task.WaitAsync(TestTimeout));
-        if (cancelFirst)
-        {
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sharedDrain.WaitAsync(TestTimeout));
-        }
-        else
-        {
-            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(
-                () => sharedDrain.WaitAsync(TestTimeout));
-        }
+        await sharedDrain.WaitAsync(TestTimeout);
 
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }

@@ -279,7 +279,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task InstanceState_InitializationBeforeAssignment_RemainsUnlinked()
+    public async Task InstanceState_InitializationBeforeAssignment_WaitsForAssignmentBeforeLinking()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -307,16 +307,29 @@ public partial class FunctionRpcRelayTests
 
         StreamingMessage initialized = CreateInitResponse(string.Empty, null);
         await worker.WriteAsync(initialized, timeout.Token);
-        await runtime.ReadAsync(timeout.Token);
+        Task<StreamingMessage> forwarded = runtime.ReadAsync(timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Assert.False(forwarded.IsCompleted);
         Assert.False(manager.State.RuntimeInitialized);
-
-        await AssignWorkerAsync(management, timeout.Token);
-
-        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        Assert.False(manager.State.IsRuntimeInitialized);
         WorkerOriginState state = await ReadManagementStateAsync(management, timeout.Token);
         Assert.Equal(WorkerStatus.Starting, state.Status);
         Assert.Equal(WorkerLinkState.Unlinked, state.Link.State);
+
+        await AssignWorkerAsync(management, timeout.Token);
+        await forwarded;
+        while (!manager.State.IsRuntimeInitialized)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        state = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.Running, state.Status);
+        Assert.Equal(WorkerLinkState.Linked, state.Link.State);
     }
 
     [Theory]

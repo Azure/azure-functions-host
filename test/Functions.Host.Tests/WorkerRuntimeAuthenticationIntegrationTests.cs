@@ -660,6 +660,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                                     : null,
                                 Capabilities =
                                 {
+                                    ["FunctionGroupName"] = "function:TestFunction",
                                     ["WorkerProxyAppToken"] = proof,
                                     ["UntrustedCapability"] = "must-not-be-published"
                                 },
@@ -703,6 +704,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                                 Result = Success(),
                                 Capabilities =
                                 {
+                                    ["FunctionGroupName"] = "function:TestFunction",
                                     ["HttpUri"] = origin,
                                     ["WorkerProxyAppToken"] = ProxyAuthentication.CreateAppProof(
                                         appKey, "test-app", "test-worker-pod", DateTimeOffset.UtcNow)

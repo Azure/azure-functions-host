@@ -140,6 +140,7 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IScriptHostWorkerManager, RpcClientScriptHostWorkerManager>();
         services.AddRpcScriptHostCoreServices();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
+        services.PostConfigure<ScriptJobHostOptions>(options => options.FunctionGroupTargetingEnabled = false);
 
         return services;
     }

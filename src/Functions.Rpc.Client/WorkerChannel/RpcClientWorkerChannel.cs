@@ -107,7 +107,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     internal string ExtensionPayloadCapability => GetCapabilityState(WorkerExtensionPayloadManager.CapabilityName);
 
     /// <summary>
-    /// Gets the assigned group captured after successful initialization, or null when not advertised.
+    /// Gets the assigned group captured from the initial successful response, or null before initialization.
     /// </summary>
     internal string FunctionGroupName { get; private set; }
 
@@ -295,7 +295,41 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
                 "The worker did not report successful initialization for Host configuration delivery.");
         }
 
-        HostConfiguration = response.HostConfiguration?.Clone();
+        lock (_lifecycleLock)
+        {
+            if (FunctionGroupName is not null)
+            {
+                return;
+            }
+
+            if (!response.Capabilities.TryGetValue(FunctionGroupNameCapability, out string functionGroupName)
+                || string.IsNullOrWhiteSpace(functionGroupName))
+            {
+                throw new InvalidOperationException("A client-backed worker must advertise its assigned FunctionGroupName.");
+            }
+
+            int? maxHttpConcurrency = null;
+            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            {
+                response.Capabilities.TryGetValue(MaxHttpConcurrencyCapability, out string suppliedConcurrency);
+                if (!int.TryParse(suppliedConcurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
+                    || concurrency is < 1 or > 1000)
+                {
+                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                }
+
+                maxHttpConcurrency = concurrency;
+            }
+
+            // Read only the original response: capability updates must not reassign an initialized channel.
+            HostConfiguration = response.HostConfiguration?.Clone();
+            FunctionGroupName = functionGroupName;
+            MaxHttpConcurrency = maxHttpConcurrency;
+            response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string isAlwaysReady);
+            _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
+                ? parsedIsAlwaysReady
+                : null;
+        }
     }
 
     internal override void WorkerInitResponse(StreamingMessage initMessage)
@@ -489,27 +523,6 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             {
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
-
-            // Assignment properties are captured once; later capability updates do not change this channel's identity.
-            string functionGroupName = GetCapabilityState(FunctionGroupNameCapability);
-            int? maxHttpConcurrency = null;
-            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!int.TryParse(GetCapabilityState(MaxHttpConcurrencyCapability), NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
-                    || concurrency is < 1 or > 1000)
-                {
-                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
-                }
-
-                maxHttpConcurrency = concurrency;
-            }
-
-            FunctionGroupName = functionGroupName;
-            MaxHttpConcurrency = maxHttpConcurrency;
-            string isAlwaysReady = GetCapabilityState(IsAlwaysReadyCapability);
-            _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
-                ? parsedIsAlwaysReady
-                : null;
 
             _startCompletion.TrySetResult();
         }

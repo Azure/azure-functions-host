@@ -211,9 +211,13 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_HttpInitializationBeforeAssignment_WaitsForAcceptedOrigin(bool identifiedRuntime)
+    [InlineData(true, "http://localhost:1234/", "http")]
+    [InlineData(false, "http://localhost:1234/", "http")]
+    [InlineData(true, null, "durable")]
+    [InlineData(false, null, "durable")]
+    [InlineData(true, "", "function:TimerProcessor")]
+    [InlineData(false, " ", "deployment:validation")]
+    public async Task Relay_InitializationBeforeAssignment_WaitsForAssignedCapabilities(bool identifiedRuntime, string? httpUri, string group)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -229,7 +233,9 @@ public partial class FunctionRpcRelayTests
         StreamingMessage init = new() { RequestId = "init", WorkerInitRequest = new() };
         await runtime.WriteAsync(init, timeout.Token);
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));
-        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        StreamingMessage initial = CreateInitResponse("init", httpUri);
+        initial.WorkerInitResponse.Capabilities["FunctionGroupName"] = "untrusted-worker-group";
+        await worker.WriteAsync(initial, timeout.Token);
         while (manager.PendingWaiterCount == 0)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
@@ -245,15 +251,22 @@ public partial class FunctionRpcRelayTests
         StreamingMessage nextQueued = CreateMessage("worker-next-queued");
         await worker.WriteAllAsync([queued, nextQueued], timeout.Token);
         Assert.Equal(WorkerAssignmentResult.Created,
-            manager.Assign(CreateWorkerAssignment("http", 10, "assigned.example:443")));
+            manager.Assign(CreateWorkerAssignment(group, 10, "assigned.example:443")));
 
         StreamingMessage response = await forwarded;
-        Assert.Equal("https://assigned.example/", response.WorkerInitResponse.Capabilities["HttpUri"]);
-        Assert.Equal("http", response.WorkerInitResponse.Capabilities["FunctionGroupName"]);
-        Assert.Equal("10", response.WorkerInitResponse.Capabilities["MaxHttpConcurrency"]);
+        Assert.Equal(group, response.WorkerInitResponse.Capabilities["FunctionGroupName"]);
+        if (string.Equals(group, "http", StringComparison.OrdinalIgnoreCase))
+        {
+            Assert.Equal("https://assigned.example/", response.WorkerInitResponse.Capabilities["HttpUri"]);
+            Assert.Equal("10", response.WorkerInitResponse.Capabilities["MaxHttpConcurrency"]);
+        }
+        else
+        {
+            Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("MaxHttpConcurrency"));
+        }
         Assert.Equal(queued, await runtime.ReadAsync(timeout.Token));
         Assert.Equal(nextQueued, await runtime.ReadAsync(timeout.Token));
-        Assert.Equal(new Uri("http://localhost:1234/"), relay.WorkerHttpDestination);
+        Assert.Equal(string.IsNullOrWhiteSpace(httpUri) ? null : new Uri(httpUri), relay.WorkerHttpDestination);
         Assert.Equal(0, manager.PendingWaiterCount);
         while (identifiedRuntime && !manager.State.IsRuntimeInitialized)
         {
@@ -265,9 +278,11 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_WorkerCompletionWhileWaitingForAssignment_TerminatesSession(bool queuedMessage)
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task Relay_WorkerCompletionWhileWaitingForAssignment_TerminatesSession(bool queuedMessage, bool advertiseHttp)
     {
         CapturingEventGenerator generator = new();
         await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
@@ -278,7 +293,7 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
         WorkerPodState attached = manager.State;
-        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", advertiseHttp ? "http://localhost:1234/" : null), timeout.Token);
         while (manager.PendingWaiterCount == 0)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
@@ -333,10 +348,13 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(true, false)]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    public async Task Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter(bool shutdown, bool cancelRuntime)
+    [InlineData(true, false, true)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    public async Task Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter(bool shutdown, bool cancelRuntime, bool advertiseHttp)
     {
         CapturingEventGenerator generator = new();
         await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
@@ -353,7 +371,7 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
         WorkerPodState attached = manager.State;
-        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", advertiseHttp ? "http://localhost:1234/" : null), timeout.Token);
         while (manager.PendingWaiterCount == 0)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
