@@ -36,10 +36,10 @@ internal static class ManagementApiHandlers
     }
 
     /// <summary>
-    /// Accepts the platform's last flat origin snapshot, or null on the initial availability poll.
+    /// Accepts the platform's last flat origin snapshot, or null for an immediate startup checkpoint.
     /// </summary>
     public static async Task<IResult> GetInstanceStateAsync(
-        WorkerInstanceState? originState,
+        WorkerOriginState? originState,
         WorkerPodStateManager manager,
         CancellationToken cancellationToken = default)
     {
@@ -47,10 +47,10 @@ internal static class ManagementApiHandlers
         WorkerPodState current = manager.State;
         if (originState is null)
         {
-            return StateResponse(current, manager.StartupTime);
+            return StateResponse(current);
         }
 
-        if (!string.Equals(originState.FunctionsContainerType, WorkerInstanceState.ContainerType, StringComparison.Ordinal))
+        if (!string.Equals(originState.FunctionsContainerType, WorkerOriginState.ContainerType, StringComparison.Ordinal))
         {
             return ValidationError([new(WorkerApiErrorCodes.InvalidValue, "functionsContainerType")]);
         }
@@ -61,14 +61,13 @@ internal static class ManagementApiHandlers
             return InvalidRevision();
         }
 
-        if (current.AssignmentState is WorkerAssignmentState.Unassigned
-            || !originState.MatchesPublishedState(WorkerInstanceState.FromState(current, manager.StartupTime)))
+        if (originState != WorkerOriginState.FromState(current))
         {
-            return StateResponse(current, manager.StartupTime);
+            return StateResponse(current);
         }
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(lastKnownRevision, cancellationToken);
-        return result.State is { } state ? StateResponse(state, manager.StartupTime) : TypedResults.NoContent();
+        return result.State is { } state ? StateResponse(state) : TypedResults.NoContent();
     }
 
     internal static IResult InvalidRevision() =>
@@ -82,8 +81,6 @@ internal static class ManagementApiHandlers
         TypedResults.Json(new WorkerApiErrorResponse(new(code, detail)),
             WorkerProxyJsonContext.Default.WorkerApiErrorResponse, statusCode: statusCode);
 
-    private static IResult StateResponse(WorkerPodState state, DateTimeOffset startupTime) =>
-        state.AssignmentState is WorkerAssignmentState.Unassigned
-            ? TypedResults.NoContent()
-            : TypedResults.Json(WorkerInstanceState.FromState(state, startupTime), WorkerProxyJsonContext.Default.WorkerInstanceState);
+    private static IResult StateResponse(WorkerPodState state) =>
+        TypedResults.Json(WorkerOriginState.FromState(state), WorkerProxyJsonContext.Default.WorkerOriginState);
 }

@@ -28,14 +28,12 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
     private readonly Action<IServiceCollection>? _configureServices;
     private readonly bool _useTestAuthentication;
     private readonly TestCertificateFiles _certificates = new();
-    private readonly bool _supplyHttpOrigin;
 
     public WorkerProxyWebApplicationFactory(
         IReadOnlyDictionary<string, string?>? configurationValues = null, Action<IServiceCollection>? configureServices = null,
         bool useTestAuthentication = true)
     {
         Dictionary<string, string?> values = configurationValues is null ? [] : new Dictionary<string, string?>(configurationValues);
-        _supplyHttpOrigin = !values.ContainsKey("WorkerProxy:HttpProxyEndpoint");
         values.TryAdd("WEBSITE_POD_NAME", "test-worker-pod");
         values.TryAdd(RuntimeWorkerAuthentication.WorkerKeySetting, RuntimeAuthenticationTestData.EncodedWorkerKey);
         values.TryAdd(RuntimeWorkerAuthentication.AppKeySetting, RuntimeAuthenticationTestData.EncodedAppKey);
@@ -119,14 +117,7 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
 
     private WorkerProxyEndpointConfiguration GetEndpoints()
     {
-        WorkerProxyEndpointConfiguration endpoints = Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
-        if (_supplyHttpOrigin)
-        {
-            Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value.HttpProxyEndpoint =
-                NormalizeAddress(endpoints.GetHttpAddress()).AbsoluteUri;
-        }
-
-        return endpoints;
+        return Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
     }
 
     public override async ValueTask DisposeAsync()

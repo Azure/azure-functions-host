@@ -14,6 +14,7 @@ const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
 const string AppName = "aspire-sample-app";
 const string TokenServiceProxyEndpointName = "token-service-proxy";
+const string HostContainerName = "aspire-runtime";
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -106,6 +107,7 @@ else
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
+        .WithEnvironment("CONTAINER_NAME", HostContainerName)
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
         .WithEnvironment("WEBSITE_SITE_NAME", AppName)
         .WithEnvironment("WEBSITE_POD_NAME", RuntimePodName)
@@ -147,7 +149,8 @@ else
         .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
         .WithEnvironment("FakePlatform__AppAuthKey", appAuthKey)
         .WithEnvironment("FakePlatform__RuntimeContainerKey", runtimeContainerKey)
-        .WithEnvironment("FakePlatform__RuntimePodName", RuntimePodName);
+        .WithEnvironment("FakePlatform__RuntimePodName", RuntimePodName)
+        .WithEnvironment("FakePlatform__HostContainerName", HostContainerName);
 
     functionsHost.WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName));
 
@@ -245,8 +248,8 @@ else
         fakePlatform
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__Name", proxyName)
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__ManagementUri", proxy.GetEndpoint(ManagementEndpointName))
+            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__HttpProxyEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerGrpcEndpoint", proxy.GetEndpoint(RuntimeGrpcEndpointName))
-            .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerHttpEndpoint", proxy.GetEndpoint(HttpEndpointName))
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__RuntimeAccessKey", workerKey)
             .WithEnvironment($"FakePlatform__WorkerProxies__{index}__WorkerId", workerPodName);
 

@@ -262,6 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<ReservedRouteOptions, ReservedRouteOptionsSetup, SpecializationChangeTokenSource<ReservedRouteOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<ResponseCompressionOptions, ResponseCompressionOptionsSetup, SpecializationChangeTokenSource<ResponseCompressionOptions>>();
             services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
+            services.AddSingleton<IValidateOptions<FlexConsumptionMetricsPublisherOptions>, FlexConsumptionMetricsPublisherOptionsValidator>();
             services.ConfigureOptions<LinuxConsumptionLegionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.ConfigureOptions<AzureMonitorLoggingOptionsSetup>();
@@ -370,8 +371,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
-                    var logger = s.GetService<ILogger<FlexConsumptionMetricsPublisher>>();
                     var metricsProvider = s.GetService<IHostMetricsProvider>();
+                    if (options.Value.UseWorkerAttribution)
+                    {
+                        var workerLogger = s.GetRequiredService<ILogger<FlexConsumptionPerWorkerMetricsPublisher>>();
+                        return new FlexConsumptionPerWorkerMetricsPublisher(environment, standbyOptions, options, workerLogger, new FileSystem(), metricsProvider);
+                    }
+
+                    var logger = s.GetService<ILogger<FlexConsumptionMetricsPublisher>>();
                     return new FlexConsumptionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsProvider);
                 }
                 else if (environment.IsLinuxMetricsPublishingEnabled())

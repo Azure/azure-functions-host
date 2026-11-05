@@ -31,6 +31,12 @@ internal sealed class WorkerPodStateManager
     private long _lastSessionId;
     private int _assignmentClaimed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
+    /// Creates the pod's initial state and captures its startup time.
+    /// </summary>
+    /// <param name="options">The worker proxy configuration containing the pod identity.</param>
+    /// <param name="timeProvider">The clock used for startup time and state-poll deadlines.</param>
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
         TimeProvider timeProvider)
@@ -42,11 +48,10 @@ internal sealed class WorkerPodStateManager
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        StartupTime = timeProvider.GetUtcNow();
-        _state = WorkerPodState.CreateUnassigned(podName);
+        _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
 
-    public DateTimeOffset StartupTime { get; }
+    public DateTimeOffset StartupTime => State.StartupTime;
 
     /// <summary>
     /// Gets the current immutable state without incrementing its revision.
@@ -90,6 +95,24 @@ internal sealed class WorkerPodStateManager
                 Revision = checked(_state.Revision + 1),
                 HasAuthenticationConfigurationError = hasError
             });
+        }
+    }
+
+    /// <summary>
+    /// Captures the pod state and effective HTTP origin for one worker session under the assignment lock.
+    /// </summary>
+    public (WorkerPodState State, string? HttpProxyEndpoint) GetWorkerCapabilitySnapshot(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            string? httpProxyEndpoint = _state.SessionId == sessionId
+                && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
+                    ? _assignment?.HttpProxyEndpoint?.AbsoluteUri
+                    : null;
+
+            return (_state, httpProxyEndpoint);
         }
     }
 

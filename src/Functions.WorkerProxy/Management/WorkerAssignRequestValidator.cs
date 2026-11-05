@@ -4,8 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
-using Azure.Functions.Authentication;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -58,9 +57,8 @@ internal static class WorkerAssignRequestValidator
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
         Uri? httpProxyEndpoint = null;
         if (request.HttpProxyEndpoint is not null
-            && (!RuntimeWorkerAuthentication.TryCreateHttpsOrigin(request.HttpProxyEndpoint, out httpProxyEndpoint)
-                || (IPAddress.TryParse(httpProxyEndpoint.Host.Trim('[', ']'), out IPAddress? address)
-                    && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any)))))
+            && !WorkerHttpProxyEndpointResolver.TryResolve(
+                request.HttpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out httpProxyEndpoint))
         {
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
         }

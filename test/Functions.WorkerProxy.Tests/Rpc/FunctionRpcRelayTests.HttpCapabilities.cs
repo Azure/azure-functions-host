@@ -12,6 +12,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -33,8 +34,9 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_NormalInitialization_RewritesOnlyWorkerCapabilities(bool runtimeConnectsFirst)
     {
         const string proxyEndpoint = "https://worker-pod.example:48801/";
-        await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory(proxyEndpoint);
+        await using WorkerProxyWebApplicationFactory factory = new();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
@@ -60,9 +62,13 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));
+        Assert.Equal(WorkerAssignmentResult.Created,
+            manager.Assign(CreateWorkerAssignment("http", httpProxyEndpoint: "worker-pod.example:48801")));
         StreamingMessage response = CreateInitResponse("runtime-init", "http://localhost:1234/worker/");
         StreamingMessage expected = response.Clone();
         expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
+        expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "http";
+        expected.WorkerInitResponse.Capabilities["MaxHttpConcurrency"] = "16";
 
         await worker.WriteAsync(response, timeout.Token);
 
@@ -144,8 +150,12 @@ public partial class FunctionRpcRelayTests
     [InlineData("http://localhost:1234/worker/")]
     public async Task Relay_FinalizesCapabilitiesOnceOnAnOwnedCopy(string? firstHttpUri)
     {
-        WorkerProxyOptions options = new() { HttpProxyEndpoint = "https://worker-pod.example:48801/" };
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(options), CreatePodStateManager());
+        WorkerProxyOptions options = new() { PodName = "test-worker-pod" };
+        WorkerPodStateManager manager = new(Options.Create(options), TimeProvider.System);
+        await using FunctionRpcRelay relay = new(
+            NullLogger<FunctionRpcRelay>.Instance,
+            CreateCapabilityProvider(options),
+            manager);
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> outbound = Channel.CreateUnbounded<StreamingMessage>();
@@ -162,12 +172,16 @@ public partial class FunctionRpcRelayTests
         StreamingMessage start = CreateStartStream();
         await inbound.Writer.WriteAsync(start, timeout.Token);
         Assert.Equal(start, await outbound.Reader.ReadAsync(timeout.Token));
+        Assert.Equal(WorkerAssignmentResult.Created,
+            manager.Assign(CreateWorkerAssignment("background", httpProxyEndpoint: "worker-pod.example:48801")));
         StreamingMessage first = CreateInitResponse("first-init", firstHttpUri);
         StreamingMessage expected = first.Clone();
         if (firstHttpUri is not null)
         {
-            expected.WorkerInitResponse.Capabilities["HttpUri"] = options.HttpProxyEndpoint;
+            expected.WorkerInitResponse.Capabilities["HttpUri"] = "https://worker-pod.example:48801/";
         }
+
+        expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "background";
 
         await inbound.Writer.WriteAsync(first, timeout.Token);
         StreamingMessage finalized = await outbound.Reader.ReadAsync(timeout.Token);
@@ -177,8 +191,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(firstHttpUri is null ? null : new Uri(firstHttpUri), relay.WorkerHttpDestination);
         Assert.Equal(firstHttpUri, first.WorkerInitResponse.Capabilities.GetValueOrDefault("HttpUri"));
 
-        // Repeated responses must use the frozen capabilities, even if configuration changes.
-        options.HttpProxyEndpoint = null;
+        // Repeated responses reuse the first finalized capability snapshot.
         first.WorkerInitResponse.Capabilities.Clear();
         finalized.WorkerInitResponse.Capabilities.Clear();
         StreamingMessage repeated = CreateInitResponse("second-init", "http://localhost:5678");
@@ -195,15 +208,141 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_MissingAdvertisedProxyOrigin_FailsWithoutAdvertisingLocalDestination()
+    public async Task Relay_HttpInitializationBeforeAssignment_WaitsForAcceptedOrigin()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Task<StreamingMessage> forwarded = runtime.ReadAsync(timeout.Token);
+        Assert.False(forwarded.IsCompleted);
+        Assert.Null(relay.WorkerHttpDestination);
+        StreamingMessage runtimeMessage = CreateMessage("runtime-still-active");
+        await runtime.WriteAsync(runtimeMessage, timeout.Token);
+        Assert.Equal(runtimeMessage, await worker.ReadAsync(timeout.Token));
+        StreamingMessage queued = CreateMessage("worker-queued-behind-init");
+        StreamingMessage nextQueued = CreateMessage("worker-next-queued");
+        await worker.WriteAllAsync([queued, nextQueued], timeout.Token);
+        Assert.Equal(WorkerAssignmentResult.Created,
+            manager.Assign(CreateWorkerAssignment("http", 10, "assigned.example:443")));
+
+        StreamingMessage response = await forwarded;
+        Assert.Equal("https://assigned.example/", response.WorkerInitResponse.Capabilities["HttpUri"]);
+        Assert.Equal("http", response.WorkerInitResponse.Capabilities["FunctionGroupName"]);
+        Assert.Equal("10", response.WorkerInitResponse.Capabilities["MaxHttpConcurrency"]);
+        Assert.Equal(queued, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(nextQueued, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(new Uri("http://localhost:1234/"), relay.WorkerHttpDestination);
+        Assert.Equal(0, manager.PendingWaiterCount);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Relay_WorkerCompletionWhileWaitingForAssignment_TerminatesSession(bool queuedMessage)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        if (queuedMessage)
+        {
+            await worker.WriteAsync(CreateMessage("queued-behind-init"), timeout.Token);
+        }
+
+        await worker.CompleteRequestAsync(timeout.Token);
+
+        Task<Grpc.Core.RpcException> runtimeTermination = Assert.ThrowsAsync<Grpc.Core.RpcException>(() => runtime.ReadAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, (await runtimeTermination.WaitAsync(TimeSpan.FromSeconds(5))).StatusCode);
+        Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+        await WaitForReleaseAsync(relay, timeout.Token);
+        while (manager.PendingWaiterCount != 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Assert.False(timeout.IsCancellationRequested);
+        Assert.Equal(FunctionRpcRelayTerminationReason.PeerClosed, relay.LastTerminalState?.Reason);
+        Assert.Equal(FunctionRpcRelaySide.Worker, relay.LastTerminalState?.Side);
+        Assert.False(manager.State.IsWorkerReady);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Null(relay.WorkerHttpDestination);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+
+        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
+        Assert.True(manager.State.IsWorkerReady);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter(bool shutdown)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        if (shutdown)
+        {
+            await relay.StopAsync(timeout.Token);
+        }
+        else
+        {
+            await runtime.CompleteRequestAsync(timeout.Token);
+        }
+
+        await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
+        while (manager.PendingWaiterCount != 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Assert.Null(relay.WorkerHttpDestination);
+        Assert.False(manager.State.IsWorkerReady);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+    }
+
+    [Fact]
+    public async Task Relay_MissingAdvertisedProxyOrigin_TerminatesWithoutPublishingDestination()
     {
         await using WorkerProxyWebApplicationFactory factory = new(
-            new Dictionary<string, string?> { ["WorkerProxy:HttpProxyEndpoint"] = null });
+            new Dictionary<string, string?> { ["WorkerProxy:HttpProxyEndpoint"] = "https://removed-startup-fallback:28080" });
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
 
         StreamingMessage initialized = CreateInitResponse("init", "http://localhost:1234/");
         await worker.WriteAsync(initialized, timeout.Token);
@@ -212,6 +351,9 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.Null(relay.WorkerHttpDestination);
+        Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, relay.LastTerminalState?.Reason);
+        InvalidOperationException exception = Assert.IsType<InvalidOperationException>(relay.LastTerminalState?.Exception);
+        Assert.Contains("httpProxyEndpoint", exception.Message);
     }
 
     [Theory]
@@ -221,7 +363,6 @@ public partial class FunctionRpcRelayTests
     {
         Dictionary<string, string?> configuration = new()
         {
-            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}"] = "https://worker-pod:28080/",
             [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] = overrideEndpoint
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
@@ -230,6 +371,8 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
 
         await worker.WriteAsync(CreateInitResponse("init", advertisedEndpoint), timeout.Token);
 
@@ -245,15 +388,20 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_BlockedCapabilityLogging_DoesNotBlockShutdown()
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
-        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger, CreatePodStateManager());
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions());
+        WorkerHttpCapabilityProvider provider = new(options, logger);
+        WorkerPodStateManager manager = CreatePodStateManager();
+        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, manager);
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
+        Channel<StreamingMessage> outbound = Channel.CreateUnbounded<StreamingMessage>();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(
-            FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
+            FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), CreateMessageWriter(outbound.Writer), timeout.Token);
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(
             FunctionRpcRelaySide.Worker, CreateMessageReader(inbound.Reader), new TestServerStreamWriter(), timeout.Token);
         await inbound.Writer.WriteAsync(CreateStartStream(), timeout.Token);
+        await outbound.Reader.ReadAsync(timeout.Token);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
         await inbound.Writer.WriteAsync(CreateInitResponse("init", "invalid"), timeout.Token);
 
         try
@@ -275,14 +423,17 @@ public partial class FunctionRpcRelayTests
     [InlineData("http://localhost:5678")]
     public async Task Relay_ReplacementSession_DoesNotReusePreviousDestination(string? replacementEndpoint)
     {
-        await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory("https://worker-pod:28080/");
+        await using WorkerProxyWebApplicationFactory factory = new();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
 
         await using (RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
         await using (RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
         {
             await ExchangeAsync(runtime, worker, "first", timeout.Token);
+            Assert.Equal(WorkerAssignmentResult.Created,
+                manager.Assign(CreateWorkerAssignment("http", httpProxyEndpoint: "worker-pod:28080")));
             StreamingMessage first = CreateInitResponse("first-init", "http://localhost:1234");
             first.WorkerInitResponse.Capabilities["original-only"] = "true";
             await worker.WriteAsync(first, timeout.Token);
@@ -301,30 +452,37 @@ public partial class FunctionRpcRelayTests
 
         StreamingMessage replacement = CreateInitResponse("replacement-init", replacementEndpoint);
         replacement.WorkerInitResponse.Capabilities["replacement-only"] = "true";
-        await replacementWorker.WriteAsync(replacement, timeout.Token);
-        StreamingMessage response = await replacementRuntime.ReadAsync(timeout.Token);
-
-        Assert.Equal(replacementEndpoint is null ? null : new Uri(replacementEndpoint), relay.WorkerHttpDestination);
-        Assert.Equal(replacementEndpoint is not null, response.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
-        Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("original-only"));
-        Assert.Equal("true", response.WorkerInitResponse.Capabilities["replacement-only"]);
+        if (replacementEndpoint is null)
+        {
+            await replacementWorker.WriteAsync(replacement, timeout.Token);
+            StreamingMessage response = await replacementRuntime.ReadAsync(timeout.Token);
+            Assert.Null(relay.WorkerHttpDestination);
+            Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
+            Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("original-only"));
+            Assert.Equal("true", response.WorkerInitResponse.Capabilities["replacement-only"]);
+        }
+        else
+        {
+            await replacementWorker.WriteAsync(replacement, timeout.Token);
+            Assert.Equal(StatusCode.Unavailable, await replacementRuntime.WaitForTerminationAsync(timeout.Token));
+            Assert.Null(relay.WorkerHttpDestination);
+        }
     }
 
     [Fact]
     public async Task Relay_TerminalSession_MakesHttpUnavailableBeforeAttachmentsRelease()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        Dictionary<string, string?> configuration = new()
-        {
-            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}"] = "https://worker-pod:28080/"
-        };
         await using WorkerProxyWebApplicationFactory factory = new(
-            configuration, services => services.AddSingleton<Microsoft.Extensions.Logging.ILogger<FunctionRpcRelay>>(logger));
+            configureServices: services => services.AddSingleton<Microsoft.Extensions.Logging.ILogger<FunctionRpcRelay>>(logger));
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.Equal(WorkerAssignmentResult.Created,
+            manager.Assign(CreateWorkerAssignment("http", httpProxyEndpoint: "worker-pod:28080")));
         await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234"), timeout.Token);
         await runtime.ReadAsync(timeout.Token);
 
@@ -358,17 +516,22 @@ public partial class FunctionRpcRelayTests
         });
         Uri destination = new(WorkerHttpForwardingTests.GetAddress(workerApp), "/worker/");
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient proxyClient = factory.CreateHttpForwardingClient();
         string proxyEndpoint = proxyClient.BaseAddress!.AbsoluteUri;
-        // The test deployment learns its externally reachable origin after the ephemeral listener binds.
-        factory.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value.HttpProxyEndpoint = proxyEndpoint;
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+
+        Assert.Equal(WorkerAssignmentResult.Created,
+            manager.Assign(CreateWorkerAssignment("http", 16, proxyClient.BaseAddress.Authority)));
         await worker.WriteAsync(CreateInitResponse("init", destination.AbsoluteUri), timeout.Token);
         StreamingMessage initialized = await runtime.ReadAsync(timeout.Token);
         Assert.Equal(proxyEndpoint, initialized.WorkerInitResponse.Capabilities["HttpUri"]);
+        Assert.Equal("http", initialized.WorkerInitResponse.Capabilities["FunctionGroupName"]);
+        Assert.Equal("16", initialized.WorkerInitResponse.Capabilities["MaxHttpConcurrency"]);
+        Assert.Equal(destination, factory.Services.GetRequiredService<FunctionRpcRelay>().WorkerHttpDestination);
 
         using HttpClient client = factory.CreateHttpForwardingClient();
         client.BaseAddress = new(initialized.WorkerInitResponse.Capabilities["HttpUri"]);
@@ -400,14 +563,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal("received:payload", await response.Content.ReadAsStringAsync(timeout.Token));
     }
 
-    private static WorkerProxyWebApplicationFactory CreateHttpCapabilityFactory(string proxyEndpoint)
-    {
-        return new(new Dictionary<string, string?>
-        {
-            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}"] = proxyEndpoint
-        });
-    }
-
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -415,8 +570,7 @@ public partial class FunctionRpcRelayTests
     [InlineData(true, true)]
     public async Task Relay_ReloadNeverAdvertisesCustomerDestinationOrCustomerAuthenticationProof(bool replace, bool failed)
     {
-        await using WorkerProxyWebApplicationFactory factory = new(
-            new Dictionary<string, string?> { ["WorkerProxy:HttpProxyEndpoint"] = null });
+        await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient http = factory.CreateHttpForwardingClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using HttpClient management = factory.CreateWorkerProxyClient();

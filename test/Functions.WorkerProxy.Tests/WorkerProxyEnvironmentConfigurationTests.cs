@@ -77,7 +77,7 @@ public class WorkerProxyEnvironmentConfigurationTests
             ManagementTokenTestData.Create(RuntimeAuthenticationTestData.EncodedWorkerKey, "environment-worker-pod"));
         using StringContent content = new("null", Encoding.UTF8, "application/json");
         using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", content, timeout.Token);
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     private static int GetAvailablePort()

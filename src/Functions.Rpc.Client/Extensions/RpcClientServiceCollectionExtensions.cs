@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -126,6 +127,7 @@ public static class RpcClientServiceCollectionExtensions
         // fork the metadata cache used by the root metadata manager.
         services.AddSingleton(channelRegistry);
         services.AddSingleton(metadataProvider);
+
         services.AddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
         services.AddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
         services.AddSingleton<IScriptHostLifecycleService, RpcClientScriptHostLifecycleService>();

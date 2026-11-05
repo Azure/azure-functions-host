@@ -131,9 +131,28 @@ Link uses `PUT /admin/workers/{workerId}` with the WorkerProxy pod name in the p
 
 HTTP routing remains negotiated through `HttpUri`; the harness sends the actual mapped HTTP authority as `httpProxyEndpoint` in assignment and WorkerProxy constructs HTTPS. It never guesses an external port or advertises the customer-local destination. AppHost also creates synthetic PEM files outside WorkerProxy, supplies their paths in project mode and mounts them read-only in container mode. Production images instead generate the PEM pair in their container-startup script. WorkerProxy never generates a replacement. The scoped runtime certificate policy checks expiry only. See [the runtime connection contract](../../src/Functions.WorkerProxy/README.md).
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
-profile. Aspire supplies each entry's management address, HTTPS endpoints, per-proxy container key and protected pod identity. Assign and link requests
-select an entry by name; an unknown name returns `404` instead of choosing a different worker. Each worker has a distinct
-worker ID, request ID, pod name, and proxy endpoints, and both link to the same Host.
+profile. Aspire supplies each entry's management address, mapped HTTPS authority, runtime gRPC endpoint, per-proxy container key, and protected pod identity.
+The assignment sends that scheme-less HTTP authority, including default ports, and publishes it as the effective
+HTTPS runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
+`404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
+endpoints, and both link to the same Host.
+
+`httpProxyEndpoint` is optional for non-HTTP workers. HTTP-capable workers require it in the accepted assignment
+before successful HTTP initialization; supply a scheme-less mapped DNS name, IPv4 address or bracketed IPv6 literal with an explicit nonzero port,
+such as `worker-proxy-1:28080` or `[::1]:28080`. Compatible absolute HTTPS origins are also accepted; scoped IPv6 and plaintext origins are rejected.
+There is no startup fallback: `WorkerProxy:HttpProxyEndpoint` and `WORKERPROXY__HTTPPROXYENDPOINT` are no longer consumed.
+An accepted assignment without the field leaves the effective origin unset, so HTTP capability initialization fails
+rather than advertising the worker's local address. The effective worker destination must have a different origin
+from the mapped proxy endpoint to prevent a forwarding loop.
+
+Roll out assignment producers together with this WorkerProxy version: each platform must send the mapped authority
+for HTTP workers before initialization completes. Older producers that rely on the startup setting are not compatible with this
+HTTP initialization flow. The harness authenticates and records assignment before linking, including in `project-identity`;
+assignment does not require the customer to start, so pending Link can carry startup token acquisition before `StartStream`.
+The relay also holds a successful HTTP initialization response until assignment is accepted without blocking runtime
+token traffic or worker EOF detection. Messages behind initialization remain ordered; worker request-stream completion
+terminates the session and cancels that wait, even without call cancellation.
+Placeholder assignment tokens use the configured Host container name as their audience, matching Host placeholder authentication.
 
 ## Host state publication (prototype)
 
@@ -147,6 +166,12 @@ AppHost sets the project's Host `MESH_INIT_URI` to the fake platform. After spec
   "linkedWorkerCount": 1
 }
 ```
+
+Each publication also sends `fx-current-instance` from the Host's current `CONTAINER_NAME` (`aspire-runtime` in the
+local project and container profiles). A missing, empty, or whitespace-only Host identity fails before sending; there
+is no worker-pod identity fallback. The project-mode fake AppServer checks that value and returns HTTP 401 when it
+is missing or does not match the configured Host identity. This exercises the internal instance-identity convention
+for development; it is not full TLS or token authentication.
 
 `httpCapacity` is the total of registry-ready HTTP workers' assigned concurrency limits, not free slots after active
 requests or Frontend reservations. This sample explicitly assigns `maxHttpConcurrency: 16` to each HTTP worker, so one
@@ -169,12 +194,13 @@ exceptions are not swallowed. This does not guarantee delivery or establish an A
 HTTP 401/403 responses are logged as authentication rejections, not transient failures. The rejected snapshot is not sent
 again on a retry timer or unchanged shutdown; publication resumes only when runtime state changes. The Host keeps running.
 
-The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. Requests have no
-authentication or applied-version acknowledgement, and an AppServer restart is not repaired without a later Host state
-change. The client resolves and caches `MESH_INIT_URI` on its first publication after specialization, defaulting to
-`http://localhost:6060/` when unset. Later configuration changes do not replace that endpoint for the root Host's lifetime.
-Container mode has no fake AppServer receiver; its Host will log publication failures
-and retry the default endpoint without preventing the worker link or invocation.
+The receiver and wire shape are a local prototype, not verification of a deployed AppServer contract. The local
+identity check does not provide full TLS/token authentication or an applied-version acknowledgement, and an AppServer
+restart is not repaired without a later Host state change. The client reads `CONTAINER_NAME` per request, independently
+of endpoint resolution. It resolves and caches `MESH_INIT_URI` on its first publication after specialization, defaulting
+to `http://localhost:6060/` when unset; later configuration changes do not replace that endpoint for the root Host's
+lifetime. Container mode has no fake AppServer receiver; its Host will log publication failures and retry the default
+endpoint without preventing the worker link or invocation.
 Host state publication does not establish WorkerProxy `Running`/`Linked` state or confirmed loaded versions.
 
 ## Endpoints
@@ -190,7 +216,7 @@ The happy path, in order:
 | 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
 | 4 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
 
-WorkerProxy management availability is established with authenticated `POST /admin/infra/instanceState`, initially with an empty body. The next poll sends the last flat origin snapshot; no change returns 204. Separate readiness GET routes and `GET /admin/worker/state` do not exist. The local adapter polls with a WorkerProxy-key site token rather than an anonymous Aspire health check. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
+WorkerProxy management availability is established with one authenticated `POST /admin/infra/instanceState`, initially with an empty body or JSON `null`. It returns HTTP 200 with a complete typed startup checkpoint, including the actual pod name, startup time, and revision before assignment. Platform/app identity fields use explicit `unknown` placeholders and confirmed-version fields remain zero; neither establishes a trusted application identity, a loaded version, or a matched app cohort. The next poll sends the complete last checkpoint; an unchanged checkpoint long-polls and returns 204 at its deadline. Stale revision/process hints and valid extra metadata never install identity or acknowledge a runtime. Separate readiness GET routes and `GET /admin/worker/state` do not exist. The local adapter polls with a WorkerProxy-key site token rather than an anonymous Aspire health check. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
 
 The current auth-scoped WorkerProxy state reports `Starting`/`Unlinked`, including after proof emission. Requested version metadata is retained for assignment retry identity, not proof of applied versions. Effective HTTP concurrency is advertised from the accepted assignment, captured after successful authenticated initialization, and summed only for registry-ready HTTP workers; runtime shutdown withdraws that capacity. Runtime identity/acceptance acknowledgement and confirmed loaded versions needed for complete platform `Running`/`Linked` publication remain a separate follow-up. State polling and runtime capacity do not claim full serving convergence; the local function invocation is a separate check.
 

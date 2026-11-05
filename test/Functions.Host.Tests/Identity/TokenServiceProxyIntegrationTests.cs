@@ -612,10 +612,14 @@ public sealed class TokenServiceProxyIntegrationTests
                 };
                 management.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
                     ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, WorkerPodName));
-                using StringContent assignment = new("""
+                string httpOrigin = new UriBuilder(proxy.Services.GetRequiredService<ProxyEndpoints>().GetHttpAddress())
+                {
+                    Host = IPAddress.Loopback.ToString()
+                }.Uri.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped);
+                using StringContent assignment = new($$"""
                     {"startupMode":"Preconfigured","functionAppName":"token-proxy-app","functionGroupName":"http","isAlwaysReady":false,
                      "environment":{},"functionAppDirectory":"","configLastModifiedTime":1761868800,
-                     "contentLastModifiedTime":1761868801,"maxHttpConcurrency":16}
+                     "contentLastModifiedTime":1761868801,"maxHttpConcurrency":16,"httpProxyEndpoint":"{{httpOrigin}}"}
                     """, Encoding.UTF8, "application/json");
                 using HttpResponseMessage accepted = await management.PutAsync("/admin/worker/assignment", assignment);
                 Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);

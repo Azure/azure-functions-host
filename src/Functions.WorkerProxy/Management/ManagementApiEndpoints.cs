@@ -22,13 +22,17 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </remarks>
 internal static class ManagementApiEndpoints
 {
+    /// <summary>
+    /// Registers the worker management and infrastructure instance-state routes.
+    /// </summary>
+    /// <param name="endpoints">The management listener's endpoint route builder.</param>
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPut("/admin/worker/assignment",
             (WorkerAssignRequest request, WorkerPodStateManager manager) => ManagementApiHandlers.AssignWorker(request, manager))
             .RequireAuthorization(ContainerManagementAuthenticationHandler.SchemeName);
         endpoints.MapPost("/admin/infra/instanceState",
-            (WorkerInstanceState? originState, WorkerPodStateManager manager, HttpContext context) =>
+            (WorkerOriginState? originState, WorkerPodStateManager manager, HttpContext context) =>
                 ManagementApiHandlers.GetInstanceStateAsync(originState, manager, context.RequestAborted))
             .AddEndpointFilter(DisableResponseCaching).RequireAuthorization(ContainerManagementAuthenticationHandler.SchemeName);
     }

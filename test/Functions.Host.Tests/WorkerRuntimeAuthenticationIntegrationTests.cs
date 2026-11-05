@@ -263,11 +263,14 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         };
         management.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
             ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, workerId));
+        DateTimeOffset startupTime;
         using (HttpRequestMessage initialPoll = new(HttpMethod.Post, "/admin/infra/instanceState"))
         {
             initialPoll.Headers.Add("x-ms-functions-pod-name", workerId);
             using HttpResponseMessage initialState = await management.SendAsync(initialPoll, timeout.Token);
-            Assert.Equal(HttpStatusCode.NoContent, initialState.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, initialState.StatusCode);
+            JsonObject initialCheckpoint = JsonNode.Parse(await initialState.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
+            startupTime = AssertCheckpoint(initialCheckpoint, workerId, expectedGroup: null);
         }
         string assignmentJson = $$"""
             {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,
@@ -461,20 +464,57 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.StartsWith("""{"functionsContainerType":"FunctionsSplitWorkerProxy",""", state, StringComparison.Ordinal);
         Assert.Contains(""""status":"Starting"""", state, StringComparison.Ordinal);
         Assert.Contains(""""state":"Unlinked"""", state, StringComparison.Ordinal);
-        Assert.DoesNotContain("configLastModifiedTime", state, StringComparison.Ordinal);
-        Assert.DoesNotContain("contentLastModifiedTime", state, StringComparison.Ordinal);
         Assert.DoesNotContain("maxHttpConcurrency", state, StringComparison.Ordinal);
         Assert.DoesNotContain(appKey, state, StringComparison.Ordinal);
         Assert.DoesNotContain(ManagementTokenTestData.WorkerKey, state, StringComparison.Ordinal);
-        JsonObject replay = JsonNode.Parse(state)!.AsObject();
+        JsonObject checkpoint = JsonNode.Parse(state)!.AsObject();
+        Assert.Equal(startupTime, AssertCheckpoint(checkpoint, workerId, "group"));
+        JsonObject replay = checkpoint.DeepClone().AsObject();
         replay["revisionId"] = 0;
-        replay["configLastModifiedTime"] = 0;
-        replay["contentLastModifiedTime"] = 0;
+        replay["configLastModifiedTime"] = "0";
+        replay["contentLastModifiedTime"] = "0";
         replay["link"]!.AsObject().Remove("runtime");
         using StringContent previousStateBody = new(replay.ToJsonString(), Encoding.UTF8, "application/json");
         using HttpResponseMessage replayResponse = await management.PostAsync("/admin/infra/instanceState", previousStateBody, timeout.Token);
         Assert.Equal(HttpStatusCode.OK, replayResponse.StatusCode);
         Assert.Equal(state, await replayResponse.Content.ReadAsStringAsync(timeout.Token));
+
+        JsonObject staleProcessCheckpoint = checkpoint.DeepClone().AsObject();
+        staleProcessCheckpoint["revisionId"] = int.MaxValue;
+        staleProcessCheckpoint["startupTime"] = startupTime.AddDays(-1);
+        staleProcessCheckpoint["self"]!["podName"] = "previous-process-hint";
+        staleProcessCheckpoint["self"]!["app"]!["functionAppName"] = "untrusted-cached-app";
+        staleProcessCheckpoint["platformMetadata"] = new JsonObject { ["configVersion"] = 42 };
+        using StringContent staleProcessBody = new(staleProcessCheckpoint.ToJsonString(), Encoding.UTF8, "application/json");
+        using HttpResponseMessage staleProcessResponse = await management.PostAsync(
+            "/admin/infra/instanceState", staleProcessBody, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, staleProcessResponse.StatusCode);
+        Assert.Equal(state, await staleProcessResponse.Content.ReadAsStringAsync(timeout.Token));
+    }
+
+    private static DateTimeOffset AssertCheckpoint(JsonObject checkpoint, string workerId, string? expectedGroup)
+    {
+        Assert.Equal("FunctionsSplitWorkerProxy", checkpoint["functionsContainerType"]!.GetValue<string>());
+        JsonObject self = checkpoint["self"]!.AsObject();
+        Assert.Equal(workerId, self["podName"]!.GetValue<string>());
+        Assert.Equal("unknown", self["resourceNamespace"]!.GetValue<string>());
+        JsonObject app = self["app"]!.AsObject();
+        Assert.Equal("unknown", app["functionAppName"]!.GetValue<string>());
+        Assert.Equal(0, app["functionAppSiteId"]!.GetValue<int>());
+        Assert.Equal("unknown", app["antaresStampName"]!.GetValue<string>());
+        Assert.Equal(expectedGroup, checkpoint["functionGroup"]?.GetValue<string>());
+        Assert.False(checkpoint["isDiscoveryPod"]!.GetValue<bool>());
+        Assert.False(checkpoint["isAlwaysReady"]!.GetValue<bool>());
+        Assert.Equal(0L, checkpoint["configLastModifiedTime"]!.GetValue<long>());
+        Assert.Equal(0L, checkpoint["contentLastModifiedTime"]!.GetValue<long>());
+        Assert.Equal("Starting", checkpoint["status"]!.GetValue<string>());
+        Assert.Equal("Unlinked", checkpoint["link"]!["state"]!.GetValue<string>());
+        Assert.False(checkpoint["link"]!.AsObject().ContainsKey("runtime"));
+        Assert.True(checkpoint["revisionId"]!.GetValue<int>() >= 0);
+        DateTimeOffset startupTime = checkpoint["startupTime"]!.GetValue<DateTimeOffset>();
+        Assert.NotEqual(default, startupTime);
+
+        return startupTime;
     }
 
     private static async Task InvokeAsync(

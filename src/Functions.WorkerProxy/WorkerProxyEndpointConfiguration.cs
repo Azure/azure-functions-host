@@ -16,10 +16,13 @@ namespace Azure.Functions.WorkerProxy;
 /// <summary>
 /// Configures the WorkerProxy Kestrel listeners and resolves requests to their listener roles.
 /// </summary>
+/// <remarks>The runtime-facing forwarding listener and advertised proxy origins use HTTPS.</remarks>
 internal sealed class WorkerProxyEndpointConfiguration(
     IOptions<WorkerProxyOptions> workerProxyOptions,
     IOptions<TokenServiceProxyWorkerOptions> tokenServiceProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
+    internal const string HttpListenerScheme = "https";
+
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
@@ -159,7 +162,7 @@ internal sealed class WorkerProxyEndpointConfiguration(
             throw new InvalidOperationException($"The WorkerProxy {listenerName} listener has not started.");
         }
 
-        return new UriBuilder(useHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp, endpoint.Address.ToString(), endpoint.Port).Uri;
+        return new UriBuilder(useHttps ? HttpListenerScheme : Uri.UriSchemeHttp, endpoint.Address.ToString(), endpoint.Port).Uri;
     }
 
     private static int GetPort(ListenOptions? listener)

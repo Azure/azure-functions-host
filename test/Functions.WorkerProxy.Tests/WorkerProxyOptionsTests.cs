@@ -3,6 +3,7 @@
 
 using System;
 using Azure.Functions.Tests;
+using Azure.Functions.WorkerProxy.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -22,7 +23,6 @@ public class WorkerProxyOptionsTests
         Assert.Equal(50054, options.WorkerGrpcPort);
         Assert.Equal(28080, options.HttpPort);
         Assert.Null(options.WorkerHttpEndpoint);
-        Assert.Null(options.HttpProxyEndpoint);
     }
 
     [Fact]
@@ -34,8 +34,7 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:RuntimeGrpcPort", "41001",
             "--WorkerProxy:WorkerGrpcPort", "41002",
             "--WorkerProxy:HttpPort", "41003",
-            "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004",
-            "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801");
+            "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004");
 
         Assert.Equal("configured-worker-pod", options.PodName);
         Assert.Equal(41000, options.ManagementPort);
@@ -43,10 +42,11 @@ public class WorkerProxyOptionsTests
         Assert.Equal(41002, options.WorkerGrpcPort);
         Assert.Equal(41003, options.HttpPort);
         Assert.Equal("http://localhost:41004", options.WorkerHttpEndpoint);
-        Assert.Equal("https://worker-pod.example:48801", options.HttpProxyEndpoint);
     }
 
     [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
     [InlineData("relative")]
     [InlineData("http://worker-pod:28080")]
     [InlineData("ftp://worker-pod:28080")]
@@ -59,32 +59,29 @@ public class WorkerProxyOptionsTests
     [InlineData("http://[::]:28080")]
     [InlineData("http://*:28080")]
     [InlineData("http://+:28080")]
-    public void Options_RejectInvalidAdvertisedHttpOrigin(string endpoint)
+    public void Assignment_RejectsInvalidAdvertisedHttpsOrigin(string endpoint)
     {
-        Assert.Throws<OptionsValidationException>(() => GetOptions("--WorkerProxy:HttpProxyEndpoint", endpoint));
+        Assert.False(WorkerHttpProxyEndpointResolver.TryResolve(endpoint, Uri.UriSchemeHttps, out _));
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
     [InlineData("https://localhost:28080")]
-    [InlineData(" https://worker-pod.example:48801/ ")]
+    [InlineData("https://worker-pod.example:48801/")]
     [InlineData("https://[::1]:28080")]
     [InlineData("https://100.64.1.12:48801")]
     [InlineData("https://[fd00::12]:48801")]
-    public void Options_AllowAbsentOrExplicitAdvertisedHttpOrigin(string endpoint)
+    public void Assignment_AllowsCompatibleHttpsOrigins(string endpoint)
     {
-        WorkerProxyOptions options = GetOptions("--WorkerProxy:HttpProxyEndpoint", endpoint);
-
-        Assert.Equal(endpoint, options.HttpProxyEndpoint);
+        Assert.True(WorkerHttpProxyEndpointResolver.TryResolve(endpoint, Uri.UriSchemeHttps, out Uri? resolved));
+        Assert.Equal(new Uri(endpoint), resolved);
     }
 
     [Fact]
-    public void Options_RejectCredentialsInAdvertisedHttpOrigin()
+    public void Assignment_RejectsCredentialsInAdvertisedHttpsOrigin()
     {
-        UriBuilder endpoint = new("http://worker-pod:28080") { UserName = "user" };
+        UriBuilder endpoint = new("https://worker-pod:28080") { UserName = "user" };
 
-        Assert.Throws<OptionsValidationException>(() => GetOptions("--WorkerProxy:HttpProxyEndpoint", endpoint.Uri.AbsoluteUri));
+        Assert.False(WorkerHttpProxyEndpointResolver.TryResolve(endpoint.Uri.AbsoluteUri, Uri.UriSchemeHttps, out _));
     }
 
     [Theory]

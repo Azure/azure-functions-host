@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Rpc;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -14,7 +13,8 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// Captures the worker's HTTP destination before advertising WorkerProxy to the runtime.
 /// </summary>
 internal sealed partial class WorkerHttpCapabilityProvider(
-    IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger, WorkerPodStateManager stateManager)
+    IOptions<WorkerProxyOptions> options,
+    ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
     internal const string HttpUriCapability = "HttpUri";
@@ -26,8 +26,9 @@ internal sealed partial class WorkerHttpCapabilityProvider(
     /// Finalizes the HTTP capability on a relay-owned copy of the successful initialization response.
     /// </summary>
     /// <param name="capabilities">The capabilities to advertise to the runtime.</param>
+    /// <param name="httpProxyEndpoint">The HTTP proxy origin captured with the matching worker assignment snapshot.</param>
     /// <returns>The real worker destination, or <see langword="null"/> when HTTP proxying is unavailable.</returns>
-    public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities)
+    public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, string? httpProxyEndpoint)
     {
         if (!capabilities.TryGetValue(HttpUriCapability, out string? advertisedEndpoint) || string.IsNullOrWhiteSpace(advertisedEndpoint))
         {
@@ -41,11 +42,16 @@ internal sealed partial class WorkerHttpCapabilityProvider(
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        Uri proxyEndpoint = stateManager.State.HttpProxyEndpoint ?? ResolveRequiredEndpoint(
-            _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        Uri proxyEndpoint = ResolveRequiredEndpoint(httpProxyEndpoint, "Worker assignment httpProxyEndpoint");
         if (!string.Equals(proxyEndpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("The runtime-facing HTTP origin must use HTTPS.");
+        }
+
+        if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped, StringComparison.OrdinalIgnoreCase) == 0)
+        {
+            Log.HttpProxyLoop(_logger);
+            throw new InvalidOperationException("The worker HTTP destination and proxy endpoint must have different origins to prevent a forwarding loop.");
         }
 
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
@@ -76,5 +82,8 @@ internal sealed partial class WorkerHttpCapabilityProvider(
 
         [LoggerMessage(1, LogLevel.Debug, "Worker HTTP origin {WorkerOrigin} is advertised through proxy origin {ProxyOrigin}.")]
         public static partial void HttpCapabilityFinalized(ILogger logger, string workerOrigin, string proxyOrigin);
+
+        [LoggerMessage(2, LogLevel.Error, "The worker HTTP destination and proxy endpoint must have different origins to prevent a forwarding loop.")]
+        public static partial void HttpProxyLoop(ILogger logger);
     }
 }
