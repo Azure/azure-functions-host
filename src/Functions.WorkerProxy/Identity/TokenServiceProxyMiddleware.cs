@@ -8,11 +8,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Management;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -23,10 +23,9 @@ namespace Azure.Functions.WorkerProxy.Identity;
 /// Authenticates the pod-local identity endpoint and bridges bounded HTTP data without interpreting token requests.
 /// </summary>
 internal sealed class TokenServiceProxyMiddleware(IOptions<TokenServiceProxyWorkerOptions> options, TokenServiceProxyService proxy,
-    TimeProvider timeProvider, ILogger<TokenServiceProxyMiddleware> logger, IConfiguration configuration)
+    WorkerPodStateManager stateManager, TimeProvider timeProvider, ILogger<TokenServiceProxyMiddleware> logger)
 {
     private readonly TokenServiceProxyWorkerOptions _options = options.Value;
-    private readonly byte[] _secretHash = HashInjectedSecret(configuration);
 
     /// <summary>
     /// Checks the local credential before buffering and applies one deadline across preparation, forwarding, and delivery.
@@ -38,13 +37,22 @@ internal sealed class TokenServiceProxyMiddleware(IOptions<TokenServiceProxyWork
         using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, context.RequestAborted);
         try
         {
+            WorkerAssignment assignment = await stateManager.WaitForAssignmentAsync(operation.Token);
+            if (!assignment.Environment.TryGetValue(TokenServiceProxyWorkerOptions.SecretSettingName, out string? expectedSecret)
+                || string.IsNullOrWhiteSpace(expectedSecret))
+            {
+                await ErrorAsync(context, StatusCodes.Status403Forbidden, "InvalidIdentityHeader");
+                return;
+            }
+
+            byte[] expectedSecretHash = SHA256.HashData(Encoding.UTF8.GetBytes(expectedSecret));
             bool hasIdentityHeader = context.Request.Headers.TryGetValue(TokenServiceProxyProtocol.IdentityHeader, out StringValues identityHeader);
             bool hasLegacyHeader = context.Request.Headers.TryGetValue(TokenServiceProxyProtocol.LegacyIdentityHeader, out StringValues legacyHeader);
             StringValues header = hasIdentityHeader ? identityHeader : legacyHeader;
             if (hasIdentityHeader == hasLegacyHeader
                 || header is not [string secret] || string.IsNullOrEmpty(secret)
                 || Encoding.UTF8.GetByteCount(secret) > _options.MaxHeaderBytes
-                || !CryptographicOperations.FixedTimeEquals(_secretHash, SHA256.HashData(Encoding.UTF8.GetBytes(secret))))
+                || !CryptographicOperations.FixedTimeEquals(expectedSecretHash, SHA256.HashData(Encoding.UTF8.GetBytes(secret))))
             {
                 await ErrorAsync(context, StatusCodes.Status403Forbidden, "InvalidIdentityHeader");
                 return;
@@ -136,14 +144,6 @@ internal sealed class TokenServiceProxyMiddleware(IOptions<TokenServiceProxyWork
         {
             await ErrorAsync(context, StatusCodes.Status503ServiceUnavailable, "TransportUnavailable");
         }
-    }
-
-    private static byte[] HashInjectedSecret(IConfiguration configuration)
-    {
-        string? secret = configuration[TokenServiceProxyWorkerOptions.SecretSettingName];
-        ArgumentException.ThrowIfNullOrWhiteSpace(secret);
-
-        return SHA256.HashData(Encoding.UTF8.GetBytes(secret));
     }
 
     /// <summary>
