@@ -25,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
@@ -355,6 +356,49 @@ public class ClientWorkerCompositionTests
     }
 
     [Fact]
+    public async Task ScriptHostBuilds_DoNotRegisterBackgroundSync_AndPreserveExplicitSync()
+    {
+        var environment = new Mock<IEnvironment>();
+        environment.Setup(value => value.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey))
+            .Returns("test-key");
+        var sourceProvider = new Mock<IHostConfigurationSourceProvider>();
+        sourceProvider.Setup(value => value.GetConfigurationSource())
+            .Returns(HostConfigurationSnapshot.Parse("""{"version":"2.0"}"""));
+
+        IHost rootHost = CreateRootHost(out IServiceCollection rootServices, configureServices: services =>
+        {
+            services.AddSingleton(environment.Object);
+            services.AddSingleton(sourceProvider.Object);
+        });
+        try
+        {
+            var webHostEnvironment = rootHost.Services.GetRequiredService<IScriptWebHostEnvironment>();
+            Assert.False(webHostEnvironment.InStandbyMode);
+            Assert.IsType<FunctionsSyncManager>(rootHost.Services.GetRequiredService<IFunctionsSyncManager>());
+
+            for (int build = 0; build < 2; build++)
+            {
+                using IHost scriptHost = new HostBuilder()
+                    .AddWebScriptHost(
+                        rootHost.Services,
+                        rootServices,
+                        rootHost.Services.GetRequiredService<IOptions<ScriptApplicationHostOptions>>().Value)
+                    .ConfigureServices(services =>
+                    {
+                        Assert.DoesNotContain(services, descriptor =>
+                            descriptor.ServiceType == typeof(IHostedService) &&
+                            descriptor.ImplementationType == typeof(FunctionsSyncService));
+                    })
+                    .Build();
+            }
+        }
+        finally
+        {
+            await ((IAsyncDisposable)rootHost).DisposeAsync();
+        }
+    }
+
+    [Fact]
     public void FunctionsHostReferencesClientAndSharedWebHostWithoutDirectServer()
     {
         string[] references = typeof(ClientWorkerComposition).Assembly.GetReferencedAssemblies()
@@ -405,7 +449,9 @@ public class ClientWorkerCompositionTests
         Assert.True(string.Equals("ComputeFilesToPublish", publishFilter.Attribute("AfterTargets")?.Value, StringComparison.Ordinal));
     }
 
-    private static IHost CreateRootHost(out IServiceCollection services, IConfiguration? rootConfiguration = null,
+    private static IHost CreateRootHost(
+        out IServiceCollection services,
+        IConfiguration? rootConfiguration = null,
         Action<IServiceCollection>? configureServices = null)
     {
         IServiceCollection capturedServices = null!;
