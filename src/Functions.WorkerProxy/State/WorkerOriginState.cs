@@ -43,7 +43,7 @@ internal sealed record WorkerOriginState(
     private static readonly WorkerLink Unlinked = new(WorkerLinkState.Unlinked);
 
     /// <summary>
-    /// Projects a pod snapshot into the platform checkpoint, retaining defaults for runtime linking and lifecycle status.
+    /// Projects a pod snapshot into the platform checkpoint, requesting removal for terminal assignments.
     /// </summary>
     /// <param name="state">The current immutable pod snapshot.</param>
     /// <returns>The corresponding platform checkpoint.</returns>
@@ -58,7 +58,7 @@ internal sealed record WorkerOriginState(
             ContentLastModifiedTime: 0,
             state.StartupTime,
             checked((int)state.Revision),
-            WorkerStatus.Starting,
+            state.PodStatus == WorkerPodStatus.RemovalRequested ? WorkerStatus.RemovalRequested : WorkerStatus.Starting,
             Unlinked,
             state.AssignmentState == WorkerAssignmentState.Failed);
 }

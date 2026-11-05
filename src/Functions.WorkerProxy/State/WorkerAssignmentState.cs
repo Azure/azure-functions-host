@@ -12,5 +12,7 @@ internal enum WorkerAssignmentState
     // The manager publishes assignment and readiness atomically, without exposing this intermediate state.
     Assigned,
     Ready,
-    Failed
+    Failed,
+    // The assigned session ended; termination alone does not establish a health failure.
+    Terminated
 }

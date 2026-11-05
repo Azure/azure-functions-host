@@ -214,7 +214,7 @@ public partial class FunctionRpcRelayTests
         await WaitForReleaseAsync(relay, timeout.Token);
         WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
         Assert.False(failed.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, relay.LastTerminalState?.Reason);
@@ -253,7 +253,7 @@ public partial class FunctionRpcRelayTests
             await Task.Run(() => relay.StopAsync(timeout.Token), timeout.Token).WaitAsync(timeout.Token);
             Assert.Null(relay.WorkerHttpDestination);
             Assert.False(manager.State.IsWorkerReady);
-            Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+            Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
         }
         finally
         {
@@ -264,7 +264,7 @@ public partial class FunctionRpcRelayTests
         await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
         Assert.Null(relay.WorkerHttpDestination);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
         Assert.Equal(4, manager.State.Revision);
     }
 
@@ -383,7 +383,7 @@ public partial class FunctionRpcRelayTests
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
         WorkerAssignment failedAssignment = await FailAssignedSessionAsync(factory, timeout.Token);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
         Assert.Equal(failedAssignment.FunctionGroupName, manager.State.FunctionGroupName);
         Assert.Equal(failedAssignment.MaxHttpConcurrency, manager.State.MaxHttpConcurrency);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);

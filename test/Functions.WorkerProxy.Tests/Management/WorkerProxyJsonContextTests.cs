@@ -210,8 +210,10 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(response, JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerInstanceState));
     }
 
-    [Fact]
-    public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced(bool failed)
     {
         WorkerPodState ready = new(
             "pod",
@@ -230,7 +232,7 @@ public class WorkerProxyJsonContextTests
         {
             Revision = 4,
             IsWorkerAttached = false,
-            AssignmentState = WorkerAssignmentState.Failed
+            AssignmentState = failed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated
         };
 
         string retainedJson = JsonSerializer.Serialize(retained, WorkerProxyJsonContext.Default.WorkerInstanceState);
@@ -247,6 +249,12 @@ public class WorkerProxyJsonContextTests
         Assert.Equal("Preconfigured", terminatedPodState.GetProperty("startupMode").GetString());
         Assert.Equal("group", terminatedPodState.GetProperty("functionGroupName").GetString());
         Assert.False(terminatedPodState.GetProperty("isAlwaysReady").GetBoolean());
+
+        WorkerOriginState origin = WorkerOriginState.FromState(terminated);
+        string originJson = JsonSerializer.Serialize(origin, WorkerProxyJsonContext.Default.WorkerOriginState);
+        using JsonDocument originDocument = JsonDocument.Parse(originJson);
+        Assert.Equal("RemovalRequested", originDocument.RootElement.GetProperty("status").GetString());
+        Assert.Equal(failed, originDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
     }
 
     [Theory]

@@ -66,7 +66,7 @@ public partial class WorkerPodStateManagerTests
         WorkerPodState failed = manager.State;
         Assert.False(failed.IsWorkerReady);
         Assert.False(failed.IsWorkerAttached);
-        Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
         Assert.Equal(startupMode, failed.StartupMode);
         Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
         Assert.Equal("app", failed.FunctionAppName);
@@ -395,7 +395,7 @@ public partial class WorkerPodStateManagerTests
             if (result == WorkerAssignmentResult.Created)
             {
                 Assert.Equal(WorkerPodStatus.RemovalRequested, manager.State.PodStatus);
-                Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+                Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
                 Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
                 Assert.Equal(4, manager.State.Revision);
             }

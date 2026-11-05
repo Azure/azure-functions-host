@@ -322,8 +322,10 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned, await ReadInfraManagementStateAsync(differentStateResponse, timeout.Token));
     }
 
-    [Fact]
-    public async Task InfraInstanceState_RuntimeAttachAndWorkerTermination_KeepsDeferredLinkDefaults()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InfraInstanceState_RuntimeAttachAndWorkerTermination_KeepsDeferredLinkDefaults(bool runtimeCloses)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -351,7 +353,7 @@ public partial class FunctionRpcRelayTests
             timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
         Assert.False(terminationPoll.IsCompleted);
-        await worker.CompleteRequestAsync(timeout.Token);
+        await (runtimeCloses ? runtime : worker).CompleteRequestAsync(timeout.Token);
         await Task.WhenAll(
             runtime.WaitForTerminationAsync(timeout.Token),
             worker.WaitForTerminationAsync(timeout.Token));
@@ -363,9 +365,10 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.FunctionGroup, terminated.FunctionGroup);
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
-        Assert.Equal(WorkerStatus.Starting, terminated.Status);
+        Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
+        Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);
         Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), terminated.Link);
-        Assert.True(terminated.IsUnhealthy);
+        Assert.False(terminated.IsUnhealthy);
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(

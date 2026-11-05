@@ -38,9 +38,7 @@ internal sealed record WorkerPodState(
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
-    // Failed also covers Runtime intentionally closing the session (e.g. idle scale-in):
-    // assignment may have succeeded, but the terminated worker still needs removal.
-    public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Failed
+    public WorkerPodStatus PodStatus => AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
         ? WorkerPodStatus.RemovalRequested
         : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
         ? WorkerPodStatus.Running

@@ -156,8 +156,9 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            // Pre-assignment transport sessions may be replaced; an assigned pod's termination is terminal.
+            if (sessionId <= _lastSessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated)
             {
                 return false;
             }
@@ -243,8 +244,8 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
-                // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
-                AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
+                // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
+                AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated
             });
             return true;
         }
@@ -267,7 +268,7 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
+                return _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
