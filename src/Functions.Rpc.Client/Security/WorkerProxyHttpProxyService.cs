@@ -17,7 +17,8 @@ namespace Azure.Functions.Rpc.Client;
 /// Adds the worker-specific caller proof to negotiated WorkerProxy HTTPS requests.
 /// </summary>
 internal sealed class WorkerProxyHttpProxyService(
-    IHttpProxyService inner, RuntimeWorkerCredentials credentials) : IHttpProxyService
+    IHttpProxyService inner,
+    RuntimeWorkerCredentials credentials) : IHttpProxyService
 {
     public Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context) => inner.EnsureSuccessfulForwardingAsync(context);
 

@@ -28,5 +28,8 @@ internal interface IDuplexChannelFactory<T>
     /// <param name="headers">The request headers to send when opening the channel.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
-    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default);
+    Task<DuplexChannel<T>> ConnectAsync(
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default);
 }

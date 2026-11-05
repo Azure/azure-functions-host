@@ -77,7 +77,9 @@ public sealed partial class WorkerLinkController : Controller
     [HttpPut]
     [Route("admin/workers/{workerId}")]
     [Authorize(Policy = ContainerManagementAuthenticationHandler.SchemeName)]
-    public async Task<IActionResult> LinkWorker([FromRoute] string workerId, [FromBody] WorkerLinkRequest? request,
+    public async Task<IActionResult> LinkWorker(
+        [FromRoute] string workerId,
+        [FromBody] WorkerLinkRequest? request,
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
@@ -93,7 +95,9 @@ public sealed partial class WorkerLinkController : Controller
         return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, request!.RuntimeAccessKey!, started, cancellationToken);
     }
 
-    private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
+    private IReadOnlyList<RequestValidationError> ValidateRequest(
+        string workerId,
+        WorkerLinkRequest? request,
         out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
@@ -130,7 +134,10 @@ public sealed partial class WorkerLinkController : Controller
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
     private async Task<IActionResult> LinkValidatedWorkerAsync(
-        string workerId, Uri grpcEndpoint, string runtimeAccessKey, long started,
+        string workerId,
+        Uri grpcEndpoint,
+        string runtimeAccessKey,
+        long started,
         CancellationToken cancellationToken)
     {
         try
@@ -173,8 +180,11 @@ public sealed partial class WorkerLinkController : Controller
         }
     }
 
-    private ObjectResult CreateLinkFailureResponse(string workerId, WorkerLinkFailureReason reason,
-        long started, Exception exception)
+    private ObjectResult CreateLinkFailureResponse(
+        string workerId,
+        WorkerLinkFailureReason reason,
+        long started,
+        Exception exception)
     {
         (int statusCode, string code, string detail) = reason switch
         {

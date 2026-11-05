@@ -112,7 +112,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     internal TimeSpan LinkTimeout => _linkTimeout;
 
     private static TimeSpan ResolveLinkTimeout(
-        IOptionsMonitor<WorkerProcessCountOptions> processOptions, IOptions<TokenServiceProxyOptions> proxyOptions) =>
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions,
+        IOptions<TokenServiceProxyOptions> proxyOptions) =>
         proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout
             : RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new());
 
@@ -177,7 +178,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
         => new(await link.ConfigureAwait(false), isNewLink);
 
-    private async Task LinkAndCompleteAsync(string workerId, Uri grpcEndpoint, WorkerSlot slot, TaskCompletionSource<WorkerChannel> linkCompletion,
+    private async Task LinkAndCompleteAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        WorkerSlot slot,
+        TaskCompletionSource<WorkerChannel> linkCompletion,
         CancellationToken cancellationToken)
     {
         try
@@ -440,7 +445,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
     }
 
-    public Task ActivateAsync(IReadOnlyList<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout,
+    public Task ActivateAsync(
+        IReadOnlyList<FunctionMetadata> functions,
+        ManagedDependencyOptions managedDependencyOptions,
+        TimeSpan? functionTimeout,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(functions);
@@ -1046,7 +1054,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         [LoggerMessage(EventId = 8,
             Message = "FunctionRpc link for worker {WorkerId} ended with {Outcome} during {Stage}. Reason: {Reason}. Exception type: {ExceptionType}.")]
-        public static partial void LinkEnded(ILogger logger, LogLevel level, string workerId, string outcome,
-            LinkStage stage, string reason, string exceptionType);
+        public static partial void LinkEnded(
+            ILogger logger,
+            LogLevel level,
+            string workerId,
+            string outcome,
+            LinkStage stage,
+            string reason,
+            string exceptionType);
     }
 }

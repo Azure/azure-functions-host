@@ -169,7 +169,10 @@ public sealed class TokenServiceProxyIntegrationTests
     [InlineData("wrong", "/MSI/token", TokenServiceProxyProtocol.LegacyIdentityHeader, HttpStatusCode.Forbidden)]
     [InlineData(LocalSecret, "/api/specialize", TokenServiceProxyProtocol.IdentityHeader, HttpStatusCode.NotFound)]
     [InlineData(LocalSecret, "/admin/worker/assignment", TokenServiceProxyProtocol.IdentityHeader, HttpStatusCode.NotFound)]
-    public async Task InvalidLocalRequest_DoesNotReachTokenService(string? secret, string path, string credentialHeader,
+    public async Task InvalidLocalRequest_DoesNotReachTokenService(
+        string? secret,
+        string path,
+        string credentialHeader,
         HttpStatusCode expected)
     {
         int requests = 0;
@@ -641,7 +644,9 @@ public sealed class TokenServiceProxyIntegrationTests
             return Task.CompletedTask;
         }
 
-        internal HttpRequestMessage Request(HttpMethod method, string target = "/msi/token?api-version=2019-08-01",
+        internal HttpRequestMessage Request(
+            HttpMethod method,
+            string target = "/msi/token?api-version=2019-08-01",
             string credentialHeader = TokenServiceProxyProtocol.IdentityHeader)
         {
             HttpRequestMessage request = new(method, target);

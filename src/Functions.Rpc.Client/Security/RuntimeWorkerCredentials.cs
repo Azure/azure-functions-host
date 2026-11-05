@@ -24,7 +24,11 @@ internal sealed partial class RuntimeWorkerCredentials
     private readonly string _workerId;
     private readonly ILogger _logger;
 
-    public RuntimeWorkerCredentials(string workerId, string runtimeAccessKey, IConfiguration configuration, TimeProvider timeProvider,
+    public RuntimeWorkerCredentials(
+        string workerId,
+        string runtimeAccessKey,
+        IConfiguration configuration,
+        TimeProvider timeProvider,
         ILogger? logger = null)
     {
         if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(runtimeAccessKey, out _workerKey))
@@ -48,12 +52,12 @@ internal sealed partial class RuntimeWorkerCredentials
     public void ValidateAppProof(string? proof)
     {
         string? appName = _configuration[RuntimeWorkerAuthentication.AppNameSetting];
+        string? encodedAppKey = _configuration[RuntimeWorkerAuthentication.AppKeySetting];
         if (string.IsNullOrWhiteSpace(appName)
-            || !RuntimeWorkerAuthentication.TryDecodeAppKey(_configuration[RuntimeWorkerAuthentication.AppKeySetting], out byte[] appKey))
+            || !RuntimeWorkerAuthentication.TryDecodeAppKey(encodedAppKey, out byte[] appKey))
         {
-            string? key = _configuration[RuntimeWorkerAuthentication.AppKeySetting];
             AuthenticationFailureReason configurationFailure = string.IsNullOrWhiteSpace(appName) ? AuthenticationFailureReason.MissingIdentity
-                : string.IsNullOrWhiteSpace(key) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey;
+                : string.IsNullOrWhiteSpace(encodedAppKey) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey;
             Log.AppProofRejected(_logger, configurationFailure);
             throw new WorkerLinkException(WorkerLinkFailureReason.AuthenticationUnavailable,
                 "The specialized application authentication configuration is unavailable.");

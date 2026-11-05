@@ -47,11 +47,16 @@ internal static class RuntimeWorkerTestData
 
     // Existing lifecycle tests use these authenticated fixture overloads, never an anonymous product path.
     public static Task<WorkerLinkResult> LinkAsync(
-        this IWorkerChannelRegistry registry, string workerId, Uri endpoint, CancellationToken cancellationToken = default)
+        this IWorkerChannelRegistry registry,
+        string workerId,
+        Uri endpoint,
+        CancellationToken cancellationToken = default)
         => registry.LinkAsync(workerId, endpoint, WorkerKey, cancellationToken: cancellationToken);
 
     public static Task<DuplexChannel<T>> ConnectAsync<T>(
-        this IDuplexChannelFactory<T> factory, Uri endpoint, CancellationToken cancellationToken = default)
+        this IDuplexChannelFactory<T> factory,
+        Uri endpoint,
+        CancellationToken cancellationToken = default)
         where T : class
         => factory.ConnectAsync(endpoint, CreateCredentials().CreateHeaders(), cancellationToken);
 

@@ -123,7 +123,7 @@ internal static partial class WorkerProxyApplication
         builder.Services.AddSingleton<TokenServiceProxyMiddleware>();
         builder.Services.AddSingleton<WorkerPodStateManager>();
         builder.Services.AddSingleton<IRuntimeAuthenticationKeyProvider, RuntimeAuthenticationKeyProvider>();
-        builder.Services.AddSingleton<RuntimeRequestAuthenticator>();
+        RuntimeRequestAuthenticator.AddServices(builder.Services);
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
@@ -143,7 +143,10 @@ internal static partial class WorkerProxyApplication
         RegisterLifecycleEvents(app);
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
-        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
+        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out FunctionRpcRelaySide side)
+            && side is FunctionRpcRelaySide.Runtime, static pipeline => ConfigureGrpcPipeline(pipeline, authenticate: true));
+        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out FunctionRpcRelaySide side)
+            && side is FunctionRpcRelaySide.Worker, static pipeline => ConfigureGrpcPipeline(pipeline, authenticate: false));
         app.MapWhen(context => endpoints.IsHttpPort(context.Connection.LocalPort), ConfigureHttpPipeline);
         app.MapWhen(context => endpoints.IsTokenServiceProxyPort(context.Connection.LocalPort), static pipeline =>
             pipeline.Run(context => context.RequestServices.GetRequiredService<TokenServiceProxyMiddleware>().InvokeAsync(context)));
@@ -181,12 +184,22 @@ internal static partial class WorkerProxyApplication
         });
     }
 
-    private static void ConfigureGrpcPipeline(IApplicationBuilder app)
+    private static void ConfigureGrpcPipeline(IApplicationBuilder app, bool authenticate)
     {
         app.UseRouting();
-        app.UseEndpoints(static endpoints =>
+        if (authenticate)
         {
-            endpoints.MapGrpcService<FunctionRpcRelayService>();
+            app.UseAuthentication();
+            app.UseAuthorization();
+        }
+
+        app.UseEndpoints(endpoints =>
+        {
+            var service = endpoints.MapGrpcService<FunctionRpcRelayService>();
+            if (authenticate)
+            {
+                service.RequireAuthorization(RuntimeRequestAuthenticator.SchemeName);
+            }
         });
     }
 
@@ -208,23 +221,16 @@ internal static partial class WorkerProxyApplication
             => middleware.InvokeAsync(context);
 
         app.UseRouting();
-        app.Use(static (context, next) =>
-        {
-            if (!context.RequestServices.GetRequiredService<RuntimeRequestAuthenticator>().TryAuthenticate(context))
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-
-                return Task.CompletedTask;
-            }
-
-            return next(context);
-        });
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.Use(UpdateMaxRequestBodySizeAsync);
         app.UseEndpoints(static endpoints =>
         {
             // Admin paths are reserved for the platform. We intentionally block them to make that clear.
-            endpoints.Map("/admin/{**path}", static () => Results.NotFound());
-            endpoints.Map("/{**path}", ForwardAsync);
+            endpoints.Map("/admin/{**path}", static () => Results.NotFound())
+                .RequireAuthorization(RuntimeRequestAuthenticator.SchemeName);
+            endpoints.Map("/{**path}", ForwardAsync)
+                .RequireAuthorization(RuntimeRequestAuthenticator.SchemeName);
         });
     }
 

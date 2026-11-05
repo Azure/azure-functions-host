@@ -46,6 +46,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="9.8.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="$(IdentityDependencyVersion)" />
     <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(IdentityDependencyVersion)" />
     <PackageVersion Include="Microsoft.Security.Utilities.Core" Version="1.21.0" />

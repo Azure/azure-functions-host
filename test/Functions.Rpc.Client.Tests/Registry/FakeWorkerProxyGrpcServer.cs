@@ -154,8 +154,10 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
 
         internal int StreamCount => Volatile.Read(ref _streamCount);
 
-        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
-            IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
+        public override async Task EventStream(
+            IAsyncStreamReader<StreamingMessage> requestStream,
+            IServerStreamWriter<StreamingMessage> responseStream,
+            ServerCallContext context)
         {
             Interlocked.Increment(ref _streamCount);
             if (!Workers.TryDequeue(out TestWorker? worker))

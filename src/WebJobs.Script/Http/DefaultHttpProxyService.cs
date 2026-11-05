@@ -30,7 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Http
         }
 
         internal DefaultHttpProxyService(
-            IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger, SocketsHttpHandler handler)
+            IHttpForwarder httpForwarder,
+            ILogger<DefaultHttpProxyService> logger,
+            SocketsHttpHandler handler)
         {
             _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

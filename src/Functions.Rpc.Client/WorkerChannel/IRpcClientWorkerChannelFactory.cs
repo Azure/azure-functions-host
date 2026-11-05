@@ -20,5 +20,7 @@ internal interface IRpcClientWorkerChannelFactory
     /// <param name="credentials">The admitted worker's runtime credentials.</param>
     /// <returns>The client-backed worker channel.</returns>
     RpcClientWorkerChannel Create(
-        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials);
+        string workerId,
+        DuplexChannel<StreamingMessage> ownedChannel,
+        RuntimeWorkerCredentials credentials);
 }

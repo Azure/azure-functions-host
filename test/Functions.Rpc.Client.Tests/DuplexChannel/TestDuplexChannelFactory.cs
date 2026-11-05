@@ -30,7 +30,9 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
 
     /// <inheritdoc />
     public Task<DuplexChannel<T>> ConnectAsync(
-        Uri endpoint, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;

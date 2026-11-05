@@ -79,7 +79,8 @@ public static class RpcClientServiceCollectionExtensions
     /// Use <see cref="AddRpcClientServices"/> when only transport and worker services are required, without ScriptHost activation.
     /// </remarks>
     public static IServiceCollection AddRpcClientWebHostServices(
-        this IServiceCollection services, Func<IServiceProvider, IHostedService> scriptHostFactory)
+        this IServiceCollection services,
+        Func<IServiceProvider, IHostedService> scriptHostFactory)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(scriptHostFactory);

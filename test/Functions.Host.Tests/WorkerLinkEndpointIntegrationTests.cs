@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -11,12 +10,13 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.Rpc.Client;
 using Azure.Functions.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -34,45 +34,89 @@ public sealed class WorkerLinkEndpointIntegrationTests
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
 
     [Theory]
-    [InlineData("CONTAINER_ENCRYPTION_KEY", null, "MissingKey")]
-    [InlineData("CONTAINER_ENCRYPTION_KEY", "private-invalid-key", "InvalidKey")]
-    [InlineData("WEBSITE_POD_NAME", null, "MissingIdentity")]
-    public async Task Startup_ValidatesManagementOptionsWithoutHostedServiceOrFatalConfigurationFailure(
-        string setting, string? value, string reason)
+    [InlineData("CONTAINER_ENCRYPTION_KEY", null, "CONTAINER_ENCRYPTION_KEY must decode to at least 32 bytes.")]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", "private-invalid-key", "CONTAINER_ENCRYPTION_KEY must decode to at least 32 bytes.")]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", "c2hvcnQ=", "CONTAINER_ENCRYPTION_KEY must decode to at least 32 bytes.")]
+    [InlineData("WEBSITE_POD_NAME", null, "WEBSITE_POD_NAME or CONTAINER_NAME is required.")]
+    [InlineData("WEBSITE_POD_NAME", " ", "WEBSITE_POD_NAME or CONTAINER_NAME is required.")]
+    public async Task Startup_InvalidManagementServerConfiguration_FailsOptionsValidation(
+        string setting,
+        string? value,
+        string expectedFailure)
     {
         using CancellationTokenSource timeout = new(TestTimeout);
-        ConcurrentQueue<string> entries = new();
-        Mock<ILogger> logger = new();
-        logger.Setup(item => item.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        logger.Setup(item => item.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
-            It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
-            .Callback(new InvocationAction(call => entries.Enqueue(
-                (string)((Delegate)call.Arguments[4]).DynamicInvoke(call.Arguments[2], call.Arguments[3])!)));
-        Mock<ILoggerProvider> provider = new();
-        provider.Setup(item => item.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
         Dictionary<string, string?> values = new()
         {
             ["CONTAINER_ENCRYPTION_KEY"] = ManagementTokenTestData.RuntimeKey,
             ["WEBSITE_POD_NAME"] = ManagementTokenTestData.RuntimePodName,
+            ["CONTAINER_NAME"] = null,
             [setting] = value
         };
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object,
-            authenticate: false, managementConfiguration: new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
-            loggerProvider: provider.Object);
 
-        Assert.Contains(entries, message => message.Contains("configuration is unavailable", StringComparison.Ordinal)
-            && message.Contains(reason, StringComparison.Ordinal));
+        OptionsValidationException exception = await Assert.ThrowsAsync<OptionsValidationException>(() =>
+            WorkerLinkTestHost.StartAsync(
+                timeout.Token,
+                _registry.Object,
+                managementConfiguration: new ConfigurationBuilder().AddInMemoryCollection(values).Build()));
+
+        Assert.Equal(ContainerManagementAuthenticationHandler.SchemeName, exception.OptionsName);
+        Assert.Contains(expectedFailure, exception.Failures);
+        Assert.DoesNotContain("private-invalid-key", exception.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("c2hvcnQ=", exception.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(ManagementTokenTestData.RuntimeKey, exception.ToString(), StringComparison.Ordinal);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("private-invalid-app-key")]
+    public async Task Startup_ValidManagementKey_DoesNotRequireApplicationProofKey(string? appKey)
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        SetupLink();
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CONTAINER_ENCRYPTION_KEY"] = ManagementTokenTestData.RuntimeKey,
+            ["WEBSITE_POD_NAME"] = ManagementTokenTestData.RuntimePodName,
+            ["WEBSITE_AUTH_ENCRYPTION_KEY"] = appKey
+        }).Build();
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(
+            timeout.Token,
+            _registry.Object,
+            managementConfiguration: configuration);
+
         Assert.DoesNotContain(host.Services.GetServices<IHostedService>(), service =>
             service.GetType().FullName?.StartsWith("Azure.Functions.Authentication.", StringComparison.Ordinal) is true);
-        Assert.DoesNotContain(entries, message => message.Contains("private-invalid-key", StringComparison.Ordinal)
-            || message.Contains(ManagementTokenTestData.RuntimeKey, StringComparison.Ordinal));
         using HttpResponseMessage unrelated = await host.Client.GetAsync("/unrelated", timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, unrelated.StatusCode);
-        Assert.DoesNotContain(entries, message => message.Contains("authentication failed:", StringComparison.Ordinal));
 
         using HttpResponseMessage protectedResponse = await host.PutAsync(LinkJson(), timeout.Token);
-        Assert.Equal(HttpStatusCode.Unauthorized, protectedResponse.StatusCode);
-        Assert.Contains(entries, message => message.Contains("MissingToken", StringComparison.Ordinal));
+        await AssertLinkResponseAsync(protectedResponse, HttpStatusCode.Created, timeout.Token);
+        VerifyLink();
+    }
+
+    [Fact]
+    public async Task Put_ManagementOptionsInvalidatedAfterStartup_ReturnsServerErrorInsteadOfCallerChallenge()
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CONTAINER_ENCRYPTION_KEY"] = ManagementTokenTestData.RuntimeKey,
+            ["WEBSITE_POD_NAME"] = ManagementTokenTestData.RuntimePodName
+        }).Build();
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(
+            timeout.Token,
+            _registry.Object,
+            useKestrel: true,
+            managementConfiguration: configuration);
+        configuration[RuntimeWorkerAuthentication.WorkerKeySetting] = "private-invalid-server-key";
+        host.Services.GetRequiredService<IOptionsMonitorCache<ContainerManagementAuthenticationHandler.Credentials>>()
+            .TryRemove(ContainerManagementAuthenticationHandler.SchemeName);
+
+        using HttpResponseMessage response = await host.PutAsync(LinkJson(), timeout.Token);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.DoesNotContain("private-invalid-server-key", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -592,7 +636,9 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     private static async Task AssertLinkResponseAsync(
-        HttpResponseMessage response, HttpStatusCode statusCode, CancellationToken cancellationToken)
+        HttpResponseMessage response,
+        HttpStatusCode statusCode,
+        CancellationToken cancellationToken)
     {
         Assert.Equal(statusCode, response.StatusCode);
         Assert.Null(response.Headers.Location);
@@ -600,7 +646,10 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     private static async Task AssertLinkErrorAsync(
-        HttpResponseMessage response, HttpStatusCode statusCode, string code, CancellationToken cancellationToken)
+        HttpResponseMessage response,
+        HttpStatusCode statusCode,
+        string code,
+        CancellationToken cancellationToken)
     {
         Assert.Equal(statusCode, response.StatusCode);
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);

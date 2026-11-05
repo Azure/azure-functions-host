@@ -2,71 +2,88 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Threading.Tasks;
 using Azure.Functions.Authentication;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Authentication;
 
 /// <summary>
-/// Authenticates newly opened runtime requests without changing customer Authorization headers.
+/// Authenticates runtime calls through the named ASP.NET Core scheme without changing customer Authorization headers.
 /// </summary>
 internal sealed partial class RuntimeRequestAuthenticator(
-    IRuntimeAuthenticationKeyProvider keyProvider, TimeProvider timeProvider, ILogger<RuntimeRequestAuthenticator> logger)
+    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory loggerFactory,
+    UrlEncoder encoder,
+    IRuntimeAuthenticationKeyProvider keyProvider,
+    TimeProvider timeProvider) : AuthenticationHandler<AuthenticationSchemeOptions>(options, loggerFactory, encoder)
 {
-    public bool TryAuthenticate(HttpContext context)
-    {
-        RuntimeWorkerAuthenticationKeys? keys = keyProvider.GetWorkerKeys();
-        if (!context.Request.IsHttps || keys is null)
-        {
-            Log.AuthenticationRejected(logger, keys is null ? AuthenticationFailureReason.AssignmentUnavailable : AuthenticationFailureReason.Transport);
+    internal const string SchemeName = "WorkerProxyRuntime";
 
-            return false;
+    internal static void AddServices(IServiceCollection services)
+    {
+        services.AddAuthentication()
+            .AddScheme<AuthenticationSchemeOptions, RuntimeRequestAuthenticator>(SchemeName, static _ => { });
+        services.AddAuthorization(options => options.AddPolicy(SchemeName,
+            policy => policy.AddAuthenticationSchemes(SchemeName).RequireAuthenticatedUser()));
+    }
+
+    /// <inheritdoc />
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (!Request.Headers.TryGetValue(RuntimeWorkerAuthentication.WorkerTokenHeader, out var token))
+        {
+            return Rejected(AuthenticationFailureReason.MissingToken);
+        }
+
+        RuntimeWorkerAuthenticationKeys? keys = keyProvider.GetWorkerKeys();
+        if (keys is null)
+        {
+            return Rejected(AuthenticationFailureReason.AssignmentUnavailable);
+        }
+
+        if (!Request.IsHttps)
+        {
+            return Rejected(AuthenticationFailureReason.Transport);
         }
 
         AuthenticationFailureReason reason;
-        if (context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader].Count > 1
-            || context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader].ToString().Contains(',', StringComparison.Ordinal))
+        if (token is not [string] || token.ToString().Contains(',', StringComparison.Ordinal))
         {
-            reason = AuthenticationFailureReason.DuplicateToken;
+            reason = AuthenticationFailureReason.MalformedToken;
         }
         else if (RuntimeWorkerAuthentication.ValidateToken(
-            context.Request.Headers[RuntimeWorkerAuthentication.WorkerTokenHeader].ToString(),
-            keys.WorkerKey.Span, RuntimeWorkerAuthentication.WorkerAudience(keys.WorkerId),
+            token[0], keys.WorkerKey.Span, RuntimeWorkerAuthentication.WorkerAudience(keys.WorkerId),
             RuntimeWorkerAuthentication.WorkerPurpose, timeProvider.GetUtcNow(), out reason))
         {
             foreach (string name in RuntimeWorkerAuthentication.TokenHeaders)
             {
-                context.Request.Headers.Remove(name);
+                Request.Headers.Remove(name);
             }
 
-            return true;
+            ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, keys.WorkerId)], Scheme.Name);
+
+            return Task.FromResult(AuthenticateResult.Success(new(new ClaimsPrincipal(identity), Scheme.Name)));
         }
 
-        Log.AuthenticationRejected(logger, reason);
-
-        return false;
+        return Rejected(reason);
     }
 
-    public string CreateAppProof()
+    private Task<AuthenticateResult> Rejected(AuthenticationFailureReason reason)
     {
-        RuntimeAppAuthenticationKeys? keys = keyProvider.GetAppKeys();
-        if (keys is null || keys.AppKey.Length < 32)
-        {
-            Log.AppProofUnavailable(logger, keys is null ? AuthenticationFailureReason.AssignmentUnavailable : AuthenticationFailureReason.InvalidKey);
-            throw new InvalidOperationException("WorkerProxy application authentication configuration is unavailable.");
-        }
+        Log.AuthenticationRejected(Logger, reason);
 
-        return RuntimeWorkerAuthentication.CreateAppProof(
-            keys.AppKey.Span, keys.AppName, keys.WorkerId, timeProvider.GetUtcNow());
+        return Task.FromResult(AuthenticateResult.Fail("Runtime authentication failed."));
     }
 
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Warning, "Runtime request authentication failed: {Reason}.")]
         public static partial void AuthenticationRejected(ILogger logger, AuthenticationFailureReason reason);
-
-        [LoggerMessage(1, LogLevel.Error, "WorkerProxy application proof cannot be created: {Reason}.")]
-        public static partial void AppProofUnavailable(ILogger logger, AuthenticationFailureReason reason);
     }
 }

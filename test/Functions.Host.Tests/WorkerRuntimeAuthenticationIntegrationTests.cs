@@ -477,8 +477,12 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(state, await replayResponse.Content.ReadAsStringAsync(timeout.Token));
     }
 
-    private static async Task InvokeAsync(WorkerChannel channel, FunctionMetadata function,
-        AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> workerCall, string payload, CancellationToken cancellationToken)
+    private static async Task InvokeAsync(
+        WorkerChannel channel,
+        FunctionMetadata function,
+        AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> workerCall,
+        string payload,
+        CancellationToken cancellationToken)
     {
         DefaultHttpContext httpContext = new();
         using MemoryStream requestBody = new(Encoding.UTF8.GetBytes(payload));
@@ -520,7 +524,10 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     }
 
     internal static ServiceProvider CreateRuntime(
-        string appName, string appKey, bool includeAppKey, ConcurrentQueue<(string Message, Exception? Error)> diagnostics,
+        string appName,
+        string appKey,
+        bool includeAppKey,
+        ConcurrentQueue<(string Message, Exception? Error)> diagnostics,
         ConcurrentQueue<Uri> forwardedOrigins)
     {
         Mock<IScriptHostManager> hostManager = new();
@@ -573,7 +580,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
     private static StatusResult Success() => new() { Status = StatusResult.Types.Status.Success };
 
     private static async Task<StreamingMessage> ReadAsync(
-        AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> call, CancellationToken cancellationToken)
+        AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> call,
+        CancellationToken cancellationToken)
     {
         Assert.True(await call.ResponseStream.MoveNext(cancellationToken));
 
@@ -586,7 +594,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         => new(Environment.GetEnvironmentVariable($"FUNCTIONS_WORKERPROXY_NATIVE_{role}_URI")
             ?? throw new InvalidOperationException($"The native {role} test endpoint is required."));
 
-    private sealed class RecordingHttpProxyService(IHttpProxyService inner, ConcurrentQueue<Uri> origins) : IHttpProxyService
+    private sealed class RecordingHttpProxyService(
+        IHttpProxyService inner,
+        ConcurrentQueue<Uri> origins) : IHttpProxyService
     {
         public void StartForwarding(ScriptInvocationContext context, Uri httpUri)
         {
@@ -597,7 +607,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         public Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context) => inner.EnsureSuccessfulForwardingAsync(context);
     }
 
-    private sealed class AuthenticatedInitializationService(StatusResult.Types.Status? status, string proof) : FunctionRpc.FunctionRpcBase
+    private sealed class AuthenticatedInitializationService(
+        StatusResult.Types.Status? status,
+        string proof) : FunctionRpc.FunctionRpcBase
     {
         private readonly TaskCompletionSource _disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -605,8 +617,10 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
 
         internal Task Disconnected => _disconnected.Task;
 
-        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
-            IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
+        public override async Task EventStream(
+            IAsyncStreamReader<StreamingMessage> requestStream,
+            IServerStreamWriter<StreamingMessage> responseStream,
+            ServerCallContext context)
         {
             CallerAuthenticated = ProxyAuthentication.ValidateToken(
                 context.RequestHeaders.GetValue(ProxyAuthentication.WorkerTokenHeader),
@@ -656,10 +670,14 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         }
     }
 
-    private sealed class AdvertisedOriginService(string origin, byte[] appKey) : FunctionRpc.FunctionRpcBase
+    private sealed class AdvertisedOriginService(
+        string origin,
+        byte[] appKey) : FunctionRpc.FunctionRpcBase
     {
-        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
-            IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
+        public override async Task EventStream(
+            IAsyncStreamReader<StreamingMessage> requestStream,
+            IServerStreamWriter<StreamingMessage> responseStream,
+            ServerCallContext context)
         {
             await responseStream.WriteAsync(new() { StartStream = new() { WorkerId = "test-worker-pod" } });
             try

@@ -18,6 +18,64 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public class RuntimeWorkerCredentialsTests
 {
     [Fact]
+    public void CallerSigning_DoesNotReadApplicationConfiguration()
+    {
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        RuntimeWorkerCredentials credentials = new("worker", RuntimeWorkerTestData.WorkerKey, configuration.Object, TimeProvider.System);
+
+        IReadOnlyDictionary<string, string> headers = credentials.CreateHeaders();
+
+        Assert.True(RuntimeWorkerAuthentication.ValidateToken(
+            headers[RuntimeWorkerAuthentication.WorkerTokenHeader],
+            Convert.FromBase64String(RuntimeWorkerTestData.WorkerKey),
+            RuntimeWorkerAuthentication.WorkerAudience("worker"),
+            RuntimeWorkerAuthentication.WorkerPurpose,
+            DateTimeOffset.UtcNow));
+        configuration.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void AppProof_ReadsCurrentApplicationKeyOncePerValidationWithoutReload()
+    {
+        string currentKey = RuntimeWorkerTestData.AppKey;
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppNameSetting]).Returns("test-app");
+        configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppKeySetting]).Returns(() => currentKey);
+        RuntimeWorkerCredentials credentials = new("worker", RuntimeWorkerTestData.WorkerKey, configuration.Object, TimeProvider.System);
+        string originalProof = RuntimeWorkerTestData.CreateAppProof("worker");
+
+        credentials.ValidateAppProof(originalProof);
+        currentKey = Convert.ToHexString(SHA256.HashData("replacement-app-key"u8));
+        WorkerLinkException rejected = Assert.Throws<WorkerLinkException>(() => credentials.ValidateAppProof(originalProof));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, rejected.Reason);
+        credentials.ValidateAppProof(RuntimeWorkerAuthentication.CreateAppProof(
+            Convert.FromHexString(currentKey), "test-app", "worker", DateTimeOffset.UtcNow));
+
+        configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppNameSetting], Times.Exactly(3));
+        configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppKeySetting], Times.Exactly(3));
+        configuration.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("invalid-app-key")]
+    public void AppProof_InvalidApplicationKeyIsReadOnlyOnce(string key)
+    {
+        Mock<IConfiguration> configuration = new(MockBehavior.Strict);
+        configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppNameSetting]).Returns("test-app");
+        configuration.SetupGet(value => value[RuntimeWorkerAuthentication.AppKeySetting]).Returns(key);
+        RuntimeWorkerCredentials credentials = new("worker", RuntimeWorkerTestData.WorkerKey, configuration.Object, TimeProvider.System);
+
+        WorkerLinkException error = Assert.Throws<WorkerLinkException>(() =>
+            credentials.ValidateAppProof(RuntimeWorkerTestData.CreateAppProof("worker")));
+
+        Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, error.Reason);
+        configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppNameSetting], Times.Once);
+        configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppKeySetting], Times.Once);
+        configuration.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public void MatchesKey_ComparesDecodedCredentialBytesAcrossEncodings()
     {
         IConfiguration configuration = RuntimeWorkerTestData.CreateConfiguration();
@@ -194,10 +252,12 @@ public class RuntimeWorkerCredentialsTests
         {
             configuration["WEBSITE_AUTH_ENCRYPTION_KEY"] = null;
         }
+
         if (string.Equals(scenario, "invalid-key", StringComparison.Ordinal))
         {
             configuration["WEBSITE_AUTH_ENCRYPTION_KEY"] = "private-invalid-key";
         }
+
         DateTimeOffset now = DateTimeOffset.UtcNow;
         byte[] key = Convert.FromHexString(RuntimeWorkerTestData.AppKey);
         string proof = scenario switch

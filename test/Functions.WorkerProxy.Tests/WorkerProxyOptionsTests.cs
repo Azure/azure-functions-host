@@ -131,7 +131,8 @@ public class WorkerProxyOptionsTests
     {
         using TestCertificateFiles certificates = new();
         using WebApplication app = WorkerProxyApplication.Build(
-            [.. certificates.Arguments, "--WEBSITE_POD_NAME", "test-worker-pod", .. args]);
+            [.. certificates.Arguments, "--WEBSITE_POD_NAME", "test-worker-pod",
+             "--CONTAINER_ENCRYPTION_KEY", RuntimeAuthenticationTestData.EncodedWorkerKey, .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }

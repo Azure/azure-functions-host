@@ -206,6 +206,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
                     "The advertised WorkerProxy HTTP origin is invalid.", exception);
             }
+
             if (_httpEndpoint is not null
                 && !string.Equals(_httpEndpoint.AbsoluteUri, endpoint.AbsoluteUri, StringComparison.Ordinal))
             {

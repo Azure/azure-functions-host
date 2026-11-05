@@ -4,6 +4,8 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
@@ -19,6 +21,15 @@ namespace Azure.Functions.Host.Tests;
 /// </summary>
 public class WorkerLinkContractTests
 {
+    [Fact]
+    public void SharedAuthenticationContract_IsPublicWithoutRpcClientHostFriendship()
+    {
+        Assert.True(typeof(RuntimeWorkerAuthentication).IsPublic);
+        Assert.True(typeof(AuthenticationFailureReason).IsPublic);
+        Assert.DoesNotContain(typeof(RuntimeWorkerAuthentication).Assembly.GetCustomAttributes<InternalsVisibleToAttribute>(),
+            friend => string.Equals(friend.AssemblyName, "Azure.Functions.Host", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void WorkerLinkTypes_LiveInComputeProductAssembly()
     {

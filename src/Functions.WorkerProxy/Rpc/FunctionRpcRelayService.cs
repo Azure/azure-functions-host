@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +24,10 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// ownership through headers or FunctionRpc messages.
 /// </remarks>
 internal sealed class FunctionRpcRelayService(
-    FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints, RuntimeRequestAuthenticator authenticator) : FunctionRpc.FunctionRpcBase
+    FunctionRpcRelay relay,
+    WorkerProxyEndpointConfiguration endpoints,
+    IRuntimeAuthenticationKeyProvider keyProvider,
+    TimeProvider timeProvider) : FunctionRpc.FunctionRpcBase
 {
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
@@ -35,16 +39,11 @@ internal sealed class FunctionRpcRelayService(
             throw new GrpcRpcException(new Status(StatusCode.Unimplemented, "FunctionRpc is unavailable on this listener."));
         }
 
-        if (side is FunctionRpcRelaySide.Runtime && !authenticator.TryAuthenticate(httpContext))
-        {
-            throw new GrpcRpcException(new Status(StatusCode.Unauthenticated, "Runtime authentication is required."));
-        }
-
         FunctionRpcRelayTerminalState terminalState;
         try
         {
             IServerStreamWriter<StreamingMessage> writer = side is FunctionRpcRelaySide.Runtime
-                ? new RuntimeResponseWriter(responseStream, authenticator)
+                ? new RuntimeResponseWriter(responseStream, keyProvider, timeProvider)
                 : responseStream;
             terminalState = await relay.AttachAsync(side, requestStream, writer, context.CancellationToken);
         }
@@ -83,7 +82,9 @@ internal sealed class FunctionRpcRelayService(
     }
 
     private sealed class RuntimeResponseWriter(
-        IServerStreamWriter<StreamingMessage> inner, RuntimeRequestAuthenticator authentication) : IServerStreamWriter<StreamingMessage>
+        IServerStreamWriter<StreamingMessage> inner,
+        IRuntimeAuthenticationKeyProvider keyProvider,
+        TimeProvider timeProvider) : IServerStreamWriter<StreamingMessage>
     {
         public WriteOptions? WriteOptions
         {
@@ -112,8 +113,11 @@ internal sealed class FunctionRpcRelayService(
             // Keep the authentication proof outside the relay's ordinary capability snapshots.
             StreamingMessage transport = message.Clone();
             RuntimeWorkerAuthentication.RemoveAppProof(transport.WorkerInitResponse.Capabilities);
+            RuntimeAppAuthenticationKeys keys = keyProvider.GetAppKeys()
+                ?? throw new InvalidOperationException("WorkerProxy assignment is unavailable for application authentication.");
             RuntimeWorkerAuthentication.SetAppProof(
-                transport.WorkerInitResponse.Capabilities, authentication.CreateAppProof());
+                transport.WorkerInitResponse.Capabilities,
+                RuntimeWorkerAuthentication.CreateAppProof(keys.AppKey.Span, keys.AppName, keys.WorkerId, timeProvider.GetUtcNow()));
 
             return transport;
         }

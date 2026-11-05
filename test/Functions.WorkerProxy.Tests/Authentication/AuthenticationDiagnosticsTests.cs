@@ -15,8 +15,10 @@ using Azure.Functions.Tests;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -25,8 +27,6 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class AuthenticationDiagnosticsTests
 {
     [Theory]
-    [InlineData("CONTAINER_ENCRYPTION_KEY", null, "MissingKey")]
-    [InlineData("CONTAINER_ENCRYPTION_KEY", "invalid-private-key", "InvalidKey")]
     [InlineData("WEBSITE_AUTH_ENCRYPTION_KEY", null, "MissingKey")]
     [InlineData("WEBSITE_AUTH_ENCRYPTION_KEY", "invalid-private-key", "InvalidKey")]
     public async Task Startup_FlagsUnavailableExpectedKeyWithoutLoggingItsValue(string setting, string? value, string reason)
@@ -69,6 +69,42 @@ public class AuthenticationDiagnosticsTests
         }
     }
 
+    [Theory]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", null)]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", "private-invalid-server-key")]
+    [InlineData("CONTAINER_ENCRYPTION_KEY", "c2hvcnQ=")]
+    [InlineData("WEBSITE_POD_NAME", null)]
+    [InlineData("WEBSITE_POD_NAME", " ")]
+    public async Task InvalidServerConfiguration_FailsOptionsInsteadOfChallengingCallers(string setting, string? value)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new(new Dictionary<string, string?>
+        {
+            [setting] = value,
+            ["CONTAINER_NAME"] = null
+        }, useTestAuthentication: false);
+
+        OptionsValidationException exception = Assert.Throws<OptionsValidationException>(() => factory.Services);
+
+        Assert.DoesNotContain("private-invalid-server-key", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("c2hvcnQ=", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvalidNamedManagementOptions_AfterStartupSurfaceServerErrorInsteadOf401()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new(useTestAuthentication: false);
+        using HttpClient client = factory.CreateWorkerProxyClient(authenticate: false);
+        IConfiguration configuration = factory.Services.GetRequiredService<IConfiguration>();
+        configuration[RuntimeWorkerAuthentication.WorkerKeySetting] = "private-invalid-server-key";
+        factory.Services.GetRequiredService<IOptionsMonitorCache<ContainerManagementAuthenticationHandler.Credentials>>()
+            .TryRemove(ContainerManagementAuthenticationHandler.SchemeName);
+
+        using HttpResponseMessage response = await client.PostAsync("/admin/infra/instanceState", content: null);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.DoesNotContain("private-invalid-server-key", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task MissingUnrelatedSiteHeader_IsQuietButProtectedManagementChallengeIdentifiesMissingToken()
     {
@@ -92,12 +128,12 @@ public class AuthenticationDiagnosticsTests
     [InlineData("malformed", "MalformedToken")]
     [InlineData("wrong-key", "Signature")]
     [InlineData("runtime-key", "Signature")]
-    [InlineData("caller-token", "Issuer")]
+    [InlineData("caller-token", "Audience")]
     [InlineData("wrong-algorithm", "Algorithm")]
     [InlineData("wrong-issuer", "Issuer")]
     [InlineData("wrong-pod", "Audience")]
     [InlineData("expired", "Lifetime")]
-    [InlineData("duplicate", "DuplicateToken")]
+    [InlineData("duplicate", "MalformedToken")]
     public async Task ManagementRejection_LogsOnlySafeCategory(string scenario, string reason)
     {
         LogCapture capture = new();

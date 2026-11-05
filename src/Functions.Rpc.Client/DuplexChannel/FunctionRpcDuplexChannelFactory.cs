@@ -31,9 +31,13 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     /// </summary>
     /// <param name="clientFactory">The factory that owns reusable endpoint channels.</param>
     /// <param name="logger">The logger used for partial connection cleanup failures.</param>
-    public FunctionRpcDuplexChannelFactory(IRpcClientFactory clientFactory, ILogger<FunctionRpcDuplexChannelFactory> logger,
-        IOptions<TokenServiceProxyOptions> proxyOptions = null, ITokenServiceProxyRequestHandler proxyHandler = null,
-        TimeProvider timeProvider = null, TokenServiceProxyAdmission proxyAdmission = null)
+    public FunctionRpcDuplexChannelFactory(
+        IRpcClientFactory clientFactory,
+        ILogger<FunctionRpcDuplexChannelFactory> logger,
+        IOptions<TokenServiceProxyOptions> proxyOptions = null,
+        ITokenServiceProxyRequestHandler proxyHandler = null,
+        TimeProvider timeProvider = null,
+        TokenServiceProxyAdmission proxyAdmission = null)
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -45,7 +49,9 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 
     /// <inheritdoc />
     public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
-        Uri endpoint, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(headers);
         cancellationToken.ThrowIfCancellationRequested();
