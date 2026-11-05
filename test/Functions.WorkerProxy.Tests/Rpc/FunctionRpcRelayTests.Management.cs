@@ -215,7 +215,7 @@ public partial class FunctionRpcRelayTests
             }
 
             WorkerOriginState terminated = await ReadManagementStateAsync(management, timeout.Token);
-            Assert.Equal(WorkerStatus.Starting, terminated.Status);
+            Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);
             Assert.Equal(WorkerLinkState.Unlinked, terminated.Link.State);
             Assert.Null(terminated.Link.Runtime);
             Assert.True(terminated.IsUnhealthy);
@@ -591,7 +591,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.FunctionGroup, terminated.FunctionGroup);
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
-        Assert.Equal(WorkerStatus.Starting, terminated.Status);
+        Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);
         Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), terminated.Link);
         Assert.True(terminated.IsUnhealthy);
     }

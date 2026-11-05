@@ -138,12 +138,13 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData("worker-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed))]
-    [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted))]
-    [InlineData("worker-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled))]
-    [InlineData("shutdown", nameof(FunctionRpcRelayTerminationReason.Shutdown))]
+    [InlineData("worker-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed), true)]
+    [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true)]
+    [InlineData("worker-write-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true)]
+    [InlineData("worker-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled), true)]
+    [InlineData("shutdown", nameof(FunctionRpcRelayTerminationReason.Shutdown), false)]
     public async Task Relay_TerminationWithdrawsReadinessBeforeBlockedWriterReleases(
-        string trigger, string expectedReason)
+        string trigger, string expectedReason, bool expectedRemoval)
     {
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
@@ -155,8 +156,11 @@ public partial class FunctionRpcRelayTests
         BlockingServerStreamWriter blockingWriter = new();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             CreateMessageReader(runtimeInbound.Reader), blockingWriter, runtimeCancellation.Token);
+        IServerStreamWriter<StreamingMessage> workerWriter = trigger == "worker-write-fault"
+            ? new GatedFaultingServerStreamWriter(Task.CompletedTask, new IOException("Injected worker write failure."))
+            : new TestServerStreamWriter();
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
-            CreateMessageReader(workerInbound.Reader), new TestServerStreamWriter(), workerCancellation.Token);
+            CreateMessageReader(workerInbound.Reader), workerWriter, workerCancellation.Token);
         Task stopTask = Task.CompletedTask;
 
         try
@@ -179,6 +183,9 @@ public partial class FunctionRpcRelayTests
                 case "worker-fault":
                     workerInbound.Writer.Complete(new IOException("Injected worker failure."));
                     break;
+                case "worker-write-fault":
+                    await runtimeInbound.Writer.WriteAsync(CreateMessage("worker-write-fault"), timeout.Token);
+                    break;
                 case "worker-cancel":
                     workerCancellation.Cancel();
                     break;
@@ -196,8 +203,8 @@ public partial class FunctionRpcRelayTests
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
             Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
-            Assert.False(failed.RemovalRequested);
             Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            Assert.Equal(expectedRemoval, failed.RemovalRequested);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
@@ -212,35 +219,6 @@ public partial class FunctionRpcRelayTests
         Assert.All(terminalStates, state => Assert.Equal(expectedReason, state.Reason.ToString()));
         await stopTask.WaitAsync(timeout.Token);
         Assert.Equal(4, manager.State.Revision);
-    }
-
-    [Fact]
-    public async Task Relay_UnassignedSessionCanBeReplacedAfterTermination()
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerAssignment assignment = CreateWorkerAssignment();
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "original", timeout.Token);
-        Assert.True(manager.State.IsWorkerReady);
-
-        await worker.CompleteRequestAsync(timeout.Token);
-        await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
-        await WaitForReleaseAsync(relay, timeout.Token);
-        WorkerPodState terminated = manager.State;
-        Assert.False(terminated.IsWorkerReady);
-
-        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
-
-        Assert.True(manager.State.IsWorkerReady);
-        Assert.True(manager.State.SessionId > terminated.SessionId);
-        Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
     }
 
     [Fact]
