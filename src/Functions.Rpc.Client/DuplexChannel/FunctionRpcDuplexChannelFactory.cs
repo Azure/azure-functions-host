@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,12 +47,31 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 
     /// <inheritdoc />
     public Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
-        => ConnectAsync(endpoint, null, cancellationToken);
+        => ConnectAsync(endpoint, new Dictionary<string, string>(), runtimeIdentity: null, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, string runtimeIdentity,
+    public Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint,
+        string runtimeIdentity,
+        CancellationToken cancellationToken = default)
+        => ConnectAsync(endpoint, new Dictionary<string, string>(), runtimeIdentity, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default)
+        => ConnectAsync(endpoint, headers, runtimeIdentity: null, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        string runtimeIdentity,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(headers);
+        cancellationToken.ThrowIfCancellationRequested();
         if (_proxyOptions.Enabled && _proxyHandler is null)
         {
             throw new InvalidOperationException("An enabled Token Service proxy requires a root-owned HTTP request handler.");
@@ -61,10 +81,18 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        Metadata headers = runtimeIdentity is null
-            ? null
-            : new() { { RuntimeIdentityHeaderName, Encoding.UTF8.GetBytes(runtimeIdentity) } };
-        var call = client.EventStream(headers);
+        Metadata metadata = [];
+        foreach ((string name, string value) in headers)
+        {
+            metadata.Add(name, value);
+        }
+
+        if (runtimeIdentity is not null)
+        {
+            metadata.Add(RuntimeIdentityHeaderName, Encoding.UTF8.GetBytes(runtimeIdentity));
+        }
+
+        var call = client.EventStream(metadata);
         try
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();

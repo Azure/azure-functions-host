@@ -36,13 +36,18 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
-    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
-        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null, string functionGroupName = null,
-        string maxHttpConcurrency = null, bool handlesInvocationCancel = false)
+    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(
+        string workerId,
+        IScriptEventManager eventManager = null,
+        string advertisedHttpUri = null,
+        IHttpProxyService httpProxyService = null,
+        string functionGroupName = null,
+        string maxHttpConcurrency = null,
+        bool handlesInvocationCancel = false)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
         RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
-            .Create(workerId, transport);
+            .Create(workerId, transport, RuntimeWorkerTestData.CreateCredentials(workerId));
         Task start = channel.StartAsync(CancellationToken.None);
 
         await transport.SendResponseAsync(new()
@@ -80,7 +85,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             initResponse.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency);
         }
 
-        await transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await transport.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, workerId) });
         await start.WaitAsync(TestTimeout);
 
         return new(channel, transport);
@@ -164,7 +169,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            httpProxyService ?? Mock.Of<IHttpProxyService>(),
+            () => httpProxyService ?? Mock.Of<IHttpProxyService>(),
             Mock.Of<IMetricsLogger>());
     }
 }

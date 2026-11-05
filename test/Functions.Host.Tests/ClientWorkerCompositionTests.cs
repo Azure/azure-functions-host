@@ -8,9 +8,11 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -70,8 +72,25 @@ public class ClientWorkerCompositionTests
 
         ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
 
-        AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.Http.IHttpProxyService",
-            "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
+        ServiceDescriptor httpProxy = Assert.Single(services.Where(service => string.Equals(
+            service.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.IHttpProxyService", StringComparison.Ordinal) && !service.IsKeyedService));
+        Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
+        Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", httpProxy.ImplementationType?.FullName);
+        Assert.Single(services.Where(service => string.Equals(service.ServiceType.FullName,
+            "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)));
+        services.AddLogging();
+        using (ServiceProvider provider = services.BuildServiceProvider())
+        {
+            AuthorizationPolicy managementPolicy = Assert.IsType<AuthorizationPolicy>(
+                provider.GetRequiredService<IOptions<AuthorizationOptions>>()
+                    .Value.GetPolicy(ContainerManagementAuthenticationHandler.SchemeName));
+            Assert.Equal([ContainerManagementAuthenticationHandler.SchemeName], managementPolicy.AuthenticationSchemes);
+            Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService",
+                provider.GetRequiredService(httpProxy.ServiceType).GetType().FullName);
+            Assert.NotSame(provider.GetRequiredService(httpProxy.ServiceType),
+                provider.GetRequiredService(services.Single(service => string.Equals(service.ServiceType.FullName,
+                    "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)).ServiceType));
+        }
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IRpcClientFactory",
             "Azure.Functions.Rpc.Client.RpcClientFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IDuplexChannelFactory`1",

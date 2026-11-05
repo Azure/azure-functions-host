@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -26,7 +27,8 @@ internal interface IDuplexChannelFactory<T>
     /// <param name="endpoint">The service endpoint.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
-    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default);
+    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+        => ConnectAsync(endpoint, new Dictionary<string, string>(), runtimeIdentity: null, cancellationToken);
 
     /// <summary>
     /// Connects with the platform's serialized Runtime identity.
@@ -36,12 +38,23 @@ internal interface IDuplexChannelFactory<T>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
     Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, string runtimeIdentity, CancellationToken cancellationToken = default)
-    {
-        if (runtimeIdentity is null)
-        {
-            return ConnectAsync(endpoint, cancellationToken);
-        }
+        => ConnectAsync(endpoint, new Dictionary<string, string>(), runtimeIdentity, cancellationToken);
 
-        throw new NotSupportedException("This channel factory does not support identified Runtime links.");
-    }
+    /// <summary>
+    /// Connects with caller authentication headers.
+    /// </summary>
+    Task<DuplexChannel<T>> ConnectAsync(
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default)
+        => ConnectAsync(endpoint, headers, runtimeIdentity: null, cancellationToken);
+
+    /// <summary>
+    /// Connects with caller authentication headers and the platform's serialized Runtime identity.
+    /// </summary>
+    Task<DuplexChannel<T>> ConnectAsync(
+        Uri endpoint,
+        IReadOnlyDictionary<string, string> headers,
+        string runtimeIdentity,
+        CancellationToken cancellationToken = default);
 }

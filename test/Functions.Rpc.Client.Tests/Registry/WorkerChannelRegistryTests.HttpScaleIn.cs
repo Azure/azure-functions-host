@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -26,6 +27,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
@@ -156,9 +158,12 @@ public sealed partial class WorkerChannelRegistryTests
     {
         TaskCompletionSource responseStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource finishResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using TestCertificateFiles certificates = new();
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+        builder.WebHost.UseKestrelHttpsConfiguration();
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
+            listener.UseHttps(certificates.Certificate)));
         await using WebApplication worker = builder.Build();
         worker.Run(async context =>
         {
@@ -169,15 +174,12 @@ public sealed partial class WorkerChannelRegistryTests
             await context.Response.WriteAsync("-finished");
         });
         await worker.StartAsync();
-        using ServiceProvider proxyServices = new ServiceCollection()
-            .AddLogging()
-            .AddDefaultHttpProxyService()
-            .BuildServiceProvider();
+        using HttpsTestProxyService proxy = new(certificates);
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         ChannelControl selected = new("http-always", functionGroupName: "http", isAlwaysReady: true, maxHttpConcurrency: 10)
         {
-            HttpProxyService = proxyServices.GetRequiredService<IHttpProxyService>(),
+            HttpProxyService = proxy,
             HttpUri = worker.Urls.Single(),
         };
         FunctionMetadata function = CreateHttpFunction();
@@ -315,6 +317,58 @@ public sealed partial class WorkerChannelRegistryTests
             Result = new() { Status = StatusResult.Types.Status.Success },
         });
         await context.ResultSource.Task.WaitAsync(TestTimeout);
+    }
+
+    private sealed class HttpsTestProxyService : IHttpProxyService, IDisposable
+    {
+        private readonly HttpClient _client;
+
+        internal HttpsTestProxyService(TestCertificateFiles certificates)
+        {
+            SocketsHttpHandler handler = new()
+            {
+                SslOptions =
+                {
+                    RemoteCertificateValidationCallback = (_, certificate, _, _) =>
+                        certificate is not null
+                        && string.Equals(
+                            certificate.GetCertHashString(),
+                            certificates.Certificate.GetCertHashString(),
+                            StringComparison.OrdinalIgnoreCase)
+                }
+            };
+            _client = new(handler);
+        }
+
+        public void Dispose() => _client.Dispose();
+
+        public async Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context)
+        {
+            ForwarderError result = await (Task<ForwarderError>)context.Properties[ScriptConstants.HttpProxyTask];
+            Assert.Equal(ForwarderError.None, result);
+        }
+
+        public void StartForwarding(ScriptInvocationContext context, Uri httpUri)
+        {
+            HttpRequest request = Assert.IsAssignableFrom<HttpRequest>(Assert.Single(context.Inputs).Val);
+            context.Properties[ScriptConstants.HttpProxyTask] = ForwardAsync(request, httpUri);
+        }
+
+        private async Task<ForwarderError> ForwardAsync(HttpRequest request, Uri httpUri)
+        {
+            Uri destination = new(httpUri, request.Path + request.QueryString);
+            using HttpRequestMessage outgoing = new(new HttpMethod(request.Method), destination);
+            using HttpResponseMessage response = await _client.SendAsync(
+                outgoing,
+                HttpCompletionOption.ResponseHeadersRead,
+                request.HttpContext.RequestAborted);
+            request.HttpContext.Response.StatusCode = (int)response.StatusCode;
+            await response.Content.CopyToAsync(
+                request.HttpContext.Response.Body,
+                request.HttpContext.RequestAborted);
+
+            return ForwarderError.None;
+        }
     }
 
     private sealed class CapacityAppServer : IAsyncDisposable

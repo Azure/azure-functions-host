@@ -29,47 +29,44 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>, and the channel is registered. Function setup is independent
     /// and is not awaited; it may already have started or completed when the caller observes the result.
     /// Use <see cref="GetReadyChannelsAsync"/> when an invocation-ready channel is required.
-    /// Matching worker IDs and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
-    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through worker capabilities.
+    /// Matching worker IDs, credentials and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
+    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through WorkerProxy capabilities.
     /// Different workers can link concurrently.
     /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
     /// A new attempt's deadline is shared with its waiters; a retry's deadline only ends its own wait.
     /// </remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
+    /// <param name="runtimeAccessKey">The target WorkerProxy's container encryption key. Never log this value.</param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <returns>
     /// The initialized and registered channel, and whether this caller started the successful attempt.
     /// Matching retries report an existing link, including retries that waited for initialization.
     /// </returns>
-    /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
+    /// <exception cref="WorkerLinkException">The runtime access key is invalid or the request conflicts with the registry's admission state.</exception>
     /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
     Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
-        CancellationToken cancellationToken = default);
+        string runtimeAccessKey,
+        CancellationToken cancellationToken = default)
+        => LinkAsync(workerId, grpcEndpoint, runtimeAccessKey, runtimeIdentity: null, cancellationToken);
 
     /// <summary>
-    /// Links a Worker while conveying the platform's serialized Runtime identity.
+    /// Links a Worker with caller authentication while conveying the platform's serialized Runtime identity.
     /// </summary>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
+    /// <param name="runtimeAccessKey">The target WorkerProxy's container encryption key. Never log this value.</param>
     /// <param name="runtimeIdentity">Optional serialized Runtime identity, included in exact retry matching.</param>
     /// <param name="cancellationToken">Cancels the link attempt or retry wait.</param>
     /// <returns>The initialized and registered channel and whether the link is new.</returns>
     Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
+        string runtimeAccessKey,
         string runtimeIdentity,
-        CancellationToken cancellationToken = default)
-    {
-        if (runtimeIdentity is null)
-        {
-            return LinkAsync(workerId, grpcEndpoint, cancellationToken);
-        }
-
-        throw new NotSupportedException("This registry does not support identified Runtime links.");
-    }
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Atomically commits excess usable workers in one exact non-HTTP function group and capacity class to drain.
@@ -146,7 +143,10 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// channels or at least one channel is configured successfully. If every current channel fails, the first original
     /// setup exception is rethrown.
     /// </remarks>
-    Task ActivateAsync(IReadOnlyList<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout,
+    Task ActivateAsync(
+        IReadOnlyList<FunctionMetadata> functions,
+        ManagedDependencyOptions managedDependencyOptions,
+        TimeSpan? functionTimeout,
         CancellationToken cancellationToken = default);
 
     /// <summary>

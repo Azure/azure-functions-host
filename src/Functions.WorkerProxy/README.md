@@ -1,7 +1,5 @@
 # WorkerProxy authentication and Token Service proxy
 
-**Stack sequencing:** this lower layer contains WorkerProxy and the shared authentication contract only. The Host-side Link, caller-token/TLS support, proof validation and combined integration fixture described below require the dependent runtime layer; they are not implemented or validated by this PR. Do not deploy this layer independently with the previous runtime protocol.
-
 WorkerProxy requires TLS and a worker-specific caller JWT on its runtime-facing HTTP listener (28080) and FunctionRpc listener (50053). WorkerProxy returns a separate app-key proof during initialization on the same runtime-initiated duplex stream. Host must validate that proof before accepting Link or publishing the worker.
 
 The loopback worker FunctionRpc listener (50054) remains plaintext and pod-local. Management on port 80 uses a separate container-management site-token contract, not the runtime caller JWT.

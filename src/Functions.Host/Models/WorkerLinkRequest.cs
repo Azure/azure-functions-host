@@ -29,6 +29,12 @@ public sealed class WorkerLinkRequest
     public WorkerLinkRuntimeIdentity? RuntimeIdentity { get; set; }
 
     /// <summary>
+    /// Gets or sets the target WorkerProxy's container encryption key. Never log or return this value.
+    /// </summary>
+    [JsonProperty("runtimeAccessKey")]
+    public string? RuntimeAccessKey { get; set; }
+
+    /// <summary>
     /// Gets or sets the reserved worker-pod container encryption key. It is not used to authenticate
     /// the outbound connection and must not be logged or returned to the caller.
     /// </summary>

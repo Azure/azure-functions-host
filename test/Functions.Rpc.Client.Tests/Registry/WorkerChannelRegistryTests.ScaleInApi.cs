@@ -415,6 +415,9 @@ public sealed partial class WorkerChannelRegistryTests
                                 options.AddPolicy(
                                     PolicyNames.AdminAuthLevel,
                                     policy => policy.RequireAssertion(_ => true));
+                                options.AddPolicy(
+                                    "ContainerManagement",
+                                    policy => policy.RequireAssertion(_ => true));
                             });
                         })
                         .Configure(app =>

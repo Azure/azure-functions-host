@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Identity;
@@ -49,6 +50,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         });
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
+        ContainerManagementAuthenticationHandler.AddServices(services);
         services.AddAppServerHostStatePublisher();
         services.AddOptions<TokenServiceProxyOptions>().BindConfiguration(TokenServiceProxyOptions.HostSectionName);
         services.AddSingleton<ITokenServiceProxyRequestHandler, HostTokenServiceForwarder>();

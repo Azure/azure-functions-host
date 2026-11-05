@@ -3,18 +3,21 @@
 
 using System;
 using System.Linq;
+using System.Net.Http;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -33,7 +36,18 @@ public static class RpcClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
-        services.AddDefaultHttpProxyService();
+        services.AddHttpForwarder();
+        services.TryAddSingleton<IHttpProxyService, DefaultHttpProxyService>();
+        services.AddSingleton(provider => new DefaultHttpProxyService(
+            provider.GetRequiredService<IHttpForwarder>(),
+            provider.GetRequiredService<ILogger<DefaultHttpProxyService>>(),
+            CreateHttpProxyHandler()));
+        services.AddSingleton<Func<IHttpProxyService>>(provider => () => provider.GetRequiredService<DefaultHttpProxyService>());
+        services.AddOptions<WorkerProcessCountOptions>(RpcClientWorkerChannelFactory.WorkerOptionsName)
+            .BindConfiguration("RpcClient:Worker")
+            .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),
+                "RpcClient worker startup and initialization timeouts must be positive and have a bounded total.")
+            .ValidateOnStart();
         services.AddSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>();
         services.AddOptions<TokenServiceProxyOptions>().ValidateOnStart();
         services.AddSingleton<IValidateOptions<TokenServiceProxyOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyOptions>>();
@@ -69,7 +83,8 @@ public static class RpcClientServiceCollectionExtensions
     /// Use <see cref="AddRpcClientServices"/> when only transport and worker services are required, without ScriptHost activation.
     /// </remarks>
     public static IServiceCollection AddRpcClientWebHostServices(
-        this IServiceCollection services, Func<IServiceProvider, IHostedService> scriptHostFactory)
+        this IServiceCollection services,
+        Func<IServiceProvider, IHostedService> scriptHostFactory)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(scriptHostFactory);
@@ -125,6 +140,14 @@ public static class RpcClientServiceCollectionExtensions
 
         return services;
     }
+
+    internal static SocketsHttpHandler CreateHttpProxyHandler() => new()
+    {
+        SslOptions = new()
+        {
+            RemoteCertificateValidationCallback = RpcClientFactory.CertificateValidationCallback
+        }
+    };
 
     private static void ThrowIfRegistered<TService>(IServiceCollection services, string registrationMethod)
     {
