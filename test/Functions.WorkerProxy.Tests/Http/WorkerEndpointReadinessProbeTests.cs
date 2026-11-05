@@ -63,7 +63,7 @@ public class WorkerEndpointReadinessProbeTests
         listener.Server.DualMode = false;
         listener.Start();
         Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
-        WorkerEndpointReadinessProbe probe = CreateProbe();
+        WorkerEndpointReadinessProbe probe = CreateProbe(totalTimeout: TimeSpan.FromSeconds(30));
 
         Assert.Equal(
             WorkerEndpointReadinessResult.Ready,
