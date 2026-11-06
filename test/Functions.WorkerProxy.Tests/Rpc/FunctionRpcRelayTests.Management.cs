@@ -240,8 +240,11 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    [Fact]
-    public async Task ManagementApis_InvalidWorkerStartupMarksAssignmentUnhealthy()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public async Task ManagementApis_InvalidWorkerStartupMarksAssignmentUnhealthy(string? workerId)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -254,12 +257,16 @@ public partial class FunctionRpcRelayTests
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
         Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
 
-        Grpc.Core.RpcException exception = await worker.WriteAndReadRejectionAsync(CreateMessage("not-start-stream"), timeout.Token);
+        StreamingMessage first = workerId is null
+            ? CreateMessage("not-start-stream")
+            : new() { StartStream = new() { WorkerId = workerId } };
+        Grpc.Core.RpcException exception = await worker.WriteAndReadRejectionAsync(first, timeout.Token);
 
         Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
         Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
         WorkerOriginState failed = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.RemovalRequested, failed.Status);
         Assert.True(failed.IsUnhealthy);
         using HttpResponseMessage replay = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);

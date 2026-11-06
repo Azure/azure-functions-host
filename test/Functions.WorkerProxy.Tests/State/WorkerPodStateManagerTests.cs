@@ -160,14 +160,18 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
-    [Fact]
-    public void TerminalFailure_IsStickyAndConflictingIdentityStillConflicts()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TerminalFailure_IsStickyAndConflictingIdentityStillConflicts(bool assignmentFailed)
     {
         WorkerPodStateManager manager = CreateReadyManager();
         manager.Assign(CreateAssignment());
-        manager.OnSessionTerminated(1);
+        manager.OnSessionTerminated(1, assignmentFailed);
         WorkerPodState failed = manager.State;
 
+        Assert.Equal(assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated, failed.AssignmentState);
+        Assert.Equal(assignmentFailed, WorkerOriginState.FromState(failed).IsUnhealthy);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.False(manager.OnWorkerAttached(2));

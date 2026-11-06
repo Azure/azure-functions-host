@@ -288,7 +288,10 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
-    public bool OnSessionTerminated(long sessionId)
+    /// <param name="sessionId">The terminating relay session identifier.</param>
+    /// <param name="assignmentFailed">Whether a worker protocol violation establishes an assignment health failure.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnSessionTerminated(long sessionId, bool assignmentFailed = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -322,6 +325,10 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
+            WorkerAssignmentState assignmentState = _assignment is null
+                ? WorkerAssignmentState.Unassigned
+                : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
+
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
@@ -329,7 +336,7 @@ internal sealed class WorkerPodStateManager
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
                 // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
-                AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated
+                AssignmentState = assignmentState
             });
             return true;
         }

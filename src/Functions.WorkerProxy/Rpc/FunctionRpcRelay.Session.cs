@@ -652,7 +652,13 @@ internal sealed partial class FunctionRpcRelay
 
                 _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                bool assignmentFailed = terminalState is
+                {
+                    Reason: FunctionRpcRelayTerminationReason.Faulted,
+                    Side: FunctionRpcRelaySide.Worker,
+                    Exception: InvalidDataException
+                };
+                stateManager.OnSessionTerminated(id, assignmentFailed);
                 _completion.SetResult(terminalState);
             }
 
