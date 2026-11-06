@@ -140,10 +140,11 @@ internal sealed partial class FunctionRpcRelay
                     _logState = current;
                 }
 
-                return WorkerSystemLogContext.FromState(_logState) with
+                return new()
                 {
                     WorkerId = _workerId,
-                    ProxySessionId = id
+                    ProxySessionId = id,
+                    State = _logState
                 };
             }
         }

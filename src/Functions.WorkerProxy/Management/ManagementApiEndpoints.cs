@@ -69,7 +69,7 @@ internal static class ManagementApiEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPut("/admin/worker/assignment",
-            (WorkerAssignRequest request, WorkerPodStateManager manager, HttpContext context) => ManagementApiHandlers.AssignWorker(request, manager, context))
+            (WorkerAssignRequest request, WorkerPodStateManager manager) => ManagementApiHandlers.AssignWorker(request, manager))
             .RequireAuthorization(ContainerManagementAuthenticationHandler.SchemeName);
         endpoints.MapPost("/admin/infra/instanceState",
             (WorkerOriginState? originState, WorkerPodStateManager manager, HttpContext context) =>

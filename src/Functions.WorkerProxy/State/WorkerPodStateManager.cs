@@ -465,22 +465,6 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records assignment and captures the resulting immutable state under the same lock.
-    /// </summary>
-    /// <param name="assignment">The validated assignment.</param>
-    /// <param name="state">The state associated with the assignment decision.</param>
-    /// <returns>The assignment result.</returns>
-    public WorkerAssignmentResult Assign(WorkerAssignment assignment, out WorkerPodState state)
-    {
-        lock (_stateLock)
-        {
-            WorkerAssignmentResult result = Assign(assignment);
-            state = _state;
-            return result;
-        }
-    }
-
-    /// <summary>
     /// Records or replays assignment atomically with worker readiness and terminal state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)

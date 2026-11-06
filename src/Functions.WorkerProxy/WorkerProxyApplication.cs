@@ -167,16 +167,9 @@ internal static partial class WorkerProxyApplication
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
-        WorkerPodStateManager manager = app.Services.GetRequiredService<WorkerPodStateManager>();
-        app.Lifetime.ApplicationStarted.Register(() => LogWithIdentity(Log.WorkerProxyStarted));
-        app.Lifetime.ApplicationStopping.Register(() => LogWithIdentity(Log.WorkerProxyShutdownStarted));
-        app.Lifetime.ApplicationStopped.Register(() => LogWithIdentity(Log.WorkerProxyStopped));
-
-        void LogWithIdentity(Action<ILogger> log)
-        {
-            using IDisposable? scope = logger.BeginScope(WorkerSystemLogContext.FromState(manager.State));
-            log(logger);
-        }
+        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
+        app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
+        app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)

@@ -112,101 +112,6 @@ public partial class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public void LogExporter_NewSnapshotDoesNotInheritAnOlderSessionsIdentity()
-    {
-        CapturingEventGenerator generator = new();
-        using ILoggerFactory factory = CreateLoggerFactory(generator);
-        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
-        WorkerSystemLogContext outer = WorkerSystemLogContext.FromState(
-            WorkerPodState.CreateUnassigned("pod", Timestamp) with { FunctionAppName = "old-app", WorkerId = "old-worker", SessionId = 1 });
-        WorkerSystemLogContext inner = WorkerSystemLogContext.FromState(WorkerPodState.CreateUnassigned("pod", Timestamp));
-        using IDisposable? outerScope = logger.BeginScope(outer);
-        using IDisposable? innerScope = logger.BeginScope(inner);
-        logger.LogInformation("New session.");
-
-        Assert.Same(inner, Assert.Single(generator.ProxyRecords).Context);
-    }
-
-    [Fact]
-    public async Task LogExporter_ConcurrentScopesRetainIndependentSnapshots()
-    {
-        CapturingEventGenerator generator = new();
-        using ILoggerFactory factory = CreateLoggerFactory(generator);
-        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
-        await Task.WhenAll(Enumerable.Range(0, 10).Select(async index =>
-        {
-            string identity = index.ToString(CultureInfo.InvariantCulture);
-            using IDisposable? scope = logger.BeginScope(WorkerSystemLogContext.FromState(
-                WorkerPodState.CreateUnassigned("pod", Timestamp) with { FunctionAppName = identity, Revision = index }));
-            await Task.Yield();
-            logger.LogInformation("{Identity}", identity);
-        }));
-
-        Assert.Equal(10, generator.ProxyRecords.Count);
-        Assert.All(generator.ProxyRecords, record =>
-        {
-            Assert.Equal(record.Message, record.Context!.State!.FunctionAppName);
-            Assert.Equal(record.Message, record.Context.State.Revision.ToString(CultureInfo.InvariantCulture));
-        });
-    }
-
-    [Theory]
-    [InlineData(LogLevel.Information, "4")]
-    [InlineData(LogLevel.Warning, "3")]
-    [InlineData(LogLevel.Error, "2")]
-    [InlineData(LogLevel.Critical, "1")]
-    public async Task PositionalLogging_AddsIdentityWithoutChangingWireContract(LogLevel level, string wireLevel)
-    {
-        StringWriter output = new();
-        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
-        WorkerSystemLogContext context = WorkerSystemLogContext.FromState(
-            WorkerPodState.CreateUnassigned("pod-1", Timestamp) with
-            {
-                WorkerId = "worker-1", SessionId = 7, FunctionAppName = "sample-app", FunctionGroupName = "http", Revision = 3
-            });
-        generator.LogEvent(level, "Event", "Proxy", "detail,\"text\"\r\nnext", "Human-readable, \"summary\".",
-            string.Empty, string.Empty, context, Timestamp);
-        await generator.CompleteAsync();
-
-        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
-        Assert.Equal(21, fields.Length);
-        Assert.Equal(wireLevel, fields[0]);
-        Assert.Equal("detail,'text' next", fields[6]);
-        Assert.Equal("WorkerId=worker-1; ProxySessionId=7; PodName=pod-1; FunctionAppName=sample-app; FunctionGroupName=http; Revision=3; Human-readable, 'summary'.", fields[7]);
-        Assert.All(new[] { 1, 2, 3, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, index => Assert.Empty(fields[index]));
-    }
-
-    [Theory]
-    [InlineData("unsafe,identity\";\r\n\uD83D\uDE80", true)]
-    [InlineData(null, false)]
-    [InlineData(null, true)]
-    public async Task PositionalLogging_BoundsAndNormalizesIdentity(string? identity, bool hashed)
-    {
-        identity ??= new string('x', hashed ? 129 : 128);
-        StringWriter output = new();
-        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
-        WorkerSystemLogContext context = WorkerSystemLogContext.FromState(
-            WorkerPodState.CreateUnassigned(identity, Timestamp) with
-            {
-                WorkerId = identity, SessionId = long.MaxValue, FunctionAppName = identity, FunctionGroupName = identity, Revision = long.MaxValue
-            });
-        generator.LogEvent(LogLevel.Information, "Event", "Proxy", string.Empty,
-            "Readable summary. " + new string('x', 2_000), string.Empty, string.Empty, context);
-        await generator.CompleteAsync();
-
-        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
-        Assert.Equal(21, fields.Length);
-        Assert.Equal(1_024, fields[7].Length);
-        Assert.Contains("Revision=9223372036854775807; Readable summary.", fields[7], StringComparison.Ordinal);
-        foreach (string field in new[] { "WorkerId", "PodName", "FunctionAppName", "FunctionGroupName" })
-        {
-            Assert.Matches($@"{field}={(hashed ? "sha256:[a-f0-9]{64}" : identity)}; ", fields[7]);
-        }
-
-        Assert.NotEmpty(new UTF8Encoding(false, true).GetBytes(output.ToString()));
-    }
-
-    [Fact]
     public void Format_UsesSharedWorkerPodConsoleContract()
     {
         using WorkerPodEventGenerator generator = CreateEventGenerator();
@@ -357,6 +262,17 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger("Proxy,category");
+        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
+        {
+            WorkerId = "worker-1",
+            ProxySessionId = 7,
+            State = WorkerPodState.CreateUnassigned("pod-1", Timestamp) with
+            {
+                FunctionAppName = "sample-app",
+                FunctionGroupName = "http",
+                Revision = 3
+            }
+        });
         logger.LogWarning(new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" key=worker-ready");
         await generator.CompleteAsync();
 
@@ -364,7 +280,8 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(21, fields.Length);
         Assert.Equal("Event,name", fields[4]);
         Assert.Equal("Proxy,category", fields[5]);
-        Assert.Equal("first second third 'quoted' key=worker-ready", fields[7]);
+        Assert.Equal("WorkerId=worker-1; ProxySessionId=7; PodName=pod-1; FunctionAppName=sample-app; FunctionGroupName=http; Revision=3; first second third 'quoted' key=worker-ready", fields[7]);
+        Assert.All(new[] { 1, 2, 3, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, index => Assert.Empty(fields[index]));
         Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
@@ -514,7 +431,7 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
             string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, record.Level);
-        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
+        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
         Assert.Matches(
             @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
             record.Message);
@@ -613,9 +530,6 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(
             eventGenerator.ProxyRecords,
             record => string.Equals(record.EventName, "WorkerProxyStopped", StringComparison.Ordinal));
-        Assert.All(eventGenerator.ProxyRecords.Where(record =>
-            record.EventName is "WorkerProxyStarted" or "WorkerProxyShutdownStarted" or "WorkerProxyStopped"),
-            record => Assert.NotEmpty(record.Context!.State!.PodName));
     }
 
     private static string[][] ParseCsvOutput(string output)

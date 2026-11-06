@@ -6,23 +6,9 @@ The loopback worker FunctionRpc listener (50054) remains plaintext and pod-local
 
 This slice adds authentication, TLS and the platform assignment/state contract. Existing multiworker registration, Host configuration delivery and optional Token Service proxying remain compatibility dependencies, not new identity, configuration, restart or worker-reuse features.
 
-## System log identity
+## RPC log identity
 
-Existing assignment, RPC session/protocol, and process lifecycle events include available identity in `Summary`:
-
-```text
-WorkerId=worker-1; ProxySessionId=7; PodName=pod-1; FunctionAppName=sample-app; FunctionGroupName=http; Revision=3; <existing message>
-```
-
-Missing identity is omitted before assignment or validated `StartStream`. Rejected assignment input is never logged as accepted identity.
-Assignment events use the decision's immutable state snapshot (or request-entry state when rejected before a decision).
-RPC terminal, release, and late-failure events retain the terminating session's snapshot rather than reading a newer session's identity.
-`Revision` identifies that snapshot, not current readiness; retained identity does not mean the worker is still available.
-
-The existing 21-column layout, `WorkerId`/`ProxySessionId` prefixes, severity, and 1,024-character Summary limit are unchanged.
-The new fields reuse the existing identifier policy: values outside ASCII letters/digits/`-_.`, or longer than 128 characters, become SHA-256 fingerprints.
-Only the named identity fields are exported, never assignment environment or directory values. Host-only columns remain empty; collector/table identity mapping is not established by this change.
-No new events, HTTP/invocation diagnostics, buffering changes, versioned metadata format, or query tooling are included.
+Existing RPC session/protocol events append available `PodName`, accepted `FunctionAppName`/`FunctionGroupName`, and snapshot `Revision` after the existing `WorkerId=...; ProxySessionId=...;` Summary prefix. Identity is omitted until known; terminal/release/late-failure events retain their session's snapshot even after live identity is cleared. Revision identifies that snapshot, not current readiness. The 21-column layout, identifier normalization and length limits remain unchanged; Host-only columns stay empty. No assignment/lifecycle, HTTP, event-type, buffering, or query-tooling changes are included.
 
 ## Keys and identities
 
