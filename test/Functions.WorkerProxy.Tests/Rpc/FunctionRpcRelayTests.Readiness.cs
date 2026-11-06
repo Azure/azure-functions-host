@@ -169,7 +169,7 @@ public partial class FunctionRpcRelayTests
         BlockingServerStreamWriter blockingWriter = new();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             CreateMessageReader(runtimeInbound.Reader), blockingWriter, runtimeCancellation.Token);
-        IServerStreamWriter<StreamingMessage> workerWriter = trigger == "worker-write-fault"
+        IServerStreamWriter<StreamingMessage> workerWriter = string.Equals(trigger, "worker-write-fault", StringComparison.Ordinal)
             ? new GatedFaultingServerStreamWriter(Task.CompletedTask, new IOException("Injected worker write failure."))
             : CreateMessageWriter(workerOutbound.Writer);
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
@@ -182,7 +182,7 @@ public partial class FunctionRpcRelayTests
             await blockingWriter.WriteEntered.WaitAsync(timeout.Token);
             WorkerAssignment assignment = CreateWorkerAssignment();
             Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-            if (trigger != "worker-write-fault")
+            if (!string.Equals(trigger, "worker-write-fault", StringComparison.Ordinal))
             {
                 await runtimeInbound.Writer.WriteAsync(new() { WorkerInitRequest = new() }, timeout.Token);
                 Assert.NotNull((await workerOutbound.Reader.ReadAsync(timeout.Token)).WorkerInitRequest);
