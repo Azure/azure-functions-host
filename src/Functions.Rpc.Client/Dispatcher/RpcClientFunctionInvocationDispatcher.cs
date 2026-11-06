@@ -96,10 +96,14 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels = _channelRegistry.GetReadyChannelsAsync();
         if (readyChannels.IsCompletedSuccessfully)
         {
-            if (TryDispatchInvocation(invocationContext, readyChannels.Result, functionGroup))
+            IReadOnlyList<WorkerChannel> snapshot = readyChannels.Result;
+            if (TryDispatchInvocation(invocationContext, snapshot, functionGroup))
             {
                 return Task.CompletedTask;
             }
+
+            // The original ValueTask may be source-backed; pass its materialized result rather than consuming it again.
+            return InvokeWhenChannelIsReadyAsync(invocationContext, functionGroup, new(snapshot), changed);
         }
 
         return InvokeWhenChannelIsReadyAsync(invocationContext, functionGroup, readyChannels, changed);

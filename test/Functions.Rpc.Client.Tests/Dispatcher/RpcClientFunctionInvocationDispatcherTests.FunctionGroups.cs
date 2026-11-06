@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -17,6 +18,41 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed partial class RpcClientFunctionInvocationDispatcherTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_ReadinessSourceIsConsumedOnceWhenNoGroupMatches(bool initiallyCompleted)
+    {
+        await using ClientWorkerChannelTestHarness wrong = await ClientWorkerChannelTestHarness.CreateAsync("wrong", functionGroupName: "durable");
+        await using ClientWorkerChannelTestHarness matching = await ClientWorkerChannelTestHarness.CreateAsync("matching");
+        FunctionMetadata function = CreateFunction();
+        await PrepareReadyChannelAsync(wrong, function);
+        await PrepareReadyChannelAsync(matching, function);
+        SingleConsumptionReadinessSource source = new();
+        _registry.SetupSequence(registry => registry.GetReadyChannelsAsync())
+            .Returns(source.ValueTask)
+            .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>([matching.Channel]));
+        if (initiallyCompleted)
+        {
+            source.Complete([wrong.Channel]);
+        }
+
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        Task invocation = dispatcher.InvokeAsync(CreateInvocation(function));
+        if (!initiallyCompleted)
+        {
+            source.Complete([wrong.Channel]);
+        }
+
+        _changed.TrySetResult();
+        await invocation.WaitAsync(TestTimeout);
+
+        Assert.Equal(1, source.Consumptions);
+        await matching.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.False(wrong.Transport.Requests.TryRead(out _));
+    }
+
     [Theory]
     [InlineData("httpTrigger", "HTTP", "16", false)]
     [InlineData("eventGridTrigger", "http", "16", false)]
@@ -397,5 +433,32 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         Assert.Contains("function:TestFunction", exception.Message, StringComparison.Ordinal);
         _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Once);
         Assert.False(wrong.Transport.Requests.TryRead(out _));
+    }
+
+    private sealed class SingleConsumptionReadinessSource : IValueTaskSource<IReadOnlyList<WorkerChannel>>
+    {
+        private ManualResetValueTaskSourceCore<IReadOnlyList<WorkerChannel>> _source = new() { RunContinuationsAsynchronously = true };
+        private int _consumptions;
+
+        internal int Consumptions => _consumptions;
+
+        internal ValueTask<IReadOnlyList<WorkerChannel>> ValueTask => new(this, _source.Version);
+
+        internal void Complete(IReadOnlyList<WorkerChannel> channels) => _source.SetResult(channels);
+
+        public IReadOnlyList<WorkerChannel> GetResult(short token)
+        {
+            if (Interlocked.Increment(ref _consumptions) != 1)
+            {
+                throw new InvalidOperationException("Readiness source was consumed more than once.");
+            }
+
+            return _source.GetResult(token);
+        }
+
+        public ValueTaskSourceStatus GetStatus(short token) => _source.GetStatus(token);
+
+        public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags)
+            => _source.OnCompleted(continuation, state, token, flags);
     }
 }
