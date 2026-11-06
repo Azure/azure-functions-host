@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
@@ -40,6 +41,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly RuntimeWorkerCredentials _credentials;
+    private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions;
+    private readonly ILogger _logger;
+    private IDisposable _ownedHttpProxyService;
     private Uri _httpEndpoint;
     private LifecycleState _lifecycleState;
 
@@ -59,7 +63,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
         IHttpProxyService httpProxyService,
-        RuntimeWorkerCredentials credentials)
+        RuntimeWorkerCredentials credentials,
+        IOptionsFactory<RuntimeApplicationAuthenticationOptions> appAuthenticationOptions)
         : base(
             workerId,
             ownedChannel,
@@ -78,6 +83,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         _credentials = credentials;
+        _appAuthenticationOptions = appAuthenticationOptions;
+        _logger = logger;
+        _ownedHttpProxyService = httpProxyService as IDisposable;
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -173,7 +181,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal override void WorkerInitResponse(StreamingMessage initMessage)
     {
         string proof = RuntimeWorkerAuthentication.RemoveAppProof(initMessage.WorkerInitResponse.Capabilities);
-        _credentials.ValidateAppProof(proof);
+        RuntimeApplicationAuthenticationOptions appAuthentication;
+        try
+        {
+            // Specialization and direct provider updates need not emit reload tokens; do not cache app-key options.
+            appAuthentication = _appAuthenticationOptions.Create(Options.DefaultName);
+        }
+        catch (OptionsValidationException)
+        {
+            _logger.LogWarning("WorkerProxy application proof authentication failed: {Reason}.", WorkerLinkFailureReason.AuthenticationUnavailable);
+            throw new WorkerLinkException(WorkerLinkFailureReason.AuthenticationUnavailable,
+                "The specialized application authentication configuration is unavailable.");
+        }
+
+        _credentials.ValidateAppProof(proof, appAuthentication.AppName, appAuthentication.AppKey);
         if (initMessage.WorkerInitResponse.Result is not
             { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
         {
@@ -186,8 +207,12 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal override void UpdateCapabilities(IDictionary<string, string> fields, GrpcCapabilitiesUpdateStrategy strategy)
     {
-        fields = new Dictionary<string, string>(fields, StringComparer.Ordinal);
-        RuntimeWorkerAuthentication.RemoveAppProof(fields);
+        if (fields.ContainsKey(RuntimeWorkerAuthentication.AppProofCapability))
+        {
+            fields = new Dictionary<string, string>(fields, StringComparer.Ordinal);
+            RuntimeWorkerAuthentication.RemoveAppProof(fields);
+        }
+
         if (fields.TryGetValue(RpcWorkerConstants.HttpUri, out string advertisedHttpUri)
             && !string.IsNullOrEmpty(advertisedHttpUri))
         {
@@ -233,7 +258,32 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             FailPendingMetadataRequest(new ObjectDisposedException(GetType().FullName));
         }
 
-        base.Dispose(disposing);
+        Exception disposalException = null;
+        try
+        {
+            base.Dispose(disposing);
+        }
+        catch (Exception exception)
+        {
+            disposalException = exception;
+        }
+
+        try
+        {
+            if (disposing)
+            {
+                Interlocked.Exchange(ref _ownedHttpProxyService, null)?.Dispose();
+            }
+        }
+        catch (Exception exception)
+        {
+            disposalException = disposalException is null ? exception : new AggregateException(disposalException, exception);
+        }
+
+        if (disposalException is not null)
+        {
+            ExceptionDispatchInfo.Capture(disposalException).Throw();
+        }
     }
 
     private async Task CompleteStartAsync()

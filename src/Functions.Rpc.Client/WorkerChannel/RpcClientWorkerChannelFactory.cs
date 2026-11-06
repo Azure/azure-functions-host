@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -31,7 +32,8 @@ internal sealed class RpcClientWorkerChannelFactory(
     IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
     IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
     IAppCapabilitiesStore appCapabilitiesStore,
-    Func<IHttpProxyService> httpProxyServiceFactory,
+    Func<DelegatingHandler, IHttpProxyService> httpProxyServiceFactory,
+    IOptionsFactory<RuntimeApplicationAuthenticationOptions> appAuthenticationOptions,
     IMetricsLogger metricsLogger,
     IOptionsMonitor<WorkerProcessCountOptions> processOptions = null) : IRpcClientWorkerChannelFactory
 {
@@ -44,8 +46,11 @@ internal sealed class RpcClientWorkerChannelFactory(
     private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
     private readonly IScriptHostManager _hostManager = hostManager ?? throw new ArgumentNullException(nameof(hostManager));
 
-    private readonly IHttpProxyService _httpProxyService = httpProxyServiceFactory?.Invoke()
+    private readonly Func<DelegatingHandler, IHttpProxyService> _httpProxyServiceFactory = httpProxyServiceFactory
         ?? throw new ArgumentNullException(nameof(httpProxyServiceFactory));
+
+    private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions = appAuthenticationOptions
+        ?? throw new ArgumentNullException(nameof(appAuthenticationOptions));
 
     private readonly ILoggerFactory _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly IMetricsLogger _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -69,9 +74,7 @@ internal sealed class RpcClientWorkerChannelFactory(
     }
 
     public RpcClientWorkerChannel Create(
-        string workerId,
-        DuplexChannel<StreamingMessage> ownedChannel,
-        RuntimeWorkerCredentials credentials)
+        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials)
     {
         ArgumentException.ThrowIfNullOrEmpty(workerId);
         ArgumentNullException.ThrowIfNull(ownedChannel);
@@ -91,22 +94,50 @@ internal sealed class RpcClientWorkerChannelFactory(
             },
         };
         ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{workerConfig.Description.Language}.{workerId}");
-        return new(
-            workerId,
-            ownedChannel,
-            _eventManager,
-            _hostManager,
-            workerConfig,
-            workerLogger,
-            _metricsLogger,
-            attemptCount: 0,
-            _environment,
-            _applicationHostOptions,
-            _sharedMemoryManager,
-            _workerConcurrencyOptions,
-            _hostingConfigOptions,
-            _appCapabilitiesStore,
-            new WorkerProxyHttpProxyService(_httpProxyService, credentials),
-            credentials);
+        WorkerProxyHttpMessageHandler authenticationHandler = new(credentials);
+        IHttpProxyService httpProxyService = null;
+        try
+        {
+            httpProxyService = _httpProxyServiceFactory(authenticationHandler);
+
+            return new(
+                workerId,
+                ownedChannel,
+                _eventManager,
+                _hostManager,
+                workerConfig,
+                workerLogger,
+                _metricsLogger,
+                attemptCount: 0,
+                _environment,
+                _applicationHostOptions,
+                _sharedMemoryManager,
+                _workerConcurrencyOptions,
+                _hostingConfigOptions,
+                _appCapabilitiesStore,
+                httpProxyService,
+                credentials,
+                _appAuthenticationOptions);
+        }
+        catch
+        {
+            try
+            {
+                if (httpProxyService is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+                else
+                {
+                    authenticationHandler.Dispose();
+                }
+            }
+            catch (Exception exception) when (!Utility.IsFatal(exception))
+            {
+                workerLogger.LogWarning(exception, "Failed to dispose HTTP forwarding resources after worker channel creation failed.");
+            }
+
+            throw;
+        }
     }
 }

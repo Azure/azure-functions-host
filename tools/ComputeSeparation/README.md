@@ -39,6 +39,11 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 
 Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
 
+Container cleanup reuses the run's actual container keys, pod/worker/request identities, network/alias and PEM paths when
+invoking `docker compose stop` or `down`; Compose requires all interpolated settings even for cleanup. Cleanup-only port
+values are zero because those commands never create resources. They do not replace the allocated ports supplied to `up`.
+Worker cleanup completes before the runtime network is removed, and a delayed stop event cannot remove a newer generation.
+
 ## Host configuration delivery
 
 Workers deliver an immutable Host Configuration JSON payload, which may be generated entirely in memory. The compute/BYOC Host always advertises `WorkerInitRequest.capabilities["HostConfiguration"] = "1"` in both project and container modes. Supporting workers check for that exact capability value before obtaining or preparing configuration. No Host feature flag, configuration setting, or worker command-line switch is required. The existing sample's published worker package must be replaced with a compatible worker build to deliver Host configuration. An older worker can still start using file-based loading. Ordinary co-located Host execution does not advertise this capability and continues to use file-based loading.
@@ -124,6 +129,12 @@ Open the `fake-platform` console logs in the dashboard to watch the assign and l
 Each run generates three distinct synthetic keys: runtime container, WorkerProxy container and shared app. The runtime validates Link's `x-ms-site-token` with its own container key, including after specialization. WorkerProxy validates assignment and state-poll site tokens with its own key, even before a customer worker exists. That WorkerProxy key is also delivered to Host as `runtimeAccessKey` for data-plane caller JWTs. The app key is supplied through each process's normal configuration, not injected through WorkerProxy assignment. This local fixture does not establish deployed provisioning.
 
 Both receivers validate their own container key and pod identity at startup; invalid server configuration fails named options validation rather than returning a caller 401. Missing or invalid caller tokens under valid server configuration still return 401/Unauthenticated. The runtime's application proof key is read from live specialization configuration only when validating a reverse proof, so absent or invalid application-key configuration does not block management startup or caller-token signing.
+
+The runtime binds and validates a fresh application-authentication options snapshot at that proof boundary, rather than
+caching `IOptionsMonitor` values: direct specialization/provider updates need not emit a reload token. Linked credentials
+hold only the selected worker identity/key and receive the validated application values explicitly. Each channel owns a
+separate outbound HTTP handler pipeline that adds its caller token after request transformation without mutating incoming
+customer headers; disposing one channel does not dispose another worker's transport or the ordinary Host HTTP service.
 
 Assignment simulations send requested config/content Unix epoch seconds as integer numbers (synthetic zero versions for this harness) and an effective HTTP `maxHttpConcurrency` of 16. Requested versions participate in retry identity but do not confirm loaded configuration or content; their nullable numeric-string compatibility and exact Int64 precision are covered by the endpoint/native fixtures. HTTP concurrency is a separate startup-capacity contract: omission defaults to 16, explicit integers must be from 1 through 1000, and explicit null or numeric strings are invalid. Non-HTTP groups accept integers from 0 through 1000 without a default. Equivalent effective values share retry identity; invalid HTTP zero is never coerced to the default.
 

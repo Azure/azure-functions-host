@@ -561,6 +561,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         await invocation.ResultSource.Task.WaitAsync(cancellationToken);
         Assert.Equal($"received:{payload}", Encoding.UTF8.GetString(responseBody.ToArray()));
         Assert.Equal(StatusCodes.Status200OK, httpContext.Response.StatusCode);
+        Assert.Equal("caller-supplied-worker-token", httpContext.Request.Headers[WorkerTokenHeader]);
+        Assert.Equal("caller-supplied-app-token", httpContext.Request.Headers[AppTokenHeader]);
+        Assert.Equal("caller-supplied-site-token", httpContext.Request.Headers[ManagementTokenTestData.HeaderName]);
     }
 
     internal static ServiceProvider CreateRuntime(
@@ -605,13 +608,13 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         services.AddSingleton(Mock.Of<IMetricsLogger>());
         services.AddSingleton(Mock.Of<IHttpProxyService>(MockBehavior.Strict));
         services.AddRpcClientServices();
-        ServiceDescriptor forwarding = services.Single(service => service.ServiceType == typeof(Func<IHttpProxyService>));
+        ServiceDescriptor forwarding = services.Single(service => service.ServiceType == typeof(Func<DelegatingHandler, IHttpProxyService>));
         services.Remove(forwarding);
-        services.Add(ServiceDescriptor.Singleton<Func<IHttpProxyService>>(provider =>
+        services.Add(ServiceDescriptor.Singleton<Func<DelegatingHandler, IHttpProxyService>>(provider =>
         {
-            Func<IHttpProxyService> inner = (Func<IHttpProxyService>)forwarding.ImplementationFactory!(provider);
+            Func<DelegatingHandler, IHttpProxyService> inner = (Func<DelegatingHandler, IHttpProxyService>)forwarding.ImplementationFactory!(provider);
 
-            return () => new RecordingHttpProxyService(inner(), forwardedOrigins);
+            return handler => new RecordingHttpProxyService(inner(handler), forwardedOrigins);
         }));
 
         return services.BuildServiceProvider();
@@ -636,7 +639,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
 
     private sealed class RecordingHttpProxyService(
         IHttpProxyService inner,
-        ConcurrentQueue<Uri> origins) : IHttpProxyService
+        ConcurrentQueue<Uri> origins) : IHttpProxyService, IDisposable
     {
         public void StartForwarding(ScriptInvocationContext context, Uri httpUri)
         {
@@ -645,6 +648,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         }
 
         public Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context) => inner.EnsureSuccessfulForwardingAsync(context);
+
+        public void Dispose() => (inner as IDisposable)?.Dispose();
     }
 
     private sealed class AuthenticatedInitializationService(

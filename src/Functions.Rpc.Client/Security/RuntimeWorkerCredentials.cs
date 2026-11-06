@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using Azure.Functions.Authentication;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -18,19 +17,17 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 internal sealed partial class RuntimeWorkerCredentials
 {
-    private readonly IConfiguration _configuration;
     private readonly TimeProvider _timeProvider;
     private readonly byte[] _workerKey;
     private readonly string _workerId;
     private readonly ILogger _logger;
 
     public RuntimeWorkerCredentials(
-        string workerId,
-        string runtimeAccessKey,
-        IConfiguration configuration,
-        TimeProvider timeProvider,
-        ILogger? logger = null)
+        string workerId, string runtimeAccessKey, TimeProvider timeProvider, ILogger? logger = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (!RuntimeWorkerAuthentication.TryDecodeWorkerKey(runtimeAccessKey, out _workerKey))
         {
             throw new WorkerLinkException(WorkerLinkFailureReason.InvalidRuntimeAccessKey,
@@ -38,7 +35,6 @@ internal sealed partial class RuntimeWorkerCredentials
         }
 
         _workerId = workerId;
-        _configuration = configuration;
         _timeProvider = timeProvider;
         _logger = logger ?? NullLogger.Instance;
     }
@@ -46,23 +42,12 @@ internal sealed partial class RuntimeWorkerCredentials
     public bool MatchesKey(RuntimeWorkerCredentials credentials)
         => CryptographicOperations.FixedTimeEquals(_workerKey, credentials._workerKey);
 
-    public IReadOnlyDictionary<string, string> CreateHeaders()
-        => RuntimeWorkerAuthentication.CreateHeaders(_workerKey, _workerId, _timeProvider.GetUtcNow());
+    public IEnumerable<KeyValuePair<string, string>> CreateHeaders()
+        => [new(RuntimeWorkerAuthentication.WorkerTokenHeader, RuntimeWorkerAuthentication.CreateToken(
+            _workerKey, RuntimeWorkerAuthentication.WorkerAudience(_workerId), RuntimeWorkerAuthentication.WorkerPurpose, _timeProvider.GetUtcNow()))];
 
-    public void ValidateAppProof(string? proof)
+    public void ValidateAppProof(string? proof, string appName, ReadOnlySpan<byte> appKey)
     {
-        string? appName = _configuration[RuntimeWorkerAuthentication.AppNameSetting];
-        string? encodedAppKey = _configuration[RuntimeWorkerAuthentication.AppKeySetting];
-        if (string.IsNullOrWhiteSpace(appName)
-            || !RuntimeWorkerAuthentication.TryDecodeAppKey(encodedAppKey, out byte[] appKey))
-        {
-            AuthenticationFailureReason configurationFailure = string.IsNullOrWhiteSpace(appName) ? AuthenticationFailureReason.MissingIdentity
-                : string.IsNullOrWhiteSpace(encodedAppKey) ? AuthenticationFailureReason.MissingKey : AuthenticationFailureReason.InvalidKey;
-            Log.AppProofRejected(_logger, configurationFailure);
-            throw new WorkerLinkException(WorkerLinkFailureReason.AuthenticationUnavailable,
-                "The specialized application authentication configuration is unavailable.");
-        }
-
         if (!RuntimeWorkerAuthentication.ValidateAppProof(proof, appKey, appName, _workerId, _timeProvider.GetUtcNow(), out AuthenticationFailureReason reason))
         {
             Log.AppProofRejected(_logger, reason);

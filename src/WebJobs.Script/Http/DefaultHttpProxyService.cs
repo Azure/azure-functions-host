@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Http
 {
     internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {
-        private readonly SocketsHttpHandler _handler;
         private readonly IHttpForwarder _httpForwarder;
         private readonly HttpMessageInvoker _messageInvoker;
         private readonly ForwarderRequestConfig _forwarderRequestConfig;
@@ -32,16 +31,19 @@ namespace Microsoft.Azure.WebJobs.Script.Http
         internal DefaultHttpProxyService(
             IHttpForwarder httpForwarder,
             ILogger<DefaultHttpProxyService> logger,
-            SocketsHttpHandler handler)
+            HttpMessageHandler handler)
         {
             _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _handler = handler ?? throw new ArgumentNullException(nameof(handler));
-            _handler.AllowAutoRedirect = false;
-            _handler.UseCookies = false;
+            ArgumentNullException.ThrowIfNull(handler);
+            if (handler is SocketsHttpHandler socketsHandler)
+            {
+                socketsHandler.AllowAutoRedirect = false;
+                socketsHandler.UseCookies = false;
+            }
 
-            _messageInvoker = new HttpMessageInvoker(new RetryProxyHandler(_handler, logger));
+            _messageInvoker = new HttpMessageInvoker(new RetryProxyHandler(handler, logger));
 
             _forwarderRequestConfig = new ForwarderRequestConfig
             {
@@ -51,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Http
 
         public void Dispose()
         {
-            _handler?.Dispose();
             _messageInvoker?.Dispose();
         }
 

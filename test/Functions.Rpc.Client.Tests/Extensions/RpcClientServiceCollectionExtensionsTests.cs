@@ -43,6 +43,8 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         Assert.Equal(defaults.KeepAlivePingPolicy, forwarding.KeepAlivePingPolicy);
         Assert.True(forwarding.UseProxy);
         Assert.Null(forwarding.Proxy);
+        Assert.False(forwarding.AllowAutoRedirect);
+        Assert.False(forwarding.UseCookies);
         Assert.True(grpc.UseProxy);
         Assert.Null(grpc.Proxy);
         Assert.NotEqual(grpc.ConnectTimeout, forwarding.ConnectTimeout);
@@ -59,14 +61,10 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
-        ServiceDescriptor httpProxy = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IHttpProxyService) && !descriptor.IsKeyedService));
-        Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
-        Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", httpProxy.ImplementationType?.FullName);
-        ServiceDescriptor concreteProxy = Assert.Single(services.Where(descriptor => string.Equals(
-            descriptor.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)));
-        Assert.Equal(ServiceLifetime.Singleton, concreteProxy.Lifetime);
-        Assert.NotNull(concreteProxy.ImplementationFactory);
-        ServiceDescriptor workerTransport = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(Func<IHttpProxyService>)));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHttpProxyService));
+        Assert.DoesNotContain(services, descriptor => string.Equals(
+            descriptor.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal));
+        ServiceDescriptor workerTransport = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(Func<DelegatingHandler, IHttpProxyService>)));
         Assert.Equal(ServiceLifetime.Singleton, workerTransport.Lifetime);
         Assert.NotNull(workerTransport.ImplementationFactory);
         AssertSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>(services);
@@ -233,15 +231,18 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         using ServiceProvider provider = services.BuildServiceProvider();
 
         Assert.Same(custom, provider.GetRequiredService<IHttpProxyService>());
-        IHttpProxyService worker = provider.GetRequiredService<Func<IHttpProxyService>>()();
+        Func<DelegatingHandler, IHttpProxyService> factory = provider.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>();
+        IHttpProxyService worker = factory(new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials()));
+        using IDisposable workerLifetime = Assert.IsAssignableFrom<IDisposable>(worker);
+        IHttpProxyService second = factory(new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials("second-worker")));
+        using IDisposable secondLifetime = Assert.IsAssignableFrom<IDisposable>(second);
         Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", worker.GetType().FullName);
-        Assert.Same(provider.GetRequiredService(worker.GetType()), worker);
         Assert.NotSame(custom, worker);
-        Assert.Same(worker, provider.GetRequiredService<Func<IHttpProxyService>>()());
+        Assert.NotSame(worker, second);
     }
 
     [Fact]
-    public async Task DedicatedWorkerTransport_IsOwnedAndDisposedByItsRootProvider()
+    public async Task DedicatedWorkerTransport_IsOwnedByItsChannelAndSurvivesScriptHostChildDisposal()
     {
         ServiceCollection services = new();
         services.AddLogging();
@@ -256,18 +257,20 @@ public sealed class RpcClientServiceCollectionExtensionsTests
             });
         services.AddSingleton(forwarder.Object);
         services.AddRpcClientServices();
-        ServiceProvider provider = services.BuildServiceProvider();
-        IHttpProxyService transport = provider.GetRequiredService<Func<IHttpProxyService>>()();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Func<DelegatingHandler, IHttpProxyService> factory = provider.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>();
+        IHttpProxyService transport = factory(new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials()));
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", httpProxyService: transport);
         IServiceCollection forwardingServices = new ServiceCollection();
         foreach (ServiceDescriptor descriptor in services.Where(descriptor =>
-            descriptor.ServiceType == typeof(IHttpProxyService) || descriptor.ServiceType == transport.GetType()
-                || descriptor.ServiceType == typeof(Func<IHttpProxyService>)))
+            descriptor.ServiceType == typeof(Func<DelegatingHandler, IHttpProxyService>)))
         {
             forwardingServices.Add(descriptor);
         }
         await using (ServiceProvider child = provider.CreateChildContainer(forwardingServices).BuildServiceProvider())
         {
-            Assert.Same(transport, child.GetRequiredService<Func<IHttpProxyService>>()());
+            Assert.Same(factory, child.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>());
         }
         DefaultHttpContext http = new();
         http.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
@@ -281,7 +284,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         HttpMessageInvoker owned = await captured.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await transport.EnsureSuccessfulForwardingAsync(invocation);
 
-        await provider.DisposeAsync();
+        await worker.DisposeAsync();
 
         using HttpRequestMessage request = new(HttpMethod.Get, "https://worker-proxy:28080/");
         await Assert.ThrowsAsync<ObjectDisposedException>(() => owned.SendAsync(request, CancellationToken.None));

@@ -169,7 +169,8 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            () => httpProxyService ?? Mock.Of<IHttpProxyService>(),
+            _ => httpProxyService ?? Mock.Of<IHttpProxyService>(),
+            RuntimeWorkerTestData.CreateApplicationOptions(),
             Mock.Of<IMetricsLogger>());
     }
 }

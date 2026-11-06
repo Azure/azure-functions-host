@@ -36,7 +36,6 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
-    private readonly IConfiguration _configuration;
     private readonly TimeProvider _timeProvider;
     private readonly IWorkerInvocationTracker _invocationTracker;
     private readonly Lock _disposeLock = new();
@@ -68,13 +67,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        IConfiguration configuration,
         TimeProvider timeProvider,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
         IOptionsMonitor<WorkerProcessCountOptions> processOptions = null,
         IOptions<TokenServiceProxyOptions> proxyOptions = null,
         IWorkerInvocationTracker invocationTracker = null)
-        : this(duplexChannelFactory, channelFactory, logger, configuration, timeProvider,
+        : this(duplexChannelFactory, channelFactory, logger, timeProvider,
             ResolveLinkTimeout(processOptions, proxyOptions), workerHostConfigurationParser,
             registryOwnedAttempt: proxyOptions?.Value.Enabled == true, invocationTracker: invocationTracker)
     {
@@ -84,7 +82,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
-        IConfiguration configuration,
         TimeProvider timeProvider,
         TimeSpan linkTimeout,
         IWorkerHostConfigurationParser workerHostConfigurationParser,
@@ -94,7 +91,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _invocationTracker = invocationTracker;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
@@ -117,20 +113,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     internal TimeSpan LinkTimeout => _linkTimeout;
 
     private static TimeSpan ResolveLinkTimeout(
-        IOptionsMonitor<WorkerProcessCountOptions> processOptions,
-        IOptions<TokenServiceProxyOptions> proxyOptions) =>
+        IOptionsMonitor<WorkerProcessCountOptions> processOptions, IOptions<TokenServiceProxyOptions> proxyOptions) =>
         proxyOptions?.Value is { Enabled: true } options ? options.LinkTimeout
             : RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new());
 
     public Task<WorkerLinkResult> LinkAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        string runtimeAccessKey,
-        CancellationToken cancellationToken = default)
+        string workerId, Uri grpcEndpoint, string runtimeAccessKey, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
-        RuntimeWorkerCredentials credentials = new(workerId, runtimeAccessKey, _configuration, _timeProvider, _logger);
+        RuntimeWorkerCredentials credentials = new(workerId, runtimeAccessKey, _timeProvider, _logger);
         cancellationToken.ThrowIfCancellationRequested();
 
         TaskCompletionSource<WorkerChannel> linkCompletion;

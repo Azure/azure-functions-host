@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -20,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
@@ -72,12 +74,13 @@ public class ClientWorkerCompositionTests
 
         ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
 
-        ServiceDescriptor httpProxy = Assert.Single(services.Where(service => string.Equals(
-            service.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.IHttpProxyService", StringComparison.Ordinal) && !service.IsKeyedService));
-        Assert.Equal(ServiceLifetime.Singleton, httpProxy.Lifetime);
-        Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", httpProxy.ImplementationType?.FullName);
-        Assert.Single(services.Where(service => string.Equals(service.ServiceType.FullName,
-            "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)));
+        Assert.DoesNotContain(services, service => service.ServiceType == typeof(IHttpProxyService));
+        Assert.DoesNotContain(services, service => string.Equals(service.ServiceType.FullName,
+            "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal));
+        ServiceDescriptor workerTransport = Assert.Single(services.Where(service =>
+            service.ServiceType == typeof(Func<DelegatingHandler, IHttpProxyService>)));
+        Assert.Equal(ServiceLifetime.Singleton, workerTransport.Lifetime);
+        Assert.NotNull(workerTransport.ImplementationFactory);
         services.AddLogging();
         using (ServiceProvider provider = services.BuildServiceProvider())
         {
@@ -85,11 +88,13 @@ public class ClientWorkerCompositionTests
                 provider.GetRequiredService<IOptions<AuthorizationOptions>>()
                     .Value.GetPolicy(ContainerManagementAuthenticationHandler.SchemeName));
             Assert.Equal([ContainerManagementAuthenticationHandler.SchemeName], managementPolicy.AuthenticationSchemes);
-            Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService",
-                provider.GetRequiredService(httpProxy.ServiceType).GetType().FullName);
-            Assert.NotSame(provider.GetRequiredService(httpProxy.ServiceType),
-                provider.GetRequiredService(services.Single(service => string.Equals(service.ServiceType.FullName,
-                    "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal)).ServiceType));
+            Func<DelegatingHandler, IHttpProxyService> factory = provider.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>();
+            IHttpProxyService first = factory(Mock.Of<DelegatingHandler>());
+            using IDisposable firstLifetime = Assert.IsAssignableFrom<IDisposable>(first);
+            IHttpProxyService second = factory(Mock.Of<DelegatingHandler>());
+            using IDisposable secondLifetime = Assert.IsAssignableFrom<IDisposable>(second);
+            Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", first.GetType().FullName);
+            Assert.NotSame(first, second);
         }
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IRpcClientFactory",
             "Azure.Functions.Rpc.Client.RpcClientFactory");

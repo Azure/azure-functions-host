@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
@@ -32,7 +33,27 @@ internal static class RuntimeWorkerTestData
         }).Build();
 
     public static RuntimeWorkerCredentials CreateCredentials(string workerId = "worker")
-        => new(workerId, WorkerKey, CreateConfiguration(), TimeProvider.System);
+        => new(workerId, WorkerKey, TimeProvider.System);
+
+    public static IOptionsFactory<RuntimeApplicationAuthenticationOptions> CreateApplicationOptions(IConfiguration configuration = null)
+    {
+        configuration ??= CreateConfiguration();
+
+        return new OptionsFactory<RuntimeApplicationAuthenticationOptions>(
+            [new ConfigureNamedOptions<RuntimeApplicationAuthenticationOptions>(Options.DefaultName, options =>
+            {
+                options.AppName = configuration[RuntimeWorkerAuthentication.AppNameSetting];
+                options.EncodedAppKey = configuration[RuntimeWorkerAuthentication.AppKeySetting];
+            })],
+            [],
+            [new RuntimeApplicationAuthenticationOptionsValidator()]);
+    }
+
+    public static void ValidateAppProof(this RuntimeWorkerCredentials credentials, string proof)
+    {
+        RuntimeApplicationAuthenticationOptions options = CreateApplicationOptions().Create(Options.DefaultName);
+        credentials.ValidateAppProof(proof, options.AppName, options.AppKey);
+    }
 
     public static string CreateAppProof(string workerId)
         => RuntimeWorkerAuthentication.CreateAppProof(
@@ -47,16 +68,11 @@ internal static class RuntimeWorkerTestData
 
     // Existing lifecycle tests use these authenticated fixture overloads, never an anonymous product path.
     public static Task<WorkerLinkResult> LinkAsync(
-        this IWorkerChannelRegistry registry,
-        string workerId,
-        Uri endpoint,
-        CancellationToken cancellationToken = default)
+        this IWorkerChannelRegistry registry, string workerId, Uri endpoint, CancellationToken cancellationToken = default)
         => registry.LinkAsync(workerId, endpoint, WorkerKey, cancellationToken: cancellationToken);
 
     public static Task<DuplexChannel<T>> ConnectAsync<T>(
-        this IDuplexChannelFactory<T> factory,
-        Uri endpoint,
-        CancellationToken cancellationToken = default)
+        this IDuplexChannelFactory<T> factory, Uri endpoint, CancellationToken cancellationToken = default)
         where T : class
         => factory.ConnectAsync(endpoint, CreateCredentials().CreateHeaders(), cancellationToken);
 

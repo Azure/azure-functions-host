@@ -22,23 +22,26 @@ public class FunctionRpcDuplexChannelIntegrationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task ConnectAsync_ForwardsNeutralHeaderDictionaryAsGrpcMetadata()
+    public async Task ConnectAsync_ForwardsNeutralHeaderSequenceAsGrpcMetadata()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        IReadOnlyDictionary<string, string> headers = new Dictionary<string, string>
-        {
-            ["x-test-header"] = "neutral-transport-value",
-            ["x-ms-functions-worker-token"] = "opaque-caller-token"
-        };
+        int enumerations = 0;
+        IEnumerable<KeyValuePair<string, string>> headers = GetHeaders();
 
         await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, headers);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
-        foreach ((string name, string value) in headers)
+        Assert.Equal("neutral-transport-value", server.Service.RequestHeaders.GetValue("x-test-header"));
+        Assert.Equal("opaque-caller-token", server.Service.RequestHeaders.GetValue("x-ms-functions-worker-token"));
+        Assert.Equal(1, enumerations);
+
+        IEnumerable<KeyValuePair<string, string>> GetHeaders()
         {
-            Assert.Equal(value, server.Service.RequestHeaders.GetValue(name));
+            enumerations++;
+            yield return new("x-test-header", "neutral-transport-value");
+            yield return new("x-ms-functions-worker-token", "opaque-caller-token");
         }
     }
 
@@ -146,6 +149,27 @@ public class FunctionRpcDuplexChannelIntegrationTests
         cancellationSource.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => channelFactory.ConnectAsync(server.Endpoint, cancellationSource.Token));
+    }
+
+    [Fact]
+    public async Task CancellationAfterConnectDoesNotCancelTheOwnedDuplexCall()
+    {
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+        using CancellationTokenSource cancellation = new();
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, cancellation.Token);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        cancellation.Cancel();
+        await channel.Writer.WriteAsync(new() { RequestId = "after-link-request-cancellation" });
+        StreamingMessage request = await server.Service.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal("after-link-request-cancellation", request.RequestId);
+        await server.Service.SendResponseAsync(new() { RequestId = "still-connected" });
+        Assert.Equal("still-connected", (await ReadNextAsync(channel)).RequestId);
+
+        await channel.DisposeAsync();
+        await channel.Reader.Completion.WaitAsync(TestTimeout);
     }
 
     [Fact]

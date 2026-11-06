@@ -30,11 +30,16 @@
     <None Include="..\..\src\Functions.Host\Functions.Host.csproj"
           Link="ProjectFiles\Functions.Host.csproj"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\tools\ComputeSeparation\runtime.compose.yaml;..\..\tools\ComputeSeparation\worker-pod.compose.yaml"
+          Link="ComputeSeparationFixtures\tools\ComputeSeparation\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\Functions.WorkerProxy.Tests\TestCertificateFiles.cs" Link="TestCertificateFiles.cs" />
     <Compile Include="..\Functions.WorkerProxy.Tests\Management\ManagementTokenTestData.cs" Link="ManagementTokenTestData.cs" />
+    <Compile Include="..\..\tools\ComputeSeparation\AppHost\ContainerTopology.cs" Link="Tools\ContainerTopology.cs" />
+    <Compile Include="..\..\tools\ComputeSeparation\AppHost\ComposeSession.cs" Link="Tools\ComposeSession.cs" />
     <ProjectReference Include="..\..\src\Functions.Host\Functions.Host.csproj" />
     <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" Aliases="workerproxy,WorkerProxy" />
   </ItemGroup>

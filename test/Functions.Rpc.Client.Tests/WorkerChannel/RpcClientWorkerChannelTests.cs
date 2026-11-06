@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
@@ -14,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
@@ -23,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Moq.Protected;
 using Xunit;
 using RpcExceptionMessage = Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcException;
 
@@ -44,7 +47,9 @@ public sealed class RpcClientWorkerChannelTests
         _factory = CreateFactory();
     }
 
-    private RpcClientWorkerChannelFactory CreateFactory()
+    private RpcClientWorkerChannelFactory CreateFactory(
+        IOptionsFactory<RuntimeApplicationAuthenticationOptions> appAuthenticationOptions = null,
+        Func<DelegatingHandler, IHttpProxyService> httpProxyServiceFactory = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -76,8 +81,131 @@ public sealed class RpcClientWorkerChannelTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             _appCapabilitiesStore.Object,
-            () => Mock.Of<IHttpProxyService>(),
+            httpProxyServiceFactory ?? (_ => Mock.Of<IHttpProxyService>()),
+            appAuthenticationOptions ?? RuntimeWorkerTestData.CreateApplicationOptions(),
             _metricsLogger);
+    }
+
+    [Theory]
+    [InlineData("MissingKey")]
+    [InlineData("InvalidKey")]
+    public async Task StartAsync_InvalidApplicationOptionsFailBeforeInitPublicationAndDoNotLeakValues(string reason)
+    {
+        Mock<IOptionsFactory<RuntimeApplicationAuthenticationOptions>> options = new(MockBehavior.Strict);
+        options.Setup(value => value.Create(Options.DefaultName)).Throws(
+            new OptionsValidationException(Options.DefaultName, typeof(RuntimeApplicationAuthenticationOptions), [reason]));
+        RpcClientWorkerChannelFactory factory = CreateFactory(appAuthenticationOptions: options.Object);
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = factory.Create(
+            WorkerId, transport, RuntimeWorkerTestData.CreateCredentials(WorkerId));
+        options.VerifyNoOtherCalls();
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Add("UntrustedCapability", "must-not-be-published");
+        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+        response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException error = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+
+        Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, error.Reason);
+        Assert.Null(channel.WorkerCapabilities.GetCapabilityState("UntrustedCapability"));
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        Assert.Null(channel.HostConfiguration);
+        Assert.Contains(_logs, message => message.Contains("AuthenticationUnavailable", StringComparison.Ordinal));
+        Assert.DoesNotContain(_logs, message => message.Contains(RuntimeWorkerTestData.AppKey, StringComparison.Ordinal));
+        options.Verify(value => value.Create(Options.DefaultName), Times.Once);
+        options.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UpdateCapabilities_OnlyCopiesWhenSanitizingAReservedProof(bool containsProof, bool replace)
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(WorkerId);
+        Dictionary<string, string> values = new() { ["PublicCapability"] = "enabled" };
+        if (containsProof)
+        {
+            values.Add("WorkerProxyAppToken", "private-reload-proof");
+        }
+        Mock<IDictionary<string, string>> fields = new(MockBehavior.Strict);
+        fields.Setup(value => value.ContainsKey("WorkerProxyAppToken")).Returns(containsProof);
+        fields.SetupGet(value => value.Count).Returns(values.Count);
+        int enumerations = 0;
+        fields.Setup(value => value.GetEnumerator()).Returns(() =>
+        {
+            enumerations++;
+
+            return values.GetEnumerator();
+        });
+        string httpUri = null;
+        fields.Setup(value => value.TryGetValue(RpcWorkerConstants.HttpUri, out httpUri)).Returns(false);
+
+        harness.Channel.UpdateCapabilities(fields.Object,
+            replace ? GrpcCapabilitiesUpdateStrategy.Replace : GrpcCapabilitiesUpdateStrategy.Merge);
+
+        Assert.Equal(containsProof ? 1 : 2, enumerations);
+        Assert.Equal("enabled", harness.Channel.WorkerCapabilities.GetCapabilityState("PublicCapability"));
+        Assert.Null(harness.Channel.WorkerCapabilities.GetCapabilityState("WorkerProxyAppToken"));
+        Assert.Equal(containsProof, values.ContainsKey("WorkerProxyAppToken"));
+    }
+
+    [Fact]
+    public async Task DisposeAsync_DisposesOnlyTheChannelsOwnHttpTransportOnce()
+    {
+        Mock<IHttpProxyService> first = new();
+        Mock<IHttpProxyService> second = new();
+        Mock<IDisposable> firstLifetime = first.As<IDisposable>();
+        Mock<IDisposable> secondLifetime = second.As<IDisposable>();
+        Queue<IHttpProxyService> services = new([first.Object, second.Object]);
+        RpcClientWorkerChannelFactory factory = CreateFactory(httpProxyServiceFactory: _ => services.Dequeue());
+        await using RpcClientWorkerChannel firstChannel = factory.Create(
+            "first", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("first"));
+        await using RpcClientWorkerChannel secondChannel = factory.Create(
+            "second", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("second"));
+
+        await firstChannel.DisposeAsync();
+        await firstChannel.DisposeAsync();
+
+        firstLifetime.Verify(value => value.Dispose(), Times.Once);
+        secondLifetime.Verify(value => value.Dispose(), Times.Never);
+        await secondChannel.DisposeAsync();
+        secondLifetime.Verify(value => value.Dispose(), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Create_FailedHttpPipelineCreationDisposesTheHandlerAndPreservesThePrimaryFailure(bool cleanupFails)
+    {
+        InvalidOperationException primary = new("controlled HTTP factory failure");
+        Mock<HttpMessageHandler> inner = new();
+        if (cleanupFails)
+        {
+            inner.Protected().Setup("Dispose", ItExpr.IsAny<bool>())
+                .Throws(new InvalidOperationException("controlled HTTP cleanup failure"));
+        }
+        RpcClientWorkerChannelFactory factory = CreateFactory(httpProxyServiceFactory: handler =>
+        {
+            handler.InnerHandler = inner.Object;
+
+            throw primary;
+        });
+
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => factory.Create(
+            WorkerId, new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials(WorkerId)));
+
+        Assert.Same(primary, error);
+        inner.Protected().Verify("Dispose", Times.Once(), ItExpr.Is<bool>(value => value));
+        if (cleanupFails)
+        {
+            Assert.Contains(_logs, message => message.Contains("Failed to dispose HTTP forwarding resources", StringComparison.Ordinal));
+        }
     }
 
     [Theory]

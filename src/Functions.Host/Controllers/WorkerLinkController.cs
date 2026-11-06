@@ -45,8 +45,7 @@ public sealed partial class WorkerLinkController : Controller
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
     public WorkerLinkController(
-        ILogger<WorkerLinkController> logger,
-        IWorkerChannelRegistry registry)
+        ILogger<WorkerLinkController> logger, IWorkerChannelRegistry registry)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -96,9 +95,7 @@ public sealed partial class WorkerLinkController : Controller
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(
-        string workerId,
-        WorkerLinkRequest? request,
-        out Uri? grpcEndpoint)
+        string workerId, WorkerLinkRequest? request, out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
         List<RequestValidationError> errors = [];
@@ -134,11 +131,7 @@ public sealed partial class WorkerLinkController : Controller
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
     private async Task<IActionResult> LinkValidatedWorkerAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        string runtimeAccessKey,
-        long started,
-        CancellationToken cancellationToken)
+        string workerId, Uri grpcEndpoint, string runtimeAccessKey, long started, CancellationToken cancellationToken)
     {
         try
         {
@@ -181,10 +174,7 @@ public sealed partial class WorkerLinkController : Controller
     }
 
     private ObjectResult CreateLinkFailureResponse(
-        string workerId,
-        WorkerLinkFailureReason reason,
-        long started,
-        Exception exception)
+        string workerId, WorkerLinkFailureReason reason, long started, Exception exception)
     {
         (int statusCode, string code, string detail) = reason switch
         {

@@ -38,6 +38,7 @@ if (multipleWorkers && (useContainers || autoLink))
 }
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
+string workerRequestId = Guid.NewGuid().ToString();
 string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
 string runtimeAccessKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 string appAuthKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -45,7 +46,10 @@ string runtimeContainerKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(
 const string RuntimePodName = "runtime-pod";
 using HarnessRunDirectory runDirectory = new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
-await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
+await using ContainerTopology? topology = useContainers
+    ? new(repositoryRoot, appAuthKey, runtimeContainerKey, RuntimePodName, workerId, podName, runtimeAccessKey,
+        workerRequestId, runDirectory.CertificatePath, runDirectory.CertificateKeyPath)
+    : null;
 EndpointReference hostEndpoint;
 EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
@@ -86,7 +90,7 @@ if (topology is not null)
         .WithEnvironment("WORKER_APP_AUTH_KEY", appAuthKey)
         .WithEnvironment("WORKER_PROXY_CERTIFICATE_PATH", runDirectory.CertificatePath)
         .WithEnvironment("WORKER_PROXY_CERTIFICATE_KEY_PATH", runDirectory.CertificateKeyPath)
-        .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
+        .WithEnvironment("WORKER_REQUEST_ID", workerRequestId)
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
         .WithEnvironment(context => context.EnvironmentVariables[ComposeSession.GenerationVariable] = topology.WorkerPod.Generation)
         .WaitFor(runtime)

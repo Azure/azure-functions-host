@@ -49,9 +49,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 
     /// <inheritdoc />
     public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
-        Uri endpoint,
-        IReadOnlyDictionary<string, string> headers,
-        CancellationToken cancellationToken = default)
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(headers);
         cancellationToken.ThrowIfCancellationRequested();
@@ -70,7 +68,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
             metadata.Add(name, value);
         }
 
-        var call = client.EventStream(metadata);
+        var call = client.EventStream(metadata, cancellationToken: CancellationToken.None);
         try
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();

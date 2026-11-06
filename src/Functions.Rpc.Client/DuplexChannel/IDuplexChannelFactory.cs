@@ -29,7 +29,5 @@ internal interface IDuplexChannelFactory<T>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
     Task<DuplexChannel<T>> ConnectAsync(
-        Uri endpoint,
-        IReadOnlyDictionary<string, string> headers,
-        CancellationToken cancellationToken = default);
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default);
 }

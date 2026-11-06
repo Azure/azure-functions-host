@@ -24,15 +24,13 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
 
     internal Uri Endpoint { get; private set; }
 
-    internal IReadOnlyDictionary<string, string> Headers { get; private set; }
+    internal IEnumerable<KeyValuePair<string, string>> Headers { get; private set; }
 
     internal int InvocationCount { get; private set; }
 
     /// <inheritdoc />
     public Task<DuplexChannel<T>> ConnectAsync(
-        Uri endpoint,
-        IReadOnlyDictionary<string, string> headers,
-        CancellationToken cancellationToken = default)
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;

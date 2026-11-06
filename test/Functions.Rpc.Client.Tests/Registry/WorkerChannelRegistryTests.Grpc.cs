@@ -369,7 +369,7 @@ public sealed partial class WorkerChannelRegistryTests
             "worker-case" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now, GrpcWorkerId.ToUpperInvariant()),
             "missing-worker" => RuntimeWorkerAuthentication.CreateToken(key, audience, purpose, now),
             "wrong-purpose" => RuntimeWorkerAuthentication.CreateToken(key, audience, "wrong-purpose", now, GrpcWorkerId),
-            "caller-token" => RuntimeWorkerTestData.CreateCredentials(GrpcWorkerId).CreateHeaders()[RuntimeWorkerAuthentication.WorkerTokenHeader],
+            "caller-token" => Assert.Single(RuntimeWorkerTestData.CreateCredentials(GrpcWorkerId).CreateHeaders()).Value,
             _ => RuntimeWorkerTestData.CreateAppProof(GrpcWorkerId)
         };
     }
@@ -394,7 +394,7 @@ public sealed partial class WorkerChannelRegistryTests
         WorkerProcessCountOptions expected = options.Get(RpcClientWorkerChannelFactory.WorkerOptionsName);
         await using WorkerChannelRegistry registry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
             Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
-            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options);
+            TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options);
         await using RpcClientWorkerChannel channel = CreateRealChannelFactory(processOptions: options)
             .Create("worker", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("worker"));
 
@@ -406,7 +406,7 @@ public sealed partial class WorkerChannelRegistryTests
             + channel.WorkerConfig.CountOptions.InitializationTimeout, registry.LinkTimeout);
         await using WorkerChannelRegistry identityRegistry = new(Mock.Of<IDuplexChannelFactory<StreamingMessage>>(),
             Mock.Of<IRpcClientWorkerChannelFactory>(), NullLogger<WorkerChannelRegistry>.Instance,
-            RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options,
+            TimeProvider.System, Mock.Of<IWorkerHostConfigurationParser>(), options,
             Options.Create(new TokenServiceProxyOptions { Enabled = true }));
         Assert.Equal(TimeSpan.FromMinutes(2), identityRegistry.LinkTimeout);
     }
@@ -438,8 +438,8 @@ public sealed partial class WorkerChannelRegistryTests
 
         return linkTimeout.HasValue
             ? new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance,
-                RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, linkTimeout.Value, workerHostConfigurationParser)
+                TimeProvider.System, linkTimeout.Value, workerHostConfigurationParser)
             : new(duplexFactory, channelFactory, NullLogger<WorkerChannelRegistry>.Instance,
-                RuntimeWorkerTestData.CreateConfiguration(), TimeProvider.System, workerHostConfigurationParser);
+                TimeProvider.System, workerHostConfigurationParser);
     }
 }
