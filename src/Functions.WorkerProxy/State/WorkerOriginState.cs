@@ -24,7 +24,7 @@ namespace Azure.Functions.WorkerProxy.State;
 internal sealed record WorkerOriginState(
     [property: JsonRequired, JsonPropertyOrder(-1)] string FunctionsContainerType,
     [property: JsonRequired] PodIdentity Self,
-    [property: JsonRequired] bool IsDiscoveryPod,
+    bool IsDiscoveryPod,
     [property: JsonRequired] bool IsAlwaysReady,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
     [property: JsonRequired, JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] long ConfigLastModifiedTime,

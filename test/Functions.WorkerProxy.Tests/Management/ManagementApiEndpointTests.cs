@@ -105,6 +105,42 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData("isDiscoveryPod", null, HttpStatusCode.OK)]
+    [InlineData("isDiscoveryPod", "false", HttpStatusCode.OK)]
+    [InlineData("isDiscoveryPod", "true", HttpStatusCode.OK)]
+    [InlineData("isDiscoveryPod", "null", HttpStatusCode.BadRequest)]
+    [InlineData("isDiscoveryPod", "\"false\"", HttpStatusCode.BadRequest)]
+    [InlineData("isAlwaysReady", null, HttpStatusCode.BadRequest)]
+    public async Task InfraState_CheckpointBindingPreservesDiscoveryCompatibilityAndOtherValidation(
+        string field, string? value, HttpStatusCode expectedStatus)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject checkpoint = JsonNode.Parse(StateBody("0"))!.AsObject();
+        checkpoint["self"]!.AsObject()["podName"] = "prior-process";
+        if (value is null)
+        {
+            Assert.True(checkpoint.Remove(field));
+        }
+        else
+        {
+            checkpoint[field] = JsonNode.Parse(value);
+        }
+
+        using HttpResponseMessage response = await PostStateAsync(client, checkpoint.ToJsonString(), timeout.Token);
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+        if (expectedStatus == HttpStatusCode.OK)
+        {
+            using JsonDocument current = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+            Assert.Equal(JsonValueKind.False, current.RootElement.GetProperty("isDiscoveryPod").ValueKind);
+        }
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
+    }
+
+    [Theory]
     [InlineData("http://127.0.0.1:48801")]
     [InlineData("0.0.0.0:48801")]
     public async Task Assignment_InvalidAllocatedOriginCannotClaimIdentity(string origin)
