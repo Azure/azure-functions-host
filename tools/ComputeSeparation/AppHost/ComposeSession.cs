@@ -1,8 +1,14 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.ExceptionServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Azure.Functions.ComputeSeparation.AppHost;
 
@@ -14,7 +20,8 @@ internal sealed class ComposeSession(
     string composeFile,
     string projectName,
     IReadOnlyDictionary<string, string> cleanupEnvironment,
-    bool removeOnStop = false) : IAsyncDisposable
+    bool removeOnStop = false,
+    Func<ProcessStartInfo, Task>? runCommand = null) : IAsyncDisposable
 {
     public const string ProjectNameVariable = "COMPOSE_PROJECT_NAME";
     public const string GenerationVariable = "COMPOSE_RUN_GENERATION";
@@ -27,6 +34,8 @@ internal sealed class ComposeSession(
     public string ComposeFile { get; } = Path.Combine(repositoryRoot, "tools", "ComputeSeparation", composeFile);
 
     public string ProjectName { get; } = projectName;
+
+    internal IReadOnlyDictionary<string, string> CleanupEnvironment => cleanupEnvironment;
 
     public string Generation
     {
@@ -140,6 +149,13 @@ internal sealed class ComposeSession(
         foreach ((string key, string value) in cleanupEnvironment)
         {
             startInfo.Environment[key] = value;
+        }
+
+        if (runCommand is not null)
+        {
+            await runCommand(startInfo);
+
+            return;
         }
 
         using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start Docker Compose cleanup.");

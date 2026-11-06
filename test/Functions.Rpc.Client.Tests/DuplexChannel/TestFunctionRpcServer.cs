@@ -31,17 +31,11 @@ internal sealed class TestFunctionRpcServer : IAsyncDisposable
 
     internal TestFunctionRpcService Service { get; }
 
-    internal static async Task<TestFunctionRpcServer> StartAsync(bool mapService = true)
+    internal static async Task<TestFunctionRpcServer> StartAsync(bool mapService = true, DateTimeOffset? expires = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            options.Listen(IPAddress.Loopback, 0, listenOptions =>
-            {
-                listenOptions.Protocols = HttpProtocols.Http2;
-            });
-        });
+        RuntimeWorkerTestData.ConfigureTlsListener(builder, expires);
         builder.Services.AddSingleton<TestFunctionRpcService>();
         builder.Services.AddGrpc(options =>
         {

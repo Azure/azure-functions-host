@@ -12,9 +12,11 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -156,9 +158,15 @@ public sealed partial class WorkerChannelRegistryTests
     {
         TaskCompletionSource responseStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource finishResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using TestCertificateFiles certificates = new();
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+        builder.WebHost.UseKestrelHttpsConfiguration();
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listener =>
+        {
+            listener.Protocols = HttpProtocols.Http1AndHttp2;
+            listener.UseHttps(certificates.Certificate);
+        }));
         await using WebApplication worker = builder.Build();
         worker.Run(async context =>
         {
@@ -171,13 +179,14 @@ public sealed partial class WorkerChannelRegistryTests
         await worker.StartAsync();
         using ServiceProvider proxyServices = new ServiceCollection()
             .AddLogging()
-            .AddDefaultHttpProxyService()
+            .AddRpcClientServices()
             .BuildServiceProvider();
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         ChannelControl selected = new("http-always", functionGroupName: "http", isAlwaysReady: true, maxHttpConcurrency: 10)
         {
-            HttpProxyService = proxyServices.GetRequiredService<IHttpProxyService>(),
+            HttpProxyService = proxyServices.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>()(
+                new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials("http-always"))),
             HttpUri = worker.Urls.Single(),
         };
         FunctionMetadata function = CreateHttpFunction();

@@ -50,6 +50,10 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </description></item>
 /// </list>
 /// <para>
+/// Readiness and state are reported only by the authenticated infrastructure checkpoint; separate worker GET
+/// readiness/state routes are not registered.
+/// </para>
+/// <para>
 /// Platform callers are expected to send UTF-8 JSON. JSON-body endpoints use framework binding:
 /// malformed or incompatible JSON with a supported charset returns <c>400</c>; unsupported media types return
 /// <c>415</c>. Binding errors do not guarantee the field-validation envelope. Other binding failures follow

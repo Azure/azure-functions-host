@@ -2,15 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -21,6 +24,7 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -32,22 +36,40 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
 {
     private readonly IHost _host;
 
-    private WorkerLinkTestHost(IHost host, bool useKestrel)
+    private WorkerLinkTestHost(IHost host, bool useKestrel, bool authenticate)
     {
         _host = host;
         Client = useKestrel
-            ? new HttpClient { BaseAddress = new Uri(host.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single()) }
+            ? new HttpClient
+            {
+                BaseAddress = new Uri(host.Services.GetRequiredService<IServer>()
+                    .Features.Get<IServerAddressesFeature>()!.Addresses.Single())
+            }
             : host.GetTestClient();
+        if (authenticate)
+        {
+            Client.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
+                ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName));
+        }
     }
 
     internal HttpClient Client { get; }
 
-    internal static async Task<WorkerLinkTestHost> StartAsync(CancellationToken cancellationToken,
-        IWorkerChannelRegistry registry, bool includeCompute = true, bool useKestrel = false)
+    internal IServiceProvider Services => _host.Services;
+
+    internal static async Task<WorkerLinkTestHost> StartAsync(
+        CancellationToken cancellationToken,
+        IWorkerChannelRegistry registry,
+        bool includeCompute = true,
+        bool useKestrel = false,
+        bool authenticate = true,
+        IConfiguration? managementConfiguration = null,
+        ILoggerProvider? loggerProvider = null)
     {
         IHost host = new HostBuilder()
             .ConfigureWebHost(webBuilder =>
             {
+                webBuilder.UseSetting(WebHostDefaults.ApplicationKey, typeof(Startup).Assembly.GetName().Name);
                 if (useKestrel)
                 {
                     webBuilder.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
@@ -57,9 +79,14 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                     webBuilder.UseTestServer();
                 }
 
-                webBuilder
-                    .UseSetting(WebHostDefaults.ApplicationKey, typeof(Startup).Assembly.GetName().Name)
-                    .ConfigureLogging(logging => logging.ClearProviders())
+                webBuilder.ConfigureLogging(logging =>
+                    {
+                        logging.ClearProviders();
+                        if (loggerProvider is not null)
+                        {
+                            logging.AddProvider(loggerProvider);
+                        }
+                    })
                     .ConfigureServices(services =>
                     {
                         IMvcBuilder mvcBuilder = services.AddMvc(options =>
@@ -80,6 +107,15 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                             services.AddOptions<MvcOptions>().Configure<IOptions<JsonOptions>, ILoggerFactory>(static (options, json, loggerFactory) =>
                                 options.InputFormatters.Insert(0, new WorkerLinkRequestInputFormatter(json.Value, loggerFactory.CreateLogger<SystemTextJsonInputFormatter>())));
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
+                            services.AddSingleton<IConfiguration>(managementConfiguration ?? new ConfigurationBuilder()
+                                .AddInMemoryCollection(new Dictionary<string, string?>
+                                {
+                                    ["WEBSITE_POD_NAME"] = ManagementTokenTestData.RuntimePodName,
+                                    ["CONTAINER_ENCRYPTION_KEY"] = ManagementTokenTestData.RuntimeKey,
+                                    ["WEBSITE_SITE_NAME"] = "Specialized-App",
+                                    ["WEBSITE_AUTH_ENCRYPTION_KEY"] = ManagementTokenTestData.AppKey
+                                }).Build());
+                            ContainerManagementAuthenticationHandler.AddServices(services);
                         }
 
                         services.AddAuthentication();
@@ -97,7 +133,7 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         try
         {
             await host.StartAsync(cancellationToken);
-            return new WorkerLinkTestHost(host, useKestrel);
+            return new WorkerLinkTestHost(host, useKestrel, authenticate);
         }
         catch
         {
@@ -106,7 +142,9 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         }
     }
 
-    internal async Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken,
+    internal async Task<HttpResponseMessage> PutAsync(
+        string? json,
+        CancellationToken cancellationToken,
         string workerId = "worker-pod-abc123")
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerId}");

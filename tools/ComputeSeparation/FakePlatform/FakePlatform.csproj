@@ -8,4 +8,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="..\ManagementToken.cs" Link="ManagementToken.cs" />
+  </ItemGroup>
+
 </Project>

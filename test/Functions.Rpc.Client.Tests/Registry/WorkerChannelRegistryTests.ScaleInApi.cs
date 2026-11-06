@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
 using Microsoft.AspNetCore.Builder;
@@ -500,6 +501,9 @@ public sealed partial class WorkerChannelRegistryTests
                             {
                                 options.AddPolicy(
                                     PolicyNames.AdminAuthLevel,
+                                    policy => policy.RequireAssertion(_ => true));
+                                options.AddPolicy(
+                                    ContainerManagementAuthenticationHandler.SchemeName,
                                     policy => policy.RequireAssertion(_ => true));
                             });
                         })

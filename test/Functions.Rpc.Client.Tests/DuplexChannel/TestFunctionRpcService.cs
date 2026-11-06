@@ -27,7 +27,8 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
 
     internal Metadata RequestHeaders { get; private set; }
 
-    public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
+    public override async Task EventStream(
+        IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
         using CancellationTokenSource streamSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);

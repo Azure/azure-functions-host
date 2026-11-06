@@ -8,6 +8,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Azure.Functions.ComputeSeparation;
 using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -76,10 +77,18 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, MaxHttpConcurrency: 16,
-        HttpProxyEndpoint: $"{workerProxy.HttpProxyEndpoint.Host}:{workerProxy.HttpProxyEndpoint.Port}");
-    using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name)
-        .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+    Dictionary<string, string> environment = [];
+    if (workerProxy.IdentityHeader is not null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerProxy.IdentityHeader);
+        environment["IDENTITY_HEADER"] = workerProxy.IdentityHeader;
+    }
+
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, environment, string.Empty,
+        workerProxy.HttpProxyEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped), 0, 0, MaxHttpConcurrency: 16);
+    using HttpRequestMessage request = new(HttpMethod.Put, "/admin/worker/assignment") { Content = JsonContent.Create(assignment) };
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(workerProxy.RuntimeAccessKey, workerProxy.WorkerId));
+    using HttpResponseMessage response = await clients.CreateClient(workerProxy.Name).SendAsync(request, cancellationToken);
 
     return await ToResultAsync("worker assign", response, cancellationToken);
 });
@@ -94,7 +103,8 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
     }
 
     byte[] key = Convert.FromHexString(options.EncryptionKey);
-    string context = JsonSerializer.Serialize(new HostAssignmentContext(1, AppName, []), JsonSerializerOptions.Web);
+    string context = JsonSerializer.Serialize(new HostAssignmentContext(1, AppName,
+        new() { ["WEBSITE_AUTH_ENCRYPTION_KEY"] = options.AppAuthKey }), JsonSerializerOptions.Web);
     using HttpRequestMessage request = new(HttpMethod.Post, "/admin/instance/assign")
     {
         Content = JsonContent.Create(new HostAssignmentRequest(Encrypt(key, context))),
@@ -116,9 +126,18 @@ simulate.MapPost("/worker/{workerProxyName}/link", async (string workerProxyName
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    WorkerLink link = new(workerProxy.WorkerGrpcEndpoint.ToString());
-    using HttpResponseMessage response = await clients.CreateClient(HostClient)
-        .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerProxy.WorkerId)}", link, cancellationToken);
+    var link = new
+    {
+        workerPodName = workerProxy.WorkerId,
+        workerGrpcEndpoint = workerProxy.WorkerGrpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
+        runtimeAccessKey = workerProxy.RuntimeAccessKey
+    };
+    using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{Uri.EscapeDataString(workerProxy.WorkerId)}")
+    {
+        Content = JsonContent.Create(link)
+    };
+    request.Headers.Add("x-ms-site-token", ManagementToken.Create(options.RuntimeContainerKey, options.RuntimePodName));
+    using HttpResponseMessage response = await clients.CreateClient(HostClient).SendAsync(request, cancellationToken);
 
     return await ToResultAsync("worker link", response, cancellationToken);
 });
@@ -175,6 +194,12 @@ internal partial class Program
 
         public required WorkerProxyOptions[] WorkerProxies { get; init; }
 
+        public required string AppAuthKey { get; init; }
+
+        public required string RuntimeContainerKey { get; init; }
+
+        public required string RuntimePodName { get; init; }
+
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in placeholder profiles.
         public string? EncryptionKey { get; init; }
     }
@@ -189,7 +214,11 @@ internal partial class Program
 
         public required Uri WorkerGrpcEndpoint { get; init; }
 
+        public required string RuntimeAccessKey { get; init; }
+
         public required string WorkerId { get; init; }
+
+        public string? IdentityHeader { get; init; }
     }
 
     private sealed record HostAssignmentContext(int SiteId, string SiteName, Dictionary<string, string> Environment);
@@ -197,10 +226,8 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxHttpConcurrency,
-        string? HttpProxyEndpoint);
-
-    private sealed record WorkerLink(string WorkerGrpcEndpoint);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, string HttpProxyEndpoint,
+        long ConfigLastModifiedTime, long ContentLastModifiedTime, int MaxHttpConcurrency);
 
     private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 
