@@ -77,12 +77,14 @@ jobs:
         -out "$certificateDirectory/server.crt" -keyout "$certificateDirectory/server.key"
       chmod 644 "$certificateDirectory/server.crt"
       containerKey="$(openssl rand -hex 32)"
+      appKey="$(openssl rand -hex 32)"
       echo "Starting WorkerProxy image: $(localImage)"
       containerId="$(docker run --detach \
         --publish 127.0.0.1::80 \
         --mount "type=bind,source=$certificateDirectory,target=/etc/ssl/workerproxy,readonly" \
         --env WEBSITE_POD_NAME=ci-worker-pod \
         --env "CONTAINER_ENCRYPTION_KEY=$containerKey" \
+        --env "WEBSITE_AUTH_ENCRYPTION_KEY=$appKey" \
         $(localImage))"
       echo "Started WorkerProxy container: $containerId"
 
@@ -103,7 +105,7 @@ jobs:
         --retry 60 --retry-delay 1 --retry-connrefused --retry-all-errors \
         --request POST --header "x-ms-site-token: $siteToken" --header 'x-ms-functions-pod-name: ci-worker-pod' \
         "http://127.0.0.1:$managementPort/admin/infra/instanceState")"
-      test "$httpStatus" = 204
+      test "$httpStatus" = 200
       unauthenticatedStatus="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
         --request POST --header 'x-ms-functions-pod-name: ci-worker-pod' \
         "http://127.0.0.1:$managementPort/admin/infra/instanceState")"

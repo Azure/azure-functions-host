@@ -15,6 +15,7 @@ namespace Azure.Functions.WorkerProxy.Management;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(WorkerAssignRequest))]
 [JsonSerializable(typeof(WorkerOriginState))]
+[JsonSerializable(typeof(PodIdentity))]
 [JsonSerializable(typeof(WorkerApiErrorResponse))]
 [JsonSerializable(typeof(RequestValidationResponse))]
 internal sealed partial class WorkerProxyJsonContext : JsonSerializerContext;

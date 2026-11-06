@@ -35,6 +35,8 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
+    private static readonly TimeSpan IdleWorkerDisposalTimeout = TimeSpan.FromSeconds(10);
+
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly TimeProvider _timeProvider;
     private readonly IWorkerInvocationTracker _invocationTracker;
@@ -118,7 +120,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             : RpcClientWorkerChannelFactory.GetLinkTimeout(processOptions?.Get(RpcClientWorkerChannelFactory.WorkerOptionsName) ?? new());
 
     public Task<WorkerLinkResult> LinkAsync(
-        string workerId, Uri grpcEndpoint, string runtimeAccessKey, CancellationToken cancellationToken = default)
+        string workerId, Uri grpcEndpoint, string runtimeAccessKey, CancellationToken cancellationToken = default,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
@@ -133,10 +136,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
                 if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal)
-                    || !existing.Credentials.MatchesKey(credentials))
+                    || !existing.Credentials.MatchesKey(credentials)
+                    || !Equals(existing.RuntimeIdentity, runtimeIdentity))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
-                        "The worker is already associated with different endpoints or credentials.");
+                        "The worker is already associated with different endpoint, credentials, or Runtime identity.");
                 }
 
                 if (existing.Terminal || existing.Channel is { IsTerminated: true })
@@ -149,7 +153,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
 
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            slot = new() { Endpoint = grpcEndpoint, Credentials = credentials, LinkTask = linkCompletion.Task };
+            slot = new() { Endpoint = grpcEndpoint, Credentials = credentials, RuntimeIdentity = runtimeIdentity, LinkTask = linkCompletion.Task };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
         }
@@ -223,7 +227,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 try
                 {
                     operationSource.Token.ThrowIfCancellationRequested();
-                    ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, slot.Credentials.CreateHeaders(), operationSource.Token);
+                    ownedChannel = await _duplexChannelFactory.ConnectAsync(
+                        grpcEndpoint, slot.Credentials.CreateHeaders(), operationSource.Token, slot.RuntimeIdentity);
                     operationSource.Token.ThrowIfCancellationRequested();
 
                     stage = LinkStage.CreatingWorkerChannel;
@@ -408,6 +413,69 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         channel = null;
         return false;
+    }
+
+    /// <inheritdoc />
+    public async Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(threshold, TimeSpan.Zero);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        KeyValuePair<string, WorkerSlot>[] slots;
+        lock (_stateLock)
+        {
+            slots = _disposed ? [] : [.. _slots.Where(entry => entry.Value.Channel is { IsReadyForInvocations: true })];
+        }
+
+        await Task.WhenAll(slots.Select(async entry =>
+        {
+            (string workerId, WorkerSlot slot) = entry;
+            cancellationToken.ThrowIfCancellationRequested();
+            using SemaphoreLock gate = await slot.Gate.LockAsync(cancellationToken);
+            RpcClientWorkerChannel removed;
+            TimeSpan idleDuration;
+            lock (_stateLock)
+            {
+                if (_disposed ||
+                    slot.Channel is not { } channel ||
+                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
+                    slot.SetupException is not null ||
+                    !channel.TryClaimIdleRetirement(threshold, out idleDuration))
+                {
+                    return;
+                }
+
+                removed = DetachChannelLocked(slot, channel);
+            }
+
+            Task disposal = null;
+            try
+            {
+                disposal = removed.DisposeAsync().AsTask();
+                _ = disposal.ContinueWith(failed =>
+                    Log.ChannelDisposalFailed(_logger, failed.Exception.GetBaseException(), workerId),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+                await disposal.WaitAsync(IdleWorkerDisposalTimeout, _timeProvider, cancellationToken);
+                _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _shutdownSource.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                if (disposal is not { IsFaulted: true })
+                {
+                    Log.ChannelDisposalFailed(_logger, exception, workerId);
+                }
+            }
+            finally
+            {
+                RemoveEmptySlot(workerId, slot);
+            }
+        }));
     }
 
     /// <inheritdoc />
@@ -630,6 +698,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             return null;
         }
 
+        channel.StopAcceptingInvocations();
         slot.Channel = null;
         slot.AttemptedSetupContext = null;
         slot.SetupException = null;
@@ -839,6 +908,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         try
         {
             channel.SetupFunctionInvocationBuffers(setupContext.Functions);
+            channel.StartIdleTracking(_timeProvider);
             channel.SendFunctionLoadRequests(setupContext.ManagedDependencyOptions, setupContext.FunctionTimeout);
             SignalReadyChannelsLocked();
         }
@@ -986,6 +1056,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         public Uri Endpoint { get; init; }
 
         public RuntimeWorkerCredentials Credentials { get; init; }
+
+        public WorkerLinkRuntimeIdentity RuntimeIdentity { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }

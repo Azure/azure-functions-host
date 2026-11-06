@@ -35,6 +35,7 @@ internal sealed partial class FunctionRpcRelay
         TokenServiceProxyService? tokenServiceProxy)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
+        private const string IsAlwaysReadyCapability = "IsAlwaysReady";
         private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
@@ -51,6 +52,7 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+        private string? _initializationRequestId;
         private long _runtimeGeneration;
         private bool _runtimeProtocolStarted;
         private volatile string? _workerId;
@@ -97,8 +99,9 @@ internal sealed partial class FunctionRpcRelay
         /// Atomically reserves ownership of one side for an attaching stream.
         /// </summary>
         /// <param name="side">The side to reserve.</param>
+        /// <param name="runtimeIdentity">Optional identity from the Runtime-facing stream metadata.</param>
         /// <returns>The result of the reservation attempt.</returns>
-        public FunctionRpcRelayAttachResult TryAttach(FunctionRpcRelaySide side)
+        public FunctionRpcRelayAttachResult TryAttach(FunctionRpcRelaySide side, PodIdentity? runtimeIdentity = null)
         {
             lock (_stateLock)
             {
@@ -112,15 +115,20 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
+                if (side == FunctionRpcRelaySide.Runtime && !stateManager.OnRuntimeAttached(id, runtimeIdentity))
+                {
+                    return FunctionRpcRelayAttachResult.Rejected;
+                }
+
+                if (side == FunctionRpcRelaySide.Worker && !stateManager.OnWorkerAttached(id))
+                {
+                    return FunctionRpcRelayAttachResult.Rejected;
+                }
+
                 SetAttachedLocked(side, value: true);
                 if (side is FunctionRpcRelaySide.Runtime)
                 {
                     _runtimeGeneration = checked(_runtimeGeneration + 1);
-                }
-                if (side == FunctionRpcRelaySide.Worker)
-                {
-                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
-                    stateManager.OnWorkerAttached(id);
                 }
 
                 return FunctionRpcRelayAttachResult.Attached;
@@ -273,6 +281,10 @@ internal sealed partial class FunctionRpcRelay
                 {
                     stateManager.OnSessionTerminated(id);
                 }
+                else
+                {
+                    stateManager.OnRuntimeDetached(id);
+                }
 
                 SignalReleasedIfCompleteLocked();
             }
@@ -370,6 +382,10 @@ internal sealed partial class FunctionRpcRelay
 
                     // Retrying after any runtime protocol input could replay init or mix responses across callers.
                     _runtimeProtocolStarted = true;
+                    if (message.WorkerInitRequest is not null)
+                    {
+                        _initializationRequestId = message.RequestId ?? string.Empty;
+                    }
                 }
 
                 LogProtocolMessage(message, forwarded: false);
@@ -526,23 +542,25 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
-        /// Advertises this session's assigned group and HTTP concurrency, replacing worker-supplied values.
+        /// Advertises the assigned group, HTTP concurrency, and always-ready policy, replacing worker-supplied values.
         /// </summary>
         /// <remarks>
-        /// Only WorkerProxy sets this capability, so any worker-supplied value is always discarded.
+        /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
-        /// the capability is omitted so the runtime never receives an unassigned or stale group.
+        /// the capabilities are omitted so the runtime never receives unassigned or stale policy.
         /// </remarks>
         private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities, WorkerPodState state)
         {
             // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
+            capabilities.Remove(IsAlwaysReadyCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
 
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
+                capabilities[IsAlwaysReadyCapability] = state.IsAlwaysReady is true ? bool.TrueString : bool.FalseString;
                 if (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) && state.MaxHttpConcurrency is { } concurrency)
                 {
                     capabilities[MaxHttpConcurrencyCapability] = concurrency.ToString(CultureInfo.InvariantCulture);
@@ -600,6 +618,7 @@ internal sealed partial class FunctionRpcRelay
                     if (runtimeWrites is not null)
                     {
                         runtimeWrites.Written(message);
+                        PublishRuntimeInitialization(message);
                     }
 
                     LogProtocolMessage(message, forwarded: true);
@@ -616,6 +635,23 @@ internal sealed partial class FunctionRpcRelay
                     }
 
                     runtimeWrites.Complete(new IOException("The HTTP proxy transport closed."));
+                }
+            }
+        }
+
+        private void PublishRuntimeInitialization(StreamingMessage message)
+        {
+            if (message.WorkerInitResponse is not { Result.Status: StatusResult.Types.Status.Success })
+            {
+                return;
+            }
+
+            lock (_stateLock)
+            {
+                if (_terminalState is null && _initializationRequestId is not null &&
+                    string.Equals(_initializationRequestId, message.RequestId ?? string.Empty, StringComparison.Ordinal))
+                {
+                    stateManager.OnRuntimeInitialized(id);
                 }
             }
         }
@@ -750,7 +786,13 @@ internal sealed partial class FunctionRpcRelay
 
                 _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                bool assignmentFailed = terminalState is
+                {
+                    Reason: FunctionRpcRelayTerminationReason.Faulted,
+                    Side: FunctionRpcRelaySide.Worker,
+                    Exception: InvalidDataException
+                };
+                stateManager.OnSessionTerminated(id, assignmentFailed);
                 _completion.SetResult(terminalState);
                 _startStream.TrySetCanceled();
             }

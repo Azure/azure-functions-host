@@ -5,14 +5,14 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
+using JsonConvert = Newtonsoft.Json.JsonConvert;
 
 namespace Azure.Functions.Host.Tests;
 
@@ -92,24 +92,24 @@ public class WorkerLinkContractTests
     [InlineData("workerPodName")]
     public void WorkerLinkRequest_Serialization_DoesNotIncludeBodyIdentity(string propertyName)
     {
-        WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
+        WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonSerializer.Deserialize<WorkerLinkRequest>(
             $$"""{"workerGrpcEndpoint":"worker-pod-abc123:5001","{{propertyName}}":null}"""));
 
-        JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
+        JsonElement body = JsonSerializer.SerializeToElement(request);
 
         Assert.Equal("worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
-        Assert.Null(body.Property(propertyName));
+        Assert.False(body.TryGetProperty(propertyName, out _));
     }
 
     [Fact]
     public void WorkerLinkRequest_Serialization_IncludesRuntimeCredentialsAndHttpOrigin()
     {
-        WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
+        WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonSerializer.Deserialize<WorkerLinkRequest>(
             """{"workerGrpcEndpoint":"worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
 
-        JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
+        JsonElement body = JsonSerializer.SerializeToElement(request);
 
         Assert.Equal(new[] { "runtimeAccessKey", "workerContainerEncryptionKey", "workerGrpcEndpoint" },
-            body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
+            body.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 }

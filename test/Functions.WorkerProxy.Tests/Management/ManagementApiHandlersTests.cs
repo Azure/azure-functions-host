@@ -24,12 +24,12 @@ public class ManagementApiHandlersTests
     [Fact]
     public void AssignWorker_DoesNotRequireAWorkerAndDoesNotMakeItReady()
     {
-        Assert.Equal("WorkerNotReady", WorkerApiErrorCodes.WorkerNotReady);
         WorkerPodStateManager manager = CreateManager();
+        Assert.Equal(WorkerPodStatus.Starting, manager.State.PodStatus);
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         Assert.False(manager.State.IsWorkerReady);
         Assert.Null(manager.State.SessionId);
-        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
     }
 
     [Theory]
@@ -154,6 +154,7 @@ public class ManagementApiHandlersTests
         Assert.Equal("/admin/worker/assignment", created.Location);
         Assert.Equal(before.Revision + 1, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
         Assert.Equal("app", manager.State.FunctionAppName);
         Assert.Equal("group", manager.State.FunctionGroupName);
         Assert.Equal(isAlwaysReady, manager.State.IsAlwaysReady);
@@ -261,6 +262,7 @@ public class ManagementApiHandlersTests
         Assert.Equal(startupMode, assigned.StartupMode.ToString());
         Assert.Equal(before.Revision + 1, assigned.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
+        Assert.Equal(WorkerPodStatus.Running, assigned.PodStatus);
         Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(request, manager));
         Assert.Same(assigned, manager.State);
         AssertError(ManagementApiHandlers.AssignWorker(
@@ -309,7 +311,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_BeforeStartStreamReservesAndPreservesIdentity(bool attached)
+    public void AssignWorker_BeforeStartStreamReservesIdentityAndBecomesReady(bool attached)
     {
         WorkerPodStateManager manager = CreateManager();
         if (attached)
@@ -318,7 +320,13 @@ public class ManagementApiHandlersTests
         }
 
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
         Assert.False(manager.State.IsWorkerReady);
+        Assert.Equal("app", manager.State.FunctionAppName);
+        AssertError(
+            ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager),
+            409,
+            "AssignmentConflict");
 
         if (!attached)
         {
@@ -326,6 +334,7 @@ public class ManagementApiHandlersTests
         }
 
         manager.OnWorkerStartStream(1, "worker");
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
         Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager), 409, "AssignmentConflict");
         Assert.Equal("app", manager.State.FunctionAppName);
@@ -662,7 +671,8 @@ public class ManagementApiHandlersTests
         Assert.Equal(expected.Revision, response.RevisionId);
         Assert.Equal(expected.FunctionGroupName, response.FunctionGroup);
         Assert.Equal(expected.IsAlwaysReady ?? false, response.IsAlwaysReady);
-        Assert.Equal(WorkerStatus.Starting, response.Status);
+        Assert.Equal(expected.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
+            ? WorkerStatus.RemovalRequested : WorkerStatus.Starting, response.Status);
         WorkerLink link = Assert.IsType<WorkerLink>(response.Link);
         Assert.Equal(WorkerLinkState.Unlinked, link.State);
         Assert.Null(link.Runtime);

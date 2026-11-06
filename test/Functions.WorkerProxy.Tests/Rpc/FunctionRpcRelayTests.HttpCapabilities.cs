@@ -68,6 +68,7 @@ public partial class FunctionRpcRelayTests
         StreamingMessage expected = response.Clone();
         expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
         expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "http";
+        expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
         expected.WorkerInitResponse.Capabilities["MaxHttpConcurrency"] = "16";
 
         await worker.WriteAsync(response, timeout.Token);
@@ -182,6 +183,7 @@ public partial class FunctionRpcRelayTests
         }
 
         expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "background";
+        expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
 
         await inbound.Writer.WriteAsync(first, timeout.Token);
         StreamingMessage finalized = await outbound.Reader.ReadAsync(timeout.Token);
@@ -207,16 +209,25 @@ public partial class FunctionRpcRelayTests
         await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
     }
 
-    [Fact]
-    public async Task Relay_HttpInitializationBeforeAssignment_WaitsForAcceptedOrigin()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Relay_HttpInitializationBeforeAssignment_WaitsForAcceptedOrigin(bool identifiedRuntime)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using CancellationTokenSource timeout = new(TestTimeout);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        Metadata? runtimeHeaders = identifiedRuntime
+            ? CreateRuntimeIdentityHeaders("valid")
+            : null;
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), timeout.Token, runtimeHeaders);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        StreamingMessage init = new() { RequestId = "init", WorkerInitRequest = new() };
+        await runtime.WriteAsync(init, timeout.Token);
+        Assert.Equal(init, await worker.ReadAsync(timeout.Token));
         await worker.WriteAsync(CreateInitResponse("init", "http://localhost:1234/"), timeout.Token);
         while (manager.PendingWaiterCount == 0)
         {
@@ -243,6 +254,13 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(nextQueued, await runtime.ReadAsync(timeout.Token));
         Assert.Equal(new Uri("http://localhost:1234/"), relay.WorkerHttpDestination);
         Assert.Equal(0, manager.PendingWaiterCount);
+        while (identifiedRuntime && !manager.State.IsRuntimeInitialized)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Assert.Equal(identifiedRuntime, manager.State.IsRuntimeInitialized);
+        Assert.Equal(10, manager.State.MaxHttpConcurrency);
     }
 
     [Theory]
@@ -286,6 +304,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
 
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
@@ -329,6 +348,7 @@ public partial class FunctionRpcRelayTests
         Assert.Null(relay.WorkerHttpDestination);
         Assert.False(manager.State.IsWorkerReady);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
     }
 
     [Fact]
@@ -419,9 +439,9 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("http://localhost:5678")]
-    public async Task Relay_ReplacementSession_DoesNotReusePreviousDestination(string? replacementEndpoint)
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Relay_TerminatedAssignment_RejectsReplacementWithoutReusingPreviousDestination(bool runtimeFirst)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -445,28 +465,25 @@ public partial class FunctionRpcRelayTests
 
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.Null(relay.WorkerHttpDestination);
+        WorkerPodState terminated = manager.State;
+        Assert.Equal(WorkerAssignmentState.Terminated, terminated.AssignmentState);
+        Assert.False(WorkerOriginState.FromState(terminated).IsUnhealthy);
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
-        Assert.Null(relay.WorkerHttpDestination);
+        RelayClient firstPeer = runtimeFirst ? replacementRuntime : replacementWorker;
+        RelayClient secondPeer = runtimeFirst ? replacementWorker : replacementRuntime;
+        StreamingMessage runtimeMessage = new() { WorkerInitRequest = new() };
+        StreamingMessage workerMessage = CreateStartStream("replacement");
+        Grpc.Core.RpcException firstFailure = await firstPeer.WriteAndReadRejectionAsync(
+            runtimeFirst ? runtimeMessage : workerMessage, timeout.Token);
+        Grpc.Core.RpcException secondFailure = await secondPeer.WriteAndReadRejectionAsync(
+            runtimeFirst ? workerMessage : runtimeMessage, timeout.Token);
 
-        StreamingMessage replacement = CreateInitResponse("replacement-init", replacementEndpoint);
-        replacement.WorkerInitResponse.Capabilities["replacement-only"] = "true";
-        if (replacementEndpoint is null)
-        {
-            await replacementWorker.WriteAsync(replacement, timeout.Token);
-            StreamingMessage response = await replacementRuntime.ReadAsync(timeout.Token);
-            Assert.Null(relay.WorkerHttpDestination);
-            Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
-            Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("original-only"));
-            Assert.Equal("true", response.WorkerInitResponse.Capabilities["replacement-only"]);
-        }
-        else
-        {
-            await replacementWorker.WriteAsync(replacement, timeout.Token);
-            Assert.Equal(StatusCode.Unavailable, await replacementRuntime.WaitForTerminationAsync(timeout.Token));
-            Assert.Null(relay.WorkerHttpDestination);
-        }
+        Assert.Equal(StatusCode.Unavailable, firstFailure.StatusCode);
+        Assert.Equal(StatusCode.Unavailable, secondFailure.StatusCode);
+        Assert.Null(relay.WorkerHttpDestination);
+        Assert.Null(manager.GetWorkerCapabilitySnapshot(terminated.SessionId!.Value).HttpProxyEndpoint);
+        Assert.Same(terminated, manager.State);
     }
 
     [Fact]

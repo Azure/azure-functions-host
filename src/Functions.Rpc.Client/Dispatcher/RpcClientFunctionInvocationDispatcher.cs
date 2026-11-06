@@ -81,61 +81,80 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
         }
 
-        // Keep the common path synchronous and allocation-free after the registry snapshot.
+        // Keep the common path synchronous after the registry snapshot.
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels = _channelRegistry.GetReadyChannelsAsync();
         if (readyChannels.IsCompletedSuccessfully)
         {
-            WorkerChannel channel = GetReadyChannel(readyChannels.Result);
-            if (channel is not null)
+            if (TryDispatchInvocation(invocationContext, readyChannels.Result))
             {
-                return DispatchInvocation(invocationContext, channel);
+                return Task.CompletedTask;
             }
         }
 
         return InvokeWhenChannelIsReadyAsync(invocationContext, readyChannels);
     }
 
-    private Task DispatchInvocation(ScriptInvocationContext invocationContext, WorkerChannel channel)
+    private bool DispatchInvocation(ScriptInvocationContext invocationContext, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
-        if (_logger.IsEnabled(LogLevel.Trace))
+        lock (channel.LifecycleLock)
         {
-            Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
-        }
+            if (!channel.IsReadyForInvocations)
+            {
+                return false;
+            }
 
-        string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
-        bool accepted = _invocationTracker is null
-            ? channel.TryPostInvocation(invocationContext)
-            : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, invocationContext.CancellationToken,
-                () => channel.TryPostInvocation(invocationContext));
-        if (!accepted)
-        {
-            invocationContext.ResultSource.TrySetException(
-                new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations or is unavailable for attribution."));
+            bool trackActivity = channel.IsHttpFunctionGroup && channel.IsAlwaysReady is not true;
+            // Register before posting so a fast response cannot outrun its completion callback.
+            Task responseCompleted = trackActivity
+                ? RpcClientWorkerChannel.GetHttpResponseCompletionTask(invocationContext)
+                : Task.CompletedTask;
 
-            return Task.CompletedTask;
-        }
+            string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
+            bool accepted = _invocationTracker is null
+                ? channel.TryPostInvocation(invocationContext)
+                : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, invocationContext.CancellationToken,
+                    () => channel.TryPostInvocation(invocationContext));
+            if (!accepted)
+            {
+                invocationContext.ResultSource.TrySetException(
+                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations or is unavailable for attribution."));
+                return true;
+            }
 
-        if (_invocationTracker is not null)
-        {
-            // A cancellation request (or an early Host completion on timeout) does not stop Worker execution.
-            // The channel result also covers failures and invocations cancelled before they were sent.
-            _ = invocationContext.ResultSource.Task.ContinueWith(
-                result =>
-                {
-                    try
+            if (_invocationTracker is not null)
+            {
+                // A cancellation request (or an early Host completion on timeout) does not stop Worker execution.
+                // The channel result also covers failures and invocations cancelled before they were sent.
+                _ = invocationContext.ResultSource.Task.ContinueWith(
+                    result =>
                     {
-                        _invocationTracker.InvocationCompleted(invocationId, result.IsCompletedSuccessfully);
-                    }
-                    catch (Exception exception) when (!Utility.IsFatal(exception))
-                    {
-                        Log.InvocationAccountingFailed(_logger, exception, invocationId, channel.Id);
-                    }
-                },
-                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        }
+                        try
+                        {
+                            _invocationTracker.InvocationCompleted(invocationId, result.IsCompletedSuccessfully);
+                        }
+                        catch (Exception exception) when (!Utility.IsFatal(exception))
+                        {
+                            Log.InvocationAccountingFailed(_logger, exception, invocationId, channel.Id);
+                        }
+                    },
+                    CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
 
-        return Task.CompletedTask;
+            if (trackActivity)
+            {
+                channel.OngoingRequests++;
+                _ = channel.ObserveRequestCompletionAsync(invocationContext, responseCompleted);
+            }
+
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
+            }
+
+            return true;
+        }
     }
 
     public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
@@ -230,32 +249,32 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         _dispatcherStoppedSource.Cancel();
     }
 
-    private WorkerChannel GetReadyChannel(IReadOnlyList<WorkerChannel> channels)
+    private bool TryDispatchInvocation(ScriptInvocationContext invocationContext, IReadOnlyList<WorkerChannel> channels,
+        CancellationToken cancellationToken = default)
     {
         if (channels.Count == 0)
         {
-            return null;
+            return false;
         }
 
-        if (channels.Count == 1)
+        if (channels is [WorkerChannel channel])
         {
             // The common one-worker path avoids round-robin synchronization and scanning.
-            WorkerChannel channel = channels[0];
-            return IsReadyForInvocations(channel) ? channel : null;
+            return DispatchInvocation(invocationContext, (RpcClientWorkerChannel)channel, cancellationToken);
         }
 
-        // Start each scan at the next channel to spread work without allocating or locking.
+        // Start each scan at the next channel; each channel coordinates admission with retirement.
         int startIndex = (int)((uint)Interlocked.Increment(ref _nextChannelIndex) % (uint)channels.Count);
         for (int offset = 0; offset < channels.Count; offset++)
         {
-            WorkerChannel channel = channels[(startIndex + offset) % channels.Count];
-            if (IsReadyForInvocations(channel))
+            RpcClientWorkerChannel clientChannel = (RpcClientWorkerChannel)channels[(startIndex + offset) % channels.Count];
+            if (DispatchInvocation(invocationContext, clientChannel, cancellationToken))
             {
-                return channel;
+                return true;
             }
         }
 
-        return null;
+        return false;
     }
 
     private async Task InvokeWhenChannelIsReadyAsync(
@@ -275,11 +294,9 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 IReadOnlyList<WorkerChannel> channels = readyChannels.IsCompletedSuccessfully
                     ? readyChannels.Result
                     : await readyChannels.AsTask().WaitAsync(operationSource.Token);
-                WorkerChannel channel = GetReadyChannel(channels);
-                if (channel is not null)
+                operationSource.Token.ThrowIfCancellationRequested();
+                if (TryDispatchInvocation(invocationContext, channels, operationSource.Token))
                 {
-                    operationSource.Token.ThrowIfCancellationRequested();
-                    await DispatchInvocation(invocationContext, channel);
                     return;
                 }
 

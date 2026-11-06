@@ -46,7 +46,8 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
-        registry.Setup(value => value.LinkAsync(WorkerId, new Uri("https://100.86.1.2:48800/"), ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>()))
+        registry.Setup(value => value.LinkAsync(
+            WorkerId, new Uri("https://100.86.1.2:48800/"), ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>(), null))
             .Returns(() =>
             {
                 linkedWithStandbyConfiguration = hostOptions!.CurrentValue.IsStandbyConfiguration;

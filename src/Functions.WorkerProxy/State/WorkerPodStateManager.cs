@@ -178,8 +178,9 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            // Pre-assignment transport sessions may be replaced; an assigned pod's termination is terminal.
+            if (sessionId <= _lastSessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated)
             {
                 return false;
             }
@@ -230,7 +231,104 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            UpdateStateAndNotifyWaitersLocked(_state with { Revision = checked(_state.Revision + 1), WorkerId = workerId });
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                WorkerId = workerId,
+                AssignmentState = _assignment is null
+                    ? WorkerAssignmentState.Unassigned
+                    : WorkerAssignmentState.Ready
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Records identity supplied by an admitted Runtime stream, not by worker messages.
+    /// </summary>
+    /// <param name="sessionId">The attaching relay session identifier.</param>
+    /// <param name="identity">The optional Runtime identity supplied in stream metadata.</param>
+    /// <returns>Whether the Runtime attachment is accepted for the current pod state.</returns>
+    public bool OnRuntimeAttached(long sessionId, PodIdentity? identity)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (sessionId < _lastSessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated)
+            {
+                return false;
+            }
+
+            if (identity is null)
+            {
+                return true;
+            }
+
+            if (_state.FunctionAppName is { } app &&
+                !string.Equals(app, identity.App.FunctionAppName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RuntimeIdentity = identity
+            });
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Clears identity when a Runtime attachment releases, without terminating a retained worker session.
+    /// </summary>
+    /// <param name="sessionId">The relay session whose Runtime attachment released.</param>
+    /// <returns>Whether Runtime identity was withdrawn.</returns>
+    public bool OnRuntimeDetached(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (sessionId < _lastSessionId || _state.RuntimeIdentity is null)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RuntimeIdentity = null,
+                RuntimeInitialized = false
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Publishes a correlated successful WorkerInit handshake for the current identified Runtime.
+    /// </summary>
+    /// <param name="sessionId">The relay session that wrote the response to the Runtime.</param>
+    /// <returns>Whether Runtime initialization was published.</returns>
+    public bool OnRuntimeInitialized(long sessionId)
+    {
+        lock (_stateLock)
+        {
+            if (_state.SessionId != sessionId ||
+                _assignment is null || !_state.IsWorkerReady ||
+                _state.RuntimeIdentity is null || _state.RuntimeInitialized)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RuntimeInitialized = true
+            });
             return true;
         }
     }
@@ -238,7 +336,10 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
-    public bool OnSessionTerminated(long sessionId)
+    /// <param name="sessionId">The terminating relay session identifier.</param>
+    /// <param name="assignmentFailed">Whether a worker protocol violation establishes an assignment health failure.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnSessionTerminated(long sessionId, bool assignmentFailed = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -258,22 +359,39 @@ internal sealed class WorkerPodStateManager
             _lastSessionId = sessionId;
             if (!_state.IsWorkerAttached)
             {
+                if (_state.RuntimeIdentity is not null)
+                {
+                    UpdateStateAndNotifyWaitersLocked(_state with
+                    {
+                        Revision = checked(_state.Revision + 1),
+                        RuntimeIdentity = null,
+                        RuntimeInitialized = false
+                    });
+                    return true;
+                }
+
                 return false;
             }
+
+            WorkerAssignmentState assignmentState = _assignment is null
+                ? WorkerAssignmentState.Unassigned
+                : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
-                // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
-                AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
+                RuntimeIdentity = null,
+                RuntimeInitialized = false,
+                // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
+                AssignmentState = assignmentState
             });
             return true;
         }
     }
 
     /// <summary>
-    /// Records or replays assignment independently of customer startup, atomically with terminal state.
+    /// Records or replays assignment atomically with worker lifecycle and terminal state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)
     {
@@ -289,16 +407,24 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
+                return _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            // Ready means configuration accepted, not that a customer worker has connected or initialized.
+            if (_state.RuntimeIdentity is { } runtime &&
+                !string.Equals(runtime.App.FunctionAppName, assignment.FunctionAppName, StringComparison.Ordinal))
+            {
+                return WorkerAssignmentResult.AssignmentConflict;
+            }
+
+            // Accept either startup order; assignment acceptance alone does not make the Worker ready.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
-                AssignmentState = WorkerAssignmentState.Ready,
+                AssignmentState = _state.IsWorkerReady
+                    ? WorkerAssignmentState.Ready
+                    : WorkerAssignmentState.Assigned,
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
@@ -307,7 +433,7 @@ internal sealed class WorkerPodStateManager
                 HttpProxyEndpoint = assignment.HttpProxyEndpoint
             };
 
-            // Claim identity and publish configuration under the same lifecycle lock.
+            // The gate and publication share the lifecycle lock so only one identity is reserved.
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");

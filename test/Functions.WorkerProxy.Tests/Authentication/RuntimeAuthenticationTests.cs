@@ -305,7 +305,7 @@ public partial class FunctionRpcRelayTests
         Assert.Throws<InvalidOperationException>(provider.GetAppKeys);
         Assert.True(manager.State.HasAuthenticationConfigurationError);
         Assert.True(manager.State.IsUnhealthy);
-        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
         Assert.False(manager.State.IsWorkerAttached);
         Assert.NotNull(provider.GetWorkerKeys());
         configuration.VerifyGet(value => value[RuntimeWorkerAuthentication.AppKeySetting], Times.Exactly(4));

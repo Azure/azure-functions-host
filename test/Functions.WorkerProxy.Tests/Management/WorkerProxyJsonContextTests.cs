@@ -270,13 +270,16 @@ public class WorkerProxyJsonContextTests
         Assert.Equal("Unlinked", root.GetProperty("link").GetProperty("state").GetString());
         Assert.Equal("group", root.GetProperty("functionGroup").GetString());
         Assert.Equal(isAlwaysReady, root.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(WorkerPodStatus.Running, state.PodStatus);
         Assert.DoesNotContain("private-worker", json);
         Assert.DoesNotContain("private-app", json);
         Assert.Equal(response, JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerOriginState));
     }
 
-    [Fact]
-    public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced(bool failed)
     {
         WorkerPodState ready = new(
             "pod",
@@ -295,7 +298,7 @@ public class WorkerProxyJsonContextTests
         {
             Revision = 4,
             IsWorkerAttached = false,
-            AssignmentState = WorkerAssignmentState.Failed
+            AssignmentState = failed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated
         };
 
         string retainedJson = JsonSerializer.Serialize(retained, WorkerProxyJsonContext.Default.WorkerOriginState);
@@ -307,9 +310,13 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(3, retainedDocument.RootElement.GetProperty("revisionId").GetInt64());
         Assert.False(retainedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
         Assert.Equal(4, terminatedDocument.RootElement.GetProperty("revisionId").GetInt64());
-        Assert.True(terminatedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
-        Assert.Equal("Starting", terminatedDocument.RootElement.GetProperty("status").GetString());
+        Assert.Equal(failed, terminatedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
+        Assert.Equal("RemovalRequested", terminatedDocument.RootElement.GetProperty("status").GetString());
         Assert.Equal("group", terminatedDocument.RootElement.GetProperty("functionGroup").GetString());
+        Assert.False(terminatedDocument.RootElement.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(WorkerPodStatus.Running, ready.PodStatus);
+        Assert.Equal(WorkerPodStatus.RemovalRequested, terminated.PodStatus);
+        Assert.Equal(WorkerStartupMode.Preconfigured, terminated.StartupMode);
     }
 
     [Theory]
@@ -317,13 +324,13 @@ public class WorkerProxyJsonContextTests
     [InlineData("The request is invalid.")]
     public void ErrorEnvelope_RoundTripsAndOmitsNullDetail(string? detail)
     {
-        WorkerApiErrorResponse response = new(new WorkerApiError("AssignmentConflict", detail));
+        WorkerApiErrorResponse response = new(new WorkerApiError("WorkerTerminated", detail));
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerApiErrorResponse);
         using JsonDocument document = JsonDocument.Parse(json);
         AssertProperties(document.RootElement, "error");
         JsonElement error = document.RootElement.GetProperty("error");
-        Assert.Equal("AssignmentConflict", error.GetProperty("code").GetString());
+        Assert.Equal("WorkerTerminated", error.GetProperty("code").GetString());
         if (detail is null)
         {
             AssertProperties(error, "code");
@@ -369,14 +376,13 @@ public class WorkerProxyJsonContextTests
     public void Context_RecursivelyGeneratesMetadataForNestedResponseTypes()
     {
         WorkerLink state = new(WorkerLinkState.Unlinked);
-        WorkerApiError error = new("AssignmentConflict");
+        WorkerApiError error = new("WorkerTerminated");
 
         string stateJson = JsonSerializer.Serialize(state, WorkerProxyJsonContext.Default.WorkerLink);
         string errorJson = JsonSerializer.Serialize(error, WorkerProxyJsonContext.Default.WorkerApiError);
 
         Assert.Equal(state, JsonSerializer.Deserialize(stateJson, WorkerProxyJsonContext.Default.WorkerLink));
         Assert.Equal(error, JsonSerializer.Deserialize(errorJson, WorkerProxyJsonContext.Default.WorkerApiError));
-        using JsonDocument stateDocument = JsonDocument.Parse(stateJson);
         Assert.Equal("""{"state":"Unlinked"}""", stateJson);
     }
 

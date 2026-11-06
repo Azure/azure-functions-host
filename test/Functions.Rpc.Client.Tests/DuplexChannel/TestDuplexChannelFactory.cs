@@ -26,15 +26,19 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
 
     internal IEnumerable<KeyValuePair<string, string>> Headers { get; private set; }
 
+    internal WorkerLinkRuntimeIdentity RuntimeIdentity { get; private set; }
+
     internal int InvocationCount { get; private set; }
 
     /// <inheritdoc />
     public Task<DuplexChannel<T>> ConnectAsync(
-        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default)
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;
         Headers = headers;
+        RuntimeIdentity = runtimeIdentity;
         InvocationCount++;
         return Task.FromResult(_channelFactory());
     }

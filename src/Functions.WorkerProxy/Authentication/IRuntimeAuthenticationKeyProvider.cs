@@ -97,7 +97,7 @@ internal sealed partial class RuntimeAuthenticationKeyProvider : IRuntimeAuthent
     private WorkerPodState? GetAssignedState()
     {
         WorkerPodState state = _manager.State;
-        if (state.AssignmentState is not WorkerAssignmentState.Ready
+        if (state.AssignmentState is not (WorkerAssignmentState.Assigned or WorkerAssignmentState.Ready)
             || string.IsNullOrWhiteSpace(state.FunctionAppName))
         {
             return null;

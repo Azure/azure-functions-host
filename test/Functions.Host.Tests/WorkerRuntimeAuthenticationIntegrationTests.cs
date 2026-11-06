@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -320,8 +321,10 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost managementReceiver = await WorkerLinkTestHost.StartAsync(
             timeout.Token, registry, useKestrel: true);
+        WorkerLinkRuntimeIdentity runtimeIdentity = new("runtime-ns", "runtime-pod", new("test-app", 42, "test-stamp"));
         string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
+            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpcEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}",
+             "runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}","runtimeIdentity":{{JsonSerializer.Serialize(runtimeIdentity, new JsonSerializerOptions(JsonSerializerDefaults.Web))}}}
             """;
         using StringContent content = new(json, Encoding.UTF8, "application/json");
         Task<HttpResponseMessage>? linking = preInitRetry ? null : managementReceiver.Client.PutAsync(
@@ -462,13 +465,14 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
         string state = await stateResponse.Content.ReadAsStringAsync(timeout.Token);
         Assert.StartsWith("""{"functionsContainerType":"FunctionsSplitWorkerProxy",""", state, StringComparison.Ordinal);
-        Assert.Contains(""""status":"Starting"""", state, StringComparison.Ordinal);
-        Assert.Contains(""""state":"Unlinked"""", state, StringComparison.Ordinal);
+        Assert.Contains(""""status":"Running"""", state, StringComparison.Ordinal);
+        Assert.Contains(""""state":"Linked"""", state, StringComparison.Ordinal);
         Assert.DoesNotContain("maxHttpConcurrency", state, StringComparison.Ordinal);
         Assert.DoesNotContain(appKey, state, StringComparison.Ordinal);
         Assert.DoesNotContain(ManagementTokenTestData.WorkerKey, state, StringComparison.Ordinal);
         JsonObject checkpoint = JsonNode.Parse(state)!.AsObject();
-        Assert.Equal(startupTime, AssertCheckpoint(checkpoint, workerId, "group"));
+        Assert.Equal(startupTime, AssertCheckpoint(checkpoint, workerId, "group", runtimeIdentity));
+        output.WriteLine("WorkerProxy published the supplied runtime identity after its correlated successful initialization write; this is not a proof-validation acknowledgement or a loaded-version claim.");
         JsonObject replay = checkpoint.DeepClone().AsObject();
         replay["revisionId"] = 0;
         replay["configLastModifiedTime"] = "0";
@@ -490,9 +494,35 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             "/admin/infra/instanceState", staleProcessBody, timeout.Token);
         Assert.Equal(HttpStatusCode.OK, staleProcessResponse.StatusCode);
         Assert.Equal(state, await staleProcessResponse.Content.ReadAsStringAsync(timeout.Token));
+
+        workerCall.Dispose();
+        JsonObject terminalCheckpoint;
+        do
+        {
+            using StringContent terminalBody = new("null", Encoding.UTF8, "application/json");
+            using HttpResponseMessage terminal = await management.PostAsync("/admin/infra/instanceState", terminalBody, timeout.Token);
+            Assert.Equal(HttpStatusCode.OK, terminal.StatusCode);
+            terminalCheckpoint = JsonNode.Parse(await terminal.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
+            if (string.Equals(terminalCheckpoint["status"]!.GetValue<string>(), "RemovalRequested", StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            await Task.Delay(10, timeout.Token);
+        }
+        while (true);
+        Assert.Equal(startupTime, AssertCheckpoint(terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested"));
+        Assert.False(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
+        using StringContent terminalRetryBody = new(assignmentJson, Encoding.UTF8, "application/json");
+        using HttpResponseMessage terminalRetry = await management.PutAsync("/admin/worker/assignment", terminalRetryBody, timeout.Token);
+        Assert.Equal(HttpStatusCode.Conflict, terminalRetry.StatusCode);
+        Assert.Contains("WorkerTerminated", await terminalRetry.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        output.WriteLine("Normal worker termination removed runtime identity and reported RemovalRequested without marking the assigned pod unhealthy.");
     }
 
-    private static DateTimeOffset AssertCheckpoint(JsonObject checkpoint, string workerId, string? expectedGroup)
+    private static DateTimeOffset AssertCheckpoint(
+        JsonObject checkpoint, string workerId, string? expectedGroup, WorkerLinkRuntimeIdentity? expectedRuntime = null,
+        string? expectedStatus = null)
     {
         Assert.Equal("FunctionsSplitWorkerProxy", checkpoint["functionsContainerType"]!.GetValue<string>());
         JsonObject self = checkpoint["self"]!.AsObject();
@@ -507,9 +537,23 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.False(checkpoint["isAlwaysReady"]!.GetValue<bool>());
         Assert.Equal(0L, checkpoint["configLastModifiedTime"]!.GetValue<long>());
         Assert.Equal(0L, checkpoint["contentLastModifiedTime"]!.GetValue<long>());
-        Assert.Equal("Starting", checkpoint["status"]!.GetValue<string>());
-        Assert.Equal("Unlinked", checkpoint["link"]!["state"]!.GetValue<string>());
-        Assert.False(checkpoint["link"]!.AsObject().ContainsKey("runtime"));
+        Assert.Equal(expectedStatus ?? (expectedRuntime is null ? "Starting" : "Running"), checkpoint["status"]!.GetValue<string>());
+        Assert.Equal(expectedRuntime is null ? "Unlinked" : "Linked", checkpoint["link"]!["state"]!.GetValue<string>());
+        if (expectedRuntime is null)
+        {
+            Assert.False(checkpoint["link"]!.AsObject().ContainsKey("runtime"));
+        }
+        else
+        {
+            JsonObject runtime = checkpoint["link"]!["runtime"]!.AsObject();
+            Assert.Equal(expectedRuntime.ResourceNamespace, runtime["resourceNamespace"]!.GetValue<string>());
+            Assert.Equal(expectedRuntime.PodName, runtime["podName"]!.GetValue<string>());
+            JsonObject runtimeApp = runtime["app"]!.AsObject();
+            Assert.Equal(expectedRuntime.App!.FunctionAppName, runtimeApp["functionAppName"]!.GetValue<string>());
+            Assert.Equal(expectedRuntime.App.FunctionAppSiteId, runtimeApp["functionAppSiteId"]!.GetValue<int>());
+            Assert.Equal(expectedRuntime.App.AntaresStampName, runtimeApp["antaresStampName"]!.GetValue<string>());
+        }
+
         Assert.True(checkpoint["revisionId"]!.GetValue<int>() >= 0);
         DateTimeOffset startupTime = checkpoint["startupTime"]!.GetValue<DateTimeOffset>();
         Assert.NotEqual(default, startupTime);

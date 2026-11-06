@@ -29,8 +29,9 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>, and the channel is registered. Function setup is independent
     /// and is not awaited; it may already have started or completed when the caller observes the result.
     /// Use <see cref="GetReadyChannelsAsync"/> when an invocation-ready channel is required.
-    /// Matching worker IDs, credentials and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
-    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through WorkerProxy capabilities.
+    /// Matching worker IDs, credentials, gRPC endpoint URIs, and Runtime identity values share initialization.
+    /// Endpoints are compared using ordinal <see cref="Uri.AbsoluteUri"/> equality; Runtime identity fields use
+    /// ordinal value equality. HTTP proxying is negotiated through worker capabilities.
     /// Different workers can link concurrently.
     /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
     /// A new attempt's deadline is shared with its waiters; a retry's deadline only ends its own wait.
@@ -39,6 +40,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
     /// <param name="runtimeAccessKey">The target WorkerProxy's container encryption key. Never log this value.</param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
+    /// <param name="runtimeIdentity">Optional Runtime identity, included in exact retry matching.</param>
     /// <returns>
     /// The initialized and registered channel, and whether this caller started the successful attempt.
     /// Matching retries report an existing link, including retries that waited for initialization.
@@ -46,10 +48,8 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <exception cref="WorkerLinkException">The runtime access key is invalid or the request conflicts with the registry's admission state.</exception>
     /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
     Task<WorkerLinkResult> LinkAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        string runtimeAccessKey,
-        CancellationToken cancellationToken = default);
+        string workerId, Uri grpcEndpoint, string runtimeAccessKey, CancellationToken cancellationToken = default,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null);
 
     /// <summary>
     /// Removes and disposes a linked worker when present.
@@ -59,6 +59,15 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="cancellationToken">A token that cancels waiting to begin the unlink.</param>
     /// <returns><see langword="true"/> when a channel was removed; otherwise, <see langword="false"/>.</returns>
     Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retires ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold.
+    /// </summary>
+    /// <param name="threshold">The minimum continuous idle duration. Equality does not permit retirement.</param>
+    /// <param name="cancellationToken">Cancels the scan before the next retirement begins.</param>
+    /// <returns>A task that completes after claimed workers have been detached and disposed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The threshold is negative.</exception>
+    Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Attempts to get an initialized channel.

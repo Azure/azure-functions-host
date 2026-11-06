@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -19,6 +21,13 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<StreamingMessage>
 {
+    private const string RuntimeIdentityHeaderName = "x-ms-functions-runtime-identity-bin";
+    private static readonly JsonSerializerOptions IdentityJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly IRpcClientFactory _clientFactory;
     private readonly ILogger<FunctionRpcDuplexChannelFactory> _logger;
     private readonly ITokenServiceProxyRequestHandler _proxyHandler;
@@ -49,7 +58,8 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 
     /// <inheritdoc />
     public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
-        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default)
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(headers);
         cancellationToken.ThrowIfCancellationRequested();
@@ -66,6 +76,11 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         foreach ((string name, string value) in headers)
         {
             metadata.Add(name, value);
+        }
+
+        if (runtimeIdentity is not null)
+        {
+            metadata.Add(RuntimeIdentityHeaderName, JsonSerializer.SerializeToUtf8Bytes(runtimeIdentity, IdentityJsonOptions));
         }
 
         var call = client.EventStream(metadata, cancellationToken: CancellationToken.None);

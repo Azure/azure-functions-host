@@ -55,13 +55,13 @@ internal static class RuntimeWorkerTestData
         credentials.ValidateAppProof(proof, options.AppName, options.AppKey);
     }
 
-    public static string CreateAppProof(string workerId)
+    public static string CreateAppProof(string workerId, TimeProvider timeProvider = null)
         => RuntimeWorkerAuthentication.CreateAppProof(
-            Convert.FromHexString(AppKey), "test-app", workerId, DateTimeOffset.UtcNow);
+            Convert.FromHexString(AppKey), "test-app", workerId, (timeProvider ?? TimeProvider.System).GetUtcNow());
 
-    public static WorkerInitResponse Authenticate(WorkerInitResponse response, string workerId)
+    public static WorkerInitResponse Authenticate(WorkerInitResponse response, string workerId, TimeProvider timeProvider = null)
     {
-        RuntimeWorkerAuthentication.SetAppProof(response.Capabilities, CreateAppProof(workerId));
+        RuntimeWorkerAuthentication.SetAppProof(response.Capabilities, CreateAppProof(workerId, timeProvider));
 
         return response;
     }

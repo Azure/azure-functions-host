@@ -12,11 +12,16 @@ using System.Xml.Linq;
 using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -160,6 +165,29 @@ public class ClientWorkerCompositionTests
 
         Assert.Same(publisher, rootHost.Services.GetRequiredService<IWorkerInvocationTracker>());
         Assert.Same(publisher, rootHost.Services.GetRequiredService<IMetricsPublisher>());
+    }
+
+    [Fact]
+    public void ConfigureWebHostServices_UsesSystemTextJsonOnlyForWorkerLinkRequests()
+    {
+        ServiceCollection services = new();
+        IMvcBuilder mvcBuilder = services.AddMvc().AddNewtonsoftJson();
+        ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        MvcOptions options = provider.GetRequiredService<IOptions<MvcOptions>>().Value;
+        WorkerLinkRequestInputFormatter formatter = Assert.IsType<WorkerLinkRequestInputFormatter>(options.InputFormatters[0]);
+        EmptyModelMetadataProvider metadataProvider = new();
+        DefaultHttpContext context = new();
+        context.Request.ContentType = "application/json";
+
+        InputFormatterContext linkContext = new(context, "request", new ModelStateDictionary(),
+            metadataProvider.GetMetadataForType(typeof(WorkerLinkRequest)), (stream, encoding) => new StreamReader(stream, encoding));
+        InputFormatterContext unrelatedContext = new(context, "request", new ModelStateDictionary(),
+            metadataProvider.GetMetadataForType(typeof(object)), (stream, encoding) => new StreamReader(stream, encoding));
+
+        Assert.True(formatter.CanRead(linkContext));
+        Assert.False(formatter.CanRead(unrelatedContext));
+        Assert.Contains(options.InputFormatters, value => value is NewtonsoftJsonInputFormatter);
     }
 
     [Fact]

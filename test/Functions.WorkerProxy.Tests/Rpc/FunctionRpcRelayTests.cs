@@ -225,7 +225,7 @@ public partial class FunctionRpcRelayTests
             await logger.LogEntered.WaitAsync(timeout.Token);
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
             Assert.False(failed.IsWorkerReady);
-            Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
             await using RelayClient reconnect = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
 
             GrpcRpcException exception = await reconnect.WriteAndReadRejectionAsync(CreateMessage("reconnect"), timeout.Token);

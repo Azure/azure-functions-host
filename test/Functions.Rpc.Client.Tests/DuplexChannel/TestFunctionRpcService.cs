@@ -29,8 +29,7 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
 
     public override async Task EventStream(
         IAsyncStreamReader<StreamingMessage> requestStream,
-        IServerStreamWriter<StreamingMessage> responseStream,
-        ServerCallContext context)
+        IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
         using CancellationTokenSource streamSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
         RequestHeaders = context.RequestHeaders;

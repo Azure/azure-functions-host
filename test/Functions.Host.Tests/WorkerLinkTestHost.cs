@@ -4,19 +4,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -24,6 +28,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Host.Tests;
 
@@ -67,7 +72,7 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                 webBuilder.UseSetting(WebHostDefaults.ApplicationKey, typeof(Startup).Assembly.GetName().Name);
                 if (useKestrel)
                 {
-                    webBuilder.UseKestrel().UseUrls("http://127.0.0.1:0");
+                    webBuilder.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
                 }
                 else
                 {
@@ -99,6 +104,8 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             services.AddSingleton(registry);
+                            services.AddOptions<MvcOptions>().Configure<IOptions<JsonOptions>, ILoggerFactory>(static (options, json, loggerFactory) =>
+                                options.InputFormatters.Insert(0, new WorkerLinkRequestInputFormatter(json.Value, loggerFactory.CreateLogger<SystemTextJsonInputFormatter>())));
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
                             services.AddSingleton<IConfiguration>(managementConfiguration ?? new ConfigurationBuilder()
                                 .AddInMemoryCollection(new Dictionary<string, string?>

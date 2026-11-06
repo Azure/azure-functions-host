@@ -9,10 +9,9 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// <param name="Code">A case-sensitive contract identifier; existing codes must not be renamed or repurposed.</param>
 /// <param name="Detail">Diagnostic text that may change and must not be used for client decisions.</param>
 /// <remarks>
-/// WorkerNotReady (503) remains reserved for compatibility; assignment acceptance no longer waits for customer startup.
-/// WorkerTerminated (409) is terminal for the
-/// assigned session; retrying the same assignment on this pod cannot recover it.
-/// AssignmentConflict (409) rejects a different assignment; do not retry that request unchanged.
+/// WorkerTerminated (409) is terminal for the assigned session; retrying the same assignment on
+/// this pod cannot recover it. AssignmentConflict (409) rejects a different assignment; do not
+/// retry that request unchanged.
 /// Clients must inspect Code to distinguish the two 409 outcomes and handle unknown codes gracefully.
 /// </remarks>
 internal sealed record WorkerApiError(string Code, string? Detail = null);

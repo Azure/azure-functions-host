@@ -60,6 +60,7 @@ public class ManagementApiEndpointTests
         Assert.Equal(0, initial.RevisionId);
         Assert.Equal(WorkerStatus.Starting, initial.Status);
         Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), initial.Link);
+        Assert.Equal(WorkerPodStatus.Starting, factory.Services.GetRequiredService<WorkerPodStateManager>().State.PodStatus);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
     }
 
@@ -803,7 +804,8 @@ public class ManagementApiEndpointTests
             using HttpClient rpcClient = new(new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-            }) { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            })
+            { BaseAddress = factory.GetFunctionRpcAddress(side) };
             using HttpRequestMessage request = new(new HttpMethod(method), path)
             {
                 Version = HttpVersion.Version20,
@@ -1136,11 +1138,19 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
         await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
         Assert.Equal(1, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.True(manager.OnWorkerAttached(1));
-        Assert.True(manager.OnWorkerStartStream(1, "worker"));
         Assert.Equal("other-app", manager.State.FunctionAppName);
         Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
+
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+
+        using StringContent replayContent = JsonBody(assignment.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
     }
 
     [Theory]
@@ -1165,6 +1175,7 @@ public class ManagementApiEndpointTests
         WorkerPodState assigned = manager.State;
         Assert.Equal(WorkerStartupMode.Preconfigured, assigned.StartupMode);
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
+        Assert.Equal(WorkerPodStatus.Running, assigned.PodStatus);
         Assert.Equal(3, assigned.Revision);
 
         using StringContent replayContent = JsonBody(body.ToJsonString());

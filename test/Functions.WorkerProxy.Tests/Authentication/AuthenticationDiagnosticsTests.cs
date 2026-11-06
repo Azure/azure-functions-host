@@ -55,7 +55,7 @@ public class AuthenticationDiagnosticsTests
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
             Assert.False(manager.State.IsWorkerAttached);
-            Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+            Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
             Assert.True(manager.State.HasAuthenticationConfigurationError);
             using HttpResponseMessage stateResponse = await client.PostAsync("/admin/infra/instanceState", content: null);
             Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);

@@ -42,6 +42,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(0, manager.State.Revision);
         Assert.False(manager.State.IsWorkerReady);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), CreateMessageWriter(workerOutbound.Writer), timeout.Token);
@@ -50,6 +51,7 @@ public partial class FunctionRpcRelayTests
         Assert.True(attached.IsWorkerAttached);
         Assert.False(attached.IsWorkerReady);
         Assert.Null(attached.WorkerId);
+        Assert.Equal(WorkerAssignmentState.Assigned, attached.AssignmentState);
 
         Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(attached.Revision, timeout.Token);
         StreamingMessage start = CreateStartStream();
@@ -58,6 +60,10 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(3, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
+        Assert.Equal(WorkerAssignmentState.Ready, ready.AssignmentState);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
+        Assert.Equal(WorkerStatus.Starting, WorkerOriginState.FromState(ready).Status);
+        Assert.Equal(WorkerLinkState.Unlinked, WorkerOriginState.FromState(ready).Link.State);
 
         Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateWorkerAssignment()));
         Assert.Equal(3, manager.State.Revision);
@@ -199,7 +205,9 @@ public partial class FunctionRpcRelayTests
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
-            Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
+            Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
+            Assert.False(WorkerOriginState.FromState(failed).IsUnhealthy);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
@@ -216,10 +224,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(4, manager.State.Revision);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_ReplacementReadinessRespectsTerminalAssignment(bool assigned)
+    [Fact]
+    public async Task Relay_UnassignedSessionCanBeReplacedAfterTermination()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -231,11 +237,6 @@ public partial class FunctionRpcRelayTests
         await ExchangeAsync(runtime, worker, "original", timeout.Token);
         Assert.True(manager.State.IsWorkerReady);
 
-        if (assigned)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-
         await worker.CompleteRequestAsync(timeout.Token);
         await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
         await WaitForReleaseAsync(relay, timeout.Token);
@@ -246,18 +247,10 @@ public partial class FunctionRpcRelayTests
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
 
-        if (assigned)
-        {
-            Assert.Same(terminated, manager.State);
-            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
-        }
-        else
-        {
-            Assert.True(manager.State.IsWorkerReady);
-            Assert.True(manager.State.SessionId > terminated.SessionId);
-            Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
+        Assert.True(manager.State.IsWorkerReady);
+        Assert.True(manager.State.SessionId > terminated.SessionId);
+        Assert.Equal(terminated.Revision + 2, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
     }
 
     [Fact]
@@ -405,8 +398,9 @@ public partial class FunctionRpcRelayTests
     private static WorkerAssignment CreateWorkerAssignment(
         string functionGroupName = "test-group",
         int? maxHttpConcurrency = null,
-        string? httpProxyEndpoint = null)
-        => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
+        string? httpProxyEndpoint = null,
+        bool isAlwaysReady = false)
+        => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady,
             environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", maxHttpConcurrency: maxHttpConcurrency,
             httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri($"https://{httpProxyEndpoint}"));
 
