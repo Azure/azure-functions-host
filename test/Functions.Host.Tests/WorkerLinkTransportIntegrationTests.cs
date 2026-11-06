@@ -5,6 +5,7 @@ extern alias WorkerProxy;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -12,6 +13,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Azure.Functions.Tests;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Azure.WebJobs.Script;
@@ -44,9 +46,13 @@ public sealed class WorkerLinkTransportIntegrationTests
     {
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         CancellationToken token = timeout.Token;
+        using TestCertificateFiles certificates = new();
         await using WebApplication proxy = ProxyApplication.Build(
         [
             "--WEBSITE_POD_NAME", "worker-proxy-test",
+            "--CONTAINER_ENCRYPTION_KEY", ManagementTokenTestData.WorkerKey,
+            "--WEBSITE_AUTH_ENCRYPTION_KEY", ManagementTokenTestData.AppKey,
+            .. certificates.Arguments,
             "--WorkerProxy:ManagementPort", "0",
             "--WorkerProxy:RuntimeGrpcPort", "0",
             "--WorkerProxy:WorkerGrpcPort", "0",
@@ -56,6 +62,8 @@ public sealed class WorkerLinkTransportIntegrationTests
         await proxy.StartAsync(token);
         ProxyEndpoints endpoints = proxy.Services.GetRequiredService<ProxyEndpoints>();
         using HttpClient management = new() { BaseAddress = Loopback(endpoints.GetManagementAddress()) };
+        management.DefaultRequestHeaders.Add(ManagementTokenTestData.HeaderName,
+            ManagementTokenTestData.Create(ManagementTokenTestData.WorkerKey, "worker-proxy-test"));
         using HttpResponseMessage assignment = await HttpClientJsonExtensions.PutAsJsonAsync(management, "/admin/worker/assignment", new
         {
             startupMode = "Preconfigured",
@@ -63,7 +71,10 @@ public sealed class WorkerLinkTransportIntegrationTests
             functionGroupName = "test-group",
             isAlwaysReady = false,
             environment = new Dictionary<string, string>(),
-            functionAppDirectory = string.Empty
+            functionAppDirectory = string.Empty,
+            configLastModifiedTime = 1761868800,
+            contentLastModifiedTime = 1761868801,
+            httpProxyEndpoint = Loopback(endpoints.GetHttpAddress()).GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)
         }, token);
         Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
 
@@ -86,7 +97,9 @@ public sealed class WorkerLinkTransportIntegrationTests
                 antaresStampName = "test-stamp"
             }
         };
-        Uri grpcEndpoint = Loopback(endpoints.GetRelayAddress(ProxySide.Runtime));
+        await using WebApplication runtimeTransport = await WorkerProxyTestTransport.StartAsync(
+            Loopback(endpoints.GetRelayAddress(ProxySide.Runtime)), certificates, "worker-proxy-test", token);
+        Uri grpcEndpoint = new(runtimeTransport.Urls.Single());
         string legacyJson = JsonSerializer.Serialize(new
         {
             workerGrpcEndpoint = grpcEndpoint.AbsoluteUri,

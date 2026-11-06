@@ -261,6 +261,53 @@ public partial class WorkerPodStateManagerTests
     }
 
     [Fact]
+    public async Task RuntimeDetach_ClearsPublishedIdentityWithoutChangingWorkerReadinessOrAssignment()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        PodIdentity identity = new("runtime-ns", "runtime-pod", new("app", 42, "stamp"));
+        Assert.True(manager.OnRuntimeAttached(1, identity));
+        Assert.True(manager.OnRuntimeInitialized(1));
+        WorkerPodState initialized = manager.State;
+        Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(initialized.Revision);
+
+        Assert.True(manager.OnRuntimeDetached(1));
+        WorkerPodState detached = Assert.IsType<WorkerPodState>((await poll.WaitAsync(TestTimeout)).State);
+
+        Assert.Equal(initialized.Revision + 1, detached.Revision);
+        Assert.Null(detached.RuntimeIdentity);
+        Assert.False(detached.RuntimeInitialized);
+        Assert.True(detached.IsWorkerReady);
+        Assert.Equal(initialized.SessionId, detached.SessionId);
+        Assert.Equal(initialized.WorkerId, detached.WorkerId);
+        Assert.Equal(WorkerAssignmentState.Ready, detached.AssignmentState);
+        Assert.Equal(WorkerStatus.Starting, WorkerOriginState.FromState(detached).Status);
+        Assert.Equal(WorkerLinkState.Unlinked, WorkerOriginState.FromState(detached).Link.State);
+        Assert.False(manager.OnRuntimeDetached(1));
+        Assert.Same(detached, manager.State);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
+    }
+
+    [Fact]
+    public void RuntimeDetach_StaleSessionCannotClearReplacementIdentity()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        Assert.True(manager.OnRuntimeAttached(1, new("runtime-ns", "old-runtime", new("app", 42, "stamp"))));
+        Assert.True(manager.OnSessionTerminated(1));
+        Assert.True(manager.OnWorkerAttached(2));
+        Assert.True(manager.OnWorkerStartStream(2, "replacement-worker"));
+        PodIdentity replacementIdentity = new("runtime-ns", "replacement-runtime", new("app", 42, "stamp"));
+        Assert.True(manager.OnRuntimeAttached(2, replacementIdentity));
+        WorkerPodState replacement = manager.State;
+
+        Assert.False(manager.OnRuntimeDetached(1));
+
+        Assert.Same(replacement, manager.State);
+        Assert.Equal(replacementIdentity, manager.State.RuntimeIdentity);
+        Assert.True(manager.State.IsWorkerReady);
+    }
+
+    [Fact]
     public void RuntimeOnlyTermination_PreventsLateWorkerAttachmentForThatSession()
     {
         WorkerPodStateManager manager = CreateManager(CreateOptions(), TimeProvider.System);

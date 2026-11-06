@@ -281,6 +281,10 @@ internal sealed partial class FunctionRpcRelay
                 {
                     stateManager.OnSessionTerminated(id);
                 }
+                else
+                {
+                    stateManager.OnRuntimeDetached(id);
+                }
 
                 SignalReleasedIfCompleteLocked();
             }

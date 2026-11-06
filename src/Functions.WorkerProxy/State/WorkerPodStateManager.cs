@@ -283,6 +283,32 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Clears identity when a Runtime attachment releases, without terminating a retained worker session.
+    /// </summary>
+    /// <param name="sessionId">The relay session whose Runtime attachment released.</param>
+    /// <returns>Whether Runtime identity was withdrawn.</returns>
+    public bool OnRuntimeDetached(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (sessionId < _lastSessionId || _state.RuntimeIdentity is null)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RuntimeIdentity = null,
+                RuntimeInitialized = false
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Publishes a correlated successful WorkerInit handshake for the current identified Runtime.
     /// </summary>
     /// <param name="sessionId">The relay session that wrote the response to the Runtime.</param>

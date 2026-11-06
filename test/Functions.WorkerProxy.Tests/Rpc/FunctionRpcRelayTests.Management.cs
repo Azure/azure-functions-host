@@ -289,6 +289,82 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.Unavailable, runtimeFailure.StatusCode);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InstanceState_PreInitRuntimeReplacement_DoesNotRetainDetachedIdentity(bool replacementIdentified)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await AssignWorkerAsync(management, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        StreamingMessage start = CreateStartStream();
+        await worker.WriteAsync(start, timeout.Token);
+        await WaitForWorkerReadyAsync(manager, timeout.Token);
+        WorkerPodState ready = manager.State;
+
+        await using RelayClient original = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), timeout.Token, CreateRuntimeIdentityHeaders("valid"));
+        Assert.Equal(start, await original.ReadAsync(timeout.Token));
+        Assert.Equal("runtime-pod", manager.State.RuntimeIdentity?.PodName);
+        Assert.False(manager.State.IsRuntimeInitialized);
+        long attachedRevision = manager.State.Revision;
+        Task<WorkerStatePollResult> detachedPoll = manager.WaitForChangeAsync(attachedRevision, timeout.Token);
+
+        await original.CompleteRequestAsync(timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, await original.WaitForTerminationAsync(timeout.Token));
+        WorkerPodState detached = Assert.IsType<WorkerPodState>((await detachedPoll).State);
+        Assert.Equal(attachedRevision + 1, detached.Revision);
+        Assert.Null(detached.RuntimeIdentity);
+        Assert.False(detached.RuntimeInitialized);
+        Assert.Equal(ready.SessionId, detached.SessionId);
+        Assert.Equal(ready.WorkerId, detached.WorkerId);
+        Assert.Equal(WorkerAssignmentState.Ready, detached.AssignmentState);
+        Assert.True(detached.IsWorkerReady);
+        Assert.True(relay.IsAttached(FunctionRpcRelaySide.Worker));
+        Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+        WorkerOriginState unlinked = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.Starting, unlinked.Status);
+        Assert.Equal(WorkerLinkState.Unlinked, unlinked.Link.State);
+        Assert.Null(unlinked.Link.Runtime);
+        Assert.False(unlinked.IsUnhealthy);
+
+        Metadata replacementHeaders = RuntimeAuthenticationTestData.CreateHeaders();
+        if (replacementIdentified)
+        {
+            replacementHeaders.Add("x-ms-functions-runtime-identity-bin",
+                Encoding.UTF8.GetBytes(RuntimeIdentityJson.Replace("runtime-pod", "replacement-runtime-pod", StringComparison.Ordinal)));
+        }
+
+        await using RelayClient replacement = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), timeout.Token, replacementHeaders);
+        StreamingMessage init = new() { RequestId = "replacement-init", WorkerInitRequest = new() { HostVersion = "test-host" } };
+        await replacement.WriteAsync(init, timeout.Token);
+        Assert.Equal(start, await replacement.ReadAsync(timeout.Token));
+        Assert.Equal(init, await worker.ReadAsync(timeout.Token));
+        Task<WorkerStatePollResult>? initializedPoll = replacementIdentified
+            ? manager.WaitForChangeAsync(manager.State.Revision, timeout.Token)
+            : null;
+        await worker.WriteAsync(CreateInitResponse(init.RequestId, httpUri: null), timeout.Token);
+        Assert.NotNull((await replacement.ReadAsync(timeout.Token)).WorkerInitResponse);
+        if (initializedPoll is not null)
+        {
+            Assert.True((await initializedPoll).State?.IsRuntimeInitialized);
+        }
+
+        WorkerOriginState initialized = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.True(manager.State.IsWorkerReady);
+        Assert.Equal(replacementIdentified, manager.State.IsRuntimeInitialized);
+        Assert.Equal(replacementIdentified ? WorkerStatus.Running : WorkerStatus.Starting, initialized.Status);
+        Assert.Equal(replacementIdentified ? WorkerLinkState.Linked : WorkerLinkState.Unlinked, initialized.Link.State);
+        Assert.Equal(replacementIdentified ? "replacement-runtime-pod" : null, initialized.Link.Runtime?.PodName);
+        Assert.Equal(replacementIdentified ? "replacement-runtime-pod" : null, manager.State.RuntimeIdentity?.PodName);
+        Assert.False(initialized.IsUnhealthy);
+    }
+
     [Fact]
     public async Task InstanceState_InitializationBeforeAssignment_RemainsUnlinked()
     {
