@@ -13,8 +13,8 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="Self">The trusted pod name, with unknown placeholders for platform-owned namespace and app identity.</param>
 /// <param name="IsAlwaysReady">Whether the pod belongs to an always-ready allocation.</param>
 /// <param name="FunctionGroup">The assigned function group, or <see langword="null"/> before assignment.</param>
-/// <param name="ConfigLastModifiedTime">Zero until confirmed loaded configuration versions are integrated.</param>
-/// <param name="ContentLastModifiedTime">Zero until confirmed loaded content versions are integrated.</param>
+/// <param name="ConfigLastModifiedTime">The requested configuration version, or zero when unspecified.</param>
+/// <param name="ContentLastModifiedTime">The requested content version, or zero when unspecified.</param>
 /// <param name="StartupTime">The worker proxy startup time.</param>
 /// <param name="RevisionId">The revision of this checkpoint.</param>
 /// <param name="Status">The platform-visible worker proxy lifecycle status.</param>
@@ -59,8 +59,8 @@ internal sealed record WorkerOriginState(
             new("unknown", state.PodName, new("unknown", 0, "unknown")),
             IsAlwaysReady: state.IsAlwaysReady ?? false,
             FunctionGroup: state.FunctionGroupName,
-            ConfigLastModifiedTime: 0,
-            ContentLastModifiedTime: 0,
+            ConfigLastModifiedTime: state.ConfigLastModifiedTime ?? 0,
+            ContentLastModifiedTime: state.ContentLastModifiedTime ?? 0,
             state.StartupTime,
             checked((int)state.Revision),
             status,

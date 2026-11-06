@@ -21,6 +21,8 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="StartupTime">The worker proxy startup time, retained across state revisions.</param>
 /// <param name="HttpProxyEndpoint">The accepted externally mapped HTTPS origin, when supplied.</param>
 /// <param name="MaxHttpConcurrency">The assigned maximum HTTP concurrency, when specified.</param>
+/// <param name="ConfigLastModifiedTime">The requested configuration version, when supplied.</param>
+/// <param name="ContentLastModifiedTime">The requested content version, when supplied.</param>
 internal sealed record WorkerPodState(
     string PodName,
     long Revision,
@@ -34,7 +36,9 @@ internal sealed record WorkerPodState(
     bool? IsAlwaysReady,
     DateTimeOffset StartupTime,
     Uri? HttpProxyEndpoint = null,
-    int? MaxHttpConcurrency = null)
+    int? MaxHttpConcurrency = null,
+    long? ConfigLastModifiedTime = null,
+    long? ContentLastModifiedTime = null)
 {
     /// <summary>
     /// Gets the identity supplied by the current admitted Runtime stream.
