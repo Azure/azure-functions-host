@@ -87,7 +87,7 @@ public sealed class HostConfigurationLoggingIntegrationTests
                     .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
 
                 WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(() =>
-                    registry.LinkAsync("worker", new Uri(endpoint), timeout.Token));
+                    registry.LinkAsync("worker", new Uri(endpoint), null, timeout.Token));
 
                 Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
                 Assert.Equal(expectedReason, failure.Message);

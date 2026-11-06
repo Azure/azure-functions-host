@@ -34,6 +34,22 @@ internal sealed record WorkerPodState(
     DateTimeOffset StartupTime,
     int? MaxHttpConcurrency = null)
 {
+    /// <summary>
+    /// Gets the identity supplied by the current admitted Runtime stream.
+    /// </summary>
+    public PodIdentity? RuntimeIdentity { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether a correlated successful WorkerInit response has been written to the Runtime.
+    /// </summary>
+    public bool RuntimeInitialized { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the assigned worker has completed initialization with an identified Runtime.
+    /// </summary>
+    public bool IsRuntimeInitialized => IsWorkerReady &&
+        AssignmentState == WorkerAssignmentState.Ready && RuntimeInitialized && RuntimeIdentity is not null;
+
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
 

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -18,6 +19,44 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public class FunctionRpcDuplexChannelIntegrationTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChannelConveysRuntimeIdentityAsBinaryMetadata(bool identifiedRuntime)
+    {
+        WorkerLinkRuntimeIdentity runtimeIdentity = identifiedRuntime
+            ? new("runtime-ns", "runtime-\u00e9", new("test-app", 42, "test-stamp"))
+            : null;
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+        await using DuplexChannel<StreamingMessage> channel =
+            await channelFactory.ConnectAsync(server.Endpoint, runtimeIdentity);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        Grpc.Core.Metadata.Entry[] identityHeaders = [.. server.Service.RequestHeaders
+            .Where(header => string.Equals(header.Key, "x-ms-functions-runtime-identity-bin", StringComparison.Ordinal))];
+        if (runtimeIdentity is null)
+        {
+            Assert.Empty(identityHeaders);
+        }
+        else
+        {
+            Grpc.Core.Metadata.Entry header = Assert.Single(identityHeaders);
+            Assert.True(header.IsBinary);
+            using JsonDocument document = JsonDocument.Parse(header.ValueBytes);
+            JsonElement root = document.RootElement;
+            Assert.Equal(["app", "podName", "resourceNamespace"], root.EnumerateObject().Select(property => property.Name).Order());
+            Assert.Equal(runtimeIdentity.ResourceNamespace, root.GetProperty("resourceNamespace").GetString());
+            Assert.Equal(runtimeIdentity.PodName, root.GetProperty("podName").GetString());
+            JsonElement app = root.GetProperty("app");
+            Assert.Equal(["antaresStampName", "functionAppName", "functionAppSiteId"], app.EnumerateObject().Select(property => property.Name).Order());
+            Assert.Equal(runtimeIdentity.App.FunctionAppName, app.GetProperty("functionAppName").GetString());
+            Assert.Equal(runtimeIdentity.App.FunctionAppSiteId, app.GetProperty("functionAppSiteId").GetInt32());
+            Assert.Equal(runtimeIdentity.App.AntaresStampName, app.GetProperty("antaresStampName").GetString());
+        }
+    }
 
     [Fact]
     public async Task ChannelExchangesArbitraryMessagesInBothDirections()
@@ -98,7 +137,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
-        await Assert.ThrowsAnyAsync<Exception>(() => channelFactory.ConnectAsync(endpoint, timeoutSource.Token));
+        await Assert.ThrowsAnyAsync<Exception>(() => channelFactory.ConnectAsync(endpoint, null, timeoutSource.Token));
     }
 
     [Fact]
@@ -110,7 +149,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         using CancellationTokenSource cancellationSource = new();
         cancellationSource.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => channelFactory.ConnectAsync(server.Endpoint, cancellationSource.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => channelFactory.ConnectAsync(server.Endpoint, null, cancellationSource.Token));
     }
 
     [Fact]

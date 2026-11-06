@@ -34,10 +34,10 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         await worker.InitializationStarted.WaitAsync(timeout.Token);
         Task<WorkerLinkResult>[] retries = [.. Enumerable.Range(0, retryCount)
-            .Select(_ => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token))];
+            .Select(_ => registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token))];
 
         Assert.False(original.IsCompleted);
         Assert.All(retries, retry => Assert.False(retry.IsCompleted));
@@ -54,7 +54,7 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Same(linked.Channel, replay.Channel);
         }
 
-        WorkerLinkResult completedReplay = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult completedReplay = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.False(completedReplay.IsNewLink);
         Assert.Same(linked.Channel, completedReplay.Channel);
         Assert.Equal(1, server.StreamCount);
@@ -75,9 +75,9 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        Task<WorkerLinkResult> first = registry.LinkAsync(GrpcWorkerId, firstServer.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> first = registry.LinkAsync(GrpcWorkerId, firstServer.Endpoint, null, timeout.Token);
         await firstWorker.InitializationStarted.WaitAsync(timeout.Token);
-        Task<WorkerLinkResult> second = registry.LinkAsync(secondWorkerId, secondServer.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> second = registry.LinkAsync(secondWorkerId, secondServer.Endpoint, null, timeout.Token);
         await secondWorker.InitializationStarted.WaitAsync(timeout.Token);
         Assert.False(first.IsCompleted);
         Assert.False(second.IsCompleted);
@@ -93,8 +93,8 @@ public sealed partial class WorkerChannelRegistryTests
         WorkerLinkResult firstLinked = await first.WaitAsync(timeout.Token);
         Assert.True(firstLinked.IsNewLink);
         Assert.Equal(2, registry.GetInitializedChannels().Count);
-        WorkerLinkResult firstReplay = await registry.LinkAsync(GrpcWorkerId, firstServer.Endpoint, timeout.Token);
-        WorkerLinkResult secondReplay = await registry.LinkAsync(secondWorkerId, secondServer.Endpoint, timeout.Token);
+        WorkerLinkResult firstReplay = await registry.LinkAsync(GrpcWorkerId, firstServer.Endpoint, null, timeout.Token);
+        WorkerLinkResult secondReplay = await registry.LinkAsync(secondWorkerId, secondServer.Endpoint, null, timeout.Token);
         Assert.False(firstReplay.IsNewLink);
         Assert.False(secondReplay.IsNewLink);
         Assert.Same(firstLinked.Channel, firstReplay.Channel);
@@ -114,10 +114,10 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         await worker.InitializationStarted.WaitAsync(timeout.Token);
         Task<WorkerLinkResult>? retry = concurrentRetry
-            ? registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token)
+            ? registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token)
             : null;
         worker.FailInitialization("Worker initialization failed.");
 
@@ -132,7 +132,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, server.StreamCount);
 
         server.AddWorker(GrpcWorkerId);
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(2, server.StreamCount);
@@ -147,12 +147,12 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        await Assert.ThrowsAsync<UriFormatException>(() => registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token));
+        await Assert.ThrowsAsync<UriFormatException>(() => registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token));
 
         Assert.Empty(registry.GetInitializedChannels());
         await worker.Disconnected.WaitAsync(timeout.Token);
         server.AddWorker(GrpcWorkerId, httpUri: "http://worker-proxy:28080");
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(2, server.StreamCount);
@@ -168,11 +168,11 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         await worker.InitializationStarted.WaitAsync(timeout.Token);
 
         WorkerLinkException pendingConflict = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync(GrpcWorkerId, otherEndpoint.Endpoint, timeout.Token));
+            () => registry.LinkAsync(GrpcWorkerId, otherEndpoint.Endpoint, null, timeout.Token));
         Assert.Equal(WorkerLinkFailureReason.Conflict, pendingConflict.Reason);
         Assert.False(original.IsCompleted);
         Assert.Equal(1, server.StreamCount);
@@ -182,7 +182,7 @@ public sealed partial class WorkerChannelRegistryTests
         worker.CompleteInitialization();
         WorkerLinkResult linked = await original.WaitAsync(timeout.Token);
         WorkerLinkException readyConflict = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync(GrpcWorkerId, otherEndpoint.Endpoint, timeout.Token));
+            () => registry.LinkAsync(GrpcWorkerId, otherEndpoint.Endpoint, null, timeout.Token));
         Assert.Equal(WorkerLinkFailureReason.Conflict, readyConflict.Reason);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(1, server.StreamCount);
@@ -200,7 +200,7 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, cancellation.Token);
+        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, cancellation.Token);
         await worker.InitializationStarted.WaitAsync(timeout.Token);
         cancellation.Cancel();
 
@@ -209,7 +209,7 @@ public sealed partial class WorkerChannelRegistryTests
         await worker.Disconnected.WaitAsync(timeout.Token);
 
         server.AddWorker(GrpcWorkerId);
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
         Assert.Equal(2, server.StreamCount);
@@ -225,9 +225,9 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory);
 
-        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         await worker.InitializationStarted.WaitAsync(timeout.Token);
-        Task<WorkerLinkResult> retry = registry.LinkAsync(GrpcWorkerId, server.Endpoint, cancellation.Token);
+        Task<WorkerLinkResult> retry = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, cancellation.Token);
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => retry.WaitAsync(timeout.Token));
@@ -250,9 +250,9 @@ public sealed partial class WorkerChannelRegistryTests
         await using RpcClientFactory clientFactory = new(NullLogger<RpcClientFactory>.Instance);
         await using WorkerChannelRegistry registry = CreateGrpcRegistry(clientFactory, TimeSpan.FromSeconds(2));
 
-        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> original = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         await worker.InitializationStarted.WaitAsync(timeout.Token);
-        Task<WorkerLinkResult> retry = registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        Task<WorkerLinkResult> retry = registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.False(original.IsCompleted);
         Assert.False(retry.IsCompleted);
 
@@ -264,10 +264,10 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, server.StreamCount);
 
         server.AddWorker(GrpcWorkerId);
-        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult linked = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.True(linked.IsNewLink);
         Assert.Same(linked.Channel, Assert.Single(registry.GetInitializedChannels()));
-        WorkerLinkResult replay = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, timeout.Token);
+        WorkerLinkResult replay = await registry.LinkAsync(GrpcWorkerId, server.Endpoint, null, timeout.Token);
         Assert.False(replay.IsNewLink);
         Assert.Same(linked.Channel, replay.Channel);
         Assert.Equal(2, server.StreamCount);

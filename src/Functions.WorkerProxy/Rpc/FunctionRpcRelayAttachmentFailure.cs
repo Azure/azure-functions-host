@@ -14,6 +14,11 @@ internal enum FunctionRpcRelayAttachmentFailure
     Duplicate,
 
     /// <summary>
+    /// The current WorkerProxy lifecycle state does not accept this stream.
+    /// </summary>
+    PodStateRejected,
+
+    /// <summary>
     /// The previous relay session has terminated but has not fully released.
     /// </summary>
     PreviousSessionTearingDown,

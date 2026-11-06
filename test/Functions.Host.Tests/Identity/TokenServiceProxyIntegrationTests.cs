@@ -595,7 +595,7 @@ public sealed class TokenServiceProxyIntegrationTests
             {
                 Host = IPAddress.Loopback.ToString()
             };
-            _link = Registry.LinkAsync("customer-run-1", endpoint.Uri, cancellationToken);
+            _link = Registry.LinkAsync("customer-run-1", endpoint.Uri, null, cancellationToken);
             return Task.CompletedTask;
         }
 

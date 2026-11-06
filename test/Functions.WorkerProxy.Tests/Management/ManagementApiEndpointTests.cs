@@ -801,24 +801,12 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"SETTING\":\"\"}")]
-    public async Task EmptyEnvironmentOrValueIsValidAndNotReadyDoesNotReserveIdentity(string environment)
+    public async Task EmptyEnvironmentOrValueIsValidBeforeWorkerStartStream(string environment)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerPodState before = manager.State;
-        using StringContent notReadyContent = JsonBody(ValidAssignment);
-        using HttpResponseMessage notReady = await client.PutAsync(AssignPath, notReadyContent, timeout.Token);
-        await AssertAssignmentErrorAsync(notReady, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
-        Assert.Same(before, manager.State);
-        Assert.Equal(0, manager.State.Revision);
-        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
-        Assert.Null(manager.State.FunctionAppName);
-        Assert.Null(manager.State.StartupMode);
-
-        Assert.True(manager.OnWorkerAttached(1));
-        Assert.True(manager.OnWorkerStartStream(1, "worker"));
         JsonObject assignment = JsonNode.Parse(ValidAssignment)!.AsObject();
         assignment["functionAppName"] = "other-app";
         assignment["startupMode"] = "Preconfigured";
@@ -826,9 +814,19 @@ public class ManagementApiEndpointTests
         using StringContent content = JsonBody(assignment.ToJsonString());
         using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
         await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(1, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
         Assert.Equal("other-app", manager.State.FunctionAppName);
         Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
+
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+
+        using StringContent replayContent = JsonBody(assignment.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
     }
 
     [Theory]
