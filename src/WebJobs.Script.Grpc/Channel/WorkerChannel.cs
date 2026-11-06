@@ -285,6 +285,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             => RemoveAcceptedInvocation(context);
 
         /// <summary>
+        /// Gets the lifetime completion used when draining an accepted invocation.
+        /// </summary>
+        /// <param name="context">The accepted invocation.</param>
+        /// <returns>The invocation result by default; derived channels can wait for their full owned lifetime instead.</returns>
+        protected virtual Task GetInvocationCompletionTask(ScriptInvocationContext context) => context.ResultSource.Task;
+
+        /// <summary>
+        /// Releases derived invocation resources after permanent channel shutdown has removed accepted ownership.
+        /// </summary>
+        /// <param name="context">The invocation whose worker lifetime was terminated.</param>
+        protected virtual void OnInvocationTerminated(ScriptInvocationContext context) { }
+
+        /// <summary>
         /// Runs after an unsent invocation is failed and before releasing its accepted ownership.
         /// </summary>
         /// <param name="context">The failed invocation.</param>
@@ -1996,7 +2009,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Count of accepted invocations waiting to be drained out: {invocationCount}", invocations.Length);
             // Draining waits for completion; individual execution failures remain on the invocation result tasks.
-            Task completion = Task.WhenAll(invocations.Select(invocation => invocation.ResultSource.Task));
+            Task completion = Task.WhenAll(invocations.Select(GetInvocationCompletionTask));
             await completion.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
 
@@ -2063,6 +2076,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             foreach (ScriptInvocationContext context in invocationsToFail.Values)
             {
                 FailInvocation(context, shutdownException);
+                OnInvocationTerminated(context);
             }
 
             foreach (ExecutingInvocation invocation in executingInvocations)

@@ -19,9 +19,11 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Xunit;
 
@@ -29,6 +31,83 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed partial class RpcClientFunctionInvocationDispatcherTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvocationLifetime_EarlyResultFailureDoesNotCompleteIdleOrDrain(bool alwaysReady)
+    {
+        InvalidOperationException failure = new("Post-send metrics failure");
+        Mock<IMetricsLogger> metrics = new();
+        metrics.Setup(logger => logger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, "worker"),
+            It.IsAny<string>(), It.IsAny<string>())).Throws(failure);
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: "http", maxHttpConcurrency: "1", metricsLogger: metrics.Object, isAlwaysReady: alwaysReady);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        FakeTimeProvider clock = new();
+        worker.Channel.StartIdleTracking(clock);
+        using MemoryStream body = new();
+        ScriptInvocationContext invocation = CreateHttpInvocation(function, body);
+        Assert.True(worker.Channel.TryPostInvocation(invocation));
+        await ReadInvocationAsync(worker);
+        Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout)));
+        Assert.True(worker.Channel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
+
+        await GetResponseFeature(invocation).FireCompletedAsync();
+        Assert.Equal(alwaysReady ? 0 : 1, worker.Channel.OngoingRequests);
+        Assert.False(worker.Channel.GetCapacityAvailableTask().IsCompleted);
+        Task drain = worker.Channel.DrainInvocationsAsync();
+        Assert.False(drain.IsCompleted);
+        clock.Advance(TimeSpan.FromMinutes(10));
+        Assert.False(worker.Channel.TryClaimIdleRetirement(TimeSpan.FromMinutes(2), out _, out _));
+        Task scaleIn = worker.Channel.TryBeginScaleIn("http", alwaysReady);
+        Assert.NotNull(scaleIn);
+        Assert.False(scaleIn.IsCompleted);
+        Assert.False(worker.Channel.TryPostInvocation(CreateHttpInvocation(function, body)));
+
+        await CompleteInvocationAsync(worker, invocation);
+
+        await drain.WaitAsync(TestTimeout);
+        await scaleIn.WaitAsync(TestTimeout);
+        Assert.Equal(0, worker.Channel.OngoingRequests);
+        Assert.False(worker.Channel.IsExecutingInvocation(invocation.ExecutionContext.InvocationId.ToString()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvocationLifetime_DrainWaitsForResponseAndTerminationEndsOwnership(bool terminate)
+    {
+        await using ClientWorkerChannelTestHarness worker = await CreateLimitedWorkerAsync("worker", 1);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        using MemoryStream body = new();
+        ScriptInvocationContext invocation = CreateHttpInvocation(function, body);
+        Assert.True(worker.Channel.TryPostInvocation(invocation));
+        await ReadInvocationAsync(worker);
+        await CompleteInvocationAsync(worker, invocation);
+        Assert.True(invocation.ResultSource.Task.IsCompletedSuccessfully);
+        Assert.Equal(1, worker.Channel.OngoingRequests);
+        Task drain = worker.Channel.DrainInvocationsAsync();
+        Assert.False(drain.IsCompleted);
+
+        if (terminate)
+        {
+            worker.Channel.Shutdown(new InvalidOperationException("Worker terminated"));
+        }
+        else
+        {
+            await GetResponseFeature(invocation).FireCompletedAsync();
+        }
+
+        await drain.WaitAsync(TestTimeout);
+        Assert.Equal(0, worker.Channel.OngoingRequests);
+        await GetResponseFeature(invocation).FireCompletedAsync();
+        await GetResponseFeature(invocation).FireCompletedAsync();
+        Assert.Equal(0, worker.Channel.OngoingRequests);
+        Assert.Equal(!terminate, worker.Channel.TryPostInvocation(CreateHttpInvocation(function, body)));
+    }
+
     private static void ConfigureStreamingWorker(WebApplicationBuilder builder, TestCertificateFiles certificates)
     {
         builder.WebHost.UseKestrelHttpsConfiguration();

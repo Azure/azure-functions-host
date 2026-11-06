@@ -39,6 +39,7 @@ namespace Azure.Functions.Rpc.Client;
 /// HTTP assignment concurrency counts accepted invocations from buffer admission through worker response handling and HTTP response
 /// completion. These slots belong to the channel, not the ScriptHost-scoped dispatcher. HTTP completion is observed without forcing
 /// finalization or delaying the invocation result; worker processing and the natural response lifetime must both finish before release.
+/// Idle accounting and draining use that same completion boundary; permanent channel termination ends all remaining ownership.
 /// </remarks>
 internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 {
@@ -458,7 +459,6 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
                 if (accepted && trackActivity)
                 {
                     OngoingRequests++;
-                    _ = ObserveRequestCompletionAsync(context, completion.HttpResponseCompleted);
                 }
             }
             return accepted;
@@ -491,9 +491,34 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     }
 
     /// <summary>
-    /// Removes lifecycle ownership before the lease is returned and another invocation can be admitted.
+    /// Ends accepted ownership and on-demand activity before returning the lease or completing a drain wait.
     /// </summary>
-    private void ReleaseCompletedInvocation(ScriptInvocationContext context) => base.OnInvocationCompleted(context);
+    private void ReleaseCompletedInvocation(ScriptInvocationContext context, bool trackActivity)
+    {
+        lock (_lifecycleLock)
+        {
+            base.OnInvocationCompleted(context);
+            if (trackActivity)
+            {
+                _ongoingRequests--;
+                RecordIdleTime();
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    protected override Task GetInvocationCompletionTask(ScriptInvocationContext context)
+        => context.Properties.TryGetValue(InvocationCompletionProperty, out object value) && value is InvocationCompletion completion
+            ? completion.Completion : base.GetInvocationCompletionTask(context);
+
+    /// <inheritdoc />
+    protected override void OnInvocationTerminated(ScriptInvocationContext context)
+    {
+        if (context.Properties.TryGetValue(InvocationCompletionProperty, out object value) && value is InvocationCompletion completion)
+        {
+            completion.Terminate();
+        }
+    }
 
     /// <summary>
     /// Uses the limiter's level-triggered availability observation without consuming a worker slot.
@@ -772,61 +797,6 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    internal static Task GetHttpResponseCompletionTask(ScriptInvocationContext context)
-    {
-        HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
-            .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
-        if (request is null)
-        {
-            return Task.CompletedTask;
-        }
-
-        TaskCompletionSource responseCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        request.HttpContext.Response.OnCompleted(() =>
-        {
-            responseCompleted.TrySetResult();
-            return Task.CompletedTask;
-        });
-        return responseCompleted.Task;
-    }
-
-    internal async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
-    {
-        try
-        {
-            try
-            {
-                await context.ResultSource.Task.ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                // The invoker owns failure reporting; this observer only tracks request lifetime.
-            }
-
-            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
-            {
-                try
-                {
-                    await forwarding.ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // The proxy/invoker owns failure reporting; still wait for response completion.
-                }
-            }
-
-            await responseCompleted.ConfigureAwait(false);
-        }
-        finally
-        {
-            lock (_lifecycleLock)
-            {
-                _ongoingRequests--;
-                RecordIdleTime();
-            }
-        }
-    }
-
     private void RecordIdleTime()
     {
         if (_ongoingRequests == 0 && _idleSince is null)
@@ -879,20 +849,20 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         private const int InvocationCompleted = 2;
         private readonly ScriptInvocationContext _context = context;
         private readonly RpcClientWorkerChannel _channel = channel;
-        private readonly TaskCompletionSource _httpResponseCompleted = waitForHttp && trackActivity
-            ? new(TaskCreationOptions.RunContinuationsAsynchronously) : null;
-
+        private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private RateLimitLease _lease = lease;
         private int _completed = waitForHttp ? 0 : HttpCompleted;
 
-        internal Task HttpResponseCompleted => _httpResponseCompleted?.Task ?? Task.CompletedTask;
+        /// <summary>
+        /// Gets the end of accepted ownership, independent of when the invocation result is delivered.
+        /// </summary>
+        internal Task Completion => _completion.Task;
 
         /// <summary>
         /// Observes natural response completion without forcing finalization or delaying the invocation result.
         /// </summary>
         internal Task OnHttpCompletedAsync()
         {
-            _httpResponseCompleted?.TrySetResult();
             if (Interlocked.Or(ref _completed, HttpCompleted) == InvocationCompleted)
             {
                 Release();
@@ -913,22 +883,35 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
 
         /// <summary>
-        /// Returns the completed invocation's permit without allowing concurrent callbacks to dispose the same lease.
+        /// Ends ownership unconditionally when the worker channel is permanently terminated.
         /// </summary>
-        private void ReleaseLease() => Interlocked.Exchange(ref _lease, null)?.Dispose();
+        internal void Terminate() => Release();
 
         /// <summary>
         /// Ends lifecycle ownership before publishing capacity, returning the permit even if lifecycle cleanup fails.
         /// </summary>
         private void Release()
         {
+            RateLimitLease lease = Interlocked.Exchange(ref _lease, null);
+            if (lease is null)
+            {
+                return;
+            }
+
             try
             {
-                _channel.ReleaseCompletedInvocation(_context);
+                _channel.ReleaseCompletedInvocation(_context, trackActivity);
             }
             finally
             {
-                ReleaseLease();
+                try
+                {
+                    lease.Dispose();
+                }
+                finally
+                {
+                    _completion.TrySetResult();
+                }
             }
         }
     }

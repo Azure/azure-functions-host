@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,12 +11,58 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed partial class RpcClientFunctionInvocationDispatcherTests
 {
+    [Fact]
+    public async Task InvokeAsync_FallbackScansRemainingWorkersWithoutAdvancingPreference()
+    {
+        await using ClientWorkerChannelTestHarness first = await CreateLimitedWorkerAsync("first", 1);
+        await using ClientWorkerChannelTestHarness second = await CreateLimitedWorkerAsync("second", 1);
+        await using ClientWorkerChannelTestHarness third = await CreateLimitedWorkerAsync("third", 1);
+        FunctionMetadata function = CreateHttpGroupFunction();
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(second, function);
+        await PrepareReadyChannelAsync(third, function);
+        ScriptInvocationContext firstActive = CreateInvocation(function);
+        ScriptInvocationContext thirdActive = CreateInvocation(function);
+        Assert.True(first.Channel.TryPostInvocation(firstActive));
+        Assert.True(third.Channel.TryPostInvocation(thirdActive));
+        await ReadInvocationAsync(first);
+        await ReadInvocationAsync(third);
+        PublishReady(first.Channel, second.Channel, third.Channel);
+        List<string> attempts = [];
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(value => value.TryDispatchInvocation(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Func<bool>>()))
+            .Returns((string invocationId, string workerId, Func<bool> post) =>
+            {
+                attempts.Add(workerId);
+                return post();
+            });
+        using RpcClientFunctionInvocationDispatcher dispatcher = new(
+            _registry.Object, NullLogger<RpcClientFunctionInvocationDispatcher>.Instance, tracker.Object);
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext secondActive = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(secondActive);
+        Assert.Equal(["first", "second"], attempts);
+        await ReadInvocationAsync(second);
+        await CompleteInvocationAsync(third, thirdActive);
+        attempts.Clear();
+        ScriptInvocationContext next = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(next);
+
+        Assert.Equal(["second", "first", "third"], attempts);
+        Assert.Equal(next.ExecutionContext.InvocationId.ToString(), (await ReadInvocationAsync(third)).InvocationId);
+    }
+
     [Fact]
     public async Task InvokeAsync_SkipsFullWorkersAndAdvancesFromSelectedWorker()
     {

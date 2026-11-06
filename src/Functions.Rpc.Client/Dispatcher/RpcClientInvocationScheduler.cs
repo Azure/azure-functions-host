@@ -205,8 +205,8 @@ internal sealed partial class RpcClientInvocationScheduler(
     }
 
     /// <summary>
-    /// Scans matching ready workers in per-group round-robin order and atomically attempts channel admission.
-    /// Full workers are skipped; the cursor advances from the worker that actually accepts the invocation.
+    /// Tries the round-robin-preferred worker, then each other matching worker once using the captured snapshot.
+    /// Full workers are skipped without advancing the shared cursor again during this fallback scan.
     /// Non-capacity rejection is surfaced through the invocation result rather than retrying accepted work.
     /// </summary>
     /// <param name="context">The invocation whose ownership is transferred on successful posting.</param>
@@ -223,14 +223,25 @@ internal sealed partial class RpcClientInvocationScheduler(
         out bool atCapacity)
     {
         atCapacity = false;
-        for (int attempt = 0; attempt < channels.Count; attempt++)
+        if (!TryGetReadyChannel(channels, functionGroup, out WorkerChannel preferred))
         {
-            if (!TryGetReadyChannel(channels, functionGroup, out WorkerChannel selected))
+            return false;
+        }
+
+        if (DispatchInvocation(context, (RpcClientWorkerChannel)preferred, cancellationToken, out bool full))
+        {
+            return true;
+        }
+
+        atCapacity = full;
+        foreach (WorkerChannel candidate in channels)
+        {
+            if (ReferenceEquals(candidate, preferred) || !IsEligible(candidate, functionGroup))
             {
-                return false;
+                continue;
             }
 
-            if (DispatchInvocation(context, (RpcClientWorkerChannel)selected, cancellationToken, out bool full))
+            if (DispatchInvocation(context, (RpcClientWorkerChannel)candidate, cancellationToken, out full))
             {
                 return true;
             }

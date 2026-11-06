@@ -16,6 +16,7 @@ using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script;
@@ -149,6 +150,18 @@ public sealed partial class WorkerChannelRegistryTests
         httpContext.Request.Host = new("runtime");
         httpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
         httpContext.Response.Body = responseBody;
+        Mock<IHttpResponseFeature> responseFeature = new();
+        responseFeature.SetupGet(feature => feature.Headers).Returns(new HeaderDictionary());
+        responseFeature.SetupProperty(feature => feature.StatusCode, StatusCodes.Status200OK);
+        Func<object, Task> completeResponse = null;
+        object completionState = null;
+        responseFeature.Setup(feature => feature.OnCompleted(It.IsAny<Func<object, Task>>(), It.IsAny<object>()))
+            .Callback((Func<object, Task> callback, object state) =>
+            {
+                completeResponse = callback;
+                completionState = state;
+            });
+        httpContext.Features.Set(responseFeature.Object);
         ScriptInvocationContext invocation = CreateScaleInInvocation(function);
         invocation.Inputs = [("req", DataType.String, httpContext.Request)];
         Assert.True(selected.Channel.TryDispatchInvocation(invocation));
@@ -199,6 +212,8 @@ public sealed partial class WorkerChannelRegistryTests
         await rpcResponse.WaitAsync(TestTimeout);
         Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
         Assert.Equal("started-finished", Encoding.UTF8.GetString(responseBody.ToArray()));
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+        await completeResponse(completionState);
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }
 
