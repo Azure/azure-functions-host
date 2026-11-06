@@ -11,7 +11,6 @@ namespace Azure.Functions.WorkerProxy.State;
 /// </summary>
 /// <param name="FunctionsContainerType">The platform discriminator for the container kind.</param>
 /// <param name="Self">The trusted pod name, with unknown placeholders for platform-owned namespace and app identity.</param>
-/// <param name="IsDiscoveryPod">Whether the pod is used for discovery.</param>
 /// <param name="IsAlwaysReady">Whether the pod belongs to an always-ready allocation.</param>
 /// <param name="FunctionGroup">The assigned function group, or <see langword="null"/> before assignment.</param>
 /// <param name="ConfigLastModifiedTime">Zero until confirmed loaded configuration versions are integrated.</param>
@@ -24,7 +23,6 @@ namespace Azure.Functions.WorkerProxy.State;
 internal sealed record WorkerOriginState(
     [property: JsonRequired, JsonPropertyOrder(-1)] string FunctionsContainerType,
     [property: JsonRequired] PodIdentity Self,
-    [property: JsonRequired] bool IsDiscoveryPod,
     [property: JsonRequired] bool IsAlwaysReady,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
     [property: JsonRequired, JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] long ConfigLastModifiedTime,
@@ -56,7 +54,6 @@ internal sealed record WorkerOriginState(
         return new(
             ContainerType,
             new("unknown", state.PodName, new("unknown", 0, "unknown")),
-            IsDiscoveryPod: false,
             IsAlwaysReady: state.IsAlwaysReady ?? false,
             FunctionGroup: state.FunctionGroupName,
             ConfigLastModifiedTime: 0,

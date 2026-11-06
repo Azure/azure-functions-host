@@ -76,7 +76,7 @@ public class ManagementApiEndpointTests
         const string previous = """
             {"functionsContainerType":"FunctionsSplitWorkerProxy",
              "self":{"resourceNamespace":"ignored","podName":"caller-selected-pod","app":{"functionAppName":"caller-selected-app","functionAppSiteId":123,"antaresStampName":"ignored"}},
-             "isDiscoveryPod":true,"isAlwaysReady":true,"functionGroup":"caller-selected-group",
+             "isAlwaysReady":true,"functionGroup":"caller-selected-group",
              "configLastModifiedTime":"999","contentLastModifiedTime":"999",
              "startupTime":"2026-10-29T23:00:00Z","revisionId":"0","status":"Running",
              "link":{"state":"Linked","runtime":{"resourceNamespace":"ignored","podName":"caller-selected-runtime","app":{"functionAppName":"caller-selected-app","functionAppSiteId":123,"antaresStampName":"ignored"}}},"isUnhealthy":true}
@@ -92,7 +92,6 @@ public class ManagementApiEndpointTests
         Assert.Equal("FunctionsSplitWorkerProxy", state.GetProperty("functionsContainerType").GetString());
         Assert.Equal("test-group", state.GetProperty("functionGroup").GetString());
         Assert.False(state.GetProperty("isAlwaysReady").GetBoolean());
-        Assert.False(state.GetProperty("isDiscoveryPod").GetBoolean());
         Assert.False(state.GetProperty("isUnhealthy").GetBoolean());
         Assert.Equal("Starting", state.GetProperty("status").GetString());
         Assert.Equal("Unlinked", state.GetProperty("link").GetProperty("state").GetString());
@@ -170,7 +169,7 @@ public class ManagementApiEndpointTests
         }
         int revision = higherRevision ? int.MaxValue : 1;
         string previous = $$$"""
-            {"functionsContainerType":"FunctionsSplitWorkerProxy","isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":"test-group",
+            {"functionsContainerType":"FunctionsSplitWorkerProxy","isAlwaysReady":false,"functionGroup":"test-group",
              "self":{"resourceNamespace":"unknown","podName":"prior-process","app":{"functionAppName":"unknown","functionAppSiteId":0,"antaresStampName":"unknown"}},
              "configLastModifiedTime":0,"contentLastModifiedTime":0,"startupTime":"2020-01-01T00:00:00Z",
              "revisionId":{{{revision}}},"status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
@@ -1226,7 +1225,7 @@ public class ManagementApiEndpointTests
         $$$"""
         {"functionsContainerType":"FunctionsSplitWorkerProxy","revisionId":{{{revision}}},
          "self":{"resourceNamespace":"unknown","podName":"test-worker-pod","app":{"functionAppName":"unknown","functionAppSiteId":0,"antaresStampName":"unknown"}},
-         "isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":null,"configLastModifiedTime":0,"contentLastModifiedTime":0,
+         "isAlwaysReady":false,"functionGroup":null,"configLastModifiedTime":0,"contentLastModifiedTime":0,
          "startupTime":"2026-01-01T00:00:00+00:00","status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
         """;
 

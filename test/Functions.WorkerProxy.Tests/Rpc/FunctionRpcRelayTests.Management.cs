@@ -591,7 +591,6 @@ public partial class FunctionRpcRelayTests
             wireRoot,
             "functionsContainerType",
             "self",
-            "isDiscoveryPod",
             "isAlwaysReady",
             "functionGroup",
             "configLastModifiedTime",
@@ -626,7 +625,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal("unknown", placeholder.Self.ResourceNamespace);
         Assert.Equal("test-worker-pod", placeholder.Self.PodName);
         Assert.Equal(new FunctionAppIdentity("unknown", 0, "unknown"), placeholder.Self.App);
-        Assert.False(placeholder.IsDiscoveryPod);
         Assert.False(placeholder.IsAlwaysReady);
         Assert.Null(placeholder.FunctionGroup);
         Assert.Equal(0, placeholder.ConfigLastModifiedTime);
@@ -685,7 +683,6 @@ public partial class FunctionRpcRelayTests
         using HttpResponseMessage assignedResponse = await assignmentPoll;
         WorkerOriginState assigned = await ReadManagementStateAsync(assignedResponse, timeout.Token);
         Assert.Equal(placeholder.Self, assigned.Self);
-        Assert.False(assigned.IsDiscoveryPod);
         Assert.False(assigned.IsAlwaysReady);
         Assert.Equal("deployment:validation", assigned.FunctionGroup);
         Assert.Equal(0, assigned.ConfigLastModifiedTime);

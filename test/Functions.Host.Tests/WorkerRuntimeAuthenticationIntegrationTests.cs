@@ -586,7 +586,6 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(0, app["functionAppSiteId"]!.GetValue<int>());
         Assert.Equal("unknown", app["antaresStampName"]!.GetValue<string>());
         Assert.Equal(expectedGroup, checkpoint["functionGroup"]?.GetValue<string>());
-        Assert.False(checkpoint["isDiscoveryPod"]!.GetValue<bool>());
         Assert.False(checkpoint["isAlwaysReady"]!.GetValue<bool>());
         Assert.Equal(0L, checkpoint["configLastModifiedTime"]!.GetValue<long>());
         Assert.Equal(0L, checkpoint["contentLastModifiedTime"]!.GetValue<long>());

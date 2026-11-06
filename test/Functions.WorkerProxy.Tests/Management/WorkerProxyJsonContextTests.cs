@@ -225,7 +225,7 @@ public class WorkerProxyJsonContextTests
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerOriginState);
         const string expected = """
-            {"functionsContainerType":"FunctionsSplitWorkerProxy","self":{"resourceNamespace":"unknown","podName":"test-pod","app":{"functionAppName":"unknown","functionAppSiteId":0,"antaresStampName":"unknown"}},"isDiscoveryPod":false,"isAlwaysReady":false,"functionGroup":"http","configLastModifiedTime":0,"contentLastModifiedTime":0,"startupTime":"2026-10-29T23:00:00+00:00","revisionId":1,"status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
+            {"functionsContainerType":"FunctionsSplitWorkerProxy","self":{"resourceNamespace":"unknown","podName":"test-pod","app":{"functionAppName":"unknown","functionAppSiteId":0,"antaresStampName":"unknown"}},"isAlwaysReady":false,"functionGroup":"http","configLastModifiedTime":0,"contentLastModifiedTime":0,"startupTime":"2026-10-29T23:00:00+00:00","revisionId":1,"status":"Starting","link":{"state":"Unlinked"},"isUnhealthy":false}
             """;
         Assert.Equal(expected, json);
         using JsonDocument document = JsonDocument.Parse(json);
