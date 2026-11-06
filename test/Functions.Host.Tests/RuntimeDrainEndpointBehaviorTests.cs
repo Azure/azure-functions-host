@@ -73,8 +73,21 @@ public sealed class RuntimeDrainEndpointBehaviorTests
                 .GetString());
     }
 
-    [Fact]
-    public async Task Post_RejectsInvalidRequests()
+    [Theory]
+    [InlineData("", "InvalidBody", "request")]
+    [InlineData("null", "InvalidBody", "request")]
+    [InlineData("[]", "InvalidBody", "request")]
+    [InlineData("{}", "Required", "drainMode")]
+    [InlineData("""{"drainMode":""}""", "Required", "drainMode")]
+    [InlineData("""{"drainMode":"phased"}""", "InvalidValue", "drainMode")]
+    [InlineData("""{"drainMode":"Immediate "}""", "InvalidValue", "drainMode")]
+    [InlineData("""{"drainMode":"Phased","reason":"stop"}""", "InvalidBody", "request")]
+    [InlineData("""{"DrainMode":"Phased"}""", "InvalidBody", "request")]
+    [InlineData("""{"drainMode":"Phased","drainMode":"Immediate"}""", "InvalidBody", "request")]
+    [InlineData("""{"drainMode":null}""", "InvalidBody", "request")]
+    [InlineData("""{"drainMode":1}""", "InvalidBody", "request")]
+    [InlineData("""{"drainMode":true}""", "InvalidBody", "request")]
+    public async Task Post_RejectsInvalidRequests(string body, string expectedCode, string expectedTarget)
     {
         using CancellationTokenSource timeout = new(TestTimeout);
         Mock<IRuntimeDrainManager> manager = new(MockBehavior.Strict);
@@ -84,31 +97,22 @@ public sealed class RuntimeDrainEndpointBehaviorTests
                 Mock.Of<IWorkerChannelRegistry>(),
                 drainManager: manager.Object);
 
-        await AssertValidationErrorAsync(
-            host,
-            string.Empty,
-            "InvalidBody",
-            "request",
-            timeout.Token);
-        await AssertValidationErrorAsync(
-            host,
-            "{}",
-            "Required",
-            "drainMode",
-            timeout.Token);
-        await AssertValidationErrorAsync(
-            host,
-            """{"drainMode":"phased"}""",
-            "InvalidValue",
-            "drainMode",
-            timeout.Token);
-        await AssertValidationErrorAsync(
-            host,
-            """{"drainMode":"Phased","reason":"stop"}""",
-            "InvalidBody",
-            "request",
-            timeout.Token);
+        await AssertValidationErrorAsync(host, body, expectedCode, expectedTarget, timeout.Token);
 
+        manager.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Post_WithoutComputeComposition_DoesNotExposeDrainRoute()
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        Mock<IRuntimeDrainManager> manager = new(MockBehavior.Strict);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(
+            timeout.Token, Mock.Of<IWorkerChannelRegistry>(), includeCompute: false, drainManager: manager.Object);
+
+        using HttpResponseMessage response = await host.PostDrainAsync("""{"drainMode":"Immediate"}""", timeout.Token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         manager.VerifyNoOtherCalls();
     }
 

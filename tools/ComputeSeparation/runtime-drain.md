@@ -42,8 +42,8 @@ Escalation to immediate selects every remaining Worker without changing the firs
 Runtime drain reuses the existing worker retirement path:
 
 1. `RpcClientWorkerChannel` atomically stops accepting new invocations.
-2. Work accepted before that fence is allowed to reach a terminal result.
-3. `WorkerChannelRegistry` uses its existing unlink path to close and dispose the Runtime-facing connection.
+2. The channel sends `WorkerDraining` to WorkerProxy and allows work accepted before that fence to reach a terminal result.
+3. `WorkerChannelRegistry` uses its shared drain and unlink path, including `WorkerTerminate` and its grace period when supported, to close and dispose the Runtime-facing connection.
 
 HTTP workers retain their startup group and validated concurrency capabilities. Selecting an HTTP worker for drain immediately withdraws its advertised Runtime capacity, even while accepted work is still completing on the linked channel. Non-HTTP scale-in continues to select only its exact function group and always-ready class.
 

@@ -129,8 +129,8 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData(true)]
     public async Task RuntimeDrain_HttpScaleInReusesDrainAndUnlinkUntilCompletionOrDeadline(bool expireDeadline)
     {
-        Mock<TimeProvider> clock = new() { CallBase = true };
-        RegistryHarness harness = new(linkTimeout: TestTimeout, timeProvider: clock.Object);
+        FakeTimeProvider clock = new();
+        RegistryHarness harness = new(linkTimeout: TestTimeout, timeProvider: clock);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateHttpFunction();
         ChannelControl selected = CreateHttpWorker("always-ready", true, 10);
@@ -177,17 +177,6 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(drain.IsCompleted);
         Assert.True(onDemand.Channel.IsReadyForInvocations);
         appServer.Publish = (_, _) => Task.FromResult(HttpStatusCode.OK);
-        TimerCallback expire = null;
-        object timerState = null;
-        clock.Setup(provider => provider.GetTimestamp()).Returns(0);
-        clock.Setup(provider => provider.CreateTimer(
-                It.IsAny<TimerCallback>(), It.IsAny<object>(), TimeSpan.FromMinutes(60), Timeout.InfiniteTimeSpan))
-            .Returns((TimerCallback callback, object state, TimeSpan _, TimeSpan _) =>
-            {
-                expire = callback;
-                timerState = state;
-                return Mock.Of<ITimer>();
-            });
         IRuntimeDrainManager manager = new RuntimeDrainManager(
             registry,
             TimeProvider.System,
@@ -196,17 +185,17 @@ public sealed partial class WorkerChannelRegistryTests
         manager.Accept(RuntimeDrainModel.Immediate);
 
         Assert.Same(drain, selected.Channel.TryBeginRuntimeDrain());
-        Assert.NotNull(expire);
         Assert.False(selected.DisposeStarted.IsCompleted);
         Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
         await onDemand.DisposeStarted.WaitAsync(TestTimeout);
         await appServer.WaitForCapacityAsync(0);
         if (expireDeadline)
         {
-            expire(timerState);
+            clock.Advance(TimeSpan.FromMinutes(60));
             TimeoutException failure = await Assert.ThrowsAsync<TimeoutException>(
                 () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
             Assert.Contains(selected.Id, failure.Message, StringComparison.Ordinal);
+            await WaitUntilAsync(() => activity.Status == ActivityStatusCode.Error);
             Assert.Equal(ActivityStatusCode.Error, activity.Status);
             Assert.Single(activity.Events);
         }
@@ -388,8 +377,8 @@ public sealed partial class WorkerChannelRegistryTests
         bool functionLoaded,
         bool scaleInFirst)
     {
-        Mock<TimeProvider> clock = new() { CallBase = true };
-        RegistryHarness harness = new(linkTimeout: TestTimeout, timeProvider: clock.Object);
+        FakeTimeProvider clock = new();
+        RegistryHarness harness = new(linkTimeout: TestTimeout, timeProvider: clock);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("DurableFunction");
         function.Properties[RpcClientScriptHostLifecycleService.FunctionGroupKey] = FunctionGroups.Durable;
@@ -417,37 +406,26 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, isAlwaysReady: false, desiredWorkerCount: 0));
         }
 
-        TimerCallback expire = null;
-        object timerState = null;
-        clock.Setup(provider => provider.GetTimestamp()).Returns(0);
-        clock.Setup(provider => provider.CreateTimer(
-                It.IsAny<TimerCallback>(), It.IsAny<object>(), TimeSpan.FromMinutes(60), Timeout.InfiniteTimeSpan))
-            .Returns((TimerCallback callback, object state, TimeSpan _, TimeSpan _) =>
-            {
-                expire = callback;
-                timerState = state;
-                return Mock.Of<ITimer>();
-            });
         IRuntimeDrainManager manager = new RuntimeDrainManager(
             registry,
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
         RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainModel.Phased);
+        clock.Advance(TimeSpan.FromMinutes(30));
         Assert.Equal(phased, manager.Accept(RuntimeDrainModel.Phased));
         Assert.Equal(phased.AcceptedAtUtc, manager.Accept(RuntimeDrainModel.Immediate).AcceptedAtUtc);
-        clock.Verify(provider => provider.CreateTimer(
-            It.IsAny<TimerCallback>(), It.IsAny<object>(), TimeSpan.FromMinutes(60), Timeout.InfiniteTimeSpan), Times.Once);
-        Assert.NotNull(expire);
+        clock.Advance(TimeSpan.FromMinutes(29));
         Assert.False(invocation.ResultSource.Task.IsCompleted);
         Assert.False(selected.DisposeStarted.IsCompleted);
 
-        expire(timerState);
+        clock.Advance(TimeSpan.FromMinutes(1));
 
         TimeoutException failure = await Assert.ThrowsAsync<TimeoutException>(
             () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
         Assert.Contains(selected.Id, failure.Message, StringComparison.Ordinal);
         await selected.DisposeStarted.WaitAsync(TestTimeout);
         await selected.Channel.DisposeAsync();
+        await WaitUntilAsync(() => activity.Status == ActivityStatusCode.Error);
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
         Assert.Equal(failure.Message, activity.StatusDescription);
         Assert.Single(activity.Events);
@@ -582,10 +560,17 @@ public sealed partial class WorkerChannelRegistryTests
         }
 
         IRuntimeDrainManager manager = new RuntimeDrainManager(registry, TimeProvider.System, NullLogger<RuntimeDrainManager>.Instance);
-        manager.Accept(RuntimeDrainModel.Immediate);
+        RuntimeDrainReceipt receipt = manager.Accept(RuntimeDrainModel.Immediate);
+        Assert.Equal(receipt, manager.Accept(RuntimeDrainModel.Immediate));
+        Assert.Equal(0, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, false, 0));
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        Assert.Equal(1, selected.SetupAttempts);
+        Assert.False(selected.Channel.TryStartFunctionMetadataRequest(out _));
 
         await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
         Assert.False(selected.Channel.IsReadyForInvocations);
+        Assert.False(selected.Transport.Requests.TryRead(out _));
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
         await CompleteHttpWorkAsync(selected, invocation);
         StreamingMessage terminate = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerTerminate);
         Assert.Equal(WorkerConstants.WorkerTerminateGracePeriodInSeconds, terminate.WorkerTerminate.GracePeriod.Seconds);
