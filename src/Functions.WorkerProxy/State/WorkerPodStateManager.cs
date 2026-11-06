@@ -216,7 +216,7 @@ internal sealed class WorkerPodStateManager
         {
             // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
             if (sessionId <= _lastSessionId ||
-                _state.AssignmentState == WorkerAssignmentState.Failed ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated ||
                 _state.RemovalRequested)
             {
                 return false;
@@ -293,7 +293,7 @@ internal sealed class WorkerPodStateManager
         lock (_stateLock)
         {
             if (sessionId < _lastSessionId ||
-                _state.AssignmentState == WorkerAssignmentState.Failed ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated ||
                 _state.RemovalRequested)
             {
                 return false;
@@ -429,10 +429,10 @@ internal sealed class WorkerPodStateManager
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
                 RemovalRequested = _state.RemovalRequested || workerRemovalRequested,
-                // Any assigned worker-session loss requires the pod owner to replace this unhealthy pod.
+                // Preserve assignment and capacity without reporting ordinary termination as a health failure.
                 AssignmentState = _assignment is null
                     ? WorkerAssignmentState.Unassigned
-                    : WorkerAssignmentState.Failed
+                    : WorkerAssignmentState.Terminated
             });
             return true;
         }
@@ -496,7 +496,7 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
+                return _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
             }

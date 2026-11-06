@@ -667,7 +667,8 @@ public class ManagementApiHandlersTests
         Assert.Equal(expected.Revision, response.RevisionId);
         Assert.Equal(expected.FunctionGroupName, response.FunctionGroup);
         Assert.Equal(expected.IsAlwaysReady ?? false, response.IsAlwaysReady);
-        Assert.Equal(WorkerStatus.Starting, response.Status);
+        Assert.Equal(expected.RemovalRequested || expected.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
+            ? WorkerStatus.RemovalRequested : WorkerStatus.Starting, response.Status);
         WorkerLink link = Assert.IsType<WorkerLink>(response.Link);
         Assert.Equal(WorkerLinkState.Unlinked, link.State);
         Assert.Null(link.Runtime);

@@ -12,5 +12,7 @@ internal enum WorkerAssignmentState
     // The assignment is accepted before the worker establishes StartStream.
     Assigned,
     Ready,
-    Failed
+    Failed,
+    // A terminal stream is not, by itself, evidence of a health failure.
+    Terminated
 }

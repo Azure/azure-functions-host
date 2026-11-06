@@ -16,6 +16,7 @@ using Azure.Functions.Tests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -186,6 +187,16 @@ public sealed partial class WorkerChannelRegistryTests
         await LinkAndReadyWorkersAsync(harness, registry, function, selected);
         using MemoryStream responseBody = new();
         DefaultHttpContext httpContext = new();
+        Mock<HttpResponseFeature> responseFeature = new() { CallBase = true };
+        Func<object, Task> completeResponse = null;
+        object completionState = null;
+        responseFeature.Setup(feature => feature.OnCompleted(It.IsAny<Func<object, Task>>(), It.IsAny<object>()))
+            .Callback((Func<object, Task> callback, object state) =>
+            {
+                completeResponse = callback;
+                completionState = state;
+            });
+        httpContext.Features.Set<IHttpResponseFeature>(responseFeature.Object);
         httpContext.Request.Method = "GET";
         httpContext.Request.Scheme = "http";
         httpContext.Request.Host = new("runtime");
@@ -241,6 +252,8 @@ public sealed partial class WorkerChannelRegistryTests
         await rpcResponse.WaitAsync(TestTimeout);
         Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
         Assert.Equal("started-finished", Encoding.UTF8.GetString(responseBody.ToArray()));
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+        await completeResponse(completionState);
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }
 

@@ -2548,6 +2548,8 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal HostConfiguration HostConfiguration { get; init; }
 
+        internal IDictionary<string, string> Capabilities { get; init; } = new Dictionary<string, string>();
+
         internal WorkerInitRequest InitRequest { get; private set; }
 
         internal StatusResult InitResult { get; init; } = new() { Status = StatusResult.Types.Status.Success };
@@ -2672,6 +2674,11 @@ public sealed partial class WorkerChannelRegistryTests
                 if (ExtensionPayloadCapability is not null)
                 {
                     response.Capabilities.Add(WorkerExtensionPayloadManager.CapabilityName, ExtensionPayloadCapability);
+                }
+
+                foreach ((string name, string value) in Capabilities)
+                {
+                    response.Capabilities[name] = value;
                 }
 
                 await Transport.SendResponseAsync(new()

@@ -72,8 +72,8 @@ public partial class WorkerPodStateManagerTests
         manager.SetAuthenticationConfigurationError(true);
         manager.SetAuthenticationConfigurationError(false);
         Assert.False(manager.State.HasAuthenticationConfigurationError);
-        Assert.True(manager.State.IsUnhealthy);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.False(manager.State.IsUnhealthy);
+        Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
         Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
     }
 
@@ -106,7 +106,8 @@ public partial class WorkerPodStateManagerTests
         WorkerPodState failed = manager.State;
         Assert.False(failed.IsWorkerReady);
         Assert.False(failed.IsWorkerAttached);
-        Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
+        Assert.False(failed.IsUnhealthy);
         Assert.Equal(startupMode, failed.StartupMode);
         Assert.Equal("app", failed.FunctionAppName);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
@@ -456,7 +457,7 @@ public partial class WorkerPodStateManagerTests
             Assert.Equal(WorkerAssignmentResult.Created, result);
             Assert.False(manager.State.IsWorkerReady);
             Assert.Equal(4, manager.State.Revision);
-            if (manager.State.AssignmentState is WorkerAssignmentState.Failed)
+            if (manager.State.AssignmentState is WorkerAssignmentState.Terminated)
             {
                 Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
             }

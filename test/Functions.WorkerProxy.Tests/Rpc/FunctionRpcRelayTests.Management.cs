@@ -207,14 +207,14 @@ public partial class FunctionRpcRelayTests
                 Assert.Equal(manager.State.Revision, state.RootElement.GetProperty("revisionId").GetInt64());
                 Assert.Equal("RemovalRequested", state.RootElement.GetProperty("status").GetString());
                 Assert.Equal(functionGroupName, state.RootElement.GetProperty("functionGroup").GetString());
-                Assert.True(state.RootElement.GetProperty("isUnhealthy").GetBoolean());
+                Assert.False(state.RootElement.GetProperty("isUnhealthy").GetBoolean());
             }
 
             WorkerOriginState terminated = await ReadManagementStateAsync(management, timeout.Token);
             Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);
             Assert.Equal(WorkerLinkState.Unlinked, terminated.Link.State);
             Assert.Null(terminated.Link.Runtime);
-            Assert.True(terminated.IsUnhealthy);
+            Assert.False(terminated.IsUnhealthy);
             await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
             await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
             using HttpResponseMessage terminalReplay = await PutManagementJsonAsync(
@@ -236,7 +236,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task ManagementApis_InvalidWorkerStartupMarksAssignmentUnhealthy()
+    public async Task ManagementApis_InvalidWorkerStartupTerminatesAssignment()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -252,9 +252,9 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
         WorkerOriginState failed = await ReadManagementStateAsync(management, timeout.Token);
-        Assert.True(failed.IsUnhealthy);
+        Assert.False(failed.IsUnhealthy);
         using HttpResponseMessage replay = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
         await AssertManagementErrorAsync(replay, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
@@ -269,7 +269,7 @@ public partial class FunctionRpcRelayTests
             CreateStartStream("replacement-start"),
             timeout.Token);
         Assert.Equal(StatusCode.Unavailable, replacementFailure.StatusCode);
-        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, manager.State.AssignmentState);
 
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         Grpc.Core.RpcException runtimeFailure = await replacementRuntime.WriteAndReadRejectionAsync(
@@ -618,7 +618,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
         Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);
         Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), terminated.Link);
-        Assert.True(terminated.IsUnhealthy);
+        Assert.False(terminated.IsUnhealthy);
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(

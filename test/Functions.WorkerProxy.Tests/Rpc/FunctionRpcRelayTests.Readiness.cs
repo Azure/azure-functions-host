@@ -204,7 +204,7 @@ public partial class FunctionRpcRelayTests
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
-            Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
             Assert.Equal(expectedRemoval, failed.RemovalRequested);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));

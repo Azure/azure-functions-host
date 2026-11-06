@@ -50,6 +50,7 @@ internal sealed record WorkerOriginState(
     public static WorkerOriginState FromState(WorkerPodState state)
     {
         WorkerStatus status = state.RemovalRequested
+            || state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
             ? WorkerStatus.RemovalRequested
             : state.IsRuntimeInitialized ? WorkerStatus.Running : WorkerStatus.Starting;
 
@@ -65,6 +66,6 @@ internal sealed record WorkerOriginState(
             checked((int)state.Revision),
             status,
             state.IsRuntimeInitialized ? new(WorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
-            state.RemovalRequested || state.IsUnhealthy);
+            state.IsUnhealthy || (state.RemovalRequested && state.AssignmentState is not WorkerAssignmentState.Terminated));
     }
 }

@@ -295,7 +295,7 @@ public class WorkerProxyJsonContextTests
         {
             Revision = 4,
             IsWorkerAttached = false,
-            AssignmentState = WorkerAssignmentState.Failed
+            AssignmentState = WorkerAssignmentState.Terminated
         };
 
         string retainedJson = JsonSerializer.Serialize(retained, WorkerProxyJsonContext.Default.WorkerOriginState);
@@ -307,8 +307,8 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(3, retainedDocument.RootElement.GetProperty("revisionId").GetInt64());
         Assert.False(retainedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
         Assert.Equal(4, terminatedDocument.RootElement.GetProperty("revisionId").GetInt64());
-        Assert.True(terminatedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
-        Assert.Equal("Starting", terminatedDocument.RootElement.GetProperty("status").GetString());
+        Assert.False(terminatedDocument.RootElement.GetProperty("isUnhealthy").GetBoolean());
+        Assert.Equal("RemovalRequested", terminatedDocument.RootElement.GetProperty("status").GetString());
         Assert.Equal("group", terminatedDocument.RootElement.GetProperty("functionGroup").GetString());
     }
 

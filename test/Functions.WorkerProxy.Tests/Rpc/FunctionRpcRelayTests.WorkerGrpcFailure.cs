@@ -95,9 +95,9 @@ public partial class FunctionRpcRelayTests
         WorkerOriginState repeated = await ReadManagementStateAsync(repeatedResponse, timeout.Token);
         Assert.Equal(WorkerStatus.RemovalRequested, repeated.Status);
         Assert.Equal(first.RevisionId, repeated.RevisionId);
-        Assert.True(repeated.IsUnhealthy);
+        Assert.False(repeated.IsUnhealthy);
         WorkerPodState removedState = manager.State;
-        Assert.Equal(WorkerAssignmentState.Failed, removedState.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, removedState.AssignmentState);
         Assert.False(removedState.IsWorkerReady);
         Assert.Equal(assignedState.FunctionAppName, removedState.FunctionAppName);
         Assert.Equal(assignedState.FunctionGroupName, removedState.FunctionGroupName);

@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ReaderWriterLockSlim _invocationGate = new();
         private readonly object _syncLock = new object();
         private readonly object _metadataLock = new object();
-        private readonly ConcurrentDictionary<Guid, ScriptInvocationContext> _acceptedInvocations = new();
+        private readonly ConcurrentDictionary<Guid, AcceptedInvocation> _acceptedInvocations = new();
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new();
         private readonly ChannelWriter<StreamingMessage> _outbound;
         private readonly ChannelReader<StreamingMessage> _inbound;
@@ -219,6 +219,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// </summary>
         protected Task<bool> WorkerInitialization => _workerInitTask.Task;
 
+        /// <summary>
+        /// Gets the number of queued or executing invocations, including their response lifetime.
+        /// </summary>
+        protected int AcceptedInvocationCount => _acceptedInvocations.Count;
+
         internal List<IDisposable> EventSubscriptions => _eventSubscriptions;
 
         internal RpcWorkerChannelState State
@@ -251,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (added)
             {
-                RemoveAcceptedInvocation(invocationContext);
+                _acceptedInvocations.TryRemove(invocationContext.ExecutionContext.InvocationId, out _);
             }
 
             return false;
@@ -1101,8 +1106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             try
             {
                 if (_shutdownException is not null
-                    || !_acceptedInvocations.TryGetValue(context.ExecutionContext.InvocationId, out ScriptInvocationContext acceptedContext)
-                    || !ReferenceEquals(acceptedContext, context))
+                    || !_acceptedInvocations.TryGetValue(context.ExecutionContext.InvocationId, out AcceptedInvocation accepted)
+                    || !ReferenceEquals(accepted.Context, context))
                 {
                     invocation.Dispose();
                     return false;
@@ -1754,8 +1759,40 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void RemoveAcceptedInvocation(ScriptInvocationContext context)
         {
-            _acceptedInvocations.TryRemove(
-                new KeyValuePair<Guid, ScriptInvocationContext>(context.ExecutionContext.InvocationId, context));
+            if (_acceptedInvocations.TryGetValue(context.ExecutionContext.InvocationId, out AcceptedInvocation accepted)
+                && ReferenceEquals(accepted.Context, context)
+                && accepted.TryBeginRemoving())
+            {
+                _ = RemoveAfterCompletionAsync(accepted);
+            }
+        }
+
+        private async Task RemoveAfterCompletionAsync(AcceptedInvocation accepted)
+        {
+            if (accepted.Completion is { } completion)
+            {
+                await completion.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+
+            CompleteAcceptedInvocation(accepted.Context);
+        }
+
+        /// <summary>
+        /// Optionally captures an extended response lifetime before dispatch. Standard channels retain result-based draining.
+        /// </summary>
+        protected virtual Task GetInvocationCompletionTask(ScriptInvocationContext context) => null;
+
+        /// <summary>
+        /// Removes a completed invocation from shared admission and drain tracking.
+        /// </summary>
+        protected virtual void CompleteAcceptedInvocation(ScriptInvocationContext context)
+        {
+            if (_acceptedInvocations.TryGetValue(context.ExecutionContext.InvocationId, out AcceptedInvocation accepted)
+                && ReferenceEquals(accepted.Context, context))
+            {
+                _acceptedInvocations.TryRemove(new KeyValuePair<Guid, AcceptedInvocation>(
+                    context.ExecutionContext.InvocationId, accepted));
+            }
         }
 
         private bool TryTrackInvocation(
@@ -1773,7 +1810,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return false;
                 }
 
-                if (_acceptedInvocations.TryAdd(invocationId, context))
+                if (!_acceptedInvocations.TryGetValue(invocationId, out AcceptedInvocation acceptedContext)
+                    && _acceptedInvocations.TryAdd(invocationId, new(context, GetInvocationCompletionTask(context))))
                 {
                     added = true;
                     rejectionException = GetInvocationRejectionException();
@@ -1782,17 +1820,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         return true;
                     }
 
-                    RemoveAcceptedInvocation(context);
+                    _acceptedInvocations.TryRemove(invocationId, out _);
                     added = false;
                     return false;
                 }
 
-                if (!_acceptedInvocations.TryGetValue(invocationId, out ScriptInvocationContext acceptedContext))
+                if (!_acceptedInvocations.TryGetValue(invocationId, out acceptedContext))
                 {
                     continue;
                 }
 
-                if (!ReferenceEquals(acceptedContext, context))
+                if (!ReferenceEquals(acceptedContext.Context, context))
                 {
                     rejectionException = new InvalidOperationException(
                         $"Invocation '{invocationId}' is already accepted.");
@@ -1937,11 +1975,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <inheritdoc />
         public async Task DrainInvocationsAsync()
         {
-            ScriptInvocationContext[] invocations = [.. _acceptedInvocations.Values];
+            AcceptedInvocation[] invocations = [.. _acceptedInvocations.Values];
 
             _workerChannelLogger.LogDebug("Count of accepted invocations waiting to be drained out: {invocationCount}", invocations.Length);
             // Draining waits for completion; individual execution failures remain on the invocation result tasks.
-            Task completion = Task.WhenAll(invocations.Select(static invocation => invocation.ResultSource.Task));
+            Task completion = Task.WhenAll(invocations.Select(static invocation => invocation.Completion ?? invocation.Context.ResultSource.Task));
             await completion.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
 
@@ -1980,11 +2018,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     inputBuffer.Complete();
                 }
 
-                foreach (KeyValuePair<Guid, ScriptInvocationContext> invocation in _acceptedInvocations.ToArray())
+                foreach (KeyValuePair<Guid, AcceptedInvocation> invocation in _acceptedInvocations.ToArray())
                 {
                     if (_acceptedInvocations.TryRemove(invocation))
                     {
-                        invocationsToFail.TryAdd(invocation.Key, invocation.Value);
+                        invocationsToFail.TryAdd(invocation.Key, invocation.Value.Context);
                     }
                 }
 
@@ -2319,6 +2357,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _cancellationRegistration = default;
                 return registration;
             }
+        }
+
+        private sealed class AcceptedInvocation(ScriptInvocationContext context, Task completion)
+        {
+            private int _removing;
+
+            public ScriptInvocationContext Context { get; } = context;
+
+            public Task Completion { get; } = completion;
+
+            public bool TryBeginRemoving() => Interlocked.Exchange(ref _removing, 1) == 0;
         }
 
         private sealed class PendingItem

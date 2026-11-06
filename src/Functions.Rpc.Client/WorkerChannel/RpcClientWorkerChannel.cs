@@ -5,10 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -39,6 +41,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
+    private static readonly TimeSpan InitialIdleThreshold = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
@@ -46,6 +49,9 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private readonly CancellationTokenSource _payloadShutdown = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly RuntimeWorkerCredentials _credentials;
+    private TimeProvider _activityTimeProvider = TimeProvider.System;
+    private long _idleSince;
+    private bool _hasReceivedRequest;
     private Task _drainTask;
     private bool _draining;
     private bool _httpCapacityReserved;
@@ -125,6 +131,8 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
+    internal int OngoingRequests => AcceptedInvocationCount;
+
     internal bool IsHttpCapacityAvailable
     {
         get
@@ -145,6 +153,40 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             {
                 return IsUsableForInvocationsLocked();
             }
+        }
+    }
+
+    internal void StartIdleTracking(TimeProvider timeProvider)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            _activityTimeProvider = timeProvider;
+            _idleSince = timeProvider.GetTimestamp();
+        }
+    }
+
+    internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            idleDuration = _activityTimeProvider.GetElapsedTime(_idleSince);
+            if (!IsHttpFunctionGroup || _isAlwaysReady is true || !IsUsableForInvocationsLocked()
+                || AcceptedInvocationCount != 0
+                || idleDuration <= (_hasReceivedRequest ? threshold : InitialIdleThreshold))
+            {
+                return false;
+            }
+
+            _draining = true;
+            return true;
+        }
+    }
+
+    internal void StopAcceptingInvocations()
+    {
+        lock (_invocationAdmissionLock)
+        {
+            _draining = true;
         }
     }
 
@@ -192,6 +234,10 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
                 context.ResultSource.TrySetException(
                     new InvalidOperationException(
                         $"Worker '{Id}' is no longer accepting invocations or is unavailable for attribution."));
+            }
+            else
+            {
+                _hasReceivedRequest = true;
             }
         }
 
@@ -329,6 +375,10 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
                 ? parsedIsAlwaysReady
                 : null;
+            if (IsHttpFunctionGroup && _isAlwaysReady is null)
+            {
+                _payloadLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; treating this worker as on-demand for idle retirement.", Id);
+            }
         }
     }
 
@@ -459,6 +509,54 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
+
+    protected override Task GetInvocationCompletionTask(ScriptInvocationContext context)
+    {
+        if (!IsHttpFunctionGroup)
+        {
+            return base.GetInvocationCompletionTask(context);
+        }
+
+        HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
+            .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
+        Task responseCompleted = Task.CompletedTask;
+        if (request is not null)
+        {
+            TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            request.HttpContext.Response.OnCompleted(() =>
+            {
+                completion.TrySetResult();
+                return Task.CompletedTask;
+            });
+            responseCompleted = completion.Task;
+        }
+
+        return ObserveInvocationCompletionAsync(context, responseCompleted);
+    }
+
+    private static async Task ObserveInvocationCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
+    {
+        // The invoker/proxy owns error reporting. Cancellation is not proof that the response body has finished.
+        await ((Task)context.ResultSource.Task).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
+        {
+            await forwarding.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+
+        await responseCompleted.ConfigureAwait(false);
+    }
+
+    protected override void CompleteAcceptedInvocation(ScriptInvocationContext context)
+    {
+        lock (_invocationAdmissionLock)
+        {
+            base.CompleteAcceptedInvocation(context);
+            if (AcceptedInvocationCount == 0)
+            {
+                _idleSince = _activityTimeProvider.GetTimestamp();
+            }
+        }
+    }
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 

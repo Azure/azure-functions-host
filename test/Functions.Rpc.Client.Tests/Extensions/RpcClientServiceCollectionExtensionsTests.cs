@@ -146,11 +146,14 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
         Assert.NotNull(coordinator.ImplementationFactory);
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationType == typeof(HttpWorkerIdleMonitor) && descriptor.Lifetime == ServiceLifetime.Singleton);
         AssertSingleton<RuntimeStateManager, RuntimeStateManager>(services);
         ServiceDescriptor runtimeState = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IRuntimeStateManager)));
         Assert.Equal(ServiceLifetime.Singleton, runtimeState.Lifetime);
         Assert.NotNull(runtimeState.ImplementationFactory);
-        ServiceDescriptor[] hostedServices = [.. services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService))];
+        ServiceDescriptor[] hostedServices = [.. services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationFactory is not null)];
         Assert.Equal(2, hostedServices.Length);
         Assert.All(hostedServices, descriptor =>
         {

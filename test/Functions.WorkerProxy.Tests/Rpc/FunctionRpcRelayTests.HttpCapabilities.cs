@@ -541,7 +541,7 @@ public partial class FunctionRpcRelayTests
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.Null(relay.WorkerHttpDestination);
         WorkerPodState failed = manager.State;
-        Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
         Assert.True(failed.RemovalRequested);
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);

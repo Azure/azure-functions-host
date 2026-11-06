@@ -55,6 +55,11 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     internal void AllowDispose() => _allowDispose.TrySetResult();
 
     /// <summary>
+    /// Fails a blocked disposal operation after its caller has stopped waiting.
+    /// </summary>
+    internal void FailDispose(Exception exception) => _allowDispose.TrySetException(exception);
+
+    /// <summary>
     /// Completes both channel boundaries, optionally with a channel failure.
     /// </summary>
     /// <param name="exception">The channel failure, or <see langword="null"/> for clean completion.</param>
