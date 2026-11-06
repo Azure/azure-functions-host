@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -94,10 +95,12 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsync
                     }
                 }
 
+                operation.Failure?.Throw();
                 Log.Accepted(_logger, drainMode, operation.AcceptedAtUtc);
                 return operation.CreateReceipt();
             }
 
+            _operation.Failure?.Throw();
             if (_operation.ActiveMode == drainMode)
             {
                 return _operation.CreateReceipt();
@@ -192,6 +195,14 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsync
         }
         catch (Exception exception)
         {
+            lock (_operationLock)
+            {
+                if (operation.ActiveMode is RuntimeDrainMode.Phased && !operation.SelectionFinalized)
+                {
+                    operation.Failure ??= ExceptionDispatchInfo.Capture(exception);
+                }
+            }
+
             Log.ScheduleFailed(_logger, exception);
         }
     }
@@ -199,6 +210,7 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsync
     private bool CanRunPhasedSelectionLocked(DrainOperation operation)
         => ReferenceEquals(_operation, operation) &&
             !operation.ScheduleCancellation.IsCancellationRequested &&
+            operation.Failure is null &&
             operation.ActiveMode is RuntimeDrainMode.Phased &&
             !operation.SelectionFinalized;
 
@@ -232,7 +244,17 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsync
         DrainOperation operation,
         IReadOnlyList<string> workerIds)
     {
-        _workerManager.SelectWorkers(workerIds);
+        try
+        {
+            _workerManager.SelectWorkers(workerIds);
+        }
+        catch (Exception exception)
+        {
+            // Selection can partially drain a batch; retries must not repeat it or reset existing deadlines.
+            operation.Failure ??= ExceptionDispatchInfo.Capture(exception);
+            throw;
+        }
+
         operation.SelectedWorkerIds.UnionWith(workerIds);
 
         if (operation.SelectedWorkerIds.Count == operation.AllWorkerIds.Count)
@@ -278,6 +300,8 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsync
         public long AcceptedTimestamp { get; }
 
         public RuntimeDrainMode ActiveMode { get; set; }
+
+        public ExceptionDispatchInfo Failure { get; set; }
 
         public IReadOnlyList<string> AllWorkerIds { get; }
 

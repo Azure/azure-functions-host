@@ -116,6 +116,29 @@ public sealed class RuntimeDrainEndpointBehaviorTests
         manager.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData(RuntimeDrainMode.Phased)]
+    [InlineData(RuntimeDrainMode.Immediate)]
+    public async Task Post_FailedDrainDoesNotReturnAcceptance(RuntimeDrainMode drainMode)
+    {
+        using CancellationTokenSource timeout = new(TestTimeout);
+        Mock<IRuntimeDrainManager> manager = new(MockBehavior.Strict);
+        manager.Setup(value => value.Accept(drainMode))
+            .Throws(new InvalidOperationException("The Runtime drain previously failed."));
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(
+            timeout.Token, Mock.Of<IWorkerChannelRegistry>(), useKestrel: true, drainManager: manager.Object);
+
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            using HttpResponseMessage response = await host.PostDrainAsync(
+                $$"""{"drainMode":"{{drainMode}}"}""", timeout.Token);
+
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        }
+
+        manager.Verify(value => value.Accept(drainMode), Times.Exactly(2));
+    }
+
     private static async Task AssertValidationErrorAsync(
         WorkerLinkTestHost host,
         string body,

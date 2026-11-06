@@ -24,6 +24,8 @@ The request body must contain only `drainMode`. Invalid, duplicate, or different
 
 The first accepted request returns `202 Accepted` with the selected mode and acceptance time. Equivalent replays return the original acceptance time. A phased drain can be escalated to immediate, but an immediate drain cannot be downgraded.
 
+If worker selection or phased scheduling fails unexpectedly, the operation retains the original failure. Subsequent requests surface that failure through the Host's existing error handling instead of returning `202`, including retries after a failed initial selection or escalation. They do not restart selection, reopen admission, change the frozen worker set, or reset already selected workers' deadlines. This does not apply to ordinary invocation failures, which remain part of the shared worker drain lifecycle.
+
 ## Process-local behavior
 
 The first accepted request permanently closes Worker-Link admission for the current Host process. Links already initialized at that point form the frozen Runtime drain set. A link that is still initializing must recheck the admission fence and fail instead of joining after the snapshot.
