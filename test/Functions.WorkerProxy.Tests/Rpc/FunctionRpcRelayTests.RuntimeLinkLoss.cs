@@ -134,14 +134,19 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData("Preconfigured", null, 16, false)]
-    [InlineData("Preconfigured", 10, 10, false)]
-    [InlineData("SpecializationRequired", null, 16, false)]
-    [InlineData("SpecializationRequired", 10, 10, false)]
-    [InlineData("Preconfigured", null, 16, true)]
-    [InlineData("SpecializationRequired", 10, 10, true)]
+    [InlineData("Preconfigured", null, 16, false, false)]
+    [InlineData("Preconfigured", 10, 10, false, false)]
+    [InlineData("SpecializationRequired", null, 16, false, false)]
+    [InlineData("SpecializationRequired", 10, 10, false, false)]
+    [InlineData("Preconfigured", null, 16, true, false)]
+    [InlineData("SpecializationRequired", 10, 10, true, false)]
+    [InlineData("SpecializationRequired", 10, 10, true, true)]
     public async Task RemovalRequested_IsStickyPollableAndClosesNewAdmission(
-        string startupMode, int? maxHttpConcurrency, int expectedConcurrency, bool hasAuthenticationError)
+        string startupMode,
+        int? maxHttpConcurrency,
+        int expectedConcurrency,
+        bool hasAuthenticationError,
+        bool isDiscoveryWorker)
     {
         int forwardedRequests = 0;
         await using var destination = await WorkerHttpForwardingTests.StartWorkerAsync(context =>
@@ -167,7 +172,7 @@ public partial class FunctionRpcRelayTests
         {
             StartupMode = startupMode,
             FunctionAppName = "test-app",
-            FunctionGroupName = "http",
+            FunctionGroupName = isDiscoveryWorker ? "deployment:validation" : "http",
             HttpProxyEndpoint = "worker-pod.example:48801",
             IsAlwaysReady = false,
             Environment = [],
@@ -182,10 +187,17 @@ public partial class FunctionRpcRelayTests
             worker, runtime, management, assignment,
             WorkerHttpForwardingTests.GetAddress(destination).AbsoluteUri, timeout.Token);
         Assert.Equal("https://worker-pod.example:48801/", initialized.WorkerInitResponse.Capabilities["HttpUri"]);
-        Assert.Equal("http", initialized.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
-        Assert.Equal(
-            expectedConcurrency.ToString(CultureInfo.InvariantCulture),
-            initialized.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability]);
+        Assert.Equal(assignment.FunctionGroupName, initialized.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
+        if (isDiscoveryWorker)
+        {
+            Assert.False(initialized.WorkerInitResponse.Capabilities.ContainsKey(MaxHttpConcurrencyCapability));
+        }
+        else
+        {
+            Assert.Equal(
+                expectedConcurrency.ToString(CultureInfo.InvariantCulture),
+                initialized.WorkerInitResponse.Capabilities[MaxHttpConcurrencyCapability]);
+        }
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
         long sessionId = Assert.IsType<long>(manager.State.SessionId);
@@ -216,13 +228,14 @@ public partial class FunctionRpcRelayTests
         WorkerOriginState removed = await ReadManagementStateAsync(removalResponse, timeout.Token);
 
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
+        Assert.Equal(assignment.FunctionGroupName, removed.FunctionGroup);
         Assert.Equal(hasAuthenticationError, removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
         Assert.Null(removed.Link.Runtime);
         Assert.Equal(WorkerStatus.RemovalRequested, (await ReadManagementStateAsync(management, timeout.Token)).Status);
         WorkerPodState removedState = manager.State;
         Assert.Null(removedState.FunctionAppName);
-        Assert.Null(removedState.FunctionGroupName);
+        Assert.Equal(assignment.FunctionGroupName, removedState.FunctionGroupName);
         Assert.Null(removedState.HttpProxyEndpoint);
         Assert.Null(removedState.MaxHttpConcurrency);
         Assert.Null(manager.GetWorkerCapabilitySnapshot(sessionId).HttpProxyEndpoint);
