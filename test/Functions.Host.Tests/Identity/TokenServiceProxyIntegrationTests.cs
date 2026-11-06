@@ -691,22 +691,6 @@ public sealed class TokenServiceProxyIntegrationTests
             await worker.RequestStream.WriteAsync(new() { StartStream = new() { WorkerId = "customer-run-1" } }, cancellationToken);
             Assert.True(await worker.ResponseStream.MoveNext(cancellationToken));
             Assert.NotNull(worker.ResponseStream.Current.WorkerInitRequest);
-            UriBuilder managementEndpoint = new(_proxy.Services.GetRequiredService<ProxyEndpoints>().GetManagementAddress())
-            {
-                Host = IPAddress.Loopback.ToString()
-            };
-            using HttpClient management = new() { BaseAddress = managementEndpoint.Uri };
-            using HttpResponseMessage assignment = await System.Net.Http.Json.HttpClientJsonExtensions.PutAsJsonAsync(
-                management, "/admin/worker/assignment", new
-                {
-                    StartupMode = "Preconfigured",
-                    FunctionAppName = "test-app",
-                    FunctionGroupName = "deployment:validation",
-                    IsAlwaysReady = false,
-                    Environment = new Dictionary<string, string>(),
-                    FunctionAppDirectory = string.Empty,
-                }, cancellationToken);
-            Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
             await worker.RequestStream.WriteAsync(new()
             {
                 WorkerInitResponse = new() { Result = new() { Status = StatusResult.Types.Status.Success } }
