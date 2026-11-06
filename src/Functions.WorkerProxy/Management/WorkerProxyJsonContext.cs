@@ -14,7 +14,6 @@ namespace Azure.Functions.WorkerProxy.Management;
     PropertyNameCaseInsensitive = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(WorkerAssignRequest))]
-[JsonSerializable(typeof(WorkerInstanceState))]
 [JsonSerializable(typeof(WorkerOriginState))]
 [JsonSerializable(typeof(PodIdentity))]
 [JsonSerializable(typeof(WorkerApiErrorResponse))]

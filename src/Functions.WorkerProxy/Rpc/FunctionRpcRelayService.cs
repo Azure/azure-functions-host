@@ -2,10 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy;
+using Azure.Functions.WorkerProxy.Authentication;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.AspNetCore.Server;
@@ -23,7 +27,11 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// The local listener port determines stream ownership, so callers cannot select or change
 /// ownership through headers or FunctionRpc messages.
 /// </remarks>
-internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints) : FunctionRpc.FunctionRpcBase
+internal sealed class FunctionRpcRelayService(
+    FunctionRpcRelay relay,
+    WorkerProxyEndpointConfiguration endpoints,
+    IRuntimeAuthenticationKeyProvider keyProvider,
+    TimeProvider timeProvider) : FunctionRpc.FunctionRpcBase
 {
     private const string RuntimeIdentityHeaderName = "x-ms-functions-runtime-identity-bin";
 
@@ -43,7 +51,10 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
             : null;
         try
         {
-            terminalState = await relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken, runtimeIdentity);
+            IServerStreamWriter<StreamingMessage> writer = side is FunctionRpcRelaySide.Runtime
+                ? new RuntimeResponseWriter(responseStream, keyProvider, timeProvider)
+                : responseStream;
+            terminalState = await relay.AttachAsync(side, requestStream, writer, context.CancellationToken, runtimeIdentity);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
@@ -131,5 +142,47 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
     private static GrpcRpcException InvalidRuntimeIdentity()
     {
         return new(new Status(StatusCode.InvalidArgument, "Invalid Runtime identity metadata."));
+    }
+
+    private sealed class RuntimeResponseWriter(
+        IServerStreamWriter<StreamingMessage> inner,
+        IRuntimeAuthenticationKeyProvider keyProvider,
+        TimeProvider timeProvider) : IServerStreamWriter<StreamingMessage>
+    {
+        public WriteOptions? WriteOptions
+        {
+            get => inner.WriteOptions;
+            set => inner.WriteOptions = value;
+        }
+
+        public Task WriteAsync(StreamingMessage message) => inner.WriteAsync(Prepare(message));
+
+        public Task WriteAsync(StreamingMessage message, CancellationToken cancellationToken)
+            => inner.WriteAsync(Prepare(message), cancellationToken);
+
+        private StreamingMessage Prepare(StreamingMessage message)
+        {
+            if (message.WorkerInitResponse is null)
+            {
+                return message;
+            }
+
+            if (message.WorkerInitResponse.Result is not
+                { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+            {
+                throw new InvalidDataException("The worker initialization response must have a known result status.");
+            }
+
+            // Keep the authentication proof outside the relay's ordinary capability snapshots.
+            StreamingMessage transport = message.Clone();
+            RuntimeWorkerAuthentication.RemoveAppProof(transport.WorkerInitResponse.Capabilities);
+            RuntimeAppAuthenticationKeys keys = keyProvider.GetAppKeys()
+                ?? throw new InvalidOperationException("WorkerProxy assignment is unavailable for application authentication.");
+            RuntimeWorkerAuthentication.SetAppProof(
+                transport.WorkerInitResponse.Capabilities,
+                RuntimeWorkerAuthentication.CreateAppProof(keys.AppKey.Span, keys.AppName, keys.WorkerId, timeProvider.GetUtcNow()));
+
+            return transport;
+        }
     }
 }

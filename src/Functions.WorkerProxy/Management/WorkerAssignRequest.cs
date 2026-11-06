@@ -11,8 +11,10 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields except <see cref="MaxHttpConcurrency"/> are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// Core assignment fields are required. The directory may be empty for Preconfigured but must be nonblank
+/// for SpecializationRequired. Environment values and optional requested metadata are retained privately
+/// for retry comparison; requested versions are not evidence of applied configuration.
+/// <see cref="MaxHttpConcurrency"/> supplies the effective startup capacity for HTTP assignments.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -32,7 +34,7 @@ internal sealed class WorkerAssignRequest
     public string? FunctionGroupName { get; init; }
 
     /// <summary>
-    /// Gets the optional scheme-less authority used for the externally reachable HTTP origin.
+    /// Gets the allocated runtime-facing HTTP authority, without a scheme, or a compatible HTTPS origin.
     /// </summary>
     public string? HttpProxyEndpoint { get; init; }
 
@@ -55,4 +57,16 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
+
+    /// <summary>
+    /// Gets the requested configuration version in Unix epoch seconds, or null when unspecified.
+    /// </summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public long? ConfigLastModifiedTime { get; init; }
+
+    /// <summary>
+    /// Gets the requested content version in Unix epoch seconds, or null when unspecified.
+    /// </summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public long? ContentLastModifiedTime { get; init; }
 }

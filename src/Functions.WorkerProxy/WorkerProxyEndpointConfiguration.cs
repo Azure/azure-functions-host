@@ -2,10 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Rpc;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy;
@@ -13,11 +16,12 @@ namespace Azure.Functions.WorkerProxy;
 /// <summary>
 /// Configures the WorkerProxy Kestrel listeners and resolves requests to their listener roles.
 /// </summary>
-/// <remarks>The HTTP forwarding listener is HTTP-only; mapped proxy authorities use that listener's scheme.</remarks>
-internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> workerProxyOptions,
+/// <remarks>The runtime-facing forwarding listener and advertised proxy origins use HTTPS.</remarks>
+internal sealed class WorkerProxyEndpointConfiguration(
+    IOptions<WorkerProxyOptions> workerProxyOptions,
     IOptions<TokenServiceProxyWorkerOptions> tokenServiceProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
-    internal const string HttpListenerScheme = "http";
+    internal const string HttpListenerScheme = "https";
 
     private ListenOptions? _management;
     private ListenOptions? _runtime;
@@ -35,6 +39,12 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
             throw new InvalidOperationException("WorkerProxy Kestrel endpoints have already been configured.");
         }
 
+        options.Configure(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Certificates:Default:Path"] = configuredOptions.CertificatePath,
+            ["Certificates:Default:KeyPath"] = configuredOptions.CertificateKeyPath
+        }).Build(), reloadOnChange: false);
+
         options.ListenAnyIP(configuredOptions.ManagementPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http1;
@@ -43,6 +53,7 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
         options.ListenAnyIP(configuredOptions.RuntimeGrpcPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
+            listener.UseHttps();
             _runtime = listener;
         });
         options.Listen(IPAddress.Loopback, configuredOptions.WorkerGrpcPort, listener =>
@@ -53,6 +64,7 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
         options.ListenAnyIP(configuredOptions.HttpPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http1;
+            listener.UseHttps();
             _http = listener;
         });
         TokenServiceProxyWorkerOptions tokenServiceProxy = tokenServiceProxyOptions.Value;
@@ -129,20 +141,20 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
 
     internal Uri GetHttpAddress()
     {
-        return GetAddress(_http, "HTTP forwarding");
+        return GetAddress(_http, "HTTP forwarding", useHttps: true);
     }
 
     internal Uri GetRelayAddress(FunctionRpcRelaySide side)
     {
         return side switch
         {
-            FunctionRpcRelaySide.Runtime => GetAddress(_runtime, "runtime"),
+            FunctionRpcRelaySide.Runtime => GetAddress(_runtime, "runtime", useHttps: true),
             FunctionRpcRelaySide.Worker => GetAddress(_worker, "worker"),
             _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
         };
     }
 
-    private static Uri GetAddress(ListenOptions? listener, string listenerName)
+    private static Uri GetAddress(ListenOptions? listener, string listenerName, bool useHttps = false)
     {
         IPEndPoint? endpoint = listener?.IPEndPoint;
         if (endpoint is null || endpoint.Port == 0)
@@ -150,7 +162,7 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
             throw new InvalidOperationException($"The WorkerProxy {listenerName} listener has not started.");
         }
 
-        return new UriBuilder(HttpListenerScheme, endpoint.Address.ToString(), endpoint.Port).Uri;
+        return new UriBuilder(useHttps ? HttpListenerScheme : Uri.UriSchemeHttp, endpoint.Address.ToString(), endpoint.Port).Uri;
     }
 
     private static int GetPort(ListenOptions? listener)

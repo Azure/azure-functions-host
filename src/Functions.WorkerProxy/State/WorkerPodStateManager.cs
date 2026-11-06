@@ -51,6 +51,8 @@ internal sealed class WorkerPodStateManager
         _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
 
+    public DateTimeOffset StartupTime => State.StartupTime;
+
     /// <summary>
     /// Gets the current immutable state without incrementing its revision.
     /// </summary>
@@ -77,6 +79,26 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Publishes known authentication configuration health without changing assignment or worker lifecycle.
+    /// </summary>
+    public void SetAuthenticationConfigurationError(bool hasError)
+    {
+        lock (_stateLock)
+        {
+            if (_state.HasAuthenticationConfigurationError == hasError)
+            {
+                return;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                HasAuthenticationConfigurationError = hasError
+            });
+        }
+    }
+
+    /// <summary>
     /// Captures the pod state and effective HTTP origin for one worker session under the assignment lock.
     /// </summary>
     public (WorkerPodState State, string? HttpProxyEndpoint) GetWorkerCapabilitySnapshot(long sessionId)
@@ -87,7 +109,7 @@ internal sealed class WorkerPodStateManager
         {
             string? httpProxyEndpoint = _state.SessionId == sessionId
                 && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
-                    ? _assignment?.ResolvedHttpProxyEndpoint?.AbsoluteUri
+                    ? _assignment?.HttpProxyEndpoint?.AbsoluteUri
                     : null;
 
             return (_state, httpProxyEndpoint);
@@ -381,7 +403,8 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 MaxHttpConcurrency = assignment.MaxHttpConcurrency,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                HttpProxyEndpoint = assignment.HttpProxyEndpoint
             };
 
             // The gate and publication share the lifecycle lock so only one identity is reserved.

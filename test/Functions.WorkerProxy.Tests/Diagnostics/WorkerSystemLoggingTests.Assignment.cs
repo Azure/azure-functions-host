@@ -174,6 +174,33 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains("HTTP status 400", record.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AssignmentLogging_RecordsAuthenticationRejectionWithoutReadingOrPublishingAssignment()
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+        {
+            services.RemoveAll<IWorkerSystemEventGenerator>();
+            services.AddSingleton<IWorkerSystemEventGenerator>(generator);
+        });
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        WorkerPodState before = manager.State;
+        using HttpClient client = factory.CreateWorkerProxyClient(authenticate: false);
+        using StringContent content = new("""{"private-setting":"private-assignment-value"}""", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", content);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Same(before, manager.State);
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords, entry =>
+            entry.EventName.StartsWith("WorkerAssignmentRequest", StringComparison.Ordinal));
+        Assert.Equal("WorkerAssignmentRequestRejected", record.EventName);
+        Assert.Contains("HTTP status 401", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-assignment-value", record.Message, StringComparison.Ordinal);
+        Assert.Empty(record.Details);
+        Assert.Empty(record.ExceptionMessage);
+    }
+
     private static DefaultHttpContext CreateAssignmentContext()
     {
         DefaultHttpContext context = new();

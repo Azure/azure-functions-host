@@ -43,13 +43,6 @@ internal static class WorkerAssignRequestValidator
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "maxHttpConcurrency"));
         }
 
-        if (request.HttpProxyEndpoint is { } httpProxyEndpoint
-            && !WorkerHttpProxyEndpointResolver.TryResolve(
-                httpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out _))
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
-        }
-
         if (request.IsAlwaysReady is null)
         {
             errors.Add(new(WorkerApiErrorCodes.Required, "isAlwaysReady"));
@@ -62,6 +55,13 @@ internal static class WorkerAssignRequestValidator
         }
 
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
+        Uri? httpProxyEndpoint = null;
+        if (request.HttpProxyEndpoint is not null
+            && !WorkerHttpProxyEndpointResolver.TryResolve(
+                request.HttpProxyEndpoint, WorkerProxyEndpointConfiguration.HttpListenerScheme, out httpProxyEndpoint))
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
+        }
 
         if (errors.Count > 0
             || startupMode is not { } selectedStartupMode
@@ -80,8 +80,10 @@ internal static class WorkerAssignRequestValidator
             isAlwaysReady,
             environment,
             functionAppDirectory,
-            request.MaxHttpConcurrency,
-            request.HttpProxyEndpoint);
+            httpProxyEndpoint,
+            request.ConfigLastModifiedTime,
+            request.ContentLastModifiedTime,
+            request.MaxHttpConcurrency);
 
         return true;
     }
