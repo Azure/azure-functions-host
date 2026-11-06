@@ -24,5 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         /// The 'azure.functions.webjobs.storage' check monitors connectivity to the WebJobs storage account.
         /// </summary>
         public const string WebJobsStorage = Prefix + "webjobs.storage";
+
+        /// <summary>
+        /// The 'azure.functions.connectivity.dns' check verifies DNS resolution for configured hosts (Network Troubleshooter prototype).
+        /// </summary>
+        public const string DnsConnectivity = Prefix + "connectivity.dns";
     }
 }
