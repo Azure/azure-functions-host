@@ -18,24 +18,26 @@ namespace Azure.Functions.Host.HostState;
 /// Sends snapshots to the AppServer <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
-/// The named HTTP client supplies the container instance identity. The endpoint is resolved on the first publication
-/// and reused for this publisher client's lifetime.
+/// Owns one named HTTP client, configured once with the container instance identity on the first publication.
+/// The endpoint is resolved on the first publication and reused for this publisher client's lifetime.
 /// </remarks>
-internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
+internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient, IDisposable
 {
     internal const string HttpClientName = "AppServerHostState";
     private const string HostStatePath = "admin/infra/host/state";
     private const string DefaultEndpoint = "http://localhost:6060/";
 
-    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+    private HttpClient? _httpClient;
     private Uri? _hostStateUri;
 
     public async Task<HttpStatusCode> PublishAsync(RuntimeState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        using HttpClient client = _httpClientFactory.CreateClient(HttpClientName);
+        // The publisher serializes attempts; defer client creation so root construction needs no publication configuration.
+        HttpClient client = _httpClient ??= _httpClientFactory.CreateClient(HttpClientName);
         using HttpRequestMessage request = new(HttpMethod.Put, _hostStateUri ??= GetHostStateUri())
         {
             Content = JsonContent.Create(
@@ -47,6 +49,11 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
 
         return response.StatusCode;
     }
+
+    /// <summary>
+    /// Releases the owned HTTP client when the root container is disposed, after publication has stopped.
+    /// </summary>
+    public void Dispose() => _httpClient?.Dispose();
 
     private Uri GetHostStateUri()
     {

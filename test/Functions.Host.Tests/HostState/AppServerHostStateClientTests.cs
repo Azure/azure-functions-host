@@ -150,10 +150,11 @@ public class AppServerHostStateClientTests : IDisposable
         Assert.Equal(new Uri("http://appserver:7070/base/admin/infra/host/state"), firstUri);
         Assert.Same(firstUri, _handler.RequestUri);
         configuration.VerifyGet(config => config["MESH_INIT_URI"], Times.Once());
+        configuration.VerifyGet(config => config[EnvironmentSettingNames.ContainerName], Times.Once());
     }
 
     [Fact]
-    public async Task PublishAsync_NamedClientUsesConfiguredInstanceIdentity()
+    public async Task PublishAsync_ReusesConfiguredInstanceIdentityAcrossPublications()
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -174,7 +175,7 @@ public class AppServerHostStateClientTests : IDisposable
 
         await client.PublishAsync(state, CancellationToken.None);
 
-        Assert.Equal("runtime-after-specialization", _handler.InstanceIdentity);
+        Assert.Equal("runtime-before-specialization", _handler.InstanceIdentity);
         Assert.Equal(firstUri, _handler.RequestUri);
         Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);
         Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""", firstBody);
@@ -185,8 +186,8 @@ public class AppServerHostStateClientTests : IDisposable
     public async Task PublishAsync_RejectsMissingInstanceIdentityBeforeSending()
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
-        AppServerHostStateClient client = CreateClient(configuration);
 
+        AppServerHostStateClient client = CreateClient(configuration);
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
 
         Assert.Null(_handler.Method);
@@ -203,7 +204,6 @@ public class AppServerHostStateClientTests : IDisposable
         {
             [EnvironmentSettingNames.ContainerName] = containerName,
         });
-
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.PublishAsync(new(CreatedTime, 0, 0), CancellationToken.None));
 
         Assert.Null(_handler.Method);
@@ -332,6 +332,40 @@ public class AppServerHostStateClientTests : IDisposable
     }
 
     [Fact]
+    public async Task PublishAsync_ConfiguresOwnedHttpClientOnceAndDisposesItWithRootServices()
+    {
+        int configurations = 0;
+        ServiceCollection collection = new();
+        collection.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [EnvironmentSettingNames.ContainerName] = "runtime-container",
+        }).Build());
+        collection.AddAppServerHostStatePublisher();
+        HttpClient? configuredClient = null;
+        collection.AddHttpClient(AppServerHostStateClient.HttpClientName, client =>
+        {
+            configurations++;
+            configuredClient = client;
+        }).ConfigurePrimaryHttpMessageHandler(() => _handler);
+        using ServiceProvider services = collection.BuildServiceProvider();
+        IAppServerHostStateClient publisher = services.GetRequiredService<IAppServerHostStateClient>();
+        Assert.Equal(0, configurations);
+        Assert.Same(publisher, services.GetRequiredService<IAppServerHostStateClient>());
+        RuntimeState state = new(CreatedTime, 36, 3);
+
+        _handler.StatusCode = HttpStatusCode.InternalServerError;
+        Assert.Equal(HttpStatusCode.InternalServerError, await publisher.PublishAsync(state, CancellationToken.None));
+        _handler.StatusCode = HttpStatusCode.OK;
+        Assert.Equal(HttpStatusCode.OK, await publisher.PublishAsync(state, CancellationToken.None));
+
+        Assert.Equal(1, configurations);
+        Assert.Equal("runtime-container", _handler.InstanceIdentity);
+        HttpClient ownedClient = Assert.IsType<HttpClient>(configuredClient);
+        services.Dispose();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => ownedClient.GetAsync("http://appserver/"));
+    }
+
+    [Fact]
     public async Task AddAppServerHostStatePublisher_CapturesIdentityInNamedClientDefaultHeaders()
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -378,7 +412,7 @@ public class AppServerHostStateClientTests : IDisposable
         ServiceProvider services = collection.BuildServiceProvider();
         _providers.Add(services);
 
-        return new(services.GetRequiredService<IHttpClientFactory>(), configuration);
+        return Assert.IsType<AppServerHostStateClient>(services.GetRequiredService<IAppServerHostStateClient>());
     }
 
     public void Dispose()

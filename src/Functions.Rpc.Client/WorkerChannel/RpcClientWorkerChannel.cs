@@ -226,10 +226,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     protected override void OnWorkerInitResponse(WorkerInitResponse response)
     {
-        if (response.HostConfiguration is not null && response.Result.Status is not StatusResult.Types.Status.Success)
+        // WorkerProxy finalizes assignment-owned capabilities only for explicit successful initialization.
+        if (response.Result is not { Status: StatusResult.Types.Status.Success })
         {
             throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
-                "The worker did not report successful initialization for Host configuration delivery.");
+                "The worker did not report successful initialization.");
         }
 
         lock (_lifecycleLock)
@@ -242,7 +243,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             if (!response.Capabilities.TryGetValue(FunctionGroupNameCapability, out string functionGroupName)
                 || string.IsNullOrWhiteSpace(functionGroupName))
             {
-                throw new InvalidOperationException("A client-backed worker must advertise its assigned FunctionGroupName.");
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "A client-backed worker must advertise its assigned FunctionGroupName.");
             }
 
             int? maxHttpConcurrency = null;
@@ -252,7 +254,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 if (!int.TryParse(suppliedConcurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
                     || concurrency is < 1 or > 1000)
                 {
-                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                        "An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
                 }
 
                 maxHttpConcurrency = concurrency;

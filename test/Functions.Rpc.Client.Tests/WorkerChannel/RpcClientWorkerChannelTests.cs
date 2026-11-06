@@ -128,6 +128,44 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     [Theory]
+    [InlineData(-1, false)]
+    [InlineData(-1, true)]
+    [InlineData(123, false)]
+    [InlineData(123, true)]
+    public async Task StartAsync_UnknownInitializationStatusRejectsCapabilities(int status, bool delivered)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        channel.SetupFunctionInvocationBuffers([new() { Name = "Http", Language = "external" }]);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Result.Status = (StatusResult.Types.Status)status;
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        response.Capabilities[RpcClientWorkerChannel.MaxHttpConcurrencyCapability] = "16";
+        response.Capabilities[RpcWorkerConstants.HttpUri] = "http://untrusted-worker:1234/";
+        response.AppCapabilities.Add("UntrustedCapability", "1");
+        if (delivered)
+        {
+            response.HostConfiguration = new()
+            {
+                Status = HostConfiguration.Types.Status.Available,
+                Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
+            };
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        Assert.Null(channel.HostConfiguration);
+        Assert.False(channel.IsReadyForInvocations);
+        _appCapabilitiesStore.Verify(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never());
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -222,8 +260,10 @@ public sealed class RpcClientWorkerChannelTests
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = response });
 
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start.WaitAsync(TestTimeout));
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
         Assert.Contains("MaxHttpConcurrency", exception.Message, StringComparison.Ordinal);
+        Assert.False(channel.Completion.IsCompleted);
         Assert.Null(channel.FunctionGroupName);
         Assert.Null(channel.MaxHttpConcurrency);
     }
@@ -310,8 +350,10 @@ public sealed class RpcClientWorkerChannelTests
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = response });
 
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start.WaitAsync(TestTimeout));
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
         Assert.Contains("FunctionGroupName", exception.Message, StringComparison.Ordinal);
+        Assert.False(channel.Completion.IsCompleted);
         Assert.Null(channel.FunctionGroupName);
         Assert.False(channel.IsReadyForInvocations);
     }
