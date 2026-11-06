@@ -2,8 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
@@ -17,6 +20,13 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<StreamingMessage>
 {
+    private const string RuntimeIdentityHeaderName = "x-ms-functions-runtime-identity-bin";
+    private static readonly JsonSerializerOptions IdentityJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly IRpcClientFactory _clientFactory;
     private readonly ILogger<FunctionRpcDuplexChannelFactory> _logger;
     private readonly ITokenServiceProxyRequestHandler _proxyHandler;
@@ -42,7 +52,8 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     }
 
     /// <inheritdoc />
-    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, WorkerLinkRuntimeIdentity runtimeIdentity = null,
+        CancellationToken cancellationToken = default)
     {
         if (_proxyOptions.Enabled && _proxyHandler is null)
         {
@@ -53,7 +64,10 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        var call = client.EventStream();
+        Metadata headers = runtimeIdentity is null
+            ? null
+            : new() { { RuntimeIdentityHeaderName, JsonSerializer.SerializeToUtf8Bytes(runtimeIdentity, IdentityJsonOptions) } };
+        var call = client.EventStream(headers);
         try
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();

@@ -111,9 +111,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         RegisteringChannel
     }
 
+    /// <inheritdoc />
     public Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
@@ -127,10 +129,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
-                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal))
+                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal) ||
+                    !Equals(existing.RuntimeIdentity, runtimeIdentity))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
-                        "The worker is already associated with a different gRPC endpoint.");
+                        "The worker is already associated with a different gRPC endpoint or Runtime identity.");
                 }
 
                 if (existing.Terminal || existing.Channel is { IsTerminated: true })
@@ -143,7 +146,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
 
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            slot = new() { Endpoint = grpcEndpoint, LinkTask = linkCompletion.Task };
+            slot = new() { Endpoint = grpcEndpoint, RuntimeIdentity = runtimeIdentity, LinkTask = linkCompletion.Task };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
         }
@@ -213,7 +216,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                 try
                 {
                     operationSource.Token.ThrowIfCancellationRequested();
-                    ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
+                    ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, slot.RuntimeIdentity, operationSource.Token);
                     operationSource.Token.ThrowIfCancellationRequested();
 
                     stage = LinkStage.CreatingWorkerChannel;
@@ -1036,6 +1039,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
+
+        public WorkerLinkRuntimeIdentity RuntimeIdentity { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }
