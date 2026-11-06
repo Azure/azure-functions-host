@@ -194,10 +194,11 @@ public partial class WorkerSystemLoggingTests
     public async Task ConsoleLogging_ApplicationDisposalDrainsBufferedRecords()
     {
         StringWriter output = new();
+        CapturingEventGenerator eventGenerator = new(new WorkerPodEventGenerator(output, TimeProvider.System));
         await using (WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
         {
             services.RemoveAll<IWorkerSystemEventGenerator>();
-            services.AddSingleton<IWorkerSystemEventGenerator>(_ => new WorkerPodEventGenerator(output, TimeProvider.System));
+            services.AddSingleton<IWorkerSystemEventGenerator>(_ => eventGenerator);
         }))
         {
             using var client = factory.CreateWorkerProxyClient();
@@ -207,6 +208,8 @@ public partial class WorkerSystemLoggingTests
             {
                 logger.LogInformation(new EventId(1, "Buffered"), "Record {Index}.", index);
             }
+
+            await StopApplicationAsync(factory, eventGenerator);
         }
 
         string[][] records = ParseCsvOutput(output.ToString());

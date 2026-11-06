@@ -285,8 +285,10 @@ public partial class FunctionRpcRelayTests
         Assert.Same(removed, manager.State);
     }
 
-    [Fact]
-    public async Task Relay_CanceledPreInitRuntimeCannotSendLateMessagesAfterRemoval()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Relay_CanceledPreInitRuntimeCannotSendLateMessagesAfterRemoval(bool startStreamBeforeRuntime)
     {
         WorkerPodStateManager manager = CreatePodStateManager();
         manager.Assign(CreateWorkerAssignment());
@@ -299,7 +301,11 @@ public partial class FunctionRpcRelayTests
         Task<FunctionRpcRelayTerminalState> worker = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInput.Reader), CreateMessageWriter(workerOutput.Writer), timeout.Token);
         StreamingMessage start = CreateStartStream();
-        await workerInput.Writer.WriteAsync(start, timeout.Token);
+        if (startStreamBeforeRuntime)
+        {
+            await workerInput.Writer.WriteAsync(start, timeout.Token);
+        }
+
         TaskCompletionSource<bool> lateRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource observed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock<IAsyncStreamReader<StreamingMessage>> oldReader = new();
@@ -323,11 +329,19 @@ public partial class FunctionRpcRelayTests
             SynchronizationContext.SetSynchronizationContext(previousContext);
         }
 
-        Assert.Equal(start, await oldOutput.Reader.ReadAsync(timeout.Token));
-        WorkerPodState accepted = manager.State;
-
         try
         {
+            if (!startStreamBeforeRuntime)
+            {
+                await workerInput.Writer.WriteAsync(start, timeout.Token);
+            }
+
+            // Forwarding StartStream can resume on the same context as the deliberately delayed read.
+            Task<StreamingMessage> forwardedStart = oldOutput.Reader.ReadAsync(timeout.Token).AsTask();
+            await readContext.RunUntilAsync(forwardedStart, timeout.Token);
+            Assert.Equal(start, await forwardedStart);
+            WorkerPodState accepted = manager.State;
+
             oldCancellation.Cancel();
             await readContext.RunUntilAsync(Task.WhenAll(old, worker), timeout.Token);
             Assert.Equal(FunctionRpcRelayTerminationReason.Canceled, (await old).Reason);
@@ -348,7 +362,10 @@ public partial class FunctionRpcRelayTests
         }
         finally
         {
+            timeout.Cancel();
             lateRead.TrySetResult(true);
+            using CancellationTokenSource cleanupTimeout = new(TestTimeout);
+            await readContext.RunUntilAsync(Task.WhenAll(old, worker), cleanupTimeout.Token);
         }
     }
 
