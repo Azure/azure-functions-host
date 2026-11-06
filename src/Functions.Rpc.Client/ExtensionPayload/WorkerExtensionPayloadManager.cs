@@ -34,7 +34,7 @@ internal sealed partial class WorkerExtensionPayloadManager(
     private readonly Lock _disposeLock = new();
     private readonly SemaphoreSlim _preparationGate = new(1, 1);
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "azure-functions", "extension-payloads", Guid.NewGuid().ToString("N"));
+    private string _payloadRootPath;
     private string _directoryPath;
     private bool _selected;
     private bool _disposed;
@@ -80,11 +80,13 @@ internal sealed partial class WorkerExtensionPayloadManager(
         // Waiting candidates do not spend their acquisition budget until they own the source preparation gate.
         using CancellationTokenSource deadline = new(AcquisitionTimeout, _timeProvider);
         using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-        string attempt = Path.Combine(_root, Guid.NewGuid().ToString("N"));
-        string staging = Path.Combine(attempt, "content");
+        string attempt = null;
         Exception failure = null;
         try
         {
+            _payloadRootPath ??= Directory.CreateTempSubdirectory("azure-functions-extension-payload-").FullName;
+            attempt = Path.Combine(_payloadRootPath, Guid.NewGuid().ToString("N"));
+            string staging = Path.Combine(attempt, "content");
             Directory.CreateDirectory(attempt);
             string zipPath = Path.Combine(attempt, "payload.zip");
             await using (FileStream zip = new(zipPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 64 * 1024, useAsync: true))
@@ -112,7 +114,7 @@ internal sealed partial class WorkerExtensionPayloadManager(
 
         try
         {
-            if (Directory.Exists(attempt))
+            if (attempt is not null && Directory.Exists(attempt))
             {
                 Directory.Delete(attempt, recursive: true);
             }
@@ -136,7 +138,7 @@ internal sealed partial class WorkerExtensionPayloadManager(
             cancellationToken.ThrowIfCancellationRequested();
             if (staging is not null)
             {
-                string active = Path.Combine(_root, "active");
+                string active = Path.Combine(_payloadRootPath, "active");
                 Directory.Move(staging, active);
                 _directoryPath = active;
             }
@@ -239,28 +241,36 @@ internal sealed partial class WorkerExtensionPayloadManager(
 
     private async Task DisposeCoreAsync()
     {
-        await Task.Yield();
         lock (_stateLock)
         {
             _disposed = true;
         }
 
-        try
+        await Task.Yield();
+        using (await _preparationGate.LockAsync(CancellationToken.None))
         {
-            if (Directory.Exists(_root))
+            try
             {
-                Directory.Delete(_root, recursive: true);
+                if (_payloadRootPath is not null && Directory.Exists(_payloadRootPath))
+                {
+                    Directory.Delete(_payloadRootPath, recursive: true);
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Log.PayloadCleanupFailed(_logger, exception, _payloadRootPath);
             }
         }
-        finally
-        {
-            _preparationGate.Dispose();
-        }
+
+        // Waiters may still acquire the gate to observe disposal; it has no exposed wait handle to release.
     }
 
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Information, "Extension payload for worker {WorkerId} was extracted and its source accepted.")]
         public static partial void PayloadPrepared(ILogger logger, string workerId);
+
+        [LoggerMessage(1, LogLevel.Warning, "Could not remove extension payload directory {DirectoryPath} during shutdown.")]
+        public static partial void PayloadCleanupFailed(ILogger logger, Exception exception, string directoryPath);
     }
 }

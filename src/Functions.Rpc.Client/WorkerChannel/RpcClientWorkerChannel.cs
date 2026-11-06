@@ -118,6 +118,8 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     internal HostConfiguration HostConfiguration { get; private set; }
 
+    internal string ExtensionPayloadCapability => GetCapabilityState(WorkerExtensionPayloadManager.CapabilityName);
+
     /// <summary>
     /// Gets the assigned group captured from the initial successful response, or null before initialization.
     /// </summary>
@@ -363,8 +365,6 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             _draining = true;
         }
     }
-
-    internal string ExtensionPayloadCapability => GetCapabilityState(WorkerExtensionPayloadManager.CapabilityName);
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.

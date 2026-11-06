@@ -192,6 +192,10 @@ silently select Host-local extensions. Closing the link or shutting down also ca
 separate payload-cancellation message.
 Payload request/response coordination lives in `RpcClientWorkerChannel.cs`, with ordered writes and draining handled by
 `ExtensionPayloadReceiver`. The root-owned payload manager retains the extracted source after the supplying worker disconnects.
+The source is stored in a private, uniquely created temporary directory. Shutdown attempts to delete it; if loaded
+assemblies or filesystem permissions prevent deletion, the Host logs a warning with the directory path instead of failing
+shutdown. The remaining files require temporary-directory cleanup after the Host process exits; the Host does not sweep
+other instances' directories.
 Extension consumers resolve metadata/probing paths through `IExtensionPathProvider`. Client composition replaces the
 default application-layout provider; the startup locator itself has no payload-specific path selection.
 The transferred manifest is expected to contain correct assembly hints; the locator's existing assembly lookup is unchanged.

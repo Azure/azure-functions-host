@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -20,6 +21,79 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed partial class WorkerChannelRegistryTests
 {
+    [Fact]
+    public async Task ExtensionPayload_CreatesPrivateRootAndDeletesItOnDisposal()
+    {
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
+        RegistryHarness harness = new(null, payloads);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl worker = new("worker") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(worker);
+
+        await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
+        await SupplyPayloadAsync(worker, "assembly");
+        await registry.WaitForFirstInitializedAsync().WaitAsync(TestTimeout);
+
+        string root = Path.GetDirectoryName(payloads.DirectoryPath);
+        Assert.StartsWith("azure-functions-extension-payload-", Path.GetFileName(root), StringComparison.Ordinal);
+        if (!OperatingSystem.IsWindows())
+        {
+            UnixFileMode permissions = File.GetUnixFileMode(root);
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, permissions);
+        }
+
+        await registry.DisposeAsync();
+        await payloads.DisposeAsync();
+        Assert.False(Directory.Exists(root));
+    }
+
+    [Fact]
+    public async Task ExtensionPayload_LockedFileDoesNotFailShutdown()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Mock<ILogger<WorkerExtensionPayloadManager>> logger = new();
+        logger.Setup(value => value.IsEnabled(LogLevel.Warning)).Returns(true);
+        await using WorkerExtensionPayloadManager payloads = new(logger.Object);
+        RegistryHarness harness = new(null, payloads);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl worker = new("worker") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(worker);
+
+        await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
+        await SupplyPayloadAsync(worker, "assembly");
+        await registry.WaitForFirstInitializedAsync().WaitAsync(TestTimeout);
+        string root = Path.GetDirectoryName(payloads.DirectoryPath);
+
+        try
+        {
+            using (FileStream locked = new(Path.Combine(payloads.DirectoryPath, ".azurefunctions", "binding.dll"),
+                FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                await registry.DisposeAsync();
+                await payloads.DisposeAsync();
+                await payloads.DisposeAsync();
+                Assert.True(Directory.Exists(root));
+                logger.Verify(value => value.Log(
+                    LogLevel.Warning,
+                    It.Is<EventId>(eventId => eventId.Id == 1),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public async Task ExtensionPayload_LinkReturnsBeforeTransferAndAnotherValidWorkerCanUnblockStartup()
     {
@@ -280,6 +354,34 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal("replacement", await File.ReadAllTextAsync(Path.Combine(payloads.DirectoryPath, ".azurefunctions", "binding.dll")));
         firstTimer.Verify(value => value.Dispose(), Times.AtLeastOnce());
         secondTimer.Verify(value => value.Dispose(), Times.AtLeastOnce());
+    }
+
+    [Fact]
+    public async Task ExtensionPayload_DisposalWaitsForPreparationAndRejectsQueuedCandidates()
+    {
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl first = new("first") { ExtensionPayloadCapability = "1" };
+        ChannelControl second = new("second") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(first);
+        harness.Enqueue(second);
+        await registry.LinkAsync(first.Id, CreateEndpoint(first.Id)).WaitAsync(TestTimeout);
+        await registry.LinkAsync(second.Id, CreateEndpoint(second.Id)).WaitAsync(TestTimeout);
+
+        using CancellationTokenSource cancellation = new();
+        Task firstPreparation = payloads.PrepareAsync(first.Channel, cancellation.Token);
+        await first.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Task disposal = payloads.DisposeAsync().AsTask();
+        Task secondPreparation = payloads.PrepareAsync(second.Channel, CancellationToken.None);
+        Assert.False(disposal.IsCompleted);
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => firstPreparation.WaitAsync(TestTimeout));
+        await disposal.WaitAsync(TestTimeout);
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => secondPreparation.WaitAsync(TestTimeout));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => payloads.PrepareAsync(second.Channel, CancellationToken.None));
+        Assert.False(second.Transport.Requests.TryRead(out _));
     }
 
     [Theory]

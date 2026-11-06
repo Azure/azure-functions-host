@@ -20,6 +20,13 @@ public sealed class ExtensionPayloadTests
     private const string Manifest = """{"extensions":[{"name":"Binding","typeName":"Binding.Startup, binding","hintPath":"./.azurefunctions/binding.dll"}]}""";
 
     [Fact]
+    public void StreamingMessage_UsesNonConflictingExtensionPayloadFieldNumbers()
+    {
+        Assert.Equal(37, StreamingMessage.GetExtensionPayloadRequestFieldNumber);
+        Assert.Equal(38, StreamingMessage.ExtensionPayloadResponseFieldNumber);
+    }
+
+    [Fact]
     public async Task Extraction_PreservesManifestAndContents()
     {
         using PayloadDirectory root = new();
