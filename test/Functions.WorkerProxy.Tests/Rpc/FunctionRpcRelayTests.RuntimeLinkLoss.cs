@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -22,23 +23,72 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
-    [Fact]
-    public async Task RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task AttachmentRejected_DistinguishesRemovalFromShutdown(bool shutdown, bool runtimeSide)
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        if (shutdown)
+        {
+            await relay.StopAsync(timeout.Token);
+        }
+        else
+        {
+            Assert.True(factory.Services.GetRequiredService<WorkerPodStateManager>().RequestRemoval());
+        }
+
+        FunctionRpcRelaySide side = runtimeSide ? FunctionRpcRelaySide.Runtime : FunctionRpcRelaySide.Worker;
+        await using RelayClient replacement = CreateClient(factory, side, timeout.Token);
+        Grpc.Core.RpcException rejected = await replacement.WriteAndReadRejectionAsync(
+            runtimeSide ? CreateMessage("replacement") : CreateStartStream("replacement"), timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, rejected.StatusCode);
+        await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+            string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal)), timeout.Token);
+        CapturedProxyLog rejection = Assert.Single(generator.ProxyRecords, record =>
+            string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal));
+        Assert.Contains(
+            shutdown ? nameof(FunctionRpcRelayAttachmentFailure.Shutdown) : nameof(FunctionRpcRelayAttachmentFailure.PodStateRejected),
+            rejection.Message);
+        Assert.Contains(side.ToString(), rejection.Message);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval(bool attachWorker, bool sendProtocolInput)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         using CancellationTokenSource timeout = new(TestTimeout);
         using HttpClient management = factory.CreateWorkerProxyClient();
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        await using RelayClient? worker = attachWorker ? CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token) : null;
+        if (worker is not null)
+        {
+            await worker.WriteAsync(CreateStartStream(), timeout.Token);
+            Assert.NotNull((await runtime.ReadAsync(timeout.Token)).StartStream);
+        }
 
-        await runtime.WriteAsync(CreateMessage("runtime-admitted"), timeout.Token);
+        if (sendProtocolInput)
+        {
+            await runtime.WriteAsync(CreateMessage("runtime-admitted"), timeout.Token);
+        }
+
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
         await runtime.CompleteRequestAsync(timeout.Token);
 
         Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
-        SplitWorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
-        Assert.Equal(SplitWorkerStatus.RemovalRequested, removed.Status);
-        Assert.Equal(SplitWorkerLinkState.Unlinked, removed.Link.State);
+        WorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
+        Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
     }
 
     [Fact]
@@ -57,7 +107,7 @@ public partial class FunctionRpcRelayTests
         runtimeCancellation.Cancel();
 
         Assert.Equal(
-            SplitWorkerStatus.RemovalRequested,
+            WorkerStatus.RemovalRequested,
             (await WaitForRemovalStateAsync(management, timeout.Token)).Status);
         await WaitForReleaseAsync(relay, timeout.Token);
     }
@@ -79,17 +129,19 @@ public partial class FunctionRpcRelayTests
             await runtime.WaitForTerminationAsync(timeout.Token),
             new[] { StatusCode.Internal, StatusCode.Unavailable, StatusCode.Cancelled });
         Assert.Equal(
-            SplitWorkerStatus.Starting,
-            (await ReadSplitManagementStateAsync(management, timeout.Token)).Status);
+            WorkerStatus.Starting,
+            (await ReadManagementStateAsync(management, timeout.Token)).Status);
     }
 
     [Theory]
-    [InlineData("Preconfigured", null, 16)]
-    [InlineData("Preconfigured", 10, 10)]
-    [InlineData("SpecializationRequired", null, 16)]
-    [InlineData("SpecializationRequired", 10, 10)]
+    [InlineData("Preconfigured", null, 16, false)]
+    [InlineData("Preconfigured", 10, 10, false)]
+    [InlineData("SpecializationRequired", null, 16, false)]
+    [InlineData("SpecializationRequired", 10, 10, false)]
+    [InlineData("Preconfigured", null, 16, true)]
+    [InlineData("SpecializationRequired", 10, 10, true)]
     public async Task RemovalRequested_IsStickyPollableAndClosesNewAdmission(
-        string startupMode, int? maxHttpConcurrency, int expectedConcurrency)
+        string startupMode, int? maxHttpConcurrency, int expectedConcurrency, bool hasAuthenticationError)
     {
         int forwardedRequests = 0;
         await using var destination = await WorkerHttpForwardingTests.StartWorkerAsync(context =>
@@ -108,7 +160,9 @@ public partial class FunctionRpcRelayTests
         using HttpClient management = factory.CreateWorkerProxyClient();
         using HttpClient http = factory.CreateHttpForwardingClient();
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        Metadata runtimeHeaders = CreateRuntimeIdentityHeaders("valid");
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), timeout.Token, runtimeHeaders);
         WorkerAssignRequest assignment = new()
         {
             StartupMode = startupMode,
@@ -127,7 +181,7 @@ public partial class FunctionRpcRelayTests
         StreamingMessage initialized = await InitializeAndAssignWorkerAsync(
             worker, runtime, management, assignment,
             WorkerHttpForwardingTests.GetAddress(destination).AbsoluteUri, timeout.Token);
-        Assert.Equal("http://worker-pod.example:48801/", initialized.WorkerInitResponse.Capabilities["HttpUri"]);
+        Assert.Equal("https://worker-pod.example:48801/", initialized.WorkerInitResponse.Capabilities["HttpUri"]);
         Assert.Equal("http", initialized.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
         Assert.Equal(
             expectedConcurrency.ToString(CultureInfo.InvariantCulture),
@@ -136,31 +190,46 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
         long sessionId = Assert.IsType<long>(manager.State.SessionId);
         DateTimeOffset startupTime = manager.State.StartupTime;
+        while (!manager.State.IsRuntimeInitialized)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        manager.SetAuthenticationConfigurationError(hasAuthenticationError);
+        WorkerOriginState running = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.Running, running.Status);
+        Assert.Equal(WorkerLinkState.Linked, running.Link.State);
+        Assert.Equal(hasAuthenticationError, running.IsUnhealthy);
 
         using (HttpResponseMessage before = await http.GetAsync("/before-removal", timeout.Token))
         {
             Assert.Equal(HttpStatusCode.NoContent, before.StatusCode);
         }
 
+        Task<HttpResponseMessage> removalPoll = PollManagementStateAsync(management, running, timeout.Token);
+        await WaitForManagementPollAsync(manager, timeout.Token);
         await runtime.CompleteRequestAsync(timeout.Token);
         await Task.WhenAll(
             runtime.WaitForTerminationAsync(timeout.Token),
             worker.WaitForTerminationAsync(timeout.Token));
-        SplitWorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
+        using HttpResponseMessage removalResponse = await removalPoll;
+        WorkerOriginState removed = await ReadManagementStateAsync(removalResponse, timeout.Token);
 
-        Assert.Equal(SplitWorkerStatus.RemovalRequested, removed.Status);
-        Assert.Equal(SplitWorkerStatus.RemovalRequested, (await ReadSplitManagementStateAsync(management, timeout.Token)).Status);
+        Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
+        Assert.Equal(hasAuthenticationError, removed.IsUnhealthy);
+        Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
+        Assert.Null(removed.Link.Runtime);
+        Assert.Equal(WorkerStatus.RemovalRequested, (await ReadManagementStateAsync(management, timeout.Token)).Status);
         WorkerPodState removedState = manager.State;
         Assert.Null(removedState.FunctionAppName);
         Assert.Null(removedState.FunctionGroupName);
+        Assert.Null(removedState.HttpProxyEndpoint);
         Assert.Null(removedState.MaxHttpConcurrency);
         Assert.Null(manager.GetWorkerCapabilitySnapshot(sessionId).HttpProxyEndpoint);
         Assert.Equal(startupTime, removedState.StartupTime);
         Assert.False(manager.RequestRemoval());
         Assert.Same(removedState, manager.State);
 
-        await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
-        await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
         using (HttpResponseMessage reassignment = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",
@@ -218,14 +287,14 @@ public partial class FunctionRpcRelayTests
         return initialized;
     }
 
-    private static async Task<SplitWorkerOriginState> WaitForRemovalStateAsync(
+    private static async Task<WorkerOriginState> WaitForRemovalStateAsync(
         HttpClient management,
         CancellationToken cancellationToken)
     {
         while (true)
         {
-            SplitWorkerOriginState state = await ReadSplitManagementStateAsync(management, cancellationToken);
-            if (state.Status == SplitWorkerStatus.RemovalRequested)
+            WorkerOriginState state = await ReadManagementStateAsync(management, cancellationToken);
+            if (state.Status == WorkerStatus.RemovalRequested)
             {
                 return state;
             }

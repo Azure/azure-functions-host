@@ -62,16 +62,52 @@ public sealed partial class WorkerLinkController : Controller
     /// <param name="cancellationToken">Cancels this request and, for a new link, its initialization attempt.</param>
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
-    /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
-    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
+    /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the worker is already linked to a
+    /// different endpoint or Runtime identity, or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
     /// connection or handshake is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
     /// <remarks>
+    /// <para>
     /// Success carries no response body: the status code is the entire success contract, and the request URI already
     /// identifies the link. Clients must treat any success body as optional so that fields can be added later without
     /// a breaking change.
-    /// The platform is responsible for assignment/link ordering; this action does not guard against pre-assignment links.
+    /// </para>
+    /// <para>
+    /// The platform must complete WorkerProxy assignment before invoking this endpoint. Assignment can precede
+    /// the Worker's valid <c>StartStream</c>; this action waits for startup and initialization rather than treating
+    /// assignment acceptance as readiness. Linking establishes the Runtime stream used for <c>WorkerInitRequest</c>.
+    /// This action does not guard against pre-assignment links.
+    /// </para>
+    /// <para>
+    /// Retry an uncertain outcome with the same case-sensitive worker ID, ordinal <c>Uri.AbsoluteUri</c> endpoint,
+    /// and Runtime identity values. All declared identity fields participate in value equality with ordinal string
+    /// comparison; omitted and null identity are equivalent, but differ from a supplied identity. Unknown identity
+    /// fields are ignored. Matching pending requests share initialization; they do not create another connection.
+    /// A successful retry returns <c>200</c>. Changing the endpoint or identity returns <c>409</c>/<c>LinkConflict</c>.
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// <c>400</c>: the <c>errors</c> validation envelope reports <c>Required</c>, <c>InvalidEndpoint</c>, or
+    /// <c>InvalidBody</c> with a field target. Correct the request before retrying. Unsupported media types use
+    /// framework <c>415</c> handling, which does not guarantee this envelope.
+    /// </description></item>
+    /// <item><description>
+    /// <c>409</c>: <c>LinkConflict</c> identifies a conflicting endpoint or Runtime identity;
+    /// <c>WorkerTerminated</c> identifies an initialized channel that has terminated. Neither is resolved by replaying
+    /// the same request; a terminated worker ID cannot be linked again in this Runtime registry.
+    /// </description></item>
+    /// <item><description>
+    /// <c>503</c>: <c>RuntimeStopping</c>, <c>WorkerUnavailable</c>, or <c>LinkTimeout</c>.
+    /// Retry transient connection/initialization failures after cleanup, using the same values and platform retry
+    /// policy. A timeout does not establish whether a shared attempt completed; an exact retry can discover success.
+    /// A stopping Runtime or an unhealthy WorkerProxy requires platform recovery rather than indefinite retries.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// Lifecycle failure codes are returned in <c>error.code</c>, with diagnostic text in <c>error.detail</c>.
+    /// Callers should branch on the stable code, not the detail.
+    /// </para>
     /// </remarks>
     [HttpPut]
     [Route("admin/workers/{workerId}")]
@@ -123,15 +159,13 @@ public sealed partial class WorkerLinkController : Controller
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, string? runtimeIdentity, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, WorkerLinkRuntimeIdentity? runtimeIdentity, long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WorkerLinkResult result = runtimeIdentity is null
-                ? await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken)
-                : await _registry.LinkAsync(workerId, grpcEndpoint, runtimeIdentity, cancellationToken);
+            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, runtimeIdentity, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);

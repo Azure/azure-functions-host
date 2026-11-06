@@ -8,6 +8,19 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <summary>
 /// Provides an immutable lifecycle snapshot, without assignment environment values or wire-format concerns.
 /// </summary>
+/// <param name="PodName">The worker proxy pod name.</param>
+/// <param name="Revision">The monotonically increasing state revision.</param>
+/// <param name="SessionId">The current or most recently terminated worker session identifier.</param>
+/// <param name="IsWorkerAttached">Whether a worker stream is attached.</param>
+/// <param name="WorkerId">The worker identity recorded after a validated StartStream.</param>
+/// <param name="AssignmentState">The current assignment lifecycle state.</param>
+/// <param name="StartupMode">The startup mode selected by the assignment.</param>
+/// <param name="FunctionAppName">The assigned function app name.</param>
+/// <param name="FunctionGroupName">The assigned function group name.</param>
+/// <param name="IsAlwaysReady">Whether the assignment belongs to an always-ready allocation.</param>
+/// <param name="StartupTime">The worker proxy startup time, retained across state revisions.</param>
+/// <param name="HttpProxyEndpoint">The accepted externally mapped HTTPS origin, when supplied.</param>
+/// <param name="MaxHttpConcurrency">The assigned maximum HTTP concurrency, when specified.</param>
 internal sealed record WorkerPodState(
     string PodName,
     long Revision,
@@ -20,14 +33,27 @@ internal sealed record WorkerPodState(
     string? FunctionGroupName,
     bool? IsAlwaysReady,
     DateTimeOffset StartupTime,
+    Uri? HttpProxyEndpoint = null,
     int? MaxHttpConcurrency = null)
 {
-    public SplitPodIdentity? RuntimeIdentity { get; init; }
+    /// <summary>
+    /// Gets the identity supplied by the current admitted Runtime stream.
+    /// </summary>
+    public PodIdentity? RuntimeIdentity { get; init; }
 
+    /// <summary>
+    /// Gets a value indicating whether a correlated successful WorkerInit response has been written to the Runtime.
+    /// </summary>
     public bool RuntimeInitialized { get; init; }
 
+    /// <summary>
+    /// Gets a value indicating whether removal has permanently closed admission for this pod.
+    /// </summary>
     public bool RemovalRequested { get; init; }
 
+    /// <summary>
+    /// Gets a value indicating whether the assigned worker has completed initialization with an identified Runtime.
+    /// </summary>
     public bool IsRuntimeInitialized => IsWorkerReady &&
         AssignmentState == WorkerAssignmentState.Ready && RuntimeInitialized && RuntimeIdentity is not null;
 
@@ -35,13 +61,22 @@ internal sealed record WorkerPodState(
     public bool IsWorkerReady => !RemovalRequested && IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
-    public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
-        ? WorkerPodStatus.ReadyForRequest
-        : WorkerPodStatus.None;
+    public WorkerPodStatus PodStatus => RemovalRequested || AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
+        ? WorkerPodStatus.RemovalRequested
+        : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
+        ? WorkerPodStatus.Running
+        : WorkerPodStatus.Starting;
+
+    public bool HasAuthenticationConfigurationError { get; init; }
+
+    public bool IsUnhealthy => HasAuthenticationConfigurationError || AssignmentState is WorkerAssignmentState.Failed;
 
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.
     /// </summary>
+    /// <param name="podName">The worker proxy pod name.</param>
+    /// <param name="startupTime">The worker proxy startup time.</param>
+    /// <returns>The initial pod snapshot.</returns>
     public static WorkerPodState CreateUnassigned(string podName, DateTimeOffset startupTime) =>
         new(
             PodName: podName,

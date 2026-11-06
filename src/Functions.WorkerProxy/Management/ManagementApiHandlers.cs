@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
@@ -16,9 +15,6 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 internal static class ManagementApiHandlers
 {
-    public static IResult GetWorkerReady(WorkerPodStateManager manager) =>
-        manager.State.IsWorkerReady ? TypedResults.Ok() : TypedResults.StatusCode(StatusCodes.Status503ServiceUnavailable);
-
     public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
@@ -42,52 +38,34 @@ internal static class ManagementApiHandlers
     }
 
     /// <summary>
-    /// Parses the optional revision query and returns or polls worker state, honoring request cancellation.
+    /// Accepts the platform's last flat origin snapshot, or null for an immediate startup checkpoint.
     /// </summary>
-    public static async Task<IResult> GetWorkerStateAsync(HttpRequest request, WorkerPodStateManager manager)
-    {
-        if (!TryGetLastKnownRevision(request.Query, out long? lastKnownRevision))
-        {
-            return InvalidRevision();
-        }
-
-        return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
-    }
-
-    public static async Task<IResult> PostInfraInstanceStateAsync(
-        SplitWorkerOriginState? previousState,
-        HttpRequest request,
-        WorkerPodStateManager manager)
-    {
-        CancellationToken cancellationToken = request.HttpContext.RequestAborted;
-        cancellationToken.ThrowIfCancellationRequested();
-        SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
-        if (previousState is null || previousState != current)
-        {
-            return SplitStateResponse(current);
-        }
-
-        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.RevisionId, cancellationToken);
-        return result.State is { } state
-            ? SplitStateResponse(SplitWorkerOriginState.FromState(state))
-            : TypedResults.NoContent();
-    }
-
     public static async Task<IResult> GetInstanceStateAsync(
-        long? revision,
+        WorkerOriginState? originState,
         WorkerPodStateManager manager,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (revision is not { } lastKnownRevision)
+        WorkerPodState current = manager.State;
+        if (originState is null)
         {
-            return StateResponse(manager.State);
+            return StateResponse(current);
         }
 
-        // Revisions never decrease, so a revision valid here remains valid when the manager registers the poll.
-        if (lastKnownRevision < 0 || lastKnownRevision > manager.State.Revision)
+        if (!string.Equals(originState.FunctionsContainerType, WorkerOriginState.ContainerType, StringComparison.Ordinal))
+        {
+            return ValidationError([new(WorkerApiErrorCodes.InvalidValue, "functionsContainerType")]);
+        }
+
+        int lastKnownRevision = originState.RevisionId;
+        if (lastKnownRevision < 0)
         {
             return InvalidRevision();
+        }
+
+        if (originState != WorkerOriginState.FromState(current))
+        {
+            return StateResponse(current);
         }
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(lastKnownRevision, cancellationToken);
@@ -95,29 +73,7 @@ internal static class ManagementApiHandlers
     }
 
     internal static IResult InvalidRevision() =>
-        ValidationError([new(WorkerApiErrorCodes.InvalidRevision, "lastKnownRevision")]);
-
-    private static bool TryGetLastKnownRevision(IQueryCollection query, out long? lastKnownRevision)
-    {
-        lastKnownRevision = null;
-        if (!query.TryGetValue("lastKnownRevision", out var revisions))
-        {
-            return true;
-        }
-
-        if (revisions is not [string value])
-        {
-            return false;
-        }
-
-        if (!long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long revision))
-        {
-            return false;
-        }
-
-        lastKnownRevision = revision;
-        return true;
-    }
+        ValidationError([new(WorkerApiErrorCodes.InvalidRevision, "revisionId")]);
 
     private static IResult ValidationError(IReadOnlyList<RequestValidationError> errors) =>
         TypedResults.Json(new RequestValidationResponse(errors),
@@ -128,8 +84,5 @@ internal static class ManagementApiHandlers
             WorkerProxyJsonContext.Default.WorkerApiErrorResponse, statusCode: statusCode);
 
     private static IResult StateResponse(WorkerPodState state) =>
-        TypedResults.Json(WorkerInstanceState.FromState(state), WorkerProxyJsonContext.Default.WorkerInstanceState);
-
-    private static IResult SplitStateResponse(SplitWorkerOriginState state) =>
-        TypedResults.Json(state, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
+        TypedResults.Json(WorkerOriginState.FromState(state), WorkerProxyJsonContext.Default.WorkerOriginState);
 }

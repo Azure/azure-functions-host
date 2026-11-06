@@ -66,9 +66,10 @@ sees them. Host then uses the existing registry and channel lifecycle:
    `PUT /admin/infra/host/state` client. Publication is serialized with background and final-shutdown sends,
    so a stale in-flight publication cannot overtake the reduction. Drain begins only after a successful HTTP
    response from AppServer; that response is not an applied-state acknowledgement.
-4. The selected channel closes invocation admission under the same gate used by dispatch. Dispatch using an
-   older ready snapshot rechecks that gate and tries another channel. Non-HTTP scale-in skips the publication
-   barrier because it does not reduce HTTP capacity.
+4. The selected channel closes invocation admission under the existing lifecycle lock shared by dispatch and
+   idle retirement. Dispatch using an older ready snapshot rechecks that lock and tries another channel in the
+   invocation's function group. Existing invocation attribution and on-demand HTTP activity tracking are preserved.
+   Non-HTTP scale-in skips the publication barrier because it does not reduce HTTP capacity.
 5. The selected channel drains the base `WorkerChannel` accepted-invocation tracking used by `TryPostInvocation`
    and shutdown, including queued inputs and input conversion. The drain waits for all accepted results even if
    an earlier result fails or is canceled. Channel disposal uses that same shutdown completion path for work that
@@ -77,7 +78,9 @@ sees them. Host then uses the existing registry and channel lifecycle:
    the response, even if the worker has already sent its successful gRPC response. This keeps the Runtime link
    open while an accepted HTTP response is still streaming.
 7. After those invocations reach a terminal result, the registry uses the existing unlink path to close and
-   dispose the channel.
+   dispose only the selected channel. Concurrent explicit unlink or terminal-channel cleanup is a no-op for the
+   deferred drain cleanup. Successfully admitted worker IDs remain terminal after unlink and cannot be reused
+   in the same registry.
 
 Invocation success, failure, and cancellation all satisfy drain completion. The API adds no drain timeout:
 forcibly closing a channel on a timer would violate the accepted-work drain contract. Registry shutdown still
@@ -120,6 +123,8 @@ The hosted public API tests cover:
 
 - absolute retained count and repeated-request behavior;
 - exact function-group and capacity-class isolation;
+- group-aware routing and invocation attribution from a stale ready snapshot after scale-in;
+- explicit unlink during drain preserving terminal worker IDs and workers outside the selected class;
 - mixed HTTP Always Ready/on-demand workers, zero/nonzero retention, and repeated/concurrent requests;
 - successful outbound AppServer publication before admission closes or the link disconnects;
 - rejection/cancellation without drain, reservation rollback, and a later successful request;

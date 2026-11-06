@@ -3,12 +3,11 @@
 
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Identity;
 
-internal sealed class TokenServiceProxyWorkerOptionsValidator(IConfiguration configuration) : IValidateOptions<TokenServiceProxyWorkerOptions>
+internal sealed class TokenServiceProxyWorkerOptionsValidator : IValidateOptions<TokenServiceProxyWorkerOptions>
 {
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, TokenServiceProxyWorkerOptions options)
@@ -27,11 +26,6 @@ internal sealed class TokenServiceProxyWorkerOptionsValidator(IConfiguration con
         if (!TokenServiceProxyProtocol.IsTokenPath(options.TokenPath))
         {
             failures.Add($"The Token Service proxy {nameof(options.TokenPath)} must specify a valid token-acquisition path.");
-        }
-
-        if (string.IsNullOrWhiteSpace(configuration[TokenServiceProxyWorkerOptions.SecretSettingName]))
-        {
-            failures.Add($"The enabled Token Service proxy requires the platform-injected {TokenServiceProxyWorkerOptions.SecretSettingName}.");
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);

@@ -37,7 +37,8 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
     internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
-        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null, string functionGroupName = null, string maxHttpConcurrency = null)
+        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null,
+        string functionGroupName = "function:TestFunction", string maxHttpConcurrency = null, bool handlesInvocationCancel = false)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
         RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
@@ -62,6 +63,11 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         if (advertisedHttpUri is not null)
         {
             initResponse.Capabilities.Add(RpcWorkerConstants.HttpUri, advertisedHttpUri);
+        }
+
+        if (handlesInvocationCancel)
+        {
+            initResponse.Capabilities.Add(RpcWorkerConstants.HandlesInvocationCancelMessage, bool.TrueString);
         }
 
         if (functionGroupName is not null)

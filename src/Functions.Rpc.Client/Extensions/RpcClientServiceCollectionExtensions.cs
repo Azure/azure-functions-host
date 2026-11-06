@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -82,6 +83,7 @@ public static class RpcClientServiceCollectionExtensions
             provider.GetRequiredService<IHostApplicationLifetime>(),
             provider.GetRequiredService<ILogger<RpcClientScriptHostStartupCoordinator>>()));
         services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RpcClientScriptHostStartupCoordinator>());
+        services.AddHostedService<HttpWorkerIdleMonitor>();
 
         return services;
     }
@@ -111,12 +113,14 @@ public static class RpcClientServiceCollectionExtensions
         // fork the metadata cache used by the root metadata manager.
         services.AddSingleton(channelRegistry);
         services.AddSingleton(metadataProvider);
+
         services.AddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
         services.AddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
         services.AddSingleton<IScriptHostLifecycleService, RpcClientScriptHostLifecycleService>();
         services.AddSingleton<IScriptHostWorkerManager, RpcClientScriptHostWorkerManager>();
         services.AddRpcScriptHostCoreServices();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
+        services.UseGroupNeutralFunctionListeners();
 
         return services;
     }

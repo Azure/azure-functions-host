@@ -1,10 +1,14 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -24,6 +28,36 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             Other,
         }
 
+        [Theory]
+        [InlineData("http", false, false)]
+        [InlineData("durable", false, false)]
+        [InlineData("function:OtherFunction", false, false)]
+        [InlineData("deployment:validation", true, false)]
+        [InlineData("DEPLOYMENT:VALIDATION", true, false)]
+        [InlineData("deployment:validation", true, true)]
+        public async Task Decorate_GroupNeutralServingRetainsValidationSuppression(string targetGroup, bool suppressed, bool targetingEnabled)
+        {
+            var listener = new Mock<IListener>(MockBehavior.Strict);
+            listener.Setup(value => value.Dispose());
+            if (!suppressed)
+            {
+                listener.Setup(value => value.StartAsync(CancellationToken.None)).Returns(Task.CompletedTask);
+            }
+
+            var definition = CreateDefinition("OtherFunction");
+            var context = new ListenerDecoratorContext(definition, listener.Object.GetType(), listener.Object);
+            var decorator = new FunctionGroupListenerDecorator(Mock.Of<IFunctionMetadataManager>(), CreateEnvironment(targetGroup),
+                _logger, Options.Create(new FunctionGroupListenerOptions { RestrictListenersToTargetGroup = targetingEnabled }));
+
+            IListener result = decorator.Decorate(context);
+            await result.StartAsync(CancellationToken.None);
+            result.Dispose();
+
+            Assert.Equal(suppressed, !ReferenceEquals(listener.Object, result));
+            listener.Verify(value => value.StartAsync(CancellationToken.None), suppressed ? Times.Never() : Times.Once());
+            listener.Verify(value => value.Dispose(), Times.Once());
+        }
+
         [Fact]
         public void Decorate_NoTargetGroupConfigured_ReturnsOriginalListener()
         {
@@ -34,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment(null);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -53,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -72,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -91,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("other");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -136,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment(targetGroup);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);

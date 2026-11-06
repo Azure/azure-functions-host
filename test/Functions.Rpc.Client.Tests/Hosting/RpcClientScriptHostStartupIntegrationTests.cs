@@ -97,6 +97,38 @@ public class RpcClientScriptHostStartupIntegrationTests
     }
 
     [Fact]
+    public async Task FirstLink_IndexingGroupDoesNotControlInvocationRouting()
+    {
+        await using TestWorker indexer = await TestWorker.StartAsync("durable-indexer", functionGroupName: "durable");
+        await using TestWorker http = await TestWorker.StartAsync("http-worker");
+        await using ClientTestHost testHost = new();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        await registry.LinkAsync("durable-indexer", indexer.Endpoint, cancellationToken: timeout.Token);
+        await coordinator.ActivationTask!.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        await indexer.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+        IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
+        ScriptHost scriptHost = scriptServices.GetRequiredService<ScriptHost>();
+        Assert.Equal("http", Assert.Single(scriptHost.Functions).Metadata.GetFunctionGroup());
+
+        Task<string> invocation = InvokeHttpFunctionAsync(scriptHost, timeout.Token);
+        Assert.False(invocation.IsCompleted);
+        await registry.LinkAsync("http-worker", http.Endpoint, cancellationToken: timeout.Token);
+        string selectedWorker = await invocation.WaitAsync(timeout.Token);
+
+        Assert.Equal("http-worker", selectedWorker);
+        Assert.Equal(0, indexer.Service.Invocations);
+        Assert.Equal(1, indexer.Service.MetadataRequests);
+        Assert.Equal(0, http.Service.MetadataRequests);
+        Assert.Equal(1, indexer.Service.FunctionLoadRequests);
+        Assert.Equal(1, http.Service.FunctionLoadRequests);
+    }
+
+    [Fact]
     public async Task FirstLink_IndexesWorkerMetadataWithExistingHostConfiguration_AndThreeWorkersServeInvocations()
     {
         await using TestWorker firstWorker = await TestWorker.StartAsync("first", maxHttpConcurrency: 7);
@@ -324,7 +356,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.Null(manager.Services);
         Assert.Empty(Directory.EnumerateFiles(testHost.ScriptPath));
 
-        await registry.LinkAsync("first", first.Endpoint, timeout.Token);
+        await registry.LinkAsync("first", first.Endpoint, null, timeout.Token);
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         await first.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
@@ -339,7 +371,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.Single(scriptHost.Functions);
         Assert.False(File.Exists(Path.Combine(testHost.ScriptPath, "host.json")));
 
-        await registry.LinkAsync("later", later.Endpoint, timeout.Token);
+        await registry.LinkAsync("later", later.Endpoint, null, timeout.Token);
 
         Assert.Equal("1", later.Service.InitRequest!.Capabilities["HostConfiguration"]);
         Assert.Same(scriptServices, manager.Services);
@@ -381,7 +413,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("first", first.Endpoint, timeout.Token);
+        await registry.LinkAsync("first", first.Endpoint, null, timeout.Token);
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         await first.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
@@ -390,7 +422,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.Null(sourceProvider.GetConfigurationSource());
         Assert.Equal("local", scriptServices.GetRequiredService<IConfiguration>()["AzureFunctionsJobHost:extensions:custom:setting"]);
 
-        await registry.LinkAsync("later", later.Endpoint, timeout.Token);
+        await registry.LinkAsync("later", later.Endpoint, null, timeout.Token);
 
         Assert.Null(sourceProvider.GetConfigurationSource());
         Assert.Same(scriptServices, manager.Services);
@@ -429,7 +461,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
         WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() =>
-            registry.LinkAsync("worker", invalid.Endpoint, timeout.Token));
+            registry.LinkAsync("worker", invalid.Endpoint, null, timeout.Token));
 
         Assert.Null(exception.InnerException);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
@@ -449,7 +481,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.DoesNotContain(testHost.Logs, log =>
             log.Message?.Contains("customer-secret", StringComparison.Ordinal) is true ||
             log.Exception?.ToString().Contains("customer-secret", StringComparison.Ordinal) is true);
-        await registry.LinkAsync("worker", valid.Endpoint, timeout.Token);
+        await registry.LinkAsync("worker", valid.Endpoint, null, timeout.Token);
         await coordinator.ActivationTask.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         Assert.Single(manager.Services!.GetRequiredService<ScriptHost>().Functions);
@@ -467,7 +499,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
+        await registry.LinkAsync("worker", worker.Endpoint, null, timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
 
         IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
@@ -495,7 +527,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
+        await registry.LinkAsync("worker", worker.Endpoint, null, timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
 
         IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
@@ -656,13 +688,14 @@ public class RpcClientScriptHostStartupIntegrationTests
         public TestWorkerService Service { get; } = service;
 
         public static async Task<TestWorker> StartAsync(
-            string workerId, string language = "dotnet-isolated", RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10)
+            string workerId, string language = "dotnet-isolated", RpcHostConfiguration? hostConfiguration = null,
+            int maxHttpConcurrency = 10, string functionGroupName = "http")
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency);
+            TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency, functionGroupName);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -681,7 +714,8 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId, string language, RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10)
+    public sealed class TestWorkerService(
+        string workerId, string language, RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10, string functionGroupName = "http")
         : FunctionRpc.FunctionRpcBase
     {
         private int _functionLoadRequests;
@@ -715,7 +749,7 @@ public class RpcClientScriptHostStartupIntegrationTests
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
                             InitRequest = request.WorkerInitRequest;
                             response.WorkerInitResponse = new() { Result = Success(), HostConfiguration = hostConfiguration };
-                            response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+                            response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
                             response.WorkerInitResponse.Capabilities.Add(
                                 RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency.ToString(CultureInfo.InvariantCulture));
                             break;

@@ -9,16 +9,16 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public partial class FlexConsumptionMetricsPublisher
+    public abstract partial class FlexConsumptionMetricsPublisherBase
     {
         private sealed class Lifecycle : IDisposable
         {
-            private readonly FlexConsumptionMetricsPublisher _parent;
+            private readonly FlexConsumptionMetricsPublisherBase _parent;
             private readonly TimeSpan _initialDelay;
             private readonly TimeSpan _intervalDelay;
             private readonly CancellationTokenSource _cts = new();
 
-            public Lifecycle(FlexConsumptionMetricsPublisher parent, TimeSpan initialDelay, TimeSpan intervalDelay)
+            public Lifecycle(FlexConsumptionMetricsPublisherBase parent, TimeSpan initialDelay, TimeSpan intervalDelay)
             {
                 _parent = parent;
                 _initialDelay = initialDelay;
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     await Task.Delay(_initialDelay, cancellation);
                     while (!cancellation.IsCancellationRequested)
                     {
-                        await _parent.OnPublishMetrics(DateTime.UtcNow, stopwatch);
+                        await _parent.OnPublishMetrics(_parent.Clock.GetUtcNow().UtcDateTime, stopwatch);
                         stopwatch = ValueStopwatch.StartNew();
                         await Task.Delay(_intervalDelay, cancellation);
                     }

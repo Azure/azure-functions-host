@@ -8,13 +8,20 @@ using System.Threading;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Identity;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Host;
 
@@ -62,11 +69,21 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
                 Credentials = null,
                 ActivityHeadersPropagator = null
             });
+        services.Configure<FlexConsumptionMetricsPublisherOptions>(static options => options.UseWorkerAttribution = true);
+        services.AddSingleton<IWorkerInvocationTracker>(static provider =>
+        {
+            IMetricsPublisher publisher = provider.GetRequiredService<IMetricsPublisher>();
+
+            return publisher is IWorkerInvocationTracker tracker
+                ? tracker : (IWorkerInvocationTracker)NullMetricsPublisher.Instance;
+        });
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
 
         // Compute separation does not run a placeholder ScriptHost. The ScriptHost starts after the first worker
         // links, so specialization must not wait to restart it.
         services.Configure<StandbyOptions>(static options => options.SupportsPlaceholderScriptHost = false);
+        services.AddOptions<MvcOptions>().Configure<IOptions<JsonOptions>, ILoggerFactory>(static (options, json, loggerFactory) =>
+            options.InputFormatters.Insert(0, new WorkerLinkRequestInputFormatter(json.Value, loggerFactory.CreateLogger<SystemTextJsonInputFormatter>())));
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }
 

@@ -123,13 +123,13 @@ Open the `fake-platform` console logs in the dashboard to watch the assign and l
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
 profile. Aspire supplies each entry's management address, mapped HTTP authority, runtime gRPC endpoint, and worker ID.
 The assignment sends that scheme-less HTTP authority, including default ports, and publishes it as the effective
-runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
+HTTPS runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
 `404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
 endpoints, and both link to the same Host.
 
 `httpProxyEndpoint` is optional for non-HTTP workers. HTTP-capable workers require it in the accepted assignment
-before successful HTTP initialization; supply a scheme-less mapped DNS name or IPv4 address with an explicit nonzero port, such as
-`worker-proxy-1:28080`. IPv6 literals, including scoped addresses, are not supported for this assignment field.
+before successful HTTP initialization; supply a scheme-less mapped DNS name, IPv4 address or bracketed IPv6 literal with an explicit nonzero port,
+such as `worker-proxy-1:28080` or `[::1]:28080`. Compatible absolute HTTPS origins are also accepted; scoped IPv6 and plaintext origins are rejected.
 There is no startup fallback: `WorkerProxy:HttpProxyEndpoint` and `WORKERPROXY__HTTPPROXYENDPOINT` are no longer consumed.
 An accepted assignment without the field leaves the effective origin unset, so HTTP capability initialization fails
 rather than advertising the worker's local address. The effective worker destination must have a different origin

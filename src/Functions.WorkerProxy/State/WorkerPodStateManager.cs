@@ -24,6 +24,7 @@ internal sealed class WorkerPodStateManager
     private static readonly TimeSpan PollTimeout = TimeSpan.FromSeconds(60);
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
+    private readonly TaskCompletionSource<WorkerAssignment> _assigned = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeProvider _timeProvider;
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
@@ -31,6 +32,12 @@ internal sealed class WorkerPodStateManager
     private long _lastSessionId;
     private int _assignmentClaimed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
+    /// Creates the pod's initial state and captures its startup time.
+    /// </summary>
+    /// <param name="options">The worker proxy configuration containing the pod identity.</param>
+    /// <param name="timeProvider">The clock used for startup time and state-poll deadlines.</param>
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
         TimeProvider timeProvider)
@@ -44,6 +51,8 @@ internal sealed class WorkerPodStateManager
         _timeProvider = timeProvider;
         _state = WorkerPodState.CreateUnassigned(podName, _timeProvider.GetUtcNow());
     }
+
+    public DateTimeOffset StartupTime => State.StartupTime;
 
     /// <summary>
     /// Gets the current immutable state without incrementing its revision.
@@ -71,6 +80,26 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Publishes known authentication configuration health without changing assignment or worker lifecycle.
+    /// </summary>
+    public void SetAuthenticationConfigurationError(bool hasError)
+    {
+        lock (_stateLock)
+        {
+            if (_state.HasAuthenticationConfigurationError == hasError)
+            {
+                return;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                HasAuthenticationConfigurationError = hasError
+            });
+        }
+    }
+
+    /// <summary>
     /// Captures the pod state and effective HTTP origin for one worker session under the assignment lock.
     /// </summary>
     public (WorkerPodState State, string? HttpProxyEndpoint) GetWorkerCapabilitySnapshot(long sessionId)
@@ -81,12 +110,18 @@ internal sealed class WorkerPodStateManager
         {
             string? httpProxyEndpoint = _state.SessionId == sessionId
                 && _state.AssignmentState is WorkerAssignmentState.Unassigned or WorkerAssignmentState.Ready
-                    ? _assignment?.ResolvedHttpProxyEndpoint?.AbsoluteUri
+                    ? _assignment?.HttpProxyEndpoint?.AbsoluteUri
                     : null;
 
             return (_state, httpProxyEndpoint);
         }
     }
+
+    /// <summary>
+    /// Waits for the pod's worker assignment to be accepted.
+    /// </summary>
+    public Task<WorkerAssignment> WaitForAssignmentAsync(CancellationToken cancellationToken = default)
+        => _assigned.Task.WaitAsync(cancellationToken);
 
     /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
@@ -150,8 +185,10 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed || _state.RemovalRequested)
+            // Pre-assignment transport sessions may be replaced; an assigned pod's termination is terminal.
+            if (sessionId <= _lastSessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated ||
+                _state.RemovalRequested)
             {
                 return false;
             }
@@ -217,14 +254,17 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Records identity supplied by an admitted Runtime stream, not by worker messages.
     /// </summary>
-    public bool OnRuntimeAttached(long sessionId, SplitPodIdentity? identity)
+    /// <param name="sessionId">The attaching relay session identifier.</param>
+    /// <param name="identity">The optional Runtime identity supplied in stream metadata.</param>
+    /// <returns>Whether the Runtime attachment is accepted for the current pod state.</returns>
+    public bool OnRuntimeAttached(long sessionId, PodIdentity? identity)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
         lock (_stateLock)
         {
             if (sessionId < _lastSessionId ||
-                _state.AssignmentState == WorkerAssignmentState.Failed ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated ||
                 _state.RemovalRequested)
             {
                 return false;
@@ -252,8 +292,36 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Clears identity when a Runtime attachment releases, without terminating a retained worker session.
+    /// </summary>
+    /// <param name="sessionId">The relay session whose Runtime attachment released.</param>
+    /// <returns>Whether Runtime identity was withdrawn.</returns>
+    public bool OnRuntimeDetached(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (sessionId < _lastSessionId || _state.RuntimeIdentity is null)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                RuntimeIdentity = null,
+                RuntimeInitialized = false
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Publishes a correlated successful WorkerInit handshake for the current identified Runtime.
     /// </summary>
+    /// <param name="sessionId">The relay session that wrote the response to the Runtime.</param>
+    /// <returns>Whether Runtime initialization was published.</returns>
     public bool OnRuntimeInitialized(long sessionId)
     {
         lock (_stateLock)
@@ -277,7 +345,10 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
-    public bool OnSessionTerminated(long sessionId)
+    /// <param name="sessionId">The terminating relay session identifier.</param>
+    /// <param name="assignmentFailed">Whether a worker protocol violation establishes an assignment health failure.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnSessionTerminated(long sessionId, bool assignmentFailed = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -316,16 +387,18 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
+            WorkerAssignmentState assignmentState = _assignment is null
+                ? WorkerAssignmentState.Unassigned
+                : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
+
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                // Any assigned worker-session loss requires the pod owner to replace this unhealthy pod.
-                AssignmentState = _assignment is null
-                    ? WorkerAssignmentState.Unassigned
-                    : WorkerAssignmentState.Failed
+                // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
+                AssignmentState = assignmentState
             });
             return true;
         }
@@ -355,6 +428,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = null,
                 FunctionAppName = null,
                 FunctionGroupName = null,
+                HttpProxyEndpoint = null,
                 MaxHttpConcurrency = null,
                 IsAlwaysReady = null,
                 RuntimeIdentity = null,
@@ -387,7 +461,7 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
+                return _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
@@ -398,7 +472,7 @@ internal sealed class WorkerPodStateManager
                 return WorkerAssignmentResult.AssignmentConflict;
             }
 
-            // Assignment must precede StartStream so startup dependencies can use it.
+            // Accept either startup order; assignment acceptance alone does not make the Worker ready.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
@@ -409,7 +483,8 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 MaxHttpConcurrency = assignment.MaxHttpConcurrency,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                HttpProxyEndpoint = assignment.HttpProxyEndpoint
             };
 
             // The gate and publication share the lifecycle lock so only one identity is reserved.
@@ -419,6 +494,7 @@ internal sealed class WorkerPodStateManager
             }
 
             _assignment = assignment;
+            _assigned.TrySetResult(assignment);
             UpdateStateAndNotifyWaitersLocked(assigned);
             return WorkerAssignmentResult.Created;
         }

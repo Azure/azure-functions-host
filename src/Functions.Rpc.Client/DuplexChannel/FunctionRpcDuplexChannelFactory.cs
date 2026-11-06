@@ -2,7 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -20,6 +21,12 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<StreamingMessage>
 {
     private const string RuntimeIdentityHeaderName = "x-ms-functions-runtime-identity-bin";
+    private static readonly JsonSerializerOptions IdentityJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly IRpcClientFactory _clientFactory;
     private readonly ILogger<FunctionRpcDuplexChannelFactory> _logger;
     private readonly ITokenServiceProxyRequestHandler _proxyHandler;
@@ -45,11 +52,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     }
 
     /// <inheritdoc />
-    public Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
-        => ConnectAsync(endpoint, null, cancellationToken);
-
-    /// <inheritdoc />
-    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, string runtimeIdentity,
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, WorkerLinkRuntimeIdentity runtimeIdentity = null,
         CancellationToken cancellationToken = default)
     {
         if (_proxyOptions.Enabled && _proxyHandler is null)
@@ -63,7 +66,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
         Metadata headers = runtimeIdentity is null
             ? null
-            : new() { { RuntimeIdentityHeaderName, Encoding.UTF8.GetBytes(runtimeIdentity) } };
+            : new() { { RuntimeIdentityHeaderName, JsonSerializer.SerializeToUtf8Bytes(runtimeIdentity, IdentityJsonOptions) } };
         var call = client.EventStream(headers);
         try
         {

@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -105,11 +106,14 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
         Assert.NotNull(coordinator.ImplementationFactory);
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationType == typeof(HttpWorkerIdleMonitor) && descriptor.Lifetime == ServiceLifetime.Singleton);
         AssertSingleton<RuntimeStateManager, RuntimeStateManager>(services);
         ServiceDescriptor runtimeState = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IRuntimeStateManager)));
         Assert.Equal(ServiceLifetime.Singleton, runtimeState.Lifetime);
         Assert.NotNull(runtimeState.ImplementationFactory);
-        ServiceDescriptor[] hostedServices = [.. services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService))];
+        ServiceDescriptor[] hostedServices = [.. services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationFactory is not null)];
         Assert.Equal(2, hostedServices.Length);
         Assert.All(hostedServices, descriptor =>
         {
@@ -137,6 +141,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         Assert.Same(rootRegistry.Object, registryDescriptor.ImplementationInstance);
         ServiceDescriptor metadataDescriptor = Assert.Single(services.Where(service => service.ServiceType == typeof(IWorkerFunctionMetadataProvider)));
         Assert.Same(metadataProvider.Object, metadataDescriptor.ImplementationInstance);
+        Assert.DoesNotContain(services, service => service.ServiceType == typeof(IWorkerInvocationTracker));
         Assert.True(services.IndexOf(registryDescriptor) <
             services.IndexOf(services.Single(service => service.ServiceType == typeof(IRpcClientFunctionInvocationDispatcher))));
         AssertSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>(services);

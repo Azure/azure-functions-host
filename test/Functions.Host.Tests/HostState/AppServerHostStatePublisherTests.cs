@@ -711,7 +711,8 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         Assert.Same(latest, CurrentState);
         _stateManager.VerifyGet(manager => manager.Current, Times.Once());
         Assert.Equal(1, _client.AttemptCount);
-        Assert.True(retry.Disposed.Task.IsCompletedSuccessfully);
+        // WaitAsync can complete its consumer before its completion callback finishes disposing the timer.
+        await retry.Disposed.Task.WaitAsync(TestTimeout);
         Assert.False(_timers.Reader.TryRead(out _));
         AssertNoMorePublications();
     }

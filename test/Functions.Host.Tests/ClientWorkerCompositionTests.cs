@@ -10,21 +10,31 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Host.Tests;
@@ -99,6 +109,64 @@ public class ClientWorkerCompositionTests
     }
 
     [Fact]
+    public void ConfigureWebHostServices_UsesRootMetricsPublisherForWorkerAttribution()
+    {
+        var services = new ServiceCollection();
+        IMvcBuilder mvcBuilder = services.AddMvc();
+        var publisher = new Mock<IMetricsPublisher>();
+        IWorkerInvocationTracker tracker = publisher.As<IWorkerInvocationTracker>().Object;
+        services.AddSingleton(publisher.Object);
+
+        ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.Same(tracker, provider.GetRequiredService<IWorkerInvocationTracker>());
+        Assert.True(provider.GetRequiredService<IOptions<FlexConsumptionMetricsPublisherOptions>>().Value.UseWorkerAttribution);
+    }
+
+    [Fact]
+    public void ConfigureWebHostServices_UsesSameComputeSeparatedPublisherForDispatchAndPublication()
+    {
+        var environment = new Mock<IEnvironment>();
+        environment.Setup(value => value.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku))
+            .Returns(ScriptConstants.FlexConsumptionSku);
+        using IHost rootHost = CreateRootHost(out _, configureServices: services =>
+        {
+            services.AddSingleton(environment.Object);
+            services.Configure<FlexConsumptionMetricsPublisherOptions>(options =>
+                options.InitialPublishDelayMS = (int)TimeSpan.FromDays(1).TotalMilliseconds);
+        });
+
+        var publisher = Assert.IsType<FlexConsumptionPerWorkerMetricsPublisher>(rootHost.Services.GetRequiredService<IMetricsPublisher>());
+
+        Assert.Same(publisher, rootHost.Services.GetRequiredService<IWorkerInvocationTracker>());
+        Assert.Same(publisher, rootHost.Services.GetRequiredService<IMetricsPublisher>());
+    }
+
+    [Fact]
+    public void ConfigureWebHostServices_UsesSystemTextJsonOnlyForWorkerLinkRequests()
+    {
+        ServiceCollection services = new();
+        IMvcBuilder mvcBuilder = services.AddMvc().AddNewtonsoftJson();
+        ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        MvcOptions options = provider.GetRequiredService<IOptions<MvcOptions>>().Value;
+        WorkerLinkRequestInputFormatter formatter = Assert.IsType<WorkerLinkRequestInputFormatter>(options.InputFormatters[0]);
+        EmptyModelMetadataProvider metadataProvider = new();
+        DefaultHttpContext context = new();
+        context.Request.ContentType = "application/json";
+
+        InputFormatterContext linkContext = new(context, "request", new ModelStateDictionary(),
+            metadataProvider.GetMetadataForType(typeof(WorkerLinkRequest)), (stream, encoding) => new StreamReader(stream, encoding));
+        InputFormatterContext unrelatedContext = new(context, "request", new ModelStateDictionary(),
+            metadataProvider.GetMetadataForType(typeof(object)), (stream, encoding) => new StreamReader(stream, encoding));
+
+        Assert.True(formatter.CanRead(linkContext));
+        Assert.False(formatter.CanRead(unrelatedContext));
+        Assert.Contains(options.InputFormatters, value => value is NewtonsoftJsonInputFormatter);
+    }
+
+    [Fact]
     public void ConfigureWebHostServices_RegistersWorkerLinkControllerApplicationPart()
     {
         var services = new ServiceCollection();
@@ -123,6 +191,7 @@ public class ClientWorkerCompositionTests
             object rootRegistry = rootHost.Services.GetRequiredService(registryType);
             IWorkerFunctionMetadataProvider rootMetadataProvider =
                 rootHost.Services.GetRequiredService<IWorkerFunctionMetadataProvider>();
+            IWorkerInvocationTracker rootInvocationTracker = rootHost.Services.GetRequiredService<IWorkerInvocationTracker>();
             IServiceCollection childServices = rootHost.Services.CreateChildContainer(rootServices);
 
             ClientWorkerComposition.Instance.ConfigureScriptHostServices(childServices, rootHost.Services);
@@ -148,6 +217,7 @@ public class ClientWorkerCompositionTests
             Assert.Same(rootRegistry, childServiceProvider.GetRequiredService(registryType));
             Assert.All(childServiceProvider.GetServices(registryType), registry => Assert.Same(rootRegistry, registry));
             Assert.Same(rootMetadataProvider, childServiceProvider.GetRequiredService<IWorkerFunctionMetadataProvider>());
+            Assert.Same(rootInvocationTracker, childServiceProvider.GetRequiredService<IWorkerInvocationTracker>());
             Assert.All(childServiceProvider.GetServices<IWorkerFunctionMetadataProvider>(),
                 metadataProvider => Assert.Same(rootMetadataProvider, metadataProvider));
             Assert.Same(rootHost.Services.GetRequiredService<IRuntimeStateManager>(),
@@ -344,7 +414,8 @@ public class ClientWorkerCompositionTests
         Assert.True(string.Equals("ComputeFilesToPublish", publishFilter.Attribute("AfterTargets")?.Value, StringComparison.Ordinal));
     }
 
-    private static IHost CreateRootHost(out IServiceCollection services, IConfiguration? rootConfiguration = null)
+    private static IHost CreateRootHost(out IServiceCollection services, IConfiguration? rootConfiguration = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         IServiceCollection capturedServices = null!;
         IConfiguration configuration = rootConfiguration ?? new ConfigurationBuilder().Build();
@@ -362,6 +433,7 @@ public class ClientWorkerCompositionTests
                         options.ScriptPath = Directory.GetCurrentDirectory();
                         options.SecretsPath = Path.GetTempPath();
                     });
+                    configureServices?.Invoke(rootServices);
                 });
                 webBuilder.Configure(_ =>
                 {

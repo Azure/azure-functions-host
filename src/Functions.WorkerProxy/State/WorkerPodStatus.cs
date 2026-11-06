@@ -4,10 +4,19 @@
 namespace Azure.Functions.WorkerProxy.State;
 
 /// <summary>
-/// Describes the worker-pod status exposed to the platform.
+/// Describes the worker-pod lifecycle using Legion's split-worker status names.
 /// </summary>
 internal enum WorkerPodStatus
 {
-    None,
-    ReadyForRequest
+    /// <summary>Worker startup or assignment is incomplete.</summary>
+    Starting,
+
+    /// <summary>The assigned worker is ready.</summary>
+    Running,
+
+    /// <summary>The worker is retiring and may finish existing work but accept no new work.</summary>
+    Draining,
+
+    /// <summary>Worker removal has been requested; physical deletion is owned by the platform.</summary>
+    RemovalRequested
 }

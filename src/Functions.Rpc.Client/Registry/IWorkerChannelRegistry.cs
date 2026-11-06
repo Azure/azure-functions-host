@@ -29,14 +29,16 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>, and the channel is registered. Function setup is independent
     /// and is not awaited; it may already have started or completed when the caller observes the result.
     /// Use <see cref="GetReadyChannelsAsync"/> when an invocation-ready channel is required.
-    /// Matching worker IDs and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
-    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through worker capabilities.
+    /// Matching worker IDs, gRPC endpoint URIs, and Runtime identity values share initialization.
+    /// Endpoints are compared using ordinal <see cref="Uri.AbsoluteUri"/> equality; Runtime identity fields use
+    /// ordinal value equality. HTTP proxying is negotiated through worker capabilities.
     /// Different workers can link concurrently.
     /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
     /// A new attempt's deadline is shared with its waiters; a retry's deadline only ends its own wait.
     /// </remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
+    /// <param name="runtimeIdentity">Optional Runtime identity, included in exact retry matching.</param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <returns>
     /// The initialized and registered channel, and whether this caller started the successful attempt.
@@ -47,29 +49,8 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Links a Worker while conveying the platform's serialized Runtime identity.
-    /// </summary>
-    /// <param name="workerId">The worker identifier.</param>
-    /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
-    /// <param name="runtimeIdentity">Optional serialized Runtime identity, included in exact retry matching.</param>
-    /// <param name="cancellationToken">Cancels the link attempt or retry wait.</param>
-    /// <returns>The initialized and registered channel and whether the link is new.</returns>
-    Task<WorkerLinkResult> LinkAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        string runtimeIdentity,
-        CancellationToken cancellationToken = default)
-    {
-        if (runtimeIdentity is null)
-        {
-            return LinkAsync(workerId, grpcEndpoint, cancellationToken);
-        }
-
-        throw new NotSupportedException("This registry does not support identified Runtime links.");
-    }
 
     /// <summary>
     /// Atomically commits excess usable workers in one exact non-HTTP function group and capacity class to drain.
@@ -108,6 +89,15 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="cancellationToken">A token that cancels waiting to begin the unlink.</param>
     /// <returns><see langword="true"/> when a channel was removed; otherwise, <see langword="false"/>.</returns>
     Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retires ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold.
+    /// </summary>
+    /// <param name="threshold">The minimum continuous idle duration. Equality does not permit retirement.</param>
+    /// <param name="cancellationToken">Cancels the scan before the next retirement begins.</param>
+    /// <returns>A task that completes after claimed workers have been detached and disposed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The threshold is negative.</exception>
+    Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Attempts to get an initialized channel.

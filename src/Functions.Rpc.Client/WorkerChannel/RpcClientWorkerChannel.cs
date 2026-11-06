@@ -3,8 +3,10 @@
 
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -35,14 +37,18 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
+    private static readonly TimeSpan InitialIdleThreshold = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly Lock _invocationAdmissionLock = new();
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private bool _draining;
-    private bool _httpCapacityReserved;
-    private bool? _isAlwaysReady;
+    private readonly ILogger _activityLogger;
     private LifecycleState _lifecycleState;
+    private TimeProvider _activityTimeProvider = TimeProvider.System;
+    private long? _idleSince;
+    private int _ongoingRequests;
+    private bool _hasReceivedRequest;
+    private bool _retiring;
+    private bool _httpCapacityReserved;
 
     public RpcClientWorkerChannel(
         string workerId,
@@ -78,6 +84,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         Completion = ownedChannel.Reader.Completion;
+        _activityLogger = logger;
     }
 
     private enum LifecycleState
@@ -92,7 +99,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal HostConfiguration HostConfiguration { get; private set; }
 
     /// <summary>
-    /// Gets the assigned group captured after successful initialization, or null when not advertised.
+    /// Gets the assigned group captured from the initial successful response, or null before initialization.
     /// </summary>
     internal string FunctionGroupName { get; private set; }
 
@@ -101,6 +108,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     /// </summary>
     internal int? MaxHttpConcurrency { get; private set; }
 
+    // Assigned WorkerProxy instances advertise this. Null means missing or malformed handshake metadata.
+    // Only explicit true exempts a worker from idle retirement.
+    internal bool? IsAlwaysReady { get; private set; }
+
     /// <summary>
     /// Gets a value indicating whether the captured startup assignment belongs to the HTTP function group.
     /// </summary>
@@ -108,36 +119,54 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
+    internal Lock LifecycleLock => _lifecycleLock;
+
+    internal int OngoingRequests
+    {
+        get
+        {
+            lock (_lifecycleLock)
+            {
+                return _ongoingRequests;
+            }
+        }
+
+        set
+        {
+            lock (_lifecycleLock)
+            {
+                _ongoingRequests = value;
+                if (value > 0)
+                {
+                    _hasReceivedRequest = true;
+                }
+
+                _idleSince = null;
+            }
+        }
+    }
+
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+
+    // Terminal signals can precede registry cleanup and the base channel's disposal state.
+    internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
 
     internal bool IsHttpCapacityAvailable
     {
         get
         {
-            lock (_invocationAdmissionLock)
+            lock (_lifecycleLock)
             {
-                return !_httpCapacityReserved && IsUsableForInvocationsLocked();
-            }
-        }
-    }
-
-    // Terminal signals can precede registry cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations
-    {
-        get
-        {
-            lock (_invocationAdmissionLock)
-            {
-                return IsUsableForInvocationsLocked();
+                return !_httpCapacityReserved && IsReadyForInvocations;
             }
         }
     }
 
     internal bool TryReserveHttpScaleIn()
     {
-        lock (_invocationAdmissionLock)
+        lock (_lifecycleLock)
         {
-            if (_httpCapacityReserved || !IsHttpFunctionGroup || _isAlwaysReady is not true || !IsUsableForInvocationsLocked())
+            if (_httpCapacityReserved || !IsHttpFunctionGroup || IsAlwaysReady is not true || !IsReadyForInvocations)
             {
                 return false;
             }
@@ -149,7 +178,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal void ReleaseHttpScaleInReservation()
     {
-        lock (_invocationAdmissionLock)
+        lock (_lifecycleLock)
         {
             _httpCapacityReserved = false;
         }
@@ -158,10 +187,9 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal bool TryDispatchInvocation(ScriptInvocationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-
-        lock (_invocationAdmissionLock)
+        lock (_lifecycleLock)
         {
-            if (!IsUsableForInvocationsLocked())
+            if (!IsReadyForInvocations)
             {
                 return false;
             }
@@ -178,7 +206,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal bool IsScaleInCandidate(string functionGroup, bool isAlwaysReady)
     {
-        lock (_invocationAdmissionLock)
+        lock (_lifecycleLock)
         {
             return IsScaleInEligibleLocked(functionGroup, isAlwaysReady);
         }
@@ -186,23 +214,50 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task TryBeginScaleIn(string functionGroup, bool isAlwaysReady)
     {
-        lock (_invocationAdmissionLock)
+        lock (_lifecycleLock)
         {
             if (!IsScaleInEligibleLocked(functionGroup, isAlwaysReady))
             {
                 return null;
             }
 
-            _draining = true;
-            // Scale-in needs every accepted result to become terminal, not necessarily successful.
-            return DrainInvocationsAsync().ContinueWith(
-                static completed =>
-                {
-                    _ = completed.Exception;
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+            _retiring = true;
+            return DrainInvocationsAsync();
+        }
+    }
+
+    internal void StartIdleTracking(TimeProvider timeProvider)
+    {
+        lock (_lifecycleLock)
+        {
+            _activityTimeProvider = timeProvider;
+            _idleSince = null;
+            RecordIdleTime();
+        }
+    }
+
+    internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration)
+    {
+        lock (_lifecycleLock)
+        {
+            idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
+            TimeSpan idleThreshold = _hasReceivedRequest ? threshold : InitialIdleThreshold;
+            if (!IsHttpFunctionGroup || IsAlwaysReady is true || !IsReadyForInvocations ||
+                _ongoingRequests != 0 || idleDuration <= idleThreshold)
+            {
+                return false;
+            }
+
+            _retiring = true;
+            return true;
+        }
+    }
+
+    internal void StopAcceptingInvocations()
+    {
+        lock (_lifecycleLock)
+        {
+            _retiring = true;
         }
     }
 
@@ -247,13 +302,48 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     protected override void OnWorkerInitResponse(WorkerInitResponse response)
     {
-        if (response.HostConfiguration is not null && response.Result.Status is not StatusResult.Types.Status.Success)
+        // WorkerProxy finalizes assignment-owned capabilities only for explicit successful initialization.
+        if (response.Result is not { Status: StatusResult.Types.Status.Success })
         {
             throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
-                "The worker did not report successful initialization for Host configuration delivery.");
+                "The worker did not report successful initialization.");
         }
 
-        HostConfiguration = response.HostConfiguration?.Clone();
+        lock (_lifecycleLock)
+        {
+            if (FunctionGroupName is not null)
+            {
+                return;
+            }
+
+            if (!response.Capabilities.TryGetValue(FunctionGroupNameCapability, out string functionGroupName)
+                || string.IsNullOrWhiteSpace(functionGroupName))
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "A client-backed worker must advertise its assigned FunctionGroupName.");
+            }
+
+            int? maxHttpConcurrency = null;
+            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            {
+                response.Capabilities.TryGetValue(MaxHttpConcurrencyCapability, out string suppliedConcurrency);
+                if (!int.TryParse(suppliedConcurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
+                    || concurrency is < 1 or > 1000)
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                        "An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                }
+
+                maxHttpConcurrency = concurrency;
+            }
+
+            // Read only the original response: capability updates must not reassign an initialized channel.
+            HostConfiguration = response.HostConfiguration?.Clone();
+            FunctionGroupName = functionGroupName;
+            MaxHttpConcurrency = maxHttpConcurrency;
+            IsAlwaysReady = response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string alwaysReady)
+                && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
+        }
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
@@ -274,11 +364,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             ObjectDisposedException exception = new(GetType().FullName);
             // Metadata callers did not request cancellation; fail so host startup can retry.
             FailPendingMetadataRequest(exception);
-            lock (_invocationAdmissionLock)
-            {
-                _draining = true;
-            }
-
+            StopAcceptingInvocations();
             Shutdown(exception);
         }
 
@@ -294,27 +380,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
-            // Assignment properties are captured once; later capability updates do not change this channel's identity.
-            string functionGroupName = GetCapabilityState(FunctionGroupNameCapability);
-            int? maxHttpConcurrency = null;
-            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            if (IsHttpFunctionGroup && IsAlwaysReady is null)
             {
-                if (!int.TryParse(GetCapabilityState(MaxHttpConcurrencyCapability), NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
-                    || concurrency is < 1 or > 1000)
-                {
-                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
-                }
-
-                maxHttpConcurrency = concurrency;
+                _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; treating this worker as on-demand for idle retirement.", Id);
             }
-
-            FunctionGroupName = functionGroupName;
-            MaxHttpConcurrency = maxHttpConcurrency;
-            string isAlwaysReady = GetCapabilityState(IsAlwaysReadyCapability);
-            _isAlwaysReady = bool.TryParse(isAlwaysReady, out bool parsedIsAlwaysReady)
-                ? parsedIsAlwaysReady
-                : null;
-
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)
@@ -327,6 +396,75 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    internal static Task GetHttpResponseCompletionTask(ScriptInvocationContext context)
+    {
+        HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
+            .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
+        if (request is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        TaskCompletionSource responseCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        request.HttpContext.Response.OnCompleted(() =>
+        {
+            responseCompleted.TrySetResult();
+            return Task.CompletedTask;
+        });
+        return responseCompleted.Task;
+    }
+
+    internal async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
+    {
+        try
+        {
+            try
+            {
+                await context.ResultSource.Task.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The invoker owns failure reporting; this observer only tracks request lifetime.
+            }
+
+            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
+            {
+                try
+                {
+                    await forwarding.ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // The proxy/invoker owns failure reporting; still wait for response completion.
+                }
+            }
+
+            await responseCompleted.ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_lifecycleLock)
+            {
+                _ongoingRequests--;
+                RecordIdleTime();
+            }
+        }
+    }
+
+    private void RecordIdleTime()
+    {
+        if (_ongoingRequests == 0 && _idleSince is null)
+        {
+            _idleSince = _activityTimeProvider.GetTimestamp();
+        }
+    }
+
+    private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
+        => IsReadyForInvocations &&
+            string.Equals(FunctionGroupName, functionGroup,
+                IsHttpFunctionGroup ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) &&
+            IsAlwaysReady == isAlwaysReady;
+
     private static TimeSpan ValidateStartStreamTimeout(TimeSpan startStreamTimeout)
     {
         if (startStreamTimeout <= TimeSpan.Zero)
@@ -336,15 +474,4 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         return startStreamTimeout;
     }
-
-    private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
-        => IsUsableForInvocationsLocked() &&
-            string.Equals(FunctionGroupName, functionGroup,
-                IsHttpFunctionGroup ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) &&
-            _isAlwaysReady == isAlwaysReady;
-
-    private bool IsUsableForInvocationsLocked()
-        => !_draining &&
-            !IsTerminated &&
-            IsChannelReadyForInvocations();
 }

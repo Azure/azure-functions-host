@@ -1135,22 +1135,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        /// <summary>
+        /// Registers cancellation against the execution owner, which disposes registrations that lose a completion race.
+        /// </summary>
         private void RegisterInvocationCancellation(ScriptInvocationContext context, string invocationId)
         {
-            _invocationGate.EnterReadLock();
-            try
+            if (_executingInvocations.TryGetValue(invocationId, out ExecutingInvocation invocation))
             {
-                if (_shutdownException is not null || !_executingInvocations.ContainsKey(invocationId))
-                {
-                    return;
-                }
-
                 var cancellationRegistration = context.CancellationToken.Register(() => SendInvocationCancel(invocationId));
-                context.Properties.Add(ScriptConstants.CancellationTokenRegistration, cancellationRegistration);
-            }
-            finally
-            {
-                _invocationGate.ExitReadLock();
+                invocation.SetCancellationRegistration(cancellationRegistration);
             }
         }
 
@@ -1345,14 +1338,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 var context = invocation.Context;
 
-                if (context.Properties.TryGetValue(ScriptConstants.CancellationTokenRegistration, out CancellationTokenRegistration ctr))
-                {
-                    await ctr.DisposeAsync();
-                    context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
-                }
-
                 try
                 {
+                    await invocation.CompleteCancellationRegistrationAsync();
+
                     if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
                     {
                         await _httpProxyService.EnsureSuccessfulForwardingAsync(context);
@@ -1939,7 +1928,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ScriptInvocationContext[] invocations = [.. _acceptedInvocations.Values];
 
             _workerChannelLogger.LogDebug("Count of accepted invocations waiting to be drained out: {invocationCount}", invocations.Length);
-            await Task.WhenAll(invocations.Select(static invocation => invocation.ResultSource.Task));
+            // Draining waits for completion; individual execution failures remain on the invocation result tasks.
+            Task completion = Task.WhenAll(invocations.Select(invocation => invocation.ResultSource.Task));
+            await completion.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
 
         /// <inheritdoc />
@@ -2230,8 +2221,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        private sealed class ExecutingInvocation : IDisposable
+        /// <summary>
+        /// Owns execution resources and rejects cancellation registrations installed after completion or disposal.
+        /// </summary>
+        internal sealed class ExecutingInvocation : IDisposable
         {
+            private readonly Lock _cancellationLock = new();
+            private CancellationTokenRegistration _cancellationRegistration;
+            private bool _cancellationCompleted;
+            private bool _disposed;
+
             public ExecutingInvocation(ScriptInvocationContext context, IInvocationMessageDispatcher dispatcher)
             {
                 Context = context;
@@ -2242,17 +2241,71 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             public IInvocationMessageDispatcher Dispatcher { get; }
 
-            public void Dispose()
+            /// <summary>
+            /// Transfers the registration to this invocation, or disposes it if cleanup already won the race.
+            /// </summary>
+            internal void SetCancellationRegistration(CancellationTokenRegistration registration)
             {
-                if (Context.Properties.TryGetValue(
-                    ScriptConstants.CancellationTokenRegistration,
-                    out CancellationTokenRegistration cancellationRegistration))
+                lock (_cancellationLock)
                 {
-                    cancellationRegistration.Dispose();
-                    Context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
+                    if (!_cancellationCompleted)
+                    {
+                        _cancellationRegistration = registration;
+                        return;
+                    }
                 }
 
-                (Dispatcher as IDisposable)?.Dispose();
+                registration.Dispose();
+            }
+
+            /// <summary>
+            /// Closes registration ownership before processing a response and asynchronously waits for any running callback.
+            /// </summary>
+            internal ValueTask CompleteCancellationRegistrationAsync()
+            {
+                CancellationTokenRegistration registration;
+                lock (_cancellationLock)
+                {
+                    registration = TakeCancellationRegistrationLocked();
+                }
+
+                return registration.DisposeAsync();
+            }
+
+            public void Dispose()
+            {
+                CancellationTokenRegistration registration;
+                lock (_cancellationLock)
+                {
+                    if (_disposed)
+                    {
+                        return;
+                    }
+
+                    _disposed = true;
+                    registration = TakeCancellationRegistrationLocked();
+                }
+
+                // A callback may be executing; never wait for it while holding the ownership lock.
+                try
+                {
+                    registration.Dispose();
+                }
+                finally
+                {
+                    (Dispatcher as IDisposable)?.Dispose();
+                }
+            }
+
+            /// <summary>
+            /// Closes registration ownership and detaches the current registration while holding the cancellation lock.
+            /// </summary>
+            private CancellationTokenRegistration TakeCancellationRegistrationLocked()
+            {
+                _cancellationCompleted = true;
+                CancellationTokenRegistration registration = _cancellationRegistration;
+                _cancellationRegistration = default;
+                return registration;
             }
         }
 

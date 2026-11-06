@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Rpc.Client;
@@ -18,9 +19,14 @@ namespace Azure.Functions.Rpc.Client;
 /// <summary>
 /// Activates root-owned client worker channels for one ScriptHost and initializes its local dispatcher lifecycle.
 /// </summary>
-internal sealed class RpcClientScriptHostLifecycleService(IWorkerChannelRegistry channelRegistry, IRpcClientFunctionInvocationDispatcher dispatcher,
-    IOptions<ScriptJobHostOptions> scriptHostOptions, IOptions<ManagedDependencyOptions> managedDependencyOptions) : IScriptHostLifecycleService
+internal sealed partial class RpcClientScriptHostLifecycleService(IWorkerChannelRegistry channelRegistry, IRpcClientFunctionInvocationDispatcher dispatcher,
+    IOptions<ScriptJobHostOptions> scriptHostOptions, IOptions<ManagedDependencyOptions> managedDependencyOptions,
+    ILogger<RpcClientScriptHostLifecycleService> logger) : IScriptHostLifecycleService
 {
+    internal const string FunctionGroupKey = "FunctionGroup";
+
+    private readonly ILogger<RpcClientScriptHostLifecycleService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     private readonly IWorkerChannelRegistry _channelRegistry =
         channelRegistry ?? throw new ArgumentNullException(nameof(channelRegistry));
 
@@ -43,6 +49,14 @@ internal sealed class RpcClientScriptHostLifecycleService(IWorkerChannelRegistry
         // Workers can emit function logs as soon as load requests are sent, so enrich metadata before activation.
         foreach (FunctionMetadata metadata in functionArray)
         {
+            string functionGroup = metadata.GetFunctionGroup();
+            if (metadata.Properties.TryGetValue(FunctionGroupKey, out object existing)
+                && (existing is not string existingGroup || !string.Equals(existingGroup, functionGroup, StringComparison.OrdinalIgnoreCase)))
+            {
+                Log.FunctionGroupOverwritten(_logger, metadata.Name, functionGroup);
+            }
+
+            metadata.Properties[FunctionGroupKey] = functionGroup;
             metadata.Properties[LogConstants.CategoryNameKey] = LogCategories.CreateFunctionUserCategory(metadata.Name);
             metadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey] = _scriptHostOptions.InstanceId;
         }
@@ -59,5 +73,11 @@ internal sealed class RpcClientScriptHostLifecycleService(IWorkerChannelRegistry
         // Stop this child's dispatch without disposing the root-owned channels reused by a replacement ScriptHost.
         _dispatcher.PreShutdown();
         return Task.CompletedTask;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Warning, "Replacing conflicting FunctionGroup metadata property for function {FunctionName} with the Host-derived group {FunctionGroup}.")]
+        public static partial void FunctionGroupOverwritten(ILogger logger, string functionName, string functionGroup);
     }
 }

@@ -14,19 +14,72 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WebHostServiceCollectionExtensionsTests
     {
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void AddWebJobsScriptHost_SelectsFlexPublisherAtStartup(bool workerAttribution)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            var services = new ServiceCollection();
+            services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+            services.AddSingleton<IEnvironment>(environment);
+            services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
+            services.AddSingleton<IHostMetricsProvider>(Mock.Of<IHostMetricsProvider>());
+            services.AddSingleton<IOptions<FlexConsumptionMetricsPublisherOptions>>(Options.Create(new FlexConsumptionMetricsPublisherOptions
+            {
+                UseWorkerAttribution = workerAttribution,
+                InitialPublishDelayMS = (int)TimeSpan.FromDays(1).TotalMilliseconds
+            }));
+            var standby = new Mock<IOptionsMonitor<StandbyOptions>>();
+            standby.SetupGet(options => options.CurrentValue).Returns(new StandbyOptions());
+            services.AddSingleton(standby.Object);
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            var publisher = provider.GetRequiredService<IMetricsPublisher>();
+
+            Assert.Equal(workerAttribution ? typeof(FlexConsumptionPerWorkerMetricsPublisher) : typeof(FlexConsumptionMetricsPublisher), publisher.GetType());
+            Assert.Same(publisher, provider.GetRequiredService<IMetricsPublisher>());
+            Assert.Equal(workerAttribution, publisher is Microsoft.Azure.WebJobs.Script.Metrics.IWorkerInvocationTracker);
+        }
+
+        [Fact]
+        public void AddWebJobsScriptHost_ValidatesWorkerRetentionThroughOptionsPipeline()
+        {
+            var services = new ServiceCollection();
+            services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+            services.AddSingleton<IEnvironment>(new TestEnvironment());
+            services.Configure<FlexConsumptionMetricsPublisherOptions>(options =>
+            {
+                options.UseWorkerAttribution = true;
+                options.WorkerMetricsFileRetentionPeriod = TimeSpan.Zero;
+            });
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            var exception = Assert.Throws<OptionsValidationException>(() =>
+                provider.GetRequiredService<IOptions<FlexConsumptionMetricsPublisherOptions>>().Value);
+
+            Assert.Contains(nameof(FlexConsumptionMetricsPublisherOptions.WorkerMetricsFileRetentionPeriod), exception.Message, StringComparison.Ordinal);
+        }
+
         /// <summary>
         /// Verifies that MVC route capture runs before authorization filters can reject a request.
         /// </summary>

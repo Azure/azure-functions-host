@@ -9,6 +9,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.Authentication;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Identity;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
@@ -38,12 +40,12 @@ internal sealed partial class FunctionRpcRelay
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
-        private readonly TrackedMessageWriter<StreamingMessage> _runtimeWrites = new();
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<StreamingMessage> _startStream = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
@@ -98,7 +100,7 @@ internal sealed partial class FunctionRpcRelay
         /// <param name="side">The side to reserve.</param>
         /// <param name="runtimeIdentity">Optional identity from the Runtime-facing stream metadata.</param>
         /// <returns>The result of the reservation attempt.</returns>
-        public FunctionRpcRelayAttachResult TryAttach(FunctionRpcRelaySide side, SplitPodIdentity? runtimeIdentity = null)
+        public FunctionRpcRelayAttachResult TryAttach(FunctionRpcRelaySide side, PodIdentity? runtimeIdentity = null)
         {
             lock (_stateLock)
             {
@@ -174,7 +176,8 @@ internal sealed partial class FunctionRpcRelay
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             using CancellationTokenSource linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_terminationSource.Token, cancellationToken);
-            using TokenServiceProxyService.Connection? proxyConnection = AttachTokenServiceProxy(side, linkedSource.Token);
+            TrackedMessageWriter<StreamingMessage>? runtimeWrites = side is FunctionRpcRelaySide.Runtime ? new() : null;
+            using TokenServiceProxyService.Connection? proxyConnection = AttachTokenServiceProxy(side, runtimeWrites, linkedSource.Token);
 
             ChannelWriter<StreamingMessage> destination = side switch
             {
@@ -191,15 +194,15 @@ internal sealed partial class FunctionRpcRelay
 
             // Separate worker reads from initialization so an assignment wait cannot hide worker EOF.
             Channel<StreamingMessage>? workerInbound = side is FunctionRpcRelaySide.Worker ? CreateChannel() : null;
-            Task readTask = ReadInboundAsync(side, requestStream, workerInbound?.Writer ?? destination, proxyConnection, linkedSource.Token);
+            Task readTask = ReadInboundAsync(
+                side, requestStream, workerInbound?.Writer ?? destination, proxyConnection, linkedSource.Token);
             Task? processTask = workerInbound is null
                 ? null
                 : ProcessWorkerMessagesAsync(workerInbound.Reader, destination, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
+            Task writeTask = WriteOutboundAsync(side, source, responseStream, runtimeWrites, linkedSource.Token);
             Task firstCompletedTask = processTask is null
                 ? await Task.WhenAny(readTask, writeTask)
                 : await Task.WhenAny(readTask, processTask, writeTask);
-
             if (!_completion.Task.IsCompleted)
             {
                 FunctionRpcRelayTerminalState terminalState = await ClassifyCompletionAsync(side, firstCompletedTask, cancellationToken);
@@ -210,13 +213,14 @@ internal sealed partial class FunctionRpcRelay
             await linkedSource.CancelAsync();
             // Reads can remain blocked until the transport releases them, so observe that task
             // out of band. The write must finish before gRPC writes trailers to the same response.
-            _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
+            _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask, linkedSource.Token);
             if (processTask is not null)
             {
-                _ = ObserveStreamOperationAfterTerminationAsync(side, "process", processTask);
+                _ = ObserveStreamOperationAfterTerminationAsync(side, "process", processTask, linkedSource.Token);
             }
 
-            await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
+            await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask, linkedSource.Token);
+
             return await _completion.Task;
         }
 
@@ -237,6 +241,10 @@ internal sealed partial class FunctionRpcRelay
                 if (side == FunctionRpcRelaySide.Worker)
                 {
                     stateManager.OnSessionTerminated(id);
+                }
+                else
+                {
+                    stateManager.OnRuntimeDetached(id);
                 }
 
                 SignalReleasedIfCompleteLocked();
@@ -273,26 +281,21 @@ internal sealed partial class FunctionRpcRelay
         /// <summary>
         /// Makes only the Host-facing stream available to the identity bridge, before the customer stream attaches.
         /// </summary>
-        private TokenServiceProxyService.Connection? AttachTokenServiceProxy(FunctionRpcRelaySide side, CancellationToken cancellationToken)
+        private TokenServiceProxyService.Connection? AttachTokenServiceProxy(
+            FunctionRpcRelaySide side, TrackedMessageWriter<StreamingMessage>? runtimeWrites, CancellationToken cancellationToken)
         {
             if (side is not FunctionRpcRelaySide.Runtime || tokenServiceProxy is not { Enabled: true })
             {
                 return null;
             }
 
-            return tokenServiceProxy.Attach(WriteToRuntimeAsync, cancellationToken);
-        }
-
-        /// <summary>
-        /// Shares the runtime queue's sole writer while retaining proxy ownership until physical write or discard.
-        /// </summary>
-        private Task<bool> WriteToRuntimeAsync(StreamingMessage message, CancellationToken cancellationToken, Func<bool>? prepare)
-        {
-            return _runtimeWrites.WriteAsync(_toRuntime.Writer, message, cancellationToken, prepare);
+            return tokenServiceProxy.Attach((message, token, prepare) =>
+                runtimeWrites!.WriteAsync(_toRuntime.Writer, message, token, prepare), cancellationToken);
         }
 
         private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-            ChannelWriter<StreamingMessage> destination, TokenServiceProxyService.Connection? proxyConnection, CancellationToken cancellationToken)
+            ChannelWriter<StreamingMessage> destination,
+            TokenServiceProxyService.Connection? proxyConnection, CancellationToken cancellationToken)
         {
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
@@ -300,6 +303,16 @@ internal sealed partial class FunctionRpcRelay
                 StreamingMessage current = requestStream.Current;
                 if (current.HttpProxy is { } control)
                 {
+                    if (side is FunctionRpcRelaySide.Runtime)
+                    {
+                        lock (_stateLock)
+                        {
+                            if (_terminalState is not null || !_runtimeAttached)
+                            {
+                                return;
+                            }
+                        }
+                    }
                     if (side is not FunctionRpcRelaySide.Runtime || proxyConnection is null)
                     {
                         throw new InvalidDataException("HTTP proxy controls are only accepted from an enabled runtime transport.");
@@ -315,7 +328,12 @@ internal sealed partial class FunctionRpcRelay
                     return;
                 }
 
+                bool startStream = side is FunctionRpcRelaySide.Worker && isFirstMessage;
                 isFirstMessage = false;
+                if (startStream)
+                {
+                    continue;
+                }
                 await destination.WriteAsync(message, cancellationToken);
             }
         }
@@ -324,9 +342,14 @@ internal sealed partial class FunctionRpcRelay
         {
             if (side != FunctionRpcRelaySide.Worker)
             {
-                if (message.WorkerInitRequest is not null)
+                lock (_stateLock)
                 {
-                    lock (_stateLock)
+                    if (_terminalState is not null || !_runtimeAttached)
+                    {
+                        return null;
+                    }
+
+                    if (message.WorkerInitRequest is not null)
                     {
                         _initializationRequestId = message.RequestId ?? string.Empty;
                     }
@@ -354,6 +377,7 @@ internal sealed partial class FunctionRpcRelay
 
                     stateManager.OnWorkerStartStream(id, startStream.WorkerId);
                     _workerId = startStream.WorkerId;
+                    _startStream.TrySetResult(message.Clone());
                 }
 
                 using IDisposable? scope = logger.BeginScope(GetLogContext());
@@ -361,6 +385,28 @@ internal sealed partial class FunctionRpcRelay
             }
 
             LogProtocolMessage(message, forwarded: false);
+            if (message.WorkerInitResponse is not null)
+            {
+                StreamingMessage sanitized = message.Clone();
+                RuntimeWorkerAuthentication.RemoveAppProof(sanitized.WorkerInitResponse.Capabilities);
+
+                return sanitized;
+            }
+
+            if (message.FunctionEnvironmentReloadResponse is { } reload)
+            {
+                StreamingMessage sanitized = message.Clone();
+                RuntimeWorkerAuthentication.RemoveAppProof(sanitized.FunctionEnvironmentReloadResponse.Capabilities);
+                if (reload is not { Result.Status: StatusResult.Types.Status.Success })
+                {
+                    sanitized.FunctionEnvironmentReloadResponse.Capabilities.Remove(WorkerHttpCapabilityProvider.HttpUriCapability);
+
+                    return sanitized;
+                }
+
+                return sanitized;
+            }
+
             return message;
         }
 
@@ -379,6 +425,23 @@ internal sealed partial class FunctionRpcRelay
                         return;
                     }
 
+                    if (message.FunctionEnvironmentReloadResponse is { Result.Status: StatusResult.Types.Status.Success } reload
+                        && reload.Capabilities.TryGetValue(WorkerHttpCapabilityProvider.HttpUriCapability, out string? httpUri)
+                        && !string.IsNullOrWhiteSpace(httpUri))
+                    {
+                        var (_, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                        Uri? workerDestination = capabilityFinalizer.FinalizeCapabilities(reload.Capabilities, httpProxyEndpoint);
+                        lock (_stateLock)
+                        {
+                            if (_terminalState is not null)
+                            {
+                                return;
+                            }
+
+                            _workerHttpDestination = workerDestination;
+                        }
+                    }
+
                     await destination.WriteAsync(message, cancellationToken);
                 }
             }
@@ -391,6 +454,10 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
+        /// <summary>
+        /// Waits for this worker's assignment before freezing the initial successful response's authoritative capabilities.
+        /// The separate processor leaves relay readers available while assignment is pending.
+        /// </summary>
         private async Task<StreamingMessage?> FinalizeCapabilitiesAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             FrozenDictionary<string, string>? capabilities;
@@ -409,15 +476,17 @@ internal sealed partial class FunctionRpcRelay
             if (capabilities is null)
             {
                 (WorkerPodState state, string? httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
-                if (finalized.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out string? httpUri)
-                    && !string.IsNullOrWhiteSpace(httpUri))
+                // Every worker needs assigned group identity, including workers without an HTTP endpoint.
+                while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
                 {
-                    // Keep the runtime reader available for startup token traffic while assignment catches up with StartStream.
-                    while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
-                    {
-                        await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
-                        (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
-                    }
+                    await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
+                    (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                if (state.SessionId != id || !state.IsWorkerAttached || state.AssignmentState != WorkerAssignmentState.Ready)
+                {
+                    throw new InvalidOperationException("The worker session has no ready assignment for capability finalization.");
                 }
 
                 Uri? destination = capabilityFinalizer.FinalizeCapabilities(
@@ -446,29 +515,25 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
-        /// Advertises this session's assigned group, always-ready class, and HTTP concurrency, replacing worker-supplied values.
+        /// Advertises the assigned group, HTTP concurrency, and always-ready policy, replacing worker-supplied values.
         /// </summary>
         /// <remarks>
         /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
-        /// the capability is omitted so the runtime never receives an unassigned or stale group.
+        /// the capabilities are omitted so the runtime never receives unassigned or stale policy.
         /// </remarks>
         private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities, WorkerPodState state)
         {
+            // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
             capabilities.Remove(IsAlwaysReadyCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
 
-            if (state is
-                {
-                    AssignmentState: WorkerAssignmentState.Ready,
-                    FunctionGroupName: { } functionGroupName,
-                    IsAlwaysReady: { } isAlwaysReady,
-                }
+            if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
-                capabilities[IsAlwaysReadyCapability] = isAlwaysReady ? bool.TrueString : bool.FalseString;
+                capabilities[IsAlwaysReadyCapability] = state.IsAlwaysReady is true ? bool.TrueString : bool.FalseString;
                 if (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) && state.MaxHttpConcurrency is { } concurrency)
                 {
                     capabilities[MaxHttpConcurrencyCapability] = concurrency.ToString(CultureInfo.InvariantCulture);
@@ -482,31 +547,68 @@ internal sealed partial class FunctionRpcRelay
         }
 
         private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
-            IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
+            IServerStreamWriter<StreamingMessage> responseStream, TrackedMessageWriter<StreamingMessage>? runtimeWrites,
+            CancellationToken cancellationToken)
         {
             try
             {
-                await foreach (StreamingMessage message in source.ReadAllAsync(cancellationToken))
+                bool startSent = side is not FunctionRpcRelaySide.Runtime;
+                Task<StreamingMessage> startReady = _startStream.Task.WaitAsync(cancellationToken);
+                Task<bool>? queueReady = null;
+                while (true)
                 {
-                    if (side is FunctionRpcRelaySide.Runtime && !_runtimeWrites.Prepare(message))
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!startSent && startReady.IsCompleted)
+                    {
+                        await responseStream.WriteAsync(await startReady, cancellationToken);
+                        startSent = true;
+                        continue;
+                    }
+
+                    if (!source.TryRead(out StreamingMessage? message))
+                    {
+                        queueReady ??= source.WaitToReadAsync(cancellationToken).AsTask();
+                        // Proxy bootstrap must not wait for the customer's StartStream: identity may be needed to start it.
+                        if (!startSent && await Task.WhenAny(queueReady, startReady) == startReady)
+                        {
+                            continue;
+                        }
+                        if (!await queueReady)
+                        {
+                            break;
+                        }
+                        queueReady = null;
+                        continue;
+                    }
+
+                    if (runtimeWrites is not null && !runtimeWrites.Prepare(message))
                     {
                         continue;
                     }
 
                     // This is the only task that writes this response stream.
                     await responseStream.WriteAsync(message, cancellationToken);
-                    if (side is FunctionRpcRelaySide.Runtime)
+                    if (runtimeWrites is not null)
                     {
-                        _runtimeWrites.Written(message);
+                        runtimeWrites.Written(message);
                         PublishRuntimeInitialization(message);
                     }
 
                     LogProtocolMessage(message, forwarded: true);
                 }
             }
+            catch (Exception exception) when (side is FunctionRpcRelaySide.Runtime)
+            {
+                // Preserve the originating failure before queue closure can fault the Worker processor.
+                FunctionRpcRelayTerminationReason reason = exception is OperationCanceledException || cancellationToken.IsCancellationRequested
+                    ? FunctionRpcRelayTerminationReason.Canceled
+                    : FunctionRpcRelayTerminationReason.Faulted;
+                TryTerminate(new FunctionRpcRelayTerminalState(id, reason, side, exception));
+                throw;
+            }
             finally
             {
-                if (side is FunctionRpcRelaySide.Runtime)
+                if (runtimeWrites is not null)
                 {
                     _toRuntime.Writer.TryComplete();
                     // This task is the sole reader. Drop abandoned HTTP payloads before releasing tracked ownership.
@@ -514,7 +616,7 @@ internal sealed partial class FunctionRpcRelay
                     {
                     }
 
-                    _runtimeWrites.Complete(new IOException("The HTTP proxy transport closed."));
+                    runtimeWrites.Complete(new IOException("The HTTP proxy transport closed."));
                 }
             }
         }
@@ -531,6 +633,7 @@ internal sealed partial class FunctionRpcRelay
                 if (_terminalState is null && _initializationRequestId is not null &&
                     string.Equals(_initializationRequestId, message.RequestId ?? string.Empty, StringComparison.Ordinal))
                 {
+                    _initializationRequestId = null;
                     stateManager.OnRuntimeInitialized(id);
                 }
             }
@@ -676,11 +779,18 @@ internal sealed partial class FunctionRpcRelay
                 }
                 else
                 {
-                    stateManager.OnSessionTerminated(id);
+                    bool assignmentFailed = terminalState is
+                    {
+                        Reason: FunctionRpcRelayTerminationReason.Faulted,
+                        Side: FunctionRpcRelaySide.Worker,
+                        Exception: InvalidDataException
+                    };
+                    stateManager.OnSessionTerminated(id, assignmentFailed);
                 }
 
                 _terminalState = terminalState;
                 _completion.SetResult(terminalState);
+                _startStream.TrySetCanceled();
             }
 
             Exception? completionException = terminalState.Reason switch
@@ -717,19 +827,20 @@ internal sealed partial class FunctionRpcRelay
             return true;
         }
 
-        private async Task ObserveStreamOperationAfterTerminationAsync(FunctionRpcRelaySide side, string operationName, Task operationTask)
+        private async Task ObserveStreamOperationAfterTerminationAsync(
+            FunctionRpcRelaySide side, string operationName, Task operationTask, CancellationToken operationToken)
         {
             try
             {
                 await operationTask;
             }
-            catch (OperationCanceledException) when (_terminationSource.IsCancellationRequested)
+            catch (OperationCanceledException) when (_completion.Task.IsCompleted || operationToken.IsCancellationRequested)
             {
             }
             catch (ChannelClosedException) when (_completion.Task.IsCompleted)
             {
             }
-            catch (Exception exception) when (_completion.Task.IsCompleted)
+            catch (Exception exception) when (_completion.Task.IsCompleted || operationToken.IsCancellationRequested)
             {
                 using IDisposable? scope = logger.BeginScope(GetLogContext());
                 Log.SecondaryStreamFailure(logger, exception, id, operationName, side);

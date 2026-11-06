@@ -17,7 +17,7 @@ internal sealed partial class WorkerHttpCapabilityProvider(
     ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
-    private const string HttpUriCapability = "HttpUri";
+    internal const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -42,8 +42,11 @@ internal sealed partial class WorkerHttpCapabilityProvider(
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        Uri proxyEndpoint = ResolveRequiredEndpoint(
-            httpProxyEndpoint, "Worker assignment httpProxyEndpoint");
+        Uri proxyEndpoint = ResolveRequiredEndpoint(httpProxyEndpoint, "Worker assignment httpProxyEndpoint");
+        if (!string.Equals(proxyEndpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The runtime-facing HTTP origin must use HTTPS.");
+        }
 
         if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped, StringComparison.OrdinalIgnoreCase) == 0)
         {
