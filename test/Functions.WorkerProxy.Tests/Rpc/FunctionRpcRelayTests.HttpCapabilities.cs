@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -157,7 +158,8 @@ public partial class FunctionRpcRelayTests
         await using FunctionRpcRelay relay = new(
             NullLogger<FunctionRpcRelay>.Instance,
             CreateCapabilityProvider(options),
-            manager);
+            manager,
+            Mock.Of<IHostApplicationLifetime>());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> outbound = Channel.CreateUnbounded<StreamingMessage>();
@@ -485,7 +487,7 @@ public partial class FunctionRpcRelayTests
         IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions());
         WorkerHttpCapabilityProvider provider = new(options, logger);
         WorkerPodStateManager manager = CreatePodStateManager();
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, manager);
+        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, manager, Mock.Of<IHostApplicationLifetime>());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> outbound = Channel.CreateUnbounded<StreamingMessage>();

@@ -17,6 +17,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -188,6 +190,72 @@ public partial class FunctionRpcRelayTests
         Assert.False(manager.State.RemovalRequested);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task WorkerGrpc_ApplicationStoppingBeforeRelayShutdownDoesNotPublishRemoval(
+        bool runtimeCloses, bool cancelStream)
+    {
+        TaskCompletionSource<bool> stoppingEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> releaseStopping = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IHostedLifecycleService> stoppingService = new();
+        stoppingService.Setup(service => service.StoppingAsync(It.IsAny<CancellationToken>()))
+            .Returns(async (CancellationToken cancellationToken) =>
+            {
+                stoppingEntered.TrySetResult(true);
+                await releaseStopping.Task.WaitAsync(cancellationToken);
+            });
+        // Hosted services stop in reverse registration order, keeping relay shutdown behind this gate.
+        await using WorkerProxyWebApplicationFactory factory = new(
+            configureServices: services => services.AddSingleton<IHostedService>(stoppingService.Object));
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        IHostApplicationLifetime lifetime = factory.Services.GetRequiredService<IHostApplicationLifetime>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using CancellationTokenSource streamCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime,
+            runtimeCloses ? streamCancellation.Token : timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker,
+            runtimeCloses ? timeout.Token : streamCancellation.Token);
+        await ExchangeAsync(runtime, worker, "stopping", timeout.Token);
+
+        TaskCompletionSource<bool> stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration registration = lifetime.ApplicationStopped.Register(() => stopped.TrySetResult(true));
+        lifetime.StopApplication();
+        try
+        {
+            await stoppingEntered.Task.WaitAsync(timeout.Token);
+            Assert.True(lifetime.ApplicationStopping.IsCancellationRequested);
+            await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+            await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+            if (cancelStream)
+            {
+                streamCancellation.Cancel();
+            }
+            else
+            {
+                RelayClient closingPeer = runtimeCloses ? runtime : worker;
+                await closingPeer.CompleteRequestAsync(timeout.Token);
+            }
+
+            StatusCode[] terminalStatuses = await Task.WhenAll(
+                runtime.WaitForTerminationAsync(timeout.Token),
+                worker.WaitForTerminationAsync(timeout.Token));
+            Assert.All(terminalStatuses, status =>
+                Assert.Equal(cancelStream ? StatusCode.Cancelled : StatusCode.Unavailable, status));
+            await WaitForReleaseAsync(relay, timeout.Token);
+            Assert.False(manager.State.RemovalRequested);
+            Assert.False(manager.State.IsWorkerReady);
+        }
+        finally
+        {
+            releaseStopping.TrySetResult(true);
+            await stopped.Task.WaitAsync(timeout.Token);
+        }
+    }
+
     private static async Task AssertPreEstablishmentTerminalOutcomeAllowsReplacementAsync(string trigger)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -209,6 +277,8 @@ public partial class FunctionRpcRelayTests
                 await worker.CompleteRequestAsync(timeout.Token);
                 break;
             case "prestart-cancel":
+                await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Worker, timeout.Token);
+                Assert.Null(manager.State.WorkerId);
                 workerCancellation.Cancel();
                 break;
             default:
@@ -240,5 +310,4 @@ public partial class FunctionRpcRelayTests
         await using RelayClient client = CreateClient(factory, side, cancellationToken);
         Assert.Equal(StatusCode.Unavailable, await client.WaitForTerminationAsync(cancellationToken));
     }
-
 }

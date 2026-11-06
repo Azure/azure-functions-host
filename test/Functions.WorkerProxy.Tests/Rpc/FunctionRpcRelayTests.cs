@@ -19,6 +19,7 @@ using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -424,7 +425,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager(), Mock.Of<IHostApplicationLifetime>());
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
@@ -534,7 +535,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager(), Mock.Of<IHostApplicationLifetime>());
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
             relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
@@ -597,7 +598,8 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay(WorkerPodStateManager? stateManager = null)
     {
-        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), stateManager ?? CreatePodStateManager());
+        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(),
+            stateManager ?? CreatePodStateManager(), Mock.Of<IHostApplicationLifetime>());
     }
 
     private static WorkerPodStateManager CreatePodStateManager()

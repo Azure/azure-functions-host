@@ -32,6 +32,7 @@ internal sealed partial class FunctionRpcRelay
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
         WorkerPodStateManager stateManager,
+        CancellationToken applicationStopping,
         TokenServiceProxyService? tokenServiceProxy)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
@@ -793,10 +794,13 @@ internal sealed partial class FunctionRpcRelay
                 bool peerTerminated = terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
                     or FunctionRpcRelayTerminationReason.Canceled
                     or FunctionRpcRelayTerminationReason.Faulted;
-                bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
+                bool shutdownRequested = applicationStopping.IsCancellationRequested ||
+                    Volatile.Read(ref _shutdownRequested) != 0;
+                bool runtimePeerTerminated = !shutdownRequested &&
                     terminalState.Side == FunctionRpcRelaySide.Runtime &&
                     peerTerminated;
-                bool workerStreamFailed = terminalState.Side == FunctionRpcRelaySide.Worker &&
+                bool workerStreamFailed = !shutdownRequested &&
+                    terminalState.Side == FunctionRpcRelaySide.Worker &&
                     peerTerminated;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
                 if (runtimePeerTerminated)

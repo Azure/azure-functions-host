@@ -39,13 +39,14 @@ After removal, Worker readiness is withdrawn, HTTP forwarding returns 503, and n
 ## Implementation
 
 - `FunctionRpcRelay.Session` reuses first-message and terminal callbacks to classify Worker-side stream failure.
+- `FunctionRpcRelay` observes the host's `ApplicationStopping` token to close stream admission and suppress loss-driven removal before its hosted shutdown methods run. Explicit relay shutdown remains covered by the existing shutdown markers.
 - `WorkerPodStateManager` atomically verifies the current session has a Worker ID, excludes shutdown, and commits sticky removal.
 - `FunctionRpcRelay`, assignment, and HTTP forwarding reuse the central state gate to close later admissions.
 - `WorkerOriginState` and the existing long-poll endpoint publish the deletion request.
 
 ## Behavioral coverage
 
-Four hosted test methods cover pre-establishment replacement, established EOF with all admission gates, established cancellation, and application shutdown. The existing relay termination theory adds deterministic Worker read- and write-failure coverage.
+Hosted tests cover pre-establishment replacement, established EOF with all admission gates, established cancellation, and application shutdown. The shutdown regression delays a preceding hosted lifecycle service after `ApplicationStopping` while either stream reaches EOF or is canceled, proving that admission is closed and no sticky removal is requested before relay shutdown runs. The pre-establishment cancellation case waits for Worker admission without sending `StartStream`, so cancellation cannot leave an unrelated Runtime-only session waiting. The existing relay termination theory adds deterministic Worker read- and write-failure coverage.
 
 The established EOF theory covers the mapped HTTP proxy origin and default and explicit HTTP concurrency in both startup modes, including Worker loss after a Host drain notification. W3 retains the terminated assignment, requested configuration/content versions, and capacity for the terminal assignment contract without admitting new work or exposing the terminated session's origin; Runtime-side removal continues to clear live assignment identity and capacity while preserving function-group and version attribution. Both paths preserve the pod startup time. Terminal logs retain the accepted Worker ID and session correlation, and rejected replacement streams still emit rejection diagnostics.
 
