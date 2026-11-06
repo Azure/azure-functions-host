@@ -118,7 +118,7 @@ public sealed partial class WorkerLinkController : Controller
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
+        List<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
@@ -131,7 +131,7 @@ public sealed partial class WorkerLinkController : Controller
             workerId, grpcEndpoint, request!.RuntimeAccessKey!, request.RuntimeIdentity, started, cancellationToken);
     }
 
-    private IReadOnlyList<RequestValidationError> ValidateRequest(
+    private List<RequestValidationError> ValidateRequest(
         string workerId, WorkerLinkRequest? request, out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
@@ -139,14 +139,14 @@ public sealed partial class WorkerLinkController : Controller
 
         if (string.IsNullOrWhiteSpace(workerId))
         {
-            errors.Add(new(ErrorCodes.Required, "workerId"));
+            errors.Add(new(RequestValidationErrorCodes.Required, "workerId"));
 
             return errors;
         }
 
         if (!ModelState.IsValid || request is null)
         {
-            errors.Add(new(ErrorCodes.InvalidBody, "request"));
+            errors.Add(new(RequestValidationErrorCodes.InvalidBody, "request"));
 
             return errors;
         }
@@ -154,13 +154,13 @@ public sealed partial class WorkerLinkController : Controller
         if (!RuntimeWorkerAuthentication.TryCreateHttpsOrigin(request.WorkerGrpcEndpoint, out grpcEndpoint))
         {
             errors.Add(string.IsNullOrWhiteSpace(request.WorkerGrpcEndpoint)
-                ? new(ErrorCodes.Required, "workerGrpcEndpoint")
-                : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
+                ? new(RequestValidationErrorCodes.Required, "workerGrpcEndpoint")
+                : new(RequestValidationErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
         if (string.IsNullOrWhiteSpace(request.RuntimeAccessKey))
         {
-            errors.Add(new(ErrorCodes.Required, "runtimeAccessKey"));
+            errors.Add(new(RequestValidationErrorCodes.Required, "runtimeAccessKey"));
         }
 
         return errors;
@@ -184,7 +184,7 @@ public sealed partial class WorkerLinkController : Controller
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
-            return BadRequest(new RequestValidationResponse([new(ErrorCodes.InvalidValue, "runtimeAccessKey")]));
+            return BadRequest(new RequestValidationResponse([new(RequestValidationErrorCodes.InvalidValue, "runtimeAccessKey")]));
         }
         catch (WorkerLinkException exception)
         {
@@ -239,13 +239,9 @@ public sealed partial class WorkerLinkController : Controller
     // Stable wire codes. Tests assert the literal strings so a rename here cannot pass silently.
     private static class ErrorCodes
     {
-        public const string InvalidBody = nameof(InvalidBody);
-        public const string InvalidEndpoint = nameof(InvalidEndpoint);
-        public const string InvalidValue = nameof(InvalidValue);
         public const string AuthenticationUnavailable = nameof(AuthenticationUnavailable);
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
-        public const string Required = nameof(Required);
         public const string RuntimeStopping = nameof(RuntimeStopping);
         public const string WorkerTerminated = nameof(WorkerTerminated);
         public const string WorkerUnavailable = nameof(WorkerUnavailable);
@@ -253,7 +249,7 @@ public sealed partial class WorkerLinkController : Controller
 
     private static partial class Log
     {
-        // EventId range is 700-799
+        // Worker management controllers share the 700-799 event ID range.
 
         [LoggerMessage(700, LogLevel.Information, "Worker link accepted for {workerId} after {elapsedMilliseconds} ms.")]
         public static partial void LinkAccepted(ILogger logger, string workerId, double elapsedMilliseconds);

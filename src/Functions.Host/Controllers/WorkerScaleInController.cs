@@ -52,7 +52,7 @@ public sealed partial class WorkerScaleInController : Controller
         [FromBody] WorkerScaleInRequest? request,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(request);
+        List<RequestValidationError> errors = ValidateRequest(request);
         if (errors.Count > 0)
         {
             return BadRequest(new RequestValidationResponse(errors));
@@ -84,51 +84,45 @@ public sealed partial class WorkerScaleInController : Controller
         return Ok(new WorkerScaleInResponse(newlyDrainingWorkerCount));
     }
 
-    private IReadOnlyList<RequestValidationError> ValidateRequest(WorkerScaleInRequest? request)
+    private List<RequestValidationError> ValidateRequest(WorkerScaleInRequest? request)
     {
         List<RequestValidationError> errors = [];
         if (!ModelState.IsValid || request is null)
         {
-            errors.Add(new(ErrorCodes.InvalidBody, "request"));
+            errors.Add(new(RequestValidationErrorCodes.InvalidBody, "request"));
             return errors;
         }
 
         if (string.IsNullOrWhiteSpace(request.FunctionGroup))
         {
-            errors.Add(new(ErrorCodes.Required, "functionGroup"));
+            errors.Add(new(RequestValidationErrorCodes.Required, "functionGroup"));
         }
         else if (string.Equals(request.FunctionGroup, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase) &&
             request.IsAlwaysReady is false)
         {
-            errors.Add(new(ErrorCodes.InvalidValue, "functionGroup"));
+            errors.Add(new(RequestValidationErrorCodes.InvalidValue, "functionGroup"));
         }
 
         if (request.IsAlwaysReady is null)
         {
-            errors.Add(new(ErrorCodes.Required, "isAlwaysReady"));
+            errors.Add(new(RequestValidationErrorCodes.Required, "isAlwaysReady"));
         }
 
         if (request.DesiredWorkerCount is null)
         {
-            errors.Add(new(ErrorCodes.Required, "desiredWorkerCount"));
+            errors.Add(new(RequestValidationErrorCodes.Required, "desiredWorkerCount"));
         }
         else if (request.DesiredWorkerCount < 0)
         {
-            errors.Add(new(ErrorCodes.InvalidValue, "desiredWorkerCount"));
+            errors.Add(new(RequestValidationErrorCodes.InvalidValue, "desiredWorkerCount"));
         }
 
         return errors;
     }
 
-    private static class ErrorCodes
-    {
-        public const string InvalidBody = nameof(InvalidBody);
-        public const string InvalidValue = nameof(InvalidValue);
-        public const string Required = nameof(Required);
-    }
-
     private static partial class Log
     {
+        // Worker management controllers share the 700-799 event ID range.
         [LoggerMessage(712, LogLevel.Information, "Worker scale-in was canceled before drain commitment.")]
         public static partial void ScaleInCanceled(ILogger logger);
 

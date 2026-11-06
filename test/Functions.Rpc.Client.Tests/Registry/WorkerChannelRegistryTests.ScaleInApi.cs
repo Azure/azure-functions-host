@@ -456,7 +456,26 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         JsonElement error = Assert.Single(body.RootElement.GetProperty("errors").EnumerateArray());
+        Assert.Equal("InvalidValue", error.GetProperty("code").GetString());
         Assert.Equal("functionGroup", error.GetProperty("target").GetString());
+    }
+
+    [Theory]
+    [InlineData("null", "InvalidBody", "request")]
+    [InlineData("""{"functionGroup":"","isAlwaysReady":false,"desiredWorkerCount":0}""", "Required", "functionGroup")]
+    [InlineData("""{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":-1}""", "InvalidValue", "desiredWorkerCount")]
+    public async Task PostScaleIn_InvalidRequest_ReturnsStableValidationCode(string request, string code, string target)
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
+
+        using HttpResponseMessage response = await host.PostAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        JsonElement error = Assert.Single(body.RootElement.GetProperty("errors").EnumerateArray());
+        Assert.Equal(code, error.GetProperty("code").GetString());
+        Assert.Equal(target, error.GetProperty("target").GetString());
     }
 
     private static ChannelControl CreateClassifiedWorker(
