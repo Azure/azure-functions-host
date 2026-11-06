@@ -93,7 +93,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal("accepted", assigned.FunctionAppName);
         Assert.Equal(WorkerStartupMode.SpecializationRequired, assigned.StartupMode);
         Assert.False(assigned.IsWorkerReady);
-        Assert.Equal(WorkerPodStatus.None, assigned.PodStatus);
+        Assert.Equal(WorkerPodStatus.Starting, assigned.PodStatus);
 
         Assert.True(manager.OnWorkerAttached(1));
         Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
@@ -101,7 +101,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(3, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
         Assert.True(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
     }
 
     [Fact]
