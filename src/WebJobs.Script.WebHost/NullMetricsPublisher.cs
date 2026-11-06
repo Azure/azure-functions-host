@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 
@@ -46,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <inheritdoc />
-        public bool TryDispatchInvocation(string invocationId, string workerId, CancellationToken cancellationToken, Func<bool> dispatch)
+        public bool TryDispatchInvocation(string invocationId, string workerId, Func<bool> dispatch)
         {
             ArgumentNullException.ThrowIfNull(dispatch);
 

@@ -132,8 +132,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
             bool accepted = _invocationTracker is null
                 ? channel.TryPostInvocation(invocationContext)
-                : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, invocationContext.CancellationToken,
-                    () => channel.TryPostInvocation(invocationContext));
+                : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, () => channel.TryPostInvocation(invocationContext));
             if (!accepted)
             {
                 invocationContext.ResultSource.TrySetException(
