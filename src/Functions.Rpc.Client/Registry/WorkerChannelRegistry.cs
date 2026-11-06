@@ -47,6 +47,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly TimeSpan _linkTimeout;
     private readonly bool _registryOwnedAttempt;
     private readonly HashSet<Task> _monitorTasks = [];
+    private readonly HashSet<Task> _drainAndUnlinkTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
@@ -269,6 +270,17 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
     private async Task<bool> DrainAndUnlinkAsync(string workerId, RpcClientWorkerChannel channel, Task drainTask)
     {
+        TaskCompletionSource cleanupCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_stateLock)
+        {
+            if (_disposed)
+            {
+                return false;
+            }
+
+            _drainAndUnlinkTasks.Add(cleanupCompleted.Task);
+        }
+
         WorkerSlot slot = null;
         RpcClientWorkerChannel detached = null;
         try
@@ -321,6 +333,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             if (detached is not null && slot is not null)
             {
                 RemoveEmptySlot(workerId, slot);
+            }
+
+            lock (_stateLock)
+            {
+                cleanupCompleted.TrySetResult();
+                _drainAndUnlinkTasks.Remove(cleanupCompleted.Task);
             }
         }
     }
@@ -785,6 +803,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     {
         KeyValuePair<string, WorkerSlot>[] slots;
         Task[] monitorTasks;
+        Task[] drainAndUnlinkTasks;
 
         lock (_stateLock)
         {
@@ -797,6 +816,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
+            drainAndUnlinkTasks = [.. _drainAndUnlinkTasks];
             _initializedChannelAvailable.TrySetResult();
 
             // Publish disposal for new readers and release callers awaiting the previous shared signal.
@@ -827,6 +847,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
 
         await Task.WhenAll(monitorTasks);
+        await Task.WhenAll(drainAndUnlinkTasks);
 
         if (disposalException is not null)
         {

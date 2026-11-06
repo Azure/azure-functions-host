@@ -130,6 +130,36 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task DisposeAsync_WaitsForDetachedScaleInCleanup()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        ChannelControl selected = new("selected", functionGroupName: FunctionGroups.Durable, isAlwaysReady: false)
+        {
+            Capabilities = new Dictionary<string, string>
+            {
+                [RpcWorkerConstants.HandlesWorkerTerminateMessage] = bool.TrueString
+            }
+        };
+        await LinkAndReadyWorkersAsync(harness, registry, function, selected);
+
+        Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, false, 0));
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerTerminate);
+
+        Task dispose = registry.DisposeAsync().AsTask();
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        Assert.False(dispose.IsCompleted);
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+
+        selected.Complete();
+
+        await dispose.WaitAsync(TestTimeout);
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
     public async Task PostScaleIn_SupportedWorkerDisconnectsAfterTerminateGracePeriod()
     {
         RegistryHarness harness = new();
