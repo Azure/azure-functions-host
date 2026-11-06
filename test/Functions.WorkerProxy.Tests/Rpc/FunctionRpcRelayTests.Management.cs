@@ -685,8 +685,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(placeholder.Self, assigned.Self);
         Assert.False(assigned.IsAlwaysReady);
         Assert.Equal("deployment:validation", assigned.FunctionGroup);
-        Assert.Equal(0, assigned.ConfigLastModifiedTime);
-        Assert.Equal(0, assigned.ContentLastModifiedTime);
+        Assert.Equal(111, assigned.ConfigLastModifiedTime);
+        Assert.Equal(222, assigned.ContentLastModifiedTime);
         Assert.Equal(placeholder.StartupTime, assigned.StartupTime);
         Assert.Equal(3, assigned.RevisionId);
         Assert.Equal(WorkerStatus.Starting, assigned.Status);

@@ -98,8 +98,8 @@ public class ManagementApiEndpointTests
         Assert.False(state.GetProperty("link").TryGetProperty("runtime", out _));
         Assert.Equal("test-worker-pod", state.GetProperty("self").GetProperty("podName").GetString());
         Assert.Equal("unknown", state.GetProperty("self").GetProperty("app").GetProperty("functionAppName").GetString());
-        Assert.Equal(0, state.GetProperty("configLastModifiedTime").GetInt64());
-        Assert.Equal(0, state.GetProperty("contentLastModifiedTime").GetInt64());
+        Assert.Equal(1761868800, state.GetProperty("configLastModifiedTime").GetInt64());
+        Assert.Equal(1761868801, state.GetProperty("contentLastModifiedTime").GetInt64());
         Assert.DoesNotContain("caller-selected", json, StringComparison.Ordinal);
     }
 

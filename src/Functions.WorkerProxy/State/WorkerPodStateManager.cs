@@ -509,6 +509,8 @@ internal sealed class WorkerPodStateManager
                 FunctionGroupName = assignment.FunctionGroupName,
                 MaxHttpConcurrency = assignment.MaxHttpConcurrency,
                 IsAlwaysReady = assignment.IsAlwaysReady,
+                ConfigLastModifiedTime = assignment.ConfigLastModifiedTime,
+                ContentLastModifiedTime = assignment.ContentLastModifiedTime,
                 HttpProxyEndpoint = assignment.HttpProxyEndpoint
             };
 
