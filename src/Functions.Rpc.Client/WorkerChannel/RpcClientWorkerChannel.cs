@@ -197,6 +197,29 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    internal bool TryStartFunctionMetadataRequest(out Task<List<RawFunctionMetadata>> metadataTask)
+    {
+        lock (_lifecycleLock)
+        {
+            if (_draining || IsTerminated)
+            {
+                metadataTask = null;
+                return false;
+            }
+
+            try
+            {
+                metadataTask = GetFunctionMetadata();
+            }
+            catch (Exception exception) when (!Utility.IsFatal(exception))
+            {
+                metadataTask = Task.FromException<List<RawFunctionMetadata>>(exception);
+            }
+
+            return true;
+        }
+    }
+
     internal bool TryDispatchInvocation(ScriptInvocationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);

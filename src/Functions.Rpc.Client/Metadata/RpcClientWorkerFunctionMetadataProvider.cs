@@ -81,12 +81,13 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
         }
 
         Log.ReadingMetadata(_logger, MetadataProviderName);
-        WorkerChannel channel = await GetInitializedChannelAsync();
+        (RpcClientWorkerChannel channel, Task<List<RawFunctionMetadata>> metadataTask) =
+            await GetFunctionMetadataRequestAsync();
         Log.FetchingMetadata(_logger, channel.Id);
         List<RawFunctionMetadata> rawFunctions;
         try
         {
-            rawFunctions = await channel.GetFunctionMetadata();
+            rawFunctions = await metadataTask;
         }
         catch (Exception exception)
         {
@@ -119,24 +120,31 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
         return _cachedResult;
     }
 
-    private async Task<WorkerChannel> GetInitializedChannelAsync()
+    private async Task<(RpcClientWorkerChannel Channel, Task<List<RawFunctionMetadata>> MetadataTask)>
+        GetFunctionMetadataRequestAsync()
     {
-        WorkerChannel channel = _channelRegistry.GetInitializedChannels()
-            .OrderBy(channel => channel.Id, StringComparer.Ordinal)
-            .FirstOrDefault();
-        if (channel is not null)
-        {
-            return channel;
-        }
-
         using CancellationTokenSource timeoutSource = new(_channelWaitTimeout);
-        try
+        while (true)
         {
-            return await _channelRegistry.WaitForFirstInitializedAsync(timeoutSource.Token);
-        }
-        catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested)
-        {
-            throw new TimeoutException($"No client-backed worker channel initialized within {_channelWaitTimeout}.");
+            Task changed = _channelRegistry.GetChangeTask();
+            foreach (RpcClientWorkerChannel channel in _channelRegistry.GetInitializedChannels()
+                .OfType<RpcClientWorkerChannel>()
+                .OrderBy(channel => channel.Id, StringComparer.Ordinal))
+            {
+                if (channel.TryStartFunctionMetadataRequest(out Task<List<RawFunctionMetadata>> metadataTask))
+                {
+                    return (channel, metadataTask);
+                }
+            }
+
+            try
+            {
+                await changed.WaitAsync(timeoutSource.Token);
+            }
+            catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested)
+            {
+                throw new TimeoutException($"No client-backed worker channel initialized within {_channelWaitTimeout}.");
+            }
         }
     }
 
