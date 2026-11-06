@@ -33,7 +33,7 @@ public sealed class RuntimeDrainController : Controller
     /// <summary>
     /// Starts, replays, or escalates the Runtime drain.
     /// </summary>
-    /// <param name="request">The exact drain model request.</param>
+    /// <param name="request">The exact drain mode request.</param>
     /// <param name="cancellationToken">Cancels before irreversible admission closes.</param>
     /// <returns>An immutable acceptance receipt, validation errors, or a downgrade conflict.</returns>
     [HttpPost]
@@ -45,7 +45,7 @@ public sealed class RuntimeDrainController : Controller
     {
         IReadOnlyList<RequestValidationError> errors = ValidateRequest(
             request,
-            out RuntimeDrainModel drainModel);
+            out RuntimeDrainMode drainMode);
         if (errors.Count > 0)
         {
             return BadRequest(new RequestValidationResponse(errors));
@@ -54,11 +54,11 @@ public sealed class RuntimeDrainController : Controller
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            RuntimeDrainReceipt receipt = _manager.Accept(drainModel);
+            RuntimeDrainReceipt receipt = _manager.Accept(drainMode);
             return StatusCode(
                 StatusCodes.Status202Accepted,
                 new RuntimeDrainResponse(
-                    receipt.DrainModel.ToString(),
+                    receipt.DrainMode.ToString(),
                     receipt.AcceptedAtUtc));
         }
         catch (RuntimeDrainConflictException exception)
@@ -74,46 +74,43 @@ public sealed class RuntimeDrainController : Controller
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(
         RuntimeDrainRequest? request,
-        out RuntimeDrainModel drainModel)
+        out RuntimeDrainMode drainMode)
     {
-        drainModel = default;
+        drainMode = default;
         if (!ModelState.IsValid ||
             request is null)
         {
-            return [new(ErrorCodes.InvalidBody, "request")];
+            return [new(RequestValidationErrorCodes.InvalidBody, "request")];
         }
 
-        if (string.IsNullOrWhiteSpace(request.DrainModel))
+        if (string.IsNullOrWhiteSpace(request.DrainMode))
         {
-            return [new(ErrorCodes.Required, "drainMode")];
+            return [new(RequestValidationErrorCodes.Required, "drainMode")];
         }
 
         if (string.Equals(
-            request.DrainModel,
-            nameof(RuntimeDrainModel.Phased),
+            request.DrainMode,
+            nameof(RuntimeDrainMode.Phased),
             StringComparison.Ordinal))
         {
-            drainModel = RuntimeDrainModel.Phased;
+            drainMode = RuntimeDrainMode.Phased;
             return [];
         }
 
         if (string.Equals(
-            request.DrainModel,
-            nameof(RuntimeDrainModel.Immediate),
+            request.DrainMode,
+            nameof(RuntimeDrainMode.Immediate),
             StringComparison.Ordinal))
         {
-            drainModel = RuntimeDrainModel.Immediate;
+            drainMode = RuntimeDrainMode.Immediate;
             return [];
         }
 
-        return [new(ErrorCodes.InvalidValue, "drainMode")];
+        return [new(RequestValidationErrorCodes.InvalidValue, "drainMode")];
     }
 
     private static class ErrorCodes
     {
         public const string DrainConflict = nameof(DrainConflict);
-        public const string InvalidBody = nameof(InvalidBody);
-        public const string InvalidValue = nameof(InvalidValue);
-        public const string Required = nameof(Required);
     }
 }

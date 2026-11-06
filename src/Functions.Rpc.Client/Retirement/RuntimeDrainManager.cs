@@ -6,11 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
 
-internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
+internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsyncDisposable
 {
     private static readonly TimeSpan[] NonHttpBatchOffsets =
     [
@@ -25,43 +26,62 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
 
     private readonly ILogger<RuntimeDrainManager> _logger;
     private readonly Lock _operationLock = new();
+    private readonly CancellationTokenSource _shutdownSource;
     private readonly TimeProvider _timeProvider;
     private readonly IRuntimeDrainWorkerManager _workerManager;
     private DrainOperation _operation;
+    private Task _scheduleTask = Task.CompletedTask;
+    private Task _disposeTask;
 
     public RuntimeDrainManager(
         IRuntimeDrainWorkerManager workerManager,
+        IHostApplicationLifetime applicationLifetime,
         TimeProvider timeProvider,
         ILogger<RuntimeDrainManager> logger)
     {
         _workerManager = workerManager ?? throw new ArgumentNullException(nameof(workerManager));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(applicationLifetime);
+        _shutdownSource = CancellationTokenSource.CreateLinkedTokenSource(applicationLifetime.ApplicationStopping);
     }
 
-    public RuntimeDrainReceipt Accept(RuntimeDrainModel drainModel)
+    internal Task ScheduleCompletion
     {
-        if (!Enum.IsDefined(drainModel))
+        get
+        {
+            lock (_operationLock)
+            {
+                return _scheduleTask;
+            }
+        }
+    }
+
+    public RuntimeDrainReceipt Accept(RuntimeDrainMode drainMode)
+    {
+        if (!Enum.IsDefined(drainMode))
         {
             throw new ArgumentOutOfRangeException(
-                nameof(drainModel),
-                drainModel,
-                "The Runtime drain model is unsupported.");
+                nameof(drainMode),
+                drainMode,
+                "The Runtime drain mode is unsupported.");
         }
 
         lock (_operationLock)
         {
+            ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
             if (_operation is null)
             {
                 RuntimeDrainStart start = _workerManager.CloseAdmission();
                 DrainOperation operation = new(
-                    drainModel,
+                    drainMode,
                     _timeProvider.GetUtcNow(),
                     _timeProvider.GetTimestamp(),
-                    start);
+                    start,
+                    _shutdownSource.Token);
                 _operation = operation;
 
-                if (drainModel is RuntimeDrainModel.Immediate)
+                if (drainMode is RuntimeDrainMode.Immediate)
                 {
                     SelectAllRemainingLocked(operation);
                 }
@@ -70,32 +90,49 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
                     SelectNonHttpBatchLocked(operation, batchIndex: 0);
                     if (!operation.SelectionFinalized)
                     {
-                        _ = RunPhasedScheduleAsync(operation);
+                        _scheduleTask = RunPhasedScheduleAsync(operation);
                     }
                 }
 
-                Log.Accepted(_logger, drainModel, operation.AcceptedAtUtc);
+                Log.Accepted(_logger, drainMode, operation.AcceptedAtUtc);
                 return operation.CreateReceipt();
             }
 
-            if (_operation.ActiveModel == drainModel)
+            if (_operation.ActiveMode == drainMode)
             {
                 return _operation.CreateReceipt();
             }
 
-            if (_operation.ActiveModel is RuntimeDrainModel.Immediate)
+            if (_operation.ActiveMode is RuntimeDrainMode.Immediate)
             {
                 throw new RuntimeDrainConflictException(
-                    "The Runtime is already draining with the Immediate model.");
+                    "The Runtime is already draining with the Immediate mode.");
             }
 
-            _operation.ActiveModel = RuntimeDrainModel.Immediate;
+            _operation.ActiveMode = RuntimeDrainMode.Immediate;
             _operation.ScheduleCancellation.Cancel();
             SelectAllRemainingLocked(_operation);
             Log.Escalated(_logger, _operation.AcceptedAtUtc);
 
             return _operation.CreateReceipt();
         }
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        lock (_operationLock)
+        {
+            return new(_disposeTask ??= DisposeCoreAsync());
+        }
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        _shutdownSource.Cancel();
+        await _scheduleTask.ConfigureAwait(false);
+        _operation?.ScheduleCancellation.Dispose();
+        _shutdownSource.Dispose();
     }
 
     private async Task RunPhasedScheduleAsync(DrainOperation operation)
@@ -150,6 +187,9 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
         catch (OperationCanceledException) when (operation.ScheduleCancellation.IsCancellationRequested)
         {
         }
+        catch (ObjectDisposedException) when (_shutdownSource.IsCancellationRequested)
+        {
+        }
         catch (Exception exception)
         {
             Log.ScheduleFailed(_logger, exception);
@@ -158,7 +198,8 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
 
     private bool CanRunPhasedSelectionLocked(DrainOperation operation)
         => ReferenceEquals(_operation, operation) &&
-            operation.ActiveModel is RuntimeDrainModel.Phased &&
+            !operation.ScheduleCancellation.IsCancellationRequested &&
+            operation.ActiveMode is RuntimeDrainMode.Phased &&
             !operation.SelectionFinalized;
 
     private void SelectNonHttpBatchLocked(DrainOperation operation, int batchIndex)
@@ -218,27 +259,29 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
     private sealed class DrainOperation
     {
         public DrainOperation(
-            RuntimeDrainModel activeModel,
+            RuntimeDrainMode activeMode,
             DateTimeOffset acceptedAtUtc,
             long acceptedTimestamp,
-            RuntimeDrainStart start)
+            RuntimeDrainStart start,
+            CancellationToken shutdownToken)
         {
-            ActiveModel = activeModel;
+            ActiveMode = activeMode;
             AcceptedAtUtc = acceptedAtUtc;
             AcceptedTimestamp = acceptedTimestamp;
             Start = start;
             AllWorkerIds = [.. start.NonHttpWorkerIds, .. start.HttpWorkerIds];
+            ScheduleCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
         }
 
         public DateTimeOffset AcceptedAtUtc { get; }
 
         public long AcceptedTimestamp { get; }
 
-        public RuntimeDrainModel ActiveModel { get; set; }
+        public RuntimeDrainMode ActiveMode { get; set; }
 
         public IReadOnlyList<string> AllWorkerIds { get; }
 
-        public CancellationTokenSource ScheduleCancellation { get; } = new();
+        public CancellationTokenSource ScheduleCancellation { get; }
 
         public HashSet<string> SelectedWorkerIds { get; } = new(StringComparer.Ordinal);
 
@@ -246,16 +289,16 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager
 
         public RuntimeDrainStart Start { get; }
 
-        public RuntimeDrainReceipt CreateReceipt() => new(ActiveModel, AcceptedAtUtc);
+        public RuntimeDrainReceipt CreateReceipt() => new(ActiveMode, AcceptedAtUtc);
     }
 
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Information,
-            "Accepted Runtime drain with {DrainModel} at {AcceptedAtUtc}.")]
+            "Accepted Runtime drain with {DrainMode} at {AcceptedAtUtc}.")]
         public static partial void Accepted(
             ILogger logger,
-            RuntimeDrainModel drainModel,
+            RuntimeDrainMode drainMode,
             DateTimeOffset acceptedAtUtc);
 
         [LoggerMessage(1, LogLevel.Information,

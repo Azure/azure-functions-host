@@ -8,25 +8,25 @@ using Newtonsoft.Json.Linq;
 namespace Azure.Functions.Host.Models;
 
 /// <summary>
-/// Requests the scheduling model for an irreversible Runtime drain.
+/// Requests the scheduling mode for an irreversible Runtime drain.
 /// </summary>
 [JsonConverter(typeof(RuntimeDrainRequestJsonConverter))]
 public sealed class RuntimeDrainRequest
 {
     /// <summary>
-    /// Gets or sets the exact <c>Phased</c> or <c>Immediate</c> drain model.
+    /// Gets or sets the exact <c>Phased</c> or <c>Immediate</c> drain mode.
     /// </summary>
     [JsonProperty("drainMode")]
-    public string? DrainModel { get; set; }
+    public string? DrainMode { get; set; }
 }
 
 /// <summary>
-/// Confirms the accepted Runtime drain model and its original start time.
+/// Confirms the accepted Runtime drain mode and its original start time.
 /// </summary>
-/// <param name="DrainModel">The active drain model.</param>
+/// <param name="DrainMode">The active drain mode.</param>
 /// <param name="AcceptedAtUtc">The immutable first acceptance time.</param>
 public sealed record RuntimeDrainResponse(
-    [property: JsonProperty("drainMode")] string DrainModel,
+    [property: JsonProperty("drainMode")] string DrainMode,
     [property: JsonProperty("acceptedAtUtc")] DateTimeOffset AcceptedAtUtc);
 
 internal sealed class RuntimeDrainRequestJsonConverter : JsonConverter
@@ -64,11 +64,11 @@ internal sealed class RuntimeDrainRequestJsonConverter : JsonConverter
             }
         }
 
-        JProperty? drainModel = body.Property(
+        JProperty? drainMode = body.Property(
             DrainModePropertyName,
             StringComparison.Ordinal);
-        if (drainModel is not null &&
-            drainModel.Value.Type is not JTokenType.String)
+        if (drainMode is not null &&
+            drainMode.Value.Type is not JTokenType.String)
         {
             throw new JsonSerializationException(
                 "The Runtime drain request drainMode property must be a string.");
@@ -76,7 +76,7 @@ internal sealed class RuntimeDrainRequestJsonConverter : JsonConverter
 
         return new RuntimeDrainRequest
         {
-            DrainModel = drainModel?.Value.Value<string>(),
+            DrainMode = drainMode?.Value.Value<string>(),
         };
     }
 

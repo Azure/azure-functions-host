@@ -6,7 +6,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -25,15 +29,16 @@ public sealed class RuntimeDrainManagerTests
         TimeProvider timeProvider = escalate
             ? TimeProvider.System
             : new AcceleratedTimeProvider();
-        RuntimeDrainManager manager = new(
+        await using RuntimeDrainManager manager = new(
             workerManager,
+            Mock.Of<IHostApplicationLifetime>(),
             timeProvider,
             NullLogger<RuntimeDrainManager>.Instance);
 
-        RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainModel.Phased);
-        RuntimeDrainReceipt replay = manager.Accept(RuntimeDrainModel.Phased);
+        RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainMode.Phased);
+        RuntimeDrainReceipt replay = manager.Accept(RuntimeDrainMode.Phased);
         RuntimeDrainReceipt active = escalate
-            ? manager.Accept(RuntimeDrainModel.Immediate)
+            ? manager.Accept(RuntimeDrainMode.Immediate)
             : phased;
         await workerManager.SelectionCompleted.WaitAsync(TimeSpan.FromSeconds(5));
 
@@ -41,7 +46,7 @@ public sealed class RuntimeDrainManagerTests
         Assert.Equal(phased.AcceptedAtUtc, active.AcceptedAtUtc);
         if (escalate)
         {
-            Assert.Equal(RuntimeDrainModel.Immediate, active.DrainModel);
+            Assert.Equal(RuntimeDrainMode.Immediate, active.DrainMode);
             Assert.Equal(
             [
                 ["non-http-1", "non-http-2"],
@@ -49,11 +54,11 @@ public sealed class RuntimeDrainManagerTests
             ],
             workerManager.Selections);
             Assert.Throws<RuntimeDrainConflictException>(
-                () => manager.Accept(RuntimeDrainModel.Phased));
+                () => manager.Accept(RuntimeDrainMode.Phased));
         }
         else
         {
-            Assert.Equal(RuntimeDrainModel.Phased, active.DrainModel);
+            Assert.Equal(RuntimeDrainMode.Phased, active.DrainMode);
             Assert.Equal(
             [
                 ["non-http-1", "non-http-2"],
@@ -65,6 +70,93 @@ public sealed class RuntimeDrainManagerTests
             ],
             workerManager.Selections);
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PhasedDrain_HostShutdownOrDisposalCancelsRemainingSelections(bool dispose)
+    {
+        FakeTimeProvider time = new();
+        using CancellationTokenSource stopping = new();
+        Mock<IHostApplicationLifetime> lifetime = new();
+        lifetime.SetupGet(value => value.ApplicationStopping).Returns(stopping.Token);
+        Mock<IRuntimeDrainWorkerManager> workers = new(MockBehavior.Strict);
+        workers.Setup(value => value.CloseAdmission()).Returns(new RuntimeDrainStart(
+            ["non-http-1", "non-http-2"], ["http-1"]));
+        workers.Setup(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()));
+        Mock<ILogger<RuntimeDrainManager>> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        await using RuntimeDrainManager manager = new(workers.Object, lifetime.Object, time, logger.Object);
+        manager.Accept(RuntimeDrainMode.Phased);
+
+        time.Advance(TimeSpan.FromSeconds(9));
+        if (dispose)
+        {
+            await manager.DisposeAsync();
+            await manager.DisposeAsync();
+            Assert.Throws<ObjectDisposedException>(() => manager.Accept(RuntimeDrainMode.Immediate));
+        }
+        else
+        {
+            stopping.Cancel();
+        }
+
+        await manager.ScheduleCompletion.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromHours(1));
+
+        workers.Verify(value => value.CloseAdmission(), Times.Once);
+        workers.Verify(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()), Times.Once);
+        logger.Verify(value => value.Log(
+            LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task PhasedDrain_SelectionFailureOnlySuppressesExpectedShutdownDisposal(bool shutdown, bool registryDisposed)
+    {
+        FakeTimeProvider time = new();
+        using CancellationTokenSource stopping = new();
+        Mock<IHostApplicationLifetime> lifetime = new();
+        lifetime.SetupGet(value => value.ApplicationStopping).Returns(stopping.Token);
+        Mock<IRuntimeDrainWorkerManager> workers = new(MockBehavior.Strict);
+        workers.Setup(value => value.CloseAdmission()).Returns(new RuntimeDrainStart(
+            ["non-http-1", "non-http-2"], ["http-1"]));
+        Exception failure = registryDisposed
+            ? new ObjectDisposedException(nameof(WorkerChannelRegistry))
+            : new InvalidOperationException("Selection failed.");
+        int selectionCount = 0;
+        workers.Setup(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()))
+            .Callback(() =>
+            {
+                if (Interlocked.Increment(ref selectionCount) == 2)
+                {
+                    if (shutdown)
+                    {
+                        stopping.Cancel();
+                    }
+
+                    throw failure;
+                }
+            });
+        Mock<ILogger<RuntimeDrainManager>> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        await using RuntimeDrainManager manager = new(workers.Object, lifetime.Object, time, logger.Object);
+        manager.Accept(RuntimeDrainMode.Phased);
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        await manager.ScheduleCompletion.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromHours(1));
+
+        workers.Verify(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()), Times.Exactly(2));
+        logger.Verify(value => value.Log(
+            LogLevel.Error, It.Is<EventId>(eventId => eventId.Id == 2), It.IsAny<It.IsAnyType>(),
+            failure, It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+            shutdown && registryDisposed ? Times.Never() : Times.Once());
     }
 
     private sealed class RecordingWorkerManager : IRuntimeDrainWorkerManager

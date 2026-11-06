@@ -7,9 +7,9 @@ using System.Collections.Generic;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Defines the supported Runtime drain scheduling models.
+/// Defines the supported Runtime drain scheduling modes.
 /// </summary>
-public enum RuntimeDrainModel
+public enum RuntimeDrainMode
 {
     /// <summary>
     /// Selects non-HTTP Workers in fixed batches and HTTP Workers at the fixed cutoff.
@@ -30,13 +30,13 @@ public interface IRuntimeDrainManager
     /// <summary>
     /// Starts, replays, or escalates the Runtime drain.
     /// </summary>
-    /// <param name="drainModel">The requested drain scheduling model.</param>
-    /// <returns>The immutable first acceptance time and active drain model.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="drainModel"/> is unsupported.</exception>
+    /// <param name="drainMode">The requested drain scheduling mode.</param>
+    /// <returns>The immutable first acceptance time and active drain mode.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="drainMode"/> is unsupported.</exception>
     /// <exception cref="RuntimeDrainConflictException">
     /// Thrown when a Phased request attempts to downgrade an active Immediate drain.
     /// </exception>
-    RuntimeDrainReceipt Accept(RuntimeDrainModel drainModel);
+    RuntimeDrainReceipt Accept(RuntimeDrainMode drainMode);
 }
 
 internal interface IRuntimeDrainWorkerManager
@@ -47,12 +47,12 @@ internal interface IRuntimeDrainWorkerManager
 }
 
 /// <summary>
-/// Confirms the active drain model and immutable first acceptance time.
+/// Confirms the active drain mode and immutable first acceptance time.
 /// </summary>
-/// <param name="DrainModel">The active drain model.</param>
+/// <param name="DrainMode">The active drain mode.</param>
 /// <param name="AcceptedAtUtc">The first acceptance time.</param>
 public sealed record RuntimeDrainReceipt(
-    RuntimeDrainModel DrainModel,
+    RuntimeDrainMode DrainMode,
     DateTimeOffset AcceptedAtUtc);
 
 internal sealed record RuntimeDrainStart(

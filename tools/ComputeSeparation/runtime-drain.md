@@ -37,6 +37,8 @@ Phased drain selects:
 
 Escalation to immediate selects every remaining Worker without changing the first-selection time of Workers already selected.
 
+Root Host shutdown cancels the remaining phased selections. Disposing the coordinator also cancels and waits for its schedule to finish. Expected shutdown cancellation or registry-disposal races do not produce schedule-failure errors; unexpected scheduling failures still do.
+
 ## Shared worker lifecycle
 
 Runtime drain reuses the existing worker retirement path:

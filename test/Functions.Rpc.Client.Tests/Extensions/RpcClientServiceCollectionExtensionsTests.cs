@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -21,6 +22,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Xunit;
 using Yarp.ReverseProxy.Forwarder;
@@ -82,6 +84,34 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => services.AddRpcClientServices());
         Assert.Contains(nameof(RpcClientServiceCollectionExtensions.AddRpcClientServices), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AddRpcClientServices_RuntimeDrainUsesRootHostLifetime()
+    {
+        FakeTimeProvider time = new();
+        Mock<IRuntimeDrainWorkerManager> workers = new(MockBehavior.Strict);
+        workers.Setup(value => value.CloseAdmission()).Returns(new RuntimeDrainStart(
+            ["non-http-1", "non-http-2"], ["http-1"]));
+        workers.Setup(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()));
+        using IHost host = new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddRpcClientServices();
+                services.AddSingleton(workers.Object);
+                services.AddSingleton<TimeProvider>(time);
+            })
+            .Build();
+        await host.StartAsync();
+        RuntimeDrainManager manager = Assert.IsType<RuntimeDrainManager>(
+            host.Services.GetRequiredService<IRuntimeDrainManager>());
+        manager.Accept(RuntimeDrainMode.Phased);
+
+        await host.StopAsync();
+        await manager.ScheduleCompletion.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        workers.Verify(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()), Times.Once);
     }
 
     [Fact]

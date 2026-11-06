@@ -251,7 +251,6 @@ internal sealed partial class WorkerChannelRegistry :
                 if (channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } invocationDrain)
                 {
                     slot.DrainStarted = true;
-                    slot.InvocationDrain = invocationDrain;
                     selections.Add(new(workerId, channel, invocationDrain));
                 }
 
@@ -340,13 +339,12 @@ internal sealed partial class WorkerChannelRegistry :
                     deadlineEscalations.Add((
                         workerId,
                         channel,
-                        slot.InvocationDrain ?? invocationDrain,
+                        invocationDrain,
                         selectedTimestamp));
                     continue;
                 }
 
                 slot.DrainStarted = true;
-                slot.InvocationDrain = invocationDrain;
                 selections.Add((
                     workerId,
                     channel,
@@ -818,7 +816,6 @@ internal sealed partial class WorkerChannelRegistry :
 
                     channel = currentChannel;
                     slot.DrainStarted = true;
-                    slot.InvocationDrain = drainTask;
                     SignalReadyChannelsLocked();
                     SignalChangeLocked();
                 }
@@ -1442,8 +1439,6 @@ internal sealed partial class WorkerChannelRegistry :
         public Exception SetupException { get; set; }
 
         public bool DrainStarted { get; set; }
-
-        public Task InvocationDrain { get; set; }
 
         // Indicates that a previously accepted link has terminated and cannot be replayed.
         public bool Terminal { get; set; }

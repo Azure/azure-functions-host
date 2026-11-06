@@ -28,16 +28,16 @@ public sealed class RuntimeDrainEndpointBehaviorTests
             new(2026, 10, 31, 7, 0, 0, TimeSpan.Zero);
         Mock<IRuntimeDrainManager> manager = new(MockBehavior.Strict);
         manager.SetupSequence(
-                value => value.Accept(RuntimeDrainModel.Phased))
+                value => value.Accept(RuntimeDrainMode.Phased))
             .Returns(new RuntimeDrainReceipt(
-                RuntimeDrainModel.Phased,
+                RuntimeDrainMode.Phased,
                 acceptedAtUtc))
             .Throws(new RuntimeDrainConflictException(
                 "The Runtime is already draining with the Immediate model."));
         manager.Setup(
-                value => value.Accept(RuntimeDrainModel.Immediate))
+                value => value.Accept(RuntimeDrainMode.Immediate))
             .Returns(new RuntimeDrainReceipt(
-                RuntimeDrainModel.Immediate,
+                RuntimeDrainMode.Immediate,
                 acceptedAtUtc));
         await using WorkerLinkTestHost host =
             await WorkerLinkTestHost.StartAsync(
@@ -49,14 +49,14 @@ public sealed class RuntimeDrainEndpointBehaviorTests
             """{"drainMode":"Phased"}""",
             timeout.Token);
         Assert.Equal(
-            (RuntimeDrainModel.Phased, acceptedAtUtc),
+            (RuntimeDrainMode.Phased, acceptedAtUtc),
             await ReadReceiptAsync(phased, timeout.Token));
 
         using HttpResponseMessage immediate = await host.PostDrainAsync(
             """{"drainMode":"Immediate"}""",
             timeout.Token);
         Assert.Equal(
-            (RuntimeDrainModel.Immediate, acceptedAtUtc),
+            (RuntimeDrainMode.Immediate, acceptedAtUtc),
             await ReadReceiptAsync(immediate, timeout.Token));
 
         using HttpResponseMessage downgrade = await host.PostDrainAsync(
@@ -140,7 +140,7 @@ public sealed class RuntimeDrainEndpointBehaviorTests
             error.GetProperty("target").GetString());
     }
 
-    private static async Task<(RuntimeDrainModel DrainModel, DateTimeOffset AcceptedAtUtc)> ReadReceiptAsync(
+    private static async Task<(RuntimeDrainMode DrainMode, DateTimeOffset AcceptedAtUtc)> ReadReceiptAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
@@ -148,7 +148,7 @@ public sealed class RuntimeDrainEndpointBehaviorTests
         using JsonDocument document = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(cancellationToken));
         return (
-            Enum.Parse<RuntimeDrainModel>(
+            Enum.Parse<RuntimeDrainMode>(
                 document.RootElement
                     .GetProperty("drainMode")
                     .GetString()!),

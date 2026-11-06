@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -36,12 +37,13 @@ public sealed partial class WorkerChannelRegistryTests
             pending.Id,
             CreateEndpoint(pending.Id));
         await pending.StartEntered.WaitAsync(TestTimeout);
-        IRuntimeDrainManager manager = new RuntimeDrainManager(
+        await using RuntimeDrainManager manager = new(
             registry,
+            Mock.Of<IHostApplicationLifetime>(),
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
 
-        manager.Accept(RuntimeDrainModel.Immediate);
+        manager.Accept(RuntimeDrainMode.Immediate);
         pending.AllowStart();
 
         WorkerLinkException admissionClosed =
@@ -83,17 +85,18 @@ public sealed partial class WorkerChannelRegistryTests
                 StreamingMessage.ContentOneofCase.InvocationRequest);
         }
 
-        IRuntimeDrainManager manager = new RuntimeDrainManager(
+        await using RuntimeDrainManager manager = new(
             registry,
+            Mock.Of<IHostApplicationLifetime>(),
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
-        RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainModel.Phased);
+        RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainMode.Phased);
         await background.DisposeStarted.WaitAsync(TestTimeout);
         await WaitForRuntimeStateAsync(stateManager, state => state.WorkerCount == 2 && state.HttpCapacity == 17);
         Assert.All(httpWorkers, worker => Assert.True(worker.Channel.IsReadyForInvocations));
         Task changed = registry.GetChangeTask();
 
-        RuntimeDrainReceipt immediate = manager.Accept(RuntimeDrainModel.Immediate);
+        RuntimeDrainReceipt immediate = manager.Accept(RuntimeDrainMode.Immediate);
 
         Assert.Equal(phased.AcceptedAtUtc, immediate.AcceptedAtUtc);
         await changed.WaitAsync(TestTimeout);
@@ -177,12 +180,13 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(drain.IsCompleted);
         Assert.True(onDemand.Channel.IsReadyForInvocations);
         appServer.Publish = (_, _) => Task.FromResult(HttpStatusCode.OK);
-        IRuntimeDrainManager manager = new RuntimeDrainManager(
+        await using RuntimeDrainManager manager = new(
             registry,
+            Mock.Of<IHostApplicationLifetime>(),
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
 
-        manager.Accept(RuntimeDrainModel.Immediate);
+        manager.Accept(RuntimeDrainMode.Immediate);
 
         Assert.Same(drain, selected.Channel.TryBeginRuntimeDrain());
         Assert.False(selected.DisposeStarted.IsCompleted);
@@ -252,12 +256,13 @@ public sealed partial class WorkerChannelRegistryTests
             await attempted.Task.WaitAsync(TestTimeout);
             Assert.False(alwaysReady.Channel.IsReadyForInvocations);
             Assert.True(onDemand.Channel.IsReadyForInvocations);
-            IRuntimeDrainManager manager = new RuntimeDrainManager(
+            await using RuntimeDrainManager manager = new(
                 registry,
+                Mock.Of<IHostApplicationLifetime>(),
                 TimeProvider.System,
                 NullLogger<RuntimeDrainManager>.Instance);
-            manager.Accept(RuntimeDrainModel.Immediate);
-            manager.Accept(RuntimeDrainModel.Immediate);
+            manager.Accept(RuntimeDrainMode.Immediate);
+            manager.Accept(RuntimeDrainMode.Immediate);
 
             Assert.False(alwaysReady.Channel.IsReadyForInvocations);
             Assert.False(onDemand.Channel.IsReadyForInvocations);
@@ -312,12 +317,13 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, isAlwaysReady: false, desiredWorkerCount: 0));
         }
 
-        IRuntimeDrainManager manager = new RuntimeDrainManager(
+        await using RuntimeDrainManager manager = new(
             registry,
+            Mock.Of<IHostApplicationLifetime>(),
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
-        RuntimeDrainReceipt receipt = manager.Accept(RuntimeDrainModel.Immediate);
-        Assert.Equal(receipt, manager.Accept(RuntimeDrainModel.Immediate));
+        RuntimeDrainReceipt receipt = manager.Accept(RuntimeDrainMode.Immediate);
+        Assert.Equal(receipt, manager.Accept(RuntimeDrainMode.Immediate));
         Task runtimeDrain = selected.Channel.TryBeginRuntimeDrain();
         Assert.Same(runtimeDrain, selected.Channel.TryBeginRuntimeDrain());
         if (cancelFirst)
@@ -406,14 +412,15 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, isAlwaysReady: false, desiredWorkerCount: 0));
         }
 
-        IRuntimeDrainManager manager = new RuntimeDrainManager(
+        await using RuntimeDrainManager manager = new(
             registry,
+            Mock.Of<IHostApplicationLifetime>(),
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
-        RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainModel.Phased);
+        RuntimeDrainReceipt phased = manager.Accept(RuntimeDrainMode.Phased);
         clock.Advance(TimeSpan.FromMinutes(30));
-        Assert.Equal(phased, manager.Accept(RuntimeDrainModel.Phased));
-        Assert.Equal(phased.AcceptedAtUtc, manager.Accept(RuntimeDrainModel.Immediate).AcceptedAtUtc);
+        Assert.Equal(phased, manager.Accept(RuntimeDrainMode.Phased));
+        Assert.Equal(phased.AcceptedAtUtc, manager.Accept(RuntimeDrainMode.Immediate).AcceptedAtUtc);
         clock.Advance(TimeSpan.FromMinutes(29));
         Assert.False(invocation.ResultSource.Task.IsCompleted);
         Assert.False(selected.DisposeStarted.IsCompleted);
@@ -483,15 +490,16 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, isAlwaysReady: false, desiredWorkerCount: 0));
         }
 
-        IRuntimeDrainManager manager = new RuntimeDrainManager(
+        await using RuntimeDrainManager manager = new(
             registry,
+            Mock.Of<IHostApplicationLifetime>(),
             TimeProvider.System,
             NullLogger<RuntimeDrainManager>.Instance);
 
         RuntimeDrainReceipt receipt = manager.Accept(
-            RuntimeDrainModel.Immediate);
+            RuntimeDrainMode.Immediate);
 
-        Assert.Equal(RuntimeDrainModel.Immediate, receipt.DrainModel);
+        Assert.Equal(RuntimeDrainMode.Immediate, receipt.DrainMode);
         Assert.False(
             selected.Channel.TryDispatchInvocation(
                 CreateScaleInInvocation(function)));
@@ -559,9 +567,10 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, false, 0));
         }
 
-        IRuntimeDrainManager manager = new RuntimeDrainManager(registry, TimeProvider.System, NullLogger<RuntimeDrainManager>.Instance);
-        RuntimeDrainReceipt receipt = manager.Accept(RuntimeDrainModel.Immediate);
-        Assert.Equal(receipt, manager.Accept(RuntimeDrainModel.Immediate));
+        await using RuntimeDrainManager manager = new(
+            registry, Mock.Of<IHostApplicationLifetime>(), TimeProvider.System, NullLogger<RuntimeDrainManager>.Instance);
+        RuntimeDrainReceipt receipt = manager.Accept(RuntimeDrainMode.Immediate);
+        Assert.Equal(receipt, manager.Accept(RuntimeDrainMode.Immediate));
         Assert.Equal(0, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, false, 0));
         await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
         Assert.Equal(1, selected.SetupAttempts);
@@ -611,8 +620,9 @@ public sealed partial class WorkerChannelRegistryTests
         Task retirement = registry.RetireIdleHttpWorkersAsync(IdleThreshold);
         await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
 
-        IRuntimeDrainManager manager = new RuntimeDrainManager(registry, time, NullLogger<RuntimeDrainManager>.Instance);
-        manager.Accept(RuntimeDrainModel.Immediate);
+        await using RuntimeDrainManager manager = new(
+            registry, Mock.Of<IHostApplicationLifetime>(), time, NullLogger<RuntimeDrainManager>.Instance);
+        manager.Accept(RuntimeDrainMode.Immediate);
         Assert.False(invocation.ResultSource.Task.IsCompleted);
         time.Advance(TimeSpan.FromMinutes(60));
 
