@@ -125,7 +125,7 @@ public class ClientWorkerCompositionTests
         Assert.Equal(ServiceLifetime.Singleton, stateManager.Lifetime);
         Assert.NotNull(stateManager.ImplementationFactory);
         Assert.Single(services, service =>
-            service.ServiceType == typeof(IHostedService) && service.ImplementationType == typeof(AppServerHostStatePublisher));
+            service.ServiceType == typeof(AppServerHostStatePublisher));
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
             string.Equals(service.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);

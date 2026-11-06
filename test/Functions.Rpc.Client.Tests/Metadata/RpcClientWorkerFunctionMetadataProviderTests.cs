@@ -26,13 +26,14 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
     private readonly List<WorkerChannel> _channels = [];
     private readonly Mock<IWorkerChannelRegistry> _registry = new();
     private readonly Mock<IWorkerRuntimeResolver> _runtimeResolver = new();
+    private TaskCompletionSource _channelChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public RpcClientWorkerFunctionMetadataProviderTests()
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
             .Returns(() => [.. _channels]);
-        _registry.Setup(registry => registry.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
-            .Returns((CancellationToken cancellationToken) => WaitForChannelAsync(cancellationToken));
+        _registry.Setup(registry => registry.GetChangeTask())
+            .Returns(() => _channelChanged.Task);
         _registry.Setup(registry => registry.UnlinkAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _runtimeResolver.Setup(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()))
@@ -103,10 +104,34 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
         Assert.False(getMetadata.IsCompleted);
 
         _channels.Add(worker.Channel);
+        SignalChannelChange();
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
         await worker.SendFunctionMetadataResponseAsync([CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding)]);
 
         Assert.Single((await getMetadata.WaitAsync(TestTimeout)).Functions);
+    }
+
+    [Fact]
+    public async Task GetFunctionMetadataAsync_WaitsForNonDrainingChannel()
+    {
+        await using ClientWorkerChannelTestHarness draining = await ClientWorkerChannelTestHarness.CreateAsync("draining");
+        await using ClientWorkerChannelTestHarness replacement = await ClientWorkerChannelTestHarness.CreateAsync("replacement");
+        _channels.Add(draining.Channel);
+        draining.Channel.StopAcceptingInvocations();
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+
+        Assert.False(getMetadata.IsCompleted);
+        Assert.False(draining.Transport.Requests.TryRead(out _));
+
+        _channels.Add(replacement.Channel);
+        SignalChannelChange();
+        await replacement.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        await replacement.SendFunctionMetadataResponseAsync([CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding)]);
+
+        Assert.Single((await getMetadata.WaitAsync(TestTimeout)).Functions);
+        Assert.False(draining.Transport.Requests.TryRead(out _));
     }
 
     [Fact]
@@ -361,14 +386,11 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
             Options.Create(new FunctionMetadataOptions { UseWorkerRuntimeFromMetadata = useWorkerRuntimeFromMetadata }),
             channelWaitTimeout ?? TimeSpan.FromSeconds(10));
 
-    private async Task<WorkerChannel> WaitForChannelAsync(CancellationToken cancellationToken)
+    private void SignalChannelChange()
     {
-        while (_channels.Count == 0)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
-        }
-
-        return _channels[0];
+        TaskCompletionSource previous = _channelChanged;
+        _channelChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        previous.TrySetResult();
     }
 
     private static RpcFunctionMetadata CreateMetadata(

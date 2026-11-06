@@ -138,7 +138,6 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
 
             // Capture the invalidation marker before reading registry inputs so concurrent changes trigger another pass.
             Task registryChanged = _channelRegistry.GetChangeTask();
-
             wakeups.Clear();
             wakeups.Add(registryChanged);
             bool invalidated = false;
@@ -173,7 +172,7 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
                     IReadOnlyList<WorkerChannel> readyChannels = readiness.GetAwaiter().GetResult();
                     foreach (WorkerChannel channel in readyChannels)
                     {
-                        if (channel is RpcClientWorkerChannel { IsHttpFunctionGroup: true, IsReadyForInvocations: true, MaxHttpConcurrency: { } concurrency })
+                        if (channel is RpcClientWorkerChannel { IsHttpFunctionGroup: true, IsHttpCapacityAvailable: true, MaxHttpConcurrency: { } concurrency })
                         {
                             httpCapacity += concurrency;
                         }

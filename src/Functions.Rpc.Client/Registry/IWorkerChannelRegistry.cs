@@ -52,6 +52,21 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
         WorkerLinkRuntimeIdentity runtimeIdentity = null);
 
     /// <summary>
+    /// Commits excess usable workers in one function group and capacity class to the shared drain and unlink lifecycle.
+    /// </summary>
+    /// <param name="functionGroup">The trusted function group.</param>
+    /// <param name="isAlwaysReady">The exact always-ready capacity class.</param>
+    /// <param name="desiredWorkerCount">The absolute number of matching usable workers to retain.</param>
+    /// <param name="cancellationToken">Cancels selection before drain commitment.</param>
+    /// <returns>The number of newly draining workers, without waiting for accepted work to finish.</returns>
+    /// <remarks>HTTP on-demand workers are retired only by the idle monitor.</remarks>
+    Task<int> ScaleInWorkersAsync(
+        string functionGroup,
+        bool isAlwaysReady,
+        int desiredWorkerCount,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Removes and disposes a linked worker when present.
     /// </summary>
     /// <remarks>The accepted worker ID remains terminal and cannot be linked again in this registry.</remarks>
@@ -61,7 +76,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retires ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold.
+    /// Selects ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold, then uses the shared drain and unlink lifecycle.
     /// </summary>
     /// <param name="threshold">The minimum continuous idle duration. Equality does not permit retirement.</param>
     /// <param name="cancellationToken">Cancels the scan before the next retirement begins.</param>

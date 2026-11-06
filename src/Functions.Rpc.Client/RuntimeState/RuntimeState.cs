@@ -10,7 +10,8 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 /// <param name="CreatedTime">The UTC time when the counts or capacity last changed.</param>
 /// <param name="HttpCapacity">
-/// The sum of registry-ready HTTP workers' assigned concurrency limits, not remaining capacity after active requests.
+/// The sum of available HTTP workers' assigned concurrency limits, excluding reserved scale-in capacity and draining workers,
+/// not remaining capacity after active requests.
 /// Capacity is zero once the root Host begins stopping; it does not indicate ScriptHost availability.
 /// </param>
 /// <param name="WorkerCount">The number of initialized, linked workers, independently of invocation readiness.</param>

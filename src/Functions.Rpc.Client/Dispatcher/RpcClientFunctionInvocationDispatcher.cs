@@ -111,7 +111,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     }
 
     /// <summary>
-    /// Atomically checks channel readiness and transfers invocation ownership before idle retirement can claim it.
+    /// Atomically checks channel readiness and transfers invocation ownership before idle retirement or scale-in can claim it.
     /// </summary>
     private bool DispatchInvocation(ScriptInvocationContext invocationContext, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
     {
@@ -300,7 +300,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private bool TryDispatchInvocation(ScriptInvocationContext invocationContext, IReadOnlyList<WorkerChannel> channels,
         string functionGroup, CancellationToken cancellationToken = default)
     {
-        // A selected channel may retire before its lifecycle lock is acquired; try other matching channels.
+        // A selected channel may retire or drain before its lifecycle lock is acquired; try other matching channels.
         for (int attempt = 0; attempt < channels.Count; attempt++)
         {
             if (!TryGetReadyChannel(channels, functionGroup, out WorkerChannel channel))

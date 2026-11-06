@@ -14,6 +14,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" VersionOverride="10.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" PrivateAssets="all" />
     <PackageReference Include="Moq" />
@@ -22,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Functions.Host\Functions.Host.csproj" />
     <Compile Include="..\Functions.WorkerProxy.Tests\TestCertificateFiles.cs" Link="TestCertificateFiles.cs" />
     <Compile Include="..\Functions.WorkerProxy.Tests\Management\ManagementTokenTestData.cs" Link="ManagementTokenTestData.cs" />
     <ProjectReference Include="..\..\src\Functions.Rpc.Client\Functions.Rpc.Client.csproj" />

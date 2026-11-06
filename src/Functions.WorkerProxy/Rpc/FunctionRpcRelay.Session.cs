@@ -301,6 +301,25 @@ internal sealed partial class FunctionRpcRelay
             while (await requestStream.MoveNext(cancellationToken))
             {
                 StreamingMessage current = requestStream.Current;
+                if (current.WorkerDraining is not null)
+                {
+                    if (side is not FunctionRpcRelaySide.Runtime)
+                    {
+                        throw new InvalidDataException("Worker draining controls are only accepted from the Host stream.");
+                    }
+
+                    lock (_stateLock)
+                    {
+                        if (_terminalState is not null || !_runtimeAttached)
+                        {
+                            return;
+                        }
+                    }
+
+                    stateManager.OnWorkerDraining(id);
+                    continue;
+                }
+
                 if (current.HttpProxy is { } control)
                 {
                     if (side is FunctionRpcRelaySide.Runtime)

@@ -279,7 +279,6 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.False(retirement.IsCompleted);
 
             Task<bool> unlink = registry.UnlinkAsync(worker.Id);
-            Assert.False(unlink.IsCompleted);
             await disposalWaitStarted.Task.WaitAsync(TestTimeout);
             if (cancel)
             {
@@ -292,7 +291,8 @@ public sealed partial class WorkerChannelRegistryTests
                 await retirement.WaitAsync(TestTimeout);
             }
 
-            Assert.False(await unlink.WaitAsync(TestTimeout));
+            await unlink.WaitAsync(TestTimeout);
+            Assert.Equal(1, worker.DisposeCount);
             await registry.RetireIdleHttpWorkersAsync(IdleThreshold).WaitAsync(TestTimeout);
         }
         finally

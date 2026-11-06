@@ -83,6 +83,13 @@ public partial class FunctionRpcRelayTests
         Assert.False(workerOutbound.Reader.TryRead(out _));
         Assert.Equal(3, manager.State.Revision);
 
+        Task<WorkerStatePollResult> drainingPoll = manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
+        await runtimeInbound.Writer.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+        WorkerPodState draining = Assert.IsType<WorkerPodState>((await drainingPoll).State);
+        Assert.Equal(WorkerPodStatus.Draining, draining.PodStatus);
+        Assert.Equal(WorkerStatus.Draining, WorkerOriginState.FromState(draining).Status);
+        Assert.False(workerOutbound.Reader.TryRead(out _));
+
         await relay.StopAsync(timeout.Token);
         await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
     }

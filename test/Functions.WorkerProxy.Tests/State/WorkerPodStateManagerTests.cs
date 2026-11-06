@@ -30,6 +30,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
         Assert.Null(state.StartupMode);
         Assert.Equal(WorkerPodStatus.Starting, state.PodStatus);
+        Assert.False(state.IsDraining);
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
         Assert.Null(state.IsAlwaysReady);
@@ -118,12 +119,31 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal("app", failed.FunctionAppName);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
             new[] { initial.Revision, attached.Revision, started.Revision, assigned.Revision, failed.Revision });
-
         Assert.False(initial.IsWorkerAttached);
         Assert.Null(attached.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, started.AssignmentState);
         Assert.Null(started.StartupMode);
         Assert.True(assigned.IsWorkerReady);
+    }
+
+    [Fact]
+    public async Task WorkerDraining_PublishesOnceForCurrentReadySession()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        WorkerPodState ready = manager.State;
+        Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(ready.Revision);
+
+        Assert.True(manager.OnWorkerDraining(1));
+        WorkerPodState draining = Assert.IsType<WorkerPodState>((await poll.WaitAsync(TestTimeout)).State);
+
+        Assert.Equal(ready.Revision + 1, draining.Revision);
+        Assert.True(draining.IsDraining);
+        Assert.Equal(WorkerPodStatus.Draining, draining.PodStatus);
+        Assert.Equal(WorkerStatus.Draining, WorkerOriginState.FromState(draining).Status);
+        Assert.False(manager.OnWorkerDraining(1));
+        Assert.False(manager.OnWorkerDraining(2));
+        Assert.Same(draining, manager.State);
     }
 
     [Fact]

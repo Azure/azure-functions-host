@@ -96,8 +96,15 @@ message StreamingMessage {
 
     // Host/WorkerProxy control traffic. Never forwarded to the language worker.
     HttpProxyMessage http_proxy = 35;
+
+    // Host tells WorkerProxy that this assigned worker is draining.
+    WorkerDraining worker_draining = 36;
     
   }
+}
+
+// Indicates that the Host has removed the worker from its invocation rotation.
+message WorkerDraining {
 }
 
 // Process.Start required info

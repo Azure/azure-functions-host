@@ -973,7 +973,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         Assert.Same(failure, observed);
         Assert.True(publisher.ExecuteTask!.IsFaulted);
         Assert.Same(final, CurrentState);
-        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(3));
+        _stateManager.VerifyGet(manager => manager.Current, Times.Exactly(requestFailure ? 4 : 3));
         Assert.Equal(requestFailure ? 2 : 1, _client.AttemptCount);
         if (requestFailure)
         {

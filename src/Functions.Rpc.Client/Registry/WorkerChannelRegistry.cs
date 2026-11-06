@@ -47,6 +47,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     private readonly TimeSpan _linkTimeout;
     private readonly bool _registryOwnedAttempt;
     private readonly HashSet<Task> _monitorTasks = [];
+    private readonly HashSet<Task> _drainAndUnlinkTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
@@ -153,7 +154,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
 
             linkCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            slot = new() { Endpoint = grpcEndpoint, Credentials = credentials, RuntimeIdentity = runtimeIdentity, LinkTask = linkCompletion.Task };
+            slot = new()
+            {
+                Endpoint = grpcEndpoint,
+                Credentials = credentials,
+                RuntimeIdentity = runtimeIdentity,
+                LinkTask = linkCompletion.Task,
+            };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
         }
@@ -178,6 +185,163 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
     private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
         => new(await link.ConfigureAwait(false), isNewLink);
+
+    /// <inheritdoc />
+    public Task<int> ScaleInWorkersAsync(
+        string functionGroup,
+        bool isAlwaysReady,
+        int desiredWorkerCount,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
+        ArgumentOutOfRangeException.ThrowIfNegative(desiredWorkerCount);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.Equals(functionGroup, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase) && !isAlwaysReady)
+        {
+            throw new ArgumentException("HTTP on-demand scale-in is unsupported.", nameof(isAlwaysReady));
+        }
+
+        List<(string WorkerId, RpcClientWorkerChannel Channel, Task DrainTask)> selections = [];
+        lock (_stateLock)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            List<(string WorkerId, RpcClientWorkerChannel Channel)> candidates = [];
+            foreach ((string workerId, WorkerSlot slot) in _slots)
+            {
+                if (_activeSetupContext is null ||
+                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
+                    slot.SetupException is not null ||
+                    slot.Channel is not { } channel)
+                {
+                    continue;
+                }
+
+                candidates.Add(new(workerId, channel));
+            }
+
+            candidates.RemoveAll(candidate => !candidate.Channel.IsScaleInCandidate(functionGroup, isAlwaysReady));
+            int matchingWorkerCount = candidates.Count;
+
+            foreach ((string workerId, RpcClientWorkerChannel channel) in candidates)
+            {
+                if (matchingWorkerCount <= desiredWorkerCount)
+                {
+                    break;
+                }
+
+                if (channel.TryBeginScaleIn(functionGroup, isAlwaysReady) is { } drainTask)
+                {
+                    selections.Add(new(workerId, channel, drainTask));
+                }
+
+                matchingWorkerCount--;
+            }
+
+            if (selections.Count > 0)
+            {
+                SignalReadyChannelsLocked();
+                SignalChangeLocked();
+            }
+        }
+
+        foreach ((string workerId, RpcClientWorkerChannel channel, Task drainTask) in selections)
+        {
+            _ = ObserveDrainAndUnlinkAsync(workerId, channel, drainTask);
+        }
+
+        return Task.FromResult(selections.Count);
+    }
+
+    private async Task ObserveDrainAndUnlinkAsync(string workerId, RpcClientWorkerChannel channel, Task drainTask)
+    {
+        try
+        {
+            await DrainAndUnlinkAsync(workerId, channel, drainTask);
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Log.ScaleInDrainFailed(_logger, exception, workerId);
+        }
+    }
+
+    private async Task<bool> DrainAndUnlinkAsync(string workerId, RpcClientWorkerChannel channel, Task drainTask)
+    {
+        TaskCompletionSource cleanupCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_stateLock)
+        {
+            if (_disposed)
+            {
+                return false;
+            }
+
+            _drainAndUnlinkTasks.Add(cleanupCompleted.Task);
+        }
+
+        WorkerSlot slot = null;
+        RpcClientWorkerChannel detached = null;
+        try
+        {
+            await drainTask.WaitAsync(_shutdownSource.Token);
+
+            lock (_stateLock)
+            {
+                if (_disposed || !_slots.TryGetValue(workerId, out slot) || !ReferenceEquals(slot.Channel, channel))
+                {
+                    Log.ScaleInDrainAlreadyDetached(_logger, workerId);
+                    return false;
+                }
+            }
+
+            using (SemaphoreLock gate = await slot.Gate.LockAsync(_shutdownSource.Token))
+            {
+                lock (_stateLock)
+                {
+                    if (!_disposed && _slots.TryGetValue(workerId, out WorkerSlot currentSlot) &&
+                        ReferenceEquals(currentSlot, slot))
+                    {
+                        detached = DetachChannelLocked(slot, channel);
+                    }
+                }
+            }
+
+            if (detached is null)
+            {
+                Log.ScaleInDrainAlreadyDetached(_logger, workerId);
+                return false;
+            }
+
+            await detached.TerminateWorkerAsync().ConfigureAwait(false);
+            await detached.DisposeAsync();
+            Log.ScaleInDrainCompleted(_logger, workerId);
+            return true;
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            Log.ScaleInDrainFailed(_logger, exception, workerId);
+            return false;
+        }
+        finally
+        {
+            if (detached is not null && slot is not null)
+            {
+                RemoveEmptySlot(workerId, slot);
+            }
+
+            lock (_stateLock)
+            {
+                cleanupCompleted.TrySetResult();
+                _drainAndUnlinkTasks.Remove(cleanupCompleted.Task);
+            }
+        }
+    }
 
     private async Task LinkAndCompleteAsync(
         string workerId,
@@ -339,7 +503,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
     }
 
-    public async Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default)
+    public Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default)
+        => UnlinkAsync(workerId, expectedChannel: null, cancellationToken);
+
+    private async Task<bool> UnlinkAsync(string workerId, RpcClientWorkerChannel expectedChannel, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         cancellationToken.ThrowIfCancellationRequested();
@@ -347,13 +514,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         WorkerSlot slot;
         lock (_stateLock)
         {
-            if (_disposed || !_slots.TryGetValue(workerId, out slot))
+            if (_disposed || !_slots.TryGetValue(workerId, out slot) ||
+                (expectedChannel is not null && !ReferenceEquals(slot.Channel, expectedChannel)))
             {
                 return false;
             }
         }
 
-        bool canceledPending = _registryOwnedAttempt && slot.CancelPending();
+        bool canceledPending = expectedChannel is null && _registryOwnedAttempt && slot.CancelPending();
 
         try
         {
@@ -375,7 +543,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
                             return false;
                         }
 
-                        channel = DetachChannelLocked(slot, expectedChannel: null);
+                        channel = DetachChannelLocked(slot, expectedChannel);
                     }
 
                     if (channel is null)
@@ -431,34 +599,35 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         {
             (string workerId, WorkerSlot slot) = entry;
             cancellationToken.ThrowIfCancellationRequested();
-            using SemaphoreLock gate = await slot.Gate.LockAsync(cancellationToken);
-            RpcClientWorkerChannel removed;
+            RpcClientWorkerChannel channel;
             TimeSpan idleDuration;
-            lock (_stateLock)
+            Task drainTask;
+            using (SemaphoreLock gate = await slot.Gate.LockAsync(cancellationToken))
             {
-                if (_disposed ||
-                    slot.Channel is not { } channel ||
-                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
-                    slot.SetupException is not null ||
-                    !channel.TryClaimIdleRetirement(threshold, out idleDuration))
+                lock (_stateLock)
                 {
-                    return;
-                }
+                    if (_disposed ||
+                        slot.Channel is not { } currentChannel ||
+                        !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
+                        slot.SetupException is not null ||
+                        !currentChannel.TryClaimIdleRetirement(threshold, out idleDuration, out drainTask))
+                    {
+                        return;
+                    }
 
-                removed = DetachChannelLocked(slot, channel);
+                    channel = currentChannel;
+                    SignalReadyChannelsLocked();
+                    SignalChangeLocked();
+                }
             }
 
-            Task disposal = null;
             try
             {
-                disposal = removed.DisposeAsync().AsTask();
-                _ = disposal.ContinueWith(failed =>
-                    Log.ChannelDisposalFailed(_logger, failed.Exception.GetBaseException(), workerId),
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default);
-                await disposal.WaitAsync(IdleWorkerDisposalTimeout, _timeProvider, cancellationToken);
-                _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
+                Task<bool> retirement = DrainAndUnlinkAsync(workerId, channel, drainTask);
+                if (await retirement.WaitAsync(IdleWorkerDisposalTimeout, _timeProvider, cancellationToken))
+                {
+                    _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _shutdownSource.IsCancellationRequested)
             {
@@ -466,14 +635,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             }
             catch (Exception exception)
             {
-                if (disposal is not { IsFaulted: true })
-                {
-                    Log.ChannelDisposalFailed(_logger, exception, workerId);
-                }
-            }
-            finally
-            {
-                RemoveEmptySlot(workerId, slot);
+                Log.ChannelDisposalFailed(_logger, exception, workerId);
             }
         }));
     }
@@ -538,7 +700,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             foreach (WorkerSlot slot in _slots.Values)
             {
-                if (slot.Channel is null)
+                if (slot.Channel is not { IsDraining: false })
                 {
                     continue;
                 }
@@ -641,6 +803,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     {
         KeyValuePair<string, WorkerSlot>[] slots;
         Task[] monitorTasks;
+        Task[] drainAndUnlinkTasks;
 
         lock (_stateLock)
         {
@@ -653,6 +816,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
+            drainAndUnlinkTasks = [.. _drainAndUnlinkTasks];
             _initializedChannelAvailable.TrySetResult();
 
             // Publish disposal for new readers and release callers awaiting the previous shared signal.
@@ -683,6 +847,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         }
 
         await Task.WhenAll(monitorTasks);
+        await Task.WhenAll(drainAndUnlinkTasks);
 
         if (disposalException is not null)
         {
@@ -897,6 +1062,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         RpcClientWorkerChannel channel = slot.Channel;
         if (setupContext is null ||
             channel is null ||
+            channel.IsDraining ||
             ReferenceEquals(slot.AttemptedSetupContext, setupContext))
         {
             return;
@@ -1116,6 +1282,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(9, LogLevel.Information, "Worker {WorkerId} completed scale-in drain and closed its Runtime link.")]
+        public static partial void ScaleInDrainCompleted(ILogger logger, string workerId);
+
+        [LoggerMessage(10, LogLevel.Error, "Worker {WorkerId} failed while completing scale-in drain.")]
+        public static partial void ScaleInDrainFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(11, LogLevel.Information,
+            "Worker {WorkerId} completed scale-in drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
+        public static partial void ScaleInDrainAlreadyDetached(ILogger logger, string workerId);
 
         [LoggerMessage(6, LogLevel.Information, "FunctionRpc link for worker {WorkerId} started.")]
         public static partial void LinkStarted(ILogger logger, string workerId);
