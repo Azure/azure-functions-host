@@ -2,13 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -17,13 +14,12 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// <summary>
 /// Resolves the worker endpoint, waits for readiness, and forwards eligible requests through YARP.
 /// </summary>
-internal sealed partial class WorkerHttpForwardingMiddleware(
+internal sealed class WorkerHttpForwardingMiddleware(
     IOptions<WorkerProxyOptions> options,
     WorkerEndpointReadinessProbe readinessProbe,
     WorkerHttpForwarder forwarder,
     FunctionRpcRelay relay,
-    WorkerPodStateManager stateManager,
-    ILogger<WorkerHttpForwardingMiddleware> logger)
+    WorkerPodStateManager stateManager)
 {
     private readonly FunctionRpcRelay _relay = relay ?? throw new ArgumentNullException(nameof(relay));
 
@@ -32,39 +28,26 @@ internal sealed partial class WorkerHttpForwardingMiddleware(
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        long start = Stopwatch.GetTimestamp();
-        var (workerDestination, snapshot) = _relay.GetHttpForwardingSnapshot();
-        using IDisposable? scope = logger.BeginScope(snapshot with { RequestId = context.TraceIdentifier });
         if (stateManager.State.RemovalRequested)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            LogOutcome("Admission", "Rejected", "RemovalRequested");
             return;
         }
 
-        Uri? destination = workerDestination
+        Uri? destination = _relay.WorkerHttpDestination
             ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 
         if (destination is null)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
-            LogOutcome("Admission", "Rejected", "DestinationNotConfigured");
             return;
         }
 
         if (!readinessProbe.IsKnownReady(destination))
         {
-            WorkerEndpointReadinessResult readinessResult;
-            try
-            {
-                readinessResult = await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
-            }
-            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
-            {
-                LogOutcome("Readiness", "Canceled", "CallerCanceled", cancellationSource: "Caller");
-                throw;
-            }
+            WorkerEndpointReadinessResult readinessResult =
+                await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
 
             if (readinessResult is not WorkerEndpointReadinessResult.Ready)
             {
@@ -74,33 +57,9 @@ internal sealed partial class WorkerHttpForwardingMiddleware(
             }
         }
 
-        ForwarderError error;
-        try
+        ForwarderError error = await forwarder.ForwardAsync(context, destination);
+        if (error is ForwarderError.None || context.RequestAborted.IsCancellationRequested)
         {
-            error = await forwarder.ForwardAsync(context, destination);
-        }
-        catch (Exception exception)
-        {
-            bool canceled = exception is OperationCanceledException;
-            string? source = canceled ? context.RequestAborted.IsCancellationRequested ? "Caller" : "Unknown" : null;
-            LogOutcome("Forwarding", canceled ? "Canceled" : "TransportFailure",
-                canceled ? "ForwardingCanceled" : "ForwardingException", cancellationSource: source);
-            throw;
-        }
-
-        if (context.RequestAborted.IsCancellationRequested)
-        {
-            LogOutcome("Forwarding", "Canceled", "CallerCanceled", error, "Caller");
-            return;
-        }
-
-        if (error is ForwarderError.None)
-        {
-            if (context.Response.StatusCode >= StatusCodes.Status500InternalServerError)
-            {
-                LogOutcome("Forwarding", "WorkerServerError", "WorkerStatus", error);
-            }
-
             return;
         }
 
@@ -111,36 +70,5 @@ internal sealed partial class WorkerHttpForwardingMiddleware(
         }
 
         WorkerHttpForwardingTelemetry.RecordForwarderError(error);
-        LogOutcome("Forwarding", "TransportFailure", "ForwarderError", error);
-
-        void LogOutcome(string phase, string outcome, string reason, ForwarderError? error = null, string? cancellationSource = null)
-        {
-            using IDisposable? outcomeScope = logger.BeginScope(new WorkerSystemLogContext
-            {
-                Operation = "Http",
-                Phase = phase,
-                Outcome = outcome,
-                ReasonCode = reason,
-                StatusCode = context.Response.StatusCode,
-                ResponseStarted = context.Response.HasStarted,
-                ElapsedMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds,
-                ForwarderError = error?.ToString(),
-                CancellationSource = cancellationSource
-            });
-            if (string.Equals(cancellationSource, "Caller", StringComparison.Ordinal))
-            {
-                Log.WorkerHttpOutcome(logger, LogLevel.Information, outcome, phase, context.Response.StatusCode);
-            }
-            else
-            {
-                Log.WorkerHttpOutcome(logger, LogLevel.Warning, outcome, phase, context.Response.StatusCode);
-            }
-        }
-    }
-
-    private static partial class Log
-    {
-        [LoggerMessage(EventId = 0, Message = "Worker HTTP {Outcome} during {Phase}; observed status {StatusCode}.")]
-        public static partial void WorkerHttpOutcome(ILogger logger, LogLevel level, string outcome, string phase, int statusCode);
     }
 }

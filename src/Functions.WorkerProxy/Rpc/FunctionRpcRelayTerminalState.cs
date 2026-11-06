@@ -15,15 +15,4 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// </param>
 /// <param name="Exception">The originating exception, when the terminal condition was cancellation or a stream failure.</param>
 internal sealed record FunctionRpcRelayTerminalState(long SessionId, FunctionRpcRelayTerminationReason Reason,
-    FunctionRpcRelaySide? Side, Exception? Exception)
-{
-    public string? Phase { get; init; }
-
-    public string? CancellationSource { get; init; }
-
-    public string? RequestId { get; init; }
-
-    public string? InvocationId { get; init; }
-
-    public string? FunctionId { get; init; }
-}
+    FunctionRpcRelaySide? Side, Exception? Exception);

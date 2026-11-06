@@ -23,9 +23,6 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
     internal static readonly string ReadinessProbeCategory =
         typeof(WorkerEndpointReadinessProbe).FullName!;
 
-    internal static readonly string HttpForwardingCategory =
-        typeof(WorkerHttpForwardingMiddleware).FullName!;
-
     internal static readonly string RelayCategory =
         typeof(FunctionRpcRelay).FullName!;
 

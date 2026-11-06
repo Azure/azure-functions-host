@@ -6,9 +6,23 @@ The loopback worker FunctionRpc listener (50054) remains plaintext and pod-local
 
 This slice adds authentication, TLS and the platform assignment/state contract. Existing multiworker registration, Host configuration delivery and optional Token Service proxying remain compatibility dependencies, not new identity, configuration, restart or worker-reuse features.
 
-For proxy-owned diagnostics, see the [system logging contract and query runbook](Logging/README.md).
-It covers immutable accepted identity, assignment/readiness/HTTP/RPC outcomes, bounded buffering,
-and query-local normalization without a collector schema change or tracing deployment.
+## System log identity
+
+Existing assignment, RPC session/protocol, and process lifecycle events include available identity in `Summary`:
+
+```text
+WorkerId=worker-1; ProxySessionId=7; PodName=pod-1; FunctionAppName=sample-app; FunctionGroupName=http; Revision=3; <existing message>
+```
+
+Missing identity is omitted before assignment or validated `StartStream`. Rejected assignment input is never logged as accepted identity.
+Assignment events use the decision's immutable state snapshot (or request-entry state when rejected before a decision).
+RPC terminal, release, and late-failure events retain the terminating session's snapshot rather than reading a newer session's identity.
+`Revision` identifies that snapshot, not current readiness; retained identity does not mean the worker is still available.
+
+The existing 21-column layout, `WorkerId`/`ProxySessionId` prefixes, severity, and 1,024-character Summary limit are unchanged.
+The new fields reuse the existing identifier policy: values outside ASCII letters/digits/`-_.`, or longer than 128 characters, become SHA-256 fingerprints.
+Only the named identity fields are exported, never assignment environment or directory values. Host-only columns remain empty; collector/table identity mapping is not established by this change.
+No new events, HTTP/invocation diagnostics, buffering changes, versioned metadata format, or query tooling are included.
 
 ## Keys and identities
 

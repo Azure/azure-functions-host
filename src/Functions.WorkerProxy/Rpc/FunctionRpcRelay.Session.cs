@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -47,7 +46,6 @@ internal sealed partial class FunctionRpcRelay
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource<StreamingMessage> _startStream = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly long _started = Stopwatch.GetTimestamp();
 
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
@@ -58,7 +56,6 @@ internal sealed partial class FunctionRpcRelay
         private int _shutdownRequested;
         private volatile string? _workerId;
         private WorkerPodState _logState = stateManager.State;
-        private long? _terminalRevision;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -137,33 +134,23 @@ internal sealed partial class FunctionRpcRelay
         {
             lock (_stateLock)
             {
-                if (_terminalState is null)
+                WorkerPodState current = stateManager.State;
+                if (_terminalState is null && (current.SessionId is null || current.SessionId == id))
                 {
-                    WorkerPodState current = stateManager.State;
-                    if (current.SessionId is null || current.SessionId == id)
-                    {
-                        _logState = current;
-                    }
+                    _logState = current;
                 }
 
                 return WorkerSystemLogContext.FromState(_logState) with
                 {
                     WorkerId = _workerId,
-                    ProxySessionId = id,
-                    EventRevision = _terminalRevision
+                    ProxySessionId = id
                 };
             }
         }
 
         public void LogAttachment(FunctionRpcRelaySide side, bool released)
         {
-            using IDisposable? scope = logger.BeginScope(GetLogContext() with
-            {
-                Operation = "RpcSession",
-                Phase = released ? "Release" : "Attach",
-                Side = side.ToString(),
-                Outcome = released ? "Released" : "Accepted"
-            });
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (released)
             {
                 Log.PeerReleased(logger, id, side);
@@ -222,18 +209,14 @@ internal sealed partial class FunctionRpcRelay
             Task? processTask = workerInbound is null
                 ? null
                 : ProcessWorkerMessagesAsync(workerInbound.Reader, destination, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(side, source, responseStream, runtimeWrites, linkedSource.Token, cancellationToken);
+            Task writeTask = WriteOutboundAsync(side, source, responseStream, runtimeWrites, linkedSource.Token);
             Task firstCompletedTask = processTask is null
                 ? await Task.WhenAny(readTask, writeTask)
                 : await Task.WhenAny(readTask, processTask, writeTask);
             if (!_completion.Task.IsCompleted)
             {
                 FunctionRpcRelayTerminalState terminalState = await ClassifyCompletionAsync(side, firstCompletedTask, cancellationToken);
-                TryTerminate(terminalState with
-                {
-                    Phase = ReferenceEquals(firstCompletedTask, readTask) ? "Read"
-                        : ReferenceEquals(firstCompletedTask, writeTask) ? "Write" : "Process"
-                });
+                TryTerminate(terminalState);
             }
 
             workerInbound?.Writer.TryComplete();
@@ -292,11 +275,7 @@ internal sealed partial class FunctionRpcRelay
         public void RequestShutdown()
         {
             MarkShutdownRequested();
-            TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null)
-            {
-                Phase = "Shutdown",
-                CancellationSource = "Shutdown"
-            });
+            TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
         private static Channel<StreamingMessage> CreateChannel(bool singleWriter = true)
@@ -405,7 +384,7 @@ internal sealed partial class FunctionRpcRelay
                     }
                 }
 
-                LogProtocolMessage(message, side, forwarded: false);
+                LogProtocolMessage(message, forwarded: false);
                 return message;
             }
 
@@ -430,18 +409,11 @@ internal sealed partial class FunctionRpcRelay
                     _startStream.TrySetResult(message.Clone());
                 }
 
-                using IDisposable? scope = logger.BeginScope(GetLogContext() with
-                {
-                    Operation = "RpcSession",
-                    Phase = "StartStream",
-                    Outcome = "Validated",
-                    Side = side.ToString(),
-                    RequestId = message.RequestId
-                });
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
                 Log.StartStreamValidated(logger, id);
             }
 
-            LogProtocolMessage(message, side, forwarded: false);
+            LogProtocolMessage(message, forwarded: false);
             if (message.WorkerInitResponse is not null)
             {
                 StreamingMessage sanitized = message.Clone();
@@ -605,9 +577,8 @@ internal sealed partial class FunctionRpcRelay
 
         private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
             IServerStreamWriter<StreamingMessage> responseStream, TrackedMessageWriter<StreamingMessage>? runtimeWrites,
-            CancellationToken cancellationToken, CancellationToken callCancellationToken)
+            CancellationToken cancellationToken)
         {
-            StreamingMessage? writing = null;
             try
             {
                 bool startSent = side is not FunctionRpcRelaySide.Runtime;
@@ -618,9 +589,7 @@ internal sealed partial class FunctionRpcRelay
                     cancellationToken.ThrowIfCancellationRequested();
                     if (!startSent && startReady.IsCompleted)
                     {
-                        writing = await startReady;
-                        await responseStream.WriteAsync(writing, cancellationToken);
-                        writing = null;
+                        await responseStream.WriteAsync(await startReady, cancellationToken);
                         startSent = true;
                         continue;
                     }
@@ -647,35 +616,23 @@ internal sealed partial class FunctionRpcRelay
                     }
 
                     // This is the only task that writes this response stream.
-                    writing = message;
                     await responseStream.WriteAsync(message, cancellationToken);
-                    writing = null;
                     if (runtimeWrites is not null)
                     {
                         runtimeWrites.Written(message);
                         PublishRuntimeInitialization(message);
                     }
 
-                    LogProtocolMessage(message, side, forwarded: true);
+                    LogProtocolMessage(message, forwarded: true);
                 }
             }
-            catch (Exception exception)
+            catch (Exception exception) when (side is FunctionRpcRelaySide.Runtime)
             {
                 // Preserve the originating failure before queue closure can fault the Worker processor.
                 FunctionRpcRelayTerminationReason reason = exception is OperationCanceledException || cancellationToken.IsCancellationRequested
                     ? FunctionRpcRelayTerminationReason.Canceled
                     : FunctionRpcRelayTerminationReason.Faulted;
-                TryTerminate(new FunctionRpcRelayTerminalState(id, reason, side, exception)
-                {
-                    Phase = "Write",
-                    CancellationSource = reason is FunctionRpcRelayTerminationReason.Canceled
-                        ? Volatile.Read(ref _shutdownRequested) != 0 ? "Shutdown"
-                            : callCancellationToken.IsCancellationRequested ? "PeerCall" : "Unknown" : null,
-                    RequestId = writing?.RequestId,
-                    InvocationId = writing?.InvocationRequest?.InvocationId ?? writing?.InvocationResponse?.InvocationId,
-                    FunctionId = writing?.InvocationRequest?.FunctionId ?? writing?.FunctionLoadRequest?.FunctionId
-                        ?? writing?.FunctionLoadResponse?.FunctionId
-                });
+                TryTerminate(new FunctionRpcRelayTerminalState(id, reason, side, exception));
                 throw;
             }
             finally
@@ -711,20 +668,13 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
-        private void LogProtocolMessage(StreamingMessage message, FunctionRpcRelaySide side, bool forwarded)
+        private void LogProtocolMessage(StreamingMessage message, bool forwarded)
         {
             if (message.FunctionLoadRequestCollection is { } requests)
             {
                 if (logger.IsEnabled(LogLevel.Information))
                 {
-                    using IDisposable? batchScope = logger.BeginScope(GetLogContext() with
-                    {
-                        Operation = "FunctionLoad",
-                        Phase = forwarded ? "RequestForwarded" : "RequestReceived",
-                        Side = side.ToString(),
-                        RequestId = message.RequestId,
-                        FunctionCount = requests.FunctionLoadRequests.Count
-                    });
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
                     Log.FunctionLoadBatchRequested(logger, forwarded ? "RequestForwarded" : "RequestReceived", requests.FunctionLoadRequests.Count);
                 }
 
@@ -750,17 +700,7 @@ internal sealed partial class FunctionRpcRelay
                 LogLevel batchLevel = unsuccessful > 0 ? LogLevel.Warning : LogLevel.Information;
                 if (logger.IsEnabled(batchLevel))
                 {
-                    using IDisposable? batchScope = logger.BeginScope(GetLogContext() with
-                    {
-                        Operation = "FunctionLoad",
-                        Phase = forwarded ? "ResponseForwarded" : "ResponseReceived",
-                        Outcome = unsuccessful > 0 ? "Unsuccessful" : "Success",
-                        ReasonCode = unsuccessful > 0 ? "BatchResult" : null,
-                        Side = side.ToString(),
-                        RequestId = message.RequestId,
-                        FunctionCount = responses.FunctionLoadResponses.Count,
-                        UnsuccessfulCount = unsuccessful
-                    });
+                    using IDisposable? batchScope = logger.BeginScope(GetLogContext());
                     string batchStage = forwarded ? "ResponseForwarded" : "ResponseReceived";
                     if (unsuccessful > 0)
                     {
@@ -781,9 +721,6 @@ internal sealed partial class FunctionRpcRelay
                 StreamingMessage.ContentOneofCase.WorkerInitResponse => ("Initialization", true, message.WorkerInitResponse.Result),
                 StreamingMessage.ContentOneofCase.FunctionLoadRequest => ("FunctionLoad", false, null),
                 StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, message.FunctionLoadResponse.Result),
-                StreamingMessage.ContentOneofCase.InvocationResponse
-                    when !forwarded && message.InvocationResponse.Result is not { Status: StatusResult.Types.Status.Success }
-                    => ("Invocation", true, message.InvocationResponse.Result),
                 _ => null
             };
             if (operation is not { } value)
@@ -791,7 +728,7 @@ internal sealed partial class FunctionRpcRelay
                 return;
             }
 
-            LogLevel level = value.Response && value.Result is not { Status: StatusResult.Types.Status.Success }
+            LogLevel level = value.Result is { Status: not StatusResult.Types.Status.Success }
                 ? LogLevel.Warning : LogLevel.Information;
             if (!logger.IsEnabled(level))
             {
@@ -806,24 +743,7 @@ internal sealed partial class FunctionRpcRelay
                 (true, true) => "ResponseForwarded"
             };
             string? rpcStatus = value.Result?.Status.ToString();
-            using IDisposable? scope = logger.BeginScope(GetLogContext() with
-            {
-                Operation = value.Operation,
-                Phase = stage,
-                Outcome = value.Response ? level is LogLevel.Warning ? "Unsuccessful" : "Success" : null,
-                ReasonCode = value.Response ? value.Result is null ? "MissingResult" : "ProtocolResult" : null,
-                Side = side.ToString(),
-                RpcStatus = rpcStatus,
-                RequestId = message.RequestId,
-                FunctionId = message.FunctionLoadRequest?.FunctionId ?? message.FunctionLoadResponse?.FunctionId,
-                InvocationId = message.InvocationResponse?.InvocationId
-            });
-            if (message.InvocationResponse is not null)
-            {
-                Log.InvocationResponseFailed(logger, rpcStatus);
-                return;
-            }
-
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (level == LogLevel.Warning)
             {
                 Log.ProtocolMessageFailed(logger, value.Operation, stage, rpcStatus);
@@ -855,18 +775,11 @@ internal sealed partial class FunctionRpcRelay
                     return await _completion.Task;
                 }
 
-                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception)
-                {
-                    CancellationSource = Volatile.Read(ref _shutdownRequested) != 0 ? "Shutdown"
-                        : callCancellationToken.IsCancellationRequested ? "PeerCall" : "Unknown"
-                };
+                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
             }
             catch (Exception exception) when (callCancellationToken.IsCancellationRequested)
             {
-                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception)
-                {
-                    CancellationSource = Volatile.Read(ref _shutdownRequested) != 0 ? "Shutdown" : "PeerCall"
-                };
+                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
             }
             catch (Exception exception)
             {
@@ -876,7 +789,6 @@ internal sealed partial class FunctionRpcRelay
 
         private bool TryTerminate(FunctionRpcRelayTerminalState terminalState)
         {
-            int? pendingMessages;
             lock (_stateLock)
             {
                 if (_terminalState is not null)
@@ -884,9 +796,8 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
+                // Retain this session's identity before removal clears it from live state.
                 _ = GetLogContext();
-                pendingMessages = _toWorker.Reader.CanCount && _toRuntime.Reader.CanCount
-                    ? _toWorker.Reader.Count + _toRuntime.Reader.Count : null;
                 bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
                     terminalState.Side == FunctionRpcRelaySide.Runtime &&
                     terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
@@ -909,7 +820,6 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 _terminalState = terminalState;
-                _terminalRevision = stateManager.State.Revision;
                 _completion.SetResult(terminalState);
                 _startStream.TrySetCanceled();
             }
@@ -923,27 +833,14 @@ internal sealed partial class FunctionRpcRelay
             _toRuntime.Writer.TryComplete(completionException);
             _toWorker.Writer.TryComplete(completionException);
 
-            using IDisposable? scope = logger.BeginScope(GetLogContext() with
-            {
-                Operation = "RpcSession",
-                Phase = terminalState.Phase,
-                Outcome = "Terminated",
-                ReasonCode = terminalState.Reason.ToString(),
-                Side = terminalState.Side?.ToString(),
-                CancellationSource = terminalState.CancellationSource,
-                RequestId = terminalState.RequestId,
-                InvocationId = terminalState.InvocationId,
-                FunctionId = terminalState.FunctionId,
-                ElapsedMs = Stopwatch.GetElapsedTime(_started).TotalMilliseconds,
-                PendingMessages = pendingMessages
-            });
+            using IDisposable? scope = logger.BeginScope(GetLogContext());
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
-                Log.SessionFaulted(logger, terminalState.Exception?.GetType().Name, terminalState.SessionId, terminalState.Side);
+                Log.SessionFaulted(logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
             }
             else
             {
-                Log.SessionTerminated(logger, terminalState.SessionId, terminalState.Reason, terminalState.Side);
+                Log.SessionTerminated(logger, terminalState.Exception, terminalState.SessionId, terminalState.Reason, terminalState.Side);
             }
 
             try
@@ -976,15 +873,8 @@ internal sealed partial class FunctionRpcRelay
             }
             catch (Exception exception) when (_completion.Task.IsCompleted || operationToken.IsCancellationRequested)
             {
-                using IDisposable? scope = logger.BeginScope(GetLogContext() with
-                {
-                    Operation = "RpcSession",
-                    Phase = operationName,
-                    Side = side.ToString(),
-                    Outcome = "SecondaryFailure",
-                    ReasonCode = "StreamFailure"
-                });
-                Log.SecondaryStreamFailure(logger, exception.GetType().Name, id, operationName, side);
+                using IDisposable? scope = logger.BeginScope(GetLogContext());
+                Log.SecondaryStreamFailure(logger, exception, id, operationName, side);
             }
         }
 
@@ -1029,16 +919,16 @@ internal sealed partial class FunctionRpcRelay
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Warning, "FunctionRpc relay session {SessionId} faulted on the {Side} side ({ExceptionType}).")]
-        public static partial void SessionFaulted(ILogger logger, string? exceptionType, long sessionId, FunctionRpcRelaySide? side);
+        [LoggerMessage(0, LogLevel.Warning, "FunctionRpc relay session {SessionId} faulted on the {Side} side.")]
+        public static partial void SessionFaulted(ILogger logger, Exception? exception, long sessionId, FunctionRpcRelaySide? side);
 
         [LoggerMessage(1, LogLevel.Information, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.")]
-        public static partial void SessionTerminated(ILogger logger, long sessionId,
+        public static partial void SessionTerminated(ILogger logger, Exception? exception, long sessionId,
             FunctionRpcRelayTerminationReason reason, FunctionRpcRelaySide? side);
 
         [LoggerMessage(2, LogLevel.Debug,
-            "FunctionRpc relay session {SessionId} observed a secondary {OperationName} stream failure on the {Side} side ({ExceptionType}).")]
-        public static partial void SecondaryStreamFailure(ILogger logger, string exceptionType, long sessionId, string operationName,
+            "FunctionRpc relay session {SessionId} observed a secondary {OperationName} stream failure on the {Side} side.")]
+        public static partial void SecondaryStreamFailure(ILogger logger, Exception exception, long sessionId, string operationName,
             FunctionRpcRelaySide side);
 
         [LoggerMessage(3, LogLevel.Warning,
@@ -1077,8 +967,5 @@ internal sealed partial class FunctionRpcRelay
             "FunctionRpc FunctionLoad batch reached {Stage} with {FunctionCount} results; {UnsuccessfulCount} unsuccessful or missing statuses.",
             EventName = nameof(FunctionLoadBatchCompleted))]
         public static partial void FunctionLoadBatchFailed(ILogger logger, string stage, int functionCount, int unsuccessfulCount);
-
-        [LoggerMessage(11, LogLevel.Warning, "FunctionRpc observed an unsuccessful invocation response with RPC status {RpcStatus}.")]
-        public static partial void InvocationResponseFailed(ILogger logger, string? rpcStatus);
     }
 }

@@ -5,7 +5,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Identity;
-using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -66,15 +65,6 @@ internal sealed partial class FunctionRpcRelay(
             {
                 return _currentSession?.WorkerHttpDestination;
             }
-        }
-    }
-
-    internal (Uri? Destination, WorkerSystemLogContext Context) GetHttpForwardingSnapshot()
-    {
-        lock (_syncLock)
-        {
-            return (_currentSession?.WorkerHttpDestination,
-                _currentSession?.GetLogContext() ?? WorkerSystemLogContext.FromState(_stateManager.State));
         }
     }
 
@@ -141,13 +131,11 @@ internal sealed partial class FunctionRpcRelay(
         ArgumentNullException.ThrowIfNull(responseStream);
 
         FunctionRpcRelaySession session;
-        WorkerSystemLogContext? rejectionContext = null;
 
         try
         {
             lock (_syncLock)
             {
-                rejectionContext = _currentSession?.GetLogContext() ?? WorkerSystemLogContext.FromState(_stateManager.State);
                 if (_stopping)
                 {
                     throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
@@ -198,14 +186,6 @@ internal sealed partial class FunctionRpcRelay(
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
-            using IDisposable? scope = logger.BeginScope(rejectionContext! with
-            {
-                Operation = "RpcSession",
-                Phase = "Attach",
-                Outcome = "Rejected",
-                Side = side.ToString(),
-                ReasonCode = exception.Failure.ToString()
-            });
             Log.AttachmentRejected(logger, side, exception.Failure);
             throw;
         }

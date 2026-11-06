@@ -465,8 +465,11 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Captures the assignment decision and its exact state before a concurrent lifecycle transition.
+    /// Records assignment and captures the resulting immutable state under the same lock.
     /// </summary>
+    /// <param name="assignment">The validated assignment.</param>
+    /// <param name="state">The state associated with the assignment decision.</param>
+    /// <returns>The assignment result.</returns>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment, out WorkerPodState state)
     {
         lock (_stateLock)

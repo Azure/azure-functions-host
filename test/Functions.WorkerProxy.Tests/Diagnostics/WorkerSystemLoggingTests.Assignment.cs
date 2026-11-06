@@ -52,11 +52,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(level, record.Level);
         Assert.Equal(statusCode, context.Response.StatusCode);
         Assert.Contains(statusCode.ToString(CultureInfo.InvariantCulture), record.Message, StringComparison.Ordinal);
-        Assert.Equal("worker-id", record.Context!.WorkerId);
-        Assert.Equal(7, record.Context.ProxySessionId);
-        Assert.Same(manager.State, record.Context.State);
-        Assert.Equal(statusCode, record.Context.StatusCode);
-        Assert.Equal("Assignment", record.Context.Operation);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.Contains("Worker attached and identified: True.", record.Message, StringComparison.Ordinal);
     }
 
@@ -143,10 +139,7 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         Assert.Equal(eventName, record.EventName);
         Assert.Equal(level, record.Level);
-        Assert.Equal("worker-id", record.Context!.WorkerId);
-        Assert.Equal(7, record.Context.ProxySessionId);
-        Assert.Same(manager.State, record.Context.State);
-        Assert.Equal(requestAborted && cancellationException ? "Caller" : cancellationException ? "Unknown" : null, record.Context.CancellationSource);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
         Assert.Empty(record.Details);
         Assert.Empty(record.ExceptionMessage);
@@ -208,6 +201,51 @@ public partial class WorkerSystemLoggingTests
         Assert.Empty(record.ExceptionMessage);
     }
 
+    [Theory]
+    [InlineData("accepted-app", false, 201)]
+    [InlineData("rejected-app", true, 409)]
+    [InlineData("", false, 400)]
+    public async Task AssignmentLogging_RetainsDecisionIdentityAfterLiveStateChanges(string app, bool alreadyAssigned, int statusCode)
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        WorkerPodStateManager manager = new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System);
+        if (alreadyAssigned)
+        {
+            ManagementApiHandlers.AssignWorker(CreateRequest("accepted-app"), manager);
+        }
+
+        DefaultHttpContext context = CreateAssignmentContext();
+        WorkerPodState snapshot = manager.State;
+        WorkerAssignmentLoggingMiddleware middleware = new(http =>
+        {
+            IResult result = ManagementApiHandlers.AssignWorker(CreateRequest(app), manager, http);
+            http.Response.StatusCode = ((IStatusCodeHttpResult)result).StatusCode!.Value;
+            snapshot = manager.State;
+            manager.RequestRemoval();
+            return Task.CompletedTask;
+        }, factory.CreateLogger<WorkerAssignmentLoggingMiddleware>(), manager);
+
+        await middleware.InvokeAsync(context);
+
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
+        Assert.Equal(statusCode, context.Response.StatusCode);
+        Assert.Same(snapshot, record.Context!.State);
+        Assert.Equal(statusCode == 400 ? null : "accepted-app", record.Context.State!.FunctionAppName);
+        Assert.Null(manager.State.FunctionAppName);
+        Assert.DoesNotContain("private-setting", record.ToString(), StringComparison.Ordinal);
+
+        static WorkerAssignRequest CreateRequest(string name) => new()
+        {
+            FunctionAppName = name,
+            FunctionGroupName = "http",
+            StartupMode = nameof(WorkerStartupMode.Preconfigured),
+            IsAlwaysReady = false,
+            FunctionAppDirectory = "private-setting",
+            Environment = new() { ["private-setting"] = "private-setting" }
+        };
+    }
+
     private static DefaultHttpContext CreateAssignmentContext()
     {
         DefaultHttpContext context = new();
@@ -215,58 +253,5 @@ public partial class WorkerSystemLoggingTests
         context.SetEndpoint(new RouteEndpoint(_ => Task.CompletedTask,
             RoutePatternFactory.Parse("/admin/worker/assignment"), 0, EndpointMetadataCollection.Empty, "Assignment"));
         return context;
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AssignmentLogging_UsesAtomicDecisionSnapshotAfterRemoval(bool rejected)
-    {
-        CapturingEventGenerator generator = new();
-        using ILoggerFactory logs = CreateLoggerFactory(generator);
-        WorkerPodStateManager manager = new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System);
-        WorkerAssignRequest request = new()
-        {
-            StartupMode = "Preconfigured",
-            FunctionAppName = "accepted-app",
-            FunctionGroupName = "http",
-            IsAlwaysReady = false,
-            Environment = new() { ["SECRET"] = "private-environment" },
-            FunctionAppDirectory = "private-directory"
-        };
-        if (rejected)
-        {
-            ManagementApiHandlers.AssignWorker(request, manager);
-            request = new()
-            {
-                StartupMode = request.StartupMode,
-                FunctionAppName = "rejected-app",
-                FunctionGroupName = request.FunctionGroupName,
-                IsAlwaysReady = request.IsAlwaysReady,
-                Environment = request.Environment,
-                FunctionAppDirectory = request.FunctionAppDirectory
-            };
-        }
-
-        WorkerPodState? decision = null;
-        DefaultHttpContext context = CreateAssignmentContext();
-        WorkerAssignmentLoggingMiddleware middleware = new(http =>
-        {
-            ManagementApiHandlers.AssignWorker(request, manager, http);
-            decision = manager.State;
-            http.Response.StatusCode = rejected ? 409 : 201;
-            manager.RequestRemoval();
-            return Task.CompletedTask;
-        }, logs.CreateLogger<WorkerAssignmentLoggingMiddleware>(), manager);
-
-        await middleware.InvokeAsync(context);
-
-        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
-        Assert.Same(decision, record.Context!.State);
-        Assert.Equal("accepted-app", record.Context.State!.FunctionAppName);
-        Assert.Equal(rejected ? "AssignmentConflict" : "Created", record.Context.ReasonCode);
-        Assert.Null(manager.State.FunctionAppName);
-        Assert.DoesNotContain("rejected-app", record.ToString(), StringComparison.Ordinal);
-        Assert.DoesNotContain("private-", record.ToString(), StringComparison.Ordinal);
     }
 }

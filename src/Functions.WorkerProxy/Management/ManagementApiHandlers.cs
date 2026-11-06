@@ -21,15 +21,11 @@ internal static class ManagementApiHandlers
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
             request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
         {
-            context?.Features.Set(WorkerSystemLogContext.FromState(manager.State) with
-            {
-                ReasonCode = errors.Count == 1 ? errors[0].Code : "ValidationFailed"
-            });
             return ValidationError(errors);
         }
 
         WorkerAssignmentResult result = manager.Assign(assignment, out WorkerPodState state);
-        context?.Features.Set(WorkerSystemLogContext.FromState(state) with { ReasonCode = result.ToString() });
+        context?.Features.Set(WorkerSystemLogContext.FromState(state));
         return result switch
         {
             WorkerAssignmentResult.Created => TypedResults.Created("/admin/worker/assignment"),

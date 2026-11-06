@@ -58,9 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _writeEvent(evt);
         }
 
-        // Opt-in nonblocking path for callers that prefer observable loss over synchronous console fallback.
-        internal bool TryWrite(string evt) => _consoleBuffer.Writer.TryWrite(evt);
-
         private void WriteToConsoleBuffer(string evt)
         {
             if (!_consoleBuffer.Writer.TryWrite(evt))
