@@ -274,10 +274,12 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             JsonObject initialCheckpoint = JsonNode.Parse(await initialState.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
             startupTime = AssertCheckpoint(initialCheckpoint, workerId, expectedGroup: null);
         }
+        const long configVersion = 9007199254740993;
+        const long contentVersion = 1761868801;
         string assignmentJson = $$"""
             {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"group","isAlwaysReady":false,
              "environment":{"PRIVATE_SETTING":"not-customer-config"},"functionAppDirectory":"",
-             "configLastModifiedTime":9007199254740993,"contentLastModifiedTime":1761868801,"maxHttpConcurrency":0,
+             "configLastModifiedTime":{{configVersion}},"contentLastModifiedTime":{{contentVersion}},"maxHttpConcurrency":0,
              "httpProxyEndpoint":"{{httpEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}"}
             """;
         using StringContent assignmentContent = new(assignmentJson, Encoding.UTF8, "application/json");
@@ -369,7 +371,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             using HttpResponseMessage removed = await management.PostAsync("/admin/infra/instanceState", removedBody, timeout.Token);
             Assert.Equal(HttpStatusCode.OK, removed.StatusCode);
             JsonObject removedCheckpoint = JsonNode.Parse(await removed.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
-            Assert.Equal(startupTime, AssertCheckpoint(removedCheckpoint, workerId, expectedGroup: "group", expectedStatus: "RemovalRequested"));
+            Assert.Equal(startupTime, AssertCheckpoint(
+                removedCheckpoint, workerId, expectedGroup: "group", expectedStatus: "RemovalRequested",
+                expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
             Assert.False(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
             using StringContent retryBody = new(assignmentJson, Encoding.UTF8, "application/json");
             using HttpResponseMessage retry = await management.PutAsync("/admin/worker/assignment", retryBody, timeout.Token);
@@ -486,7 +490,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.DoesNotContain(appKey, state, StringComparison.Ordinal);
         Assert.DoesNotContain(ManagementTokenTestData.WorkerKey, state, StringComparison.Ordinal);
         JsonObject checkpoint = JsonNode.Parse(state)!.AsObject();
-        Assert.Equal(startupTime, AssertCheckpoint(checkpoint, workerId, "group", runtimeIdentity));
+        Assert.Equal(startupTime, AssertCheckpoint(
+            checkpoint, workerId, "group", runtimeIdentity,
+            expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
         output.WriteLine("WorkerProxy published the supplied runtime identity after its correlated successful initialization write; this is not a proof-validation acknowledgement or a loaded-version claim.");
         JsonObject replay = checkpoint.DeepClone().AsObject();
         replay["revisionId"] = 0;
@@ -536,7 +542,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         }
         while (true);
         Assert.Equal(startupTime, AssertCheckpoint(
-            terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested"));
+            terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested",
+            expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
         Assert.False(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
         using StringContent terminalRetryBody = new(assignmentJson, Encoding.UTF8, "application/json");
         using HttpResponseMessage terminalRetry = await management.PutAsync("/admin/worker/assignment", terminalRetryBody, timeout.Token);
@@ -575,7 +582,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
 
     private static DateTimeOffset AssertCheckpoint(
         JsonObject checkpoint, string workerId, string? expectedGroup, WorkerLinkRuntimeIdentity? expectedRuntime = null,
-        string? expectedStatus = null)
+        string? expectedStatus = null, long expectedConfigVersion = 0, long expectedContentVersion = 0)
     {
         Assert.Equal("FunctionsSplitWorkerProxy", checkpoint["functionsContainerType"]!.GetValue<string>());
         JsonObject self = checkpoint["self"]!.AsObject();
@@ -587,8 +594,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal("unknown", app["antaresStampName"]!.GetValue<string>());
         Assert.Equal(expectedGroup, checkpoint["functionGroup"]?.GetValue<string>());
         Assert.False(checkpoint["isAlwaysReady"]!.GetValue<bool>());
-        Assert.Equal(0L, checkpoint["configLastModifiedTime"]!.GetValue<long>());
-        Assert.Equal(0L, checkpoint["contentLastModifiedTime"]!.GetValue<long>());
+        Assert.Equal(expectedConfigVersion, checkpoint["configLastModifiedTime"]!.GetValue<long>());
+        Assert.Equal(expectedContentVersion, checkpoint["contentLastModifiedTime"]!.GetValue<long>());
         Assert.Equal(expectedStatus ?? (expectedRuntime is null ? "Starting" : "Running"), checkpoint["status"]!.GetValue<string>());
         Assert.Equal(expectedRuntime is null ? "Unlinked" : "Linked", checkpoint["link"]!["state"]!.GetValue<string>());
         if (expectedRuntime is null)

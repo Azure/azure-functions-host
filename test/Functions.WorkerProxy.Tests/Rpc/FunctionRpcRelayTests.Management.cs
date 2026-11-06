@@ -742,6 +742,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.Self, terminated.Self);
         Assert.Equal(assigned.IsAlwaysReady, terminated.IsAlwaysReady);
         Assert.Equal(assigned.FunctionGroup, terminated.FunctionGroup);
+        Assert.Equal(1761868800, terminated.ConfigLastModifiedTime);
+        Assert.Equal(1761868801, terminated.ContentLastModifiedTime);
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
         Assert.Equal(
