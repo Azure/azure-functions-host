@@ -57,7 +57,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private long? _idleSince;
     private int _ongoingRequests;
     private bool _hasReceivedRequest;
-    private bool _retiring;
+    private bool _draining;
 
     public RpcClientWorkerChannel(
         string workerId,
@@ -163,8 +163,28 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
+    internal bool IsDraining
+    {
+        get
+        {
+            lock (_lifecycleLock)
+            {
+                return _draining;
+            }
+        }
+    }
+
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
+    internal bool IsReadyForInvocations
+    {
+        get
+        {
+            lock (_lifecycleLock)
+            {
+                return IsReadyForInvocationsLocked();
+            }
+        }
+    }
 
     internal bool IsHttpCapacityAvailable
     {
@@ -172,7 +192,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         {
             lock (_lifecycleLock)
             {
-                return IsReadyForInvocations;
+                return IsReadyForInvocationsLocked();
             }
         }
     }
@@ -182,7 +202,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         ArgumentNullException.ThrowIfNull(context);
         lock (_lifecycleLock)
         {
-            if (!IsReadyForInvocations)
+            if (!IsReadyForInvocationsLocked())
             {
                 return false;
             }
@@ -234,7 +254,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         {
             idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
             TimeSpan idleThreshold = _hasReceivedRequest ? threshold : InitialIdleThreshold;
-            if (!IsHttpFunctionGroup || IsAlwaysReady is true || !IsReadyForInvocations ||
+            if (!IsHttpFunctionGroup || IsAlwaysReady is true || !IsReadyForInvocationsLocked() ||
                 _ongoingRequests != 0 || idleDuration <= idleThreshold)
             {
                 drainTask = null;
@@ -248,7 +268,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     private Task BeginScaleInLocked()
     {
-        _retiring = true;
+        _draining = true;
         Task drainTask = DrainInvocationsAsync();
         Task notificationTask = NotifyWorkerProxyDrainingAsync();
         return Task.WhenAll(drainTask, notificationTask);
@@ -312,7 +332,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     {
         lock (_lifecycleLock)
         {
-            _retiring = true;
+            _draining = true;
         }
     }
 
@@ -607,10 +627,12 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     }
 
     private bool IsScaleInEligibleLocked(string functionGroup, bool isAlwaysReady)
-        => IsReadyForInvocations &&
+        => IsReadyForInvocationsLocked() &&
             string.Equals(FunctionGroupName, functionGroup,
                 IsHttpFunctionGroup ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) &&
             IsAlwaysReady == isAlwaysReady;
+
+    private bool IsReadyForInvocationsLocked() => !_draining && !IsTerminated && IsChannelReadyForInvocations();
 
     private static TimeSpan ValidateStartStreamTimeout(TimeSpan startStreamTimeout)
     {

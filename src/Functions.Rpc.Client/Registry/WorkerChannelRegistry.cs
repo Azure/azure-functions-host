@@ -682,7 +682,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
 
             foreach (WorkerSlot slot in _slots.Values)
             {
-                if (slot.Channel is null)
+                if (slot.Channel is not { IsDraining: false })
                 {
                     continue;
                 }
@@ -1041,6 +1041,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         RpcClientWorkerChannel channel = slot.Channel;
         if (setupContext is null ||
             channel is null ||
+            channel.IsDraining ||
             ReferenceEquals(slot.AttemptedSetupContext, setupContext))
         {
             return;

@@ -327,6 +327,61 @@ public sealed partial class WorkerChannelRegistryTests
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }
 
+    [Fact]
+    public async Task PostScaleIn_DrainingChannelPreservesBufferedInvocationAcrossActivation()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        function.Properties[RpcClientScriptHostLifecycleService.FunctionGroupKey] = FunctionGroups.Durable;
+        ChannelControl selected = CreateClassifiedWorker("selected");
+        harness.Enqueue(selected);
+        await LinkAsync(registry, selected.Id);
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        await WaitUntilAsync(() => selected.Channel.IsReadyForInvocations);
+        using RpcClientFunctionInvocationDispatcher dispatcher = new(
+            registry,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<RpcClientFunctionInvocationDispatcher>.Instance);
+        await dispatcher.InitializeAsync([function]);
+
+        ScriptInvocationContext invocation = CreateScaleInInvocation(function);
+        await dispatcher.InvokeAsync(invocation);
+        var originalBuffer = selected.Channel.FunctionInputBuffers[function.GetFunctionId()];
+        Assert.Equal(1, originalBuffer.Count);
+
+        Assert.Equal(1, await registry.ScaleInWorkersAsync(FunctionGroups.Durable, false, 0));
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+
+        await registry.ActivateAsync([function], new ManagedDependencyOptions(), functionTimeout: null);
+
+        Assert.True(selected.Channel.IsDraining);
+        Assert.Same(originalBuffer, selected.Channel.FunctionInputBuffers[function.GetFunctionId()]);
+        Assert.Equal(1, selected.SetupAttempts);
+        Assert.False(selected.Transport.Requests.TryRead(out _));
+
+        await selected.Transport.SendResponseAsync(new()
+        {
+            FunctionLoadResponse = new()
+            {
+                FunctionId = function.GetFunctionId(),
+                Result = new() { Status = StatusResult.Types.Status.Success },
+            },
+        });
+        StreamingMessage request = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await selected.Transport.SendResponseAsync(new()
+        {
+            InvocationResponse = new()
+            {
+                InvocationId = request.InvocationRequest.InvocationId,
+                Result = new() { Status = StatusResult.Types.Status.Success },
+            },
+        });
+
+        Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
