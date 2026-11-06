@@ -43,7 +43,8 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         IHttpProxyService httpProxyService = null,
         string functionGroupName = "function:TestFunction",
         string maxHttpConcurrency = null,
-        bool handlesInvocationCancel = false)
+        bool handlesInvocationCancel = false,
+        bool? isAlwaysReady = null)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
         RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
@@ -83,6 +84,11 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         if (maxHttpConcurrency is not null)
         {
             initResponse.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency);
+        }
+
+        if (isAlwaysReady is bool alwaysReady)
+        {
+            initResponse.Capabilities.Add(RpcClientWorkerChannel.IsAlwaysReadyCapability, alwaysReady.ToString());
         }
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, workerId) });

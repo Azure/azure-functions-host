@@ -98,7 +98,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         if (readyChannels.IsCompletedSuccessfully)
         {
             IReadOnlyList<WorkerChannel> snapshot = readyChannels.Result;
-            if (TryDispatchInvocation(invocationContext, snapshot, functionGroup))
+            if (TryDispatchInvocation(invocationContext, snapshot, functionGroup, out _))
             {
                 return Task.CompletedTask;
             }
@@ -113,32 +113,20 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     /// <summary>
     /// Atomically checks channel readiness and transfers invocation ownership before idle retirement can claim it.
     /// </summary>
-    private bool DispatchInvocation(ScriptInvocationContext invocationContext, RpcClientWorkerChannel channel, CancellationToken cancellationToken)
+    private bool DispatchInvocation(ScriptInvocationContext invocationContext, RpcClientWorkerChannel channel,
+        CancellationToken cancellationToken, out Task capacityChanged)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
-        lock (channel.LifecycleLock)
+        return channel.TryDispatchInvocation(invocationContext, postInvocation =>
         {
-            if (!channel.IsReadyForInvocations)
-            {
-                return false;
-            }
-
-            bool trackActivity = channel.IsHttpFunctionGroup && channel.IsAlwaysReady is not true;
-            // Register before posting so a fast response cannot outrun its completion callback.
-            Task responseCompleted = trackActivity
-                ? RpcClientWorkerChannel.GetHttpResponseCompletionTask(invocationContext)
-                : Task.CompletedTask;
-
             string invocationId = invocationContext.ExecutionContext.InvocationId.ToString();
             bool accepted = _invocationTracker is null
-                ? channel.TryPostInvocation(invocationContext)
-                : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, () => channel.TryPostInvocation(invocationContext));
+                ? postInvocation()
+                : _invocationTracker.TryDispatchInvocation(invocationId, channel.Id, postInvocation);
             if (!accepted)
             {
-                invocationContext.ResultSource.TrySetException(
-                    new InvalidOperationException($"Worker '{channel.Id}' is no longer accepting invocations or is unavailable for attribution."));
-                return true;
+                return false;
             }
 
             if (_invocationTracker is not null)
@@ -160,19 +148,13 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                     CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
 
-            if (trackActivity)
-            {
-                channel.OngoingRequests++;
-                _ = channel.ObserveRequestCompletionAsync(invocationContext, responseCompleted);
-            }
-
             if (_logger.IsEnabled(LogLevel.Trace))
             {
                 Log.PostingInvocation(_logger, invocationContext.ExecutionContext.InvocationId, channel.Id);
             }
 
             return true;
-        }
+        }, out capacityChanged);
     }
 
     /// <summary>
@@ -298,22 +280,46 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     }
 
     private bool TryDispatchInvocation(ScriptInvocationContext invocationContext, IReadOnlyList<WorkerChannel> channels,
-        string functionGroup, CancellationToken cancellationToken = default)
+        string functionGroup, out Task capacityChanged, CancellationToken cancellationToken = default)
     {
-        // A selected channel may retire before its lifecycle lock is acquired; try other matching channels.
-        for (int attempt = 0; attempt < channels.Count; attempt++)
+        capacityChanged = null;
+        if (!TryGetReadyChannel(channels, functionGroup, out WorkerChannel preferred))
         {
-            if (!TryGetReadyChannel(channels, functionGroup, out WorkerChannel channel))
+            return false;
+        }
+
+        if (DispatchInvocation(invocationContext, (RpcClientWorkerChannel)preferred, cancellationToken, out Task changed))
+        {
+            return true;
+        }
+
+        List<Task> capacityChanges = null;
+        if (changed is not null)
+        {
+            (capacityChanges ??= []).Add(changed);
+        }
+
+        // Visit every other matching Worker once, independently of concurrent round-robin selections.
+        for (int i = 0; i < channels.Count; i++)
+        {
+            WorkerChannel candidate = channels[i];
+            if (ReferenceEquals(candidate, preferred) || !IsEligible(candidate, functionGroup))
             {
-                return false;
+                continue;
             }
 
-            if (DispatchInvocation(invocationContext, (RpcClientWorkerChannel)channel, cancellationToken))
+            if (DispatchInvocation(invocationContext, (RpcClientWorkerChannel)candidate, cancellationToken, out changed))
             {
                 return true;
             }
+
+            if (changed is not null)
+            {
+                (capacityChanges ??= []).Add(changed);
+            }
         }
 
+        capacityChanged = capacityChanges is null ? null : Task.WhenAny(capacityChanges);
         return false;
     }
 
@@ -398,13 +404,24 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                     ? readyChannels.Result
                     : await readyChannels.AsTask().WaitAsync(operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
-                if (TryDispatchInvocation(invocationContext, channels, functionGroup, operationSource.Token))
+                if (TryDispatchInvocation(invocationContext, channels, functionGroup, out Task capacityChanged, operationSource.Token))
                 {
                     return;
                 }
 
-                // Other groups can stay globally ready indefinitely. Resample only after a registry change.
-                await changed.WaitAsync(operationSource.Token);
+                if (capacityChanged is not null)
+                {
+                    // Healthy, occupied Workers may run much longer than the readiness deadline.
+                    operationSource.CancelAfter(Timeout.InfiniteTimeSpan);
+                    await Task.WhenAny(capacityChanged, changed).WaitAsync(operationSource.Token);
+                    operationSource.CancelAfter(_channelWaitTimeout);
+                }
+                else
+                {
+                    // Other groups can stay globally ready indefinitely. Resample only after a registry change.
+                    await changed.WaitAsync(operationSource.Token);
+                }
+
                 changed = _channelRegistry.GetChangeTask();
                 readyChannels = _channelRegistry.GetReadyChannelsAsync();
             }

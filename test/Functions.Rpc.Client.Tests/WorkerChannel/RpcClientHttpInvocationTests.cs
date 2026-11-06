@@ -4,8 +4,10 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -97,6 +99,191 @@ public sealed class RpcClientHttpInvocationTests
 
         Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
         proxy.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Admission_HoldsCapacityUntilProxyAndResponseBodyComplete(bool alwaysReady)
+    {
+        Mock<IHttpProxyService> proxy = CreateProxy(HttpEndpoint);
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", advertisedHttpUri: HttpEndpoint.AbsoluteUri, httpProxyService: proxy.Object,
+            functionGroupName: FunctionGroups.Http, maxHttpConcurrency: "1", isAlwaysReady: alwaysReady);
+        FunctionMetadata function = await LoadFunctionAsync(worker);
+        var (invocation, _, completeResponse) = CreateHttpInvocation(function);
+        TaskCompletionSource proxyCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        invocation.Properties[ScriptConstants.HttpProxyTask] = proxyCompleted.Task;
+        Assert.True(TryDispatch(worker, invocation, out _));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        ScriptInvocationContext next = CreateInvocation(function);
+        Assert.False(TryDispatch(worker, next, out Task capacityChanged));
+
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
+        await invocation.ResultSource.Task.WaitAsync(TestTimeout);
+        Assert.False(TryDispatch(worker, next, out _));
+
+        proxyCompleted.SetResult();
+        Assert.False(TryDispatch(worker, next, out _));
+        await completeResponse();
+        await capacityChanged.WaitAsync(TestTimeout);
+
+        Assert.True(TryDispatch(worker, next, out _));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Admission_DisconnectDoesNotReleaseExecutingInvocation(bool succeeded)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: FunctionGroups.Http, maxHttpConcurrency: "1");
+        FunctionMetadata function = await LoadFunctionAsync(worker);
+        var (invocation, httpContext, _) = CreateHttpInvocation(function);
+        using CancellationTokenSource aborted = new();
+        httpContext.RequestAborted = aborted.Token;
+        Assert.True(TryDispatch(worker, invocation, out _));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+
+        aborted.Cancel();
+        Assert.False(invocation.ResultSource.Task.IsCompleted);
+        ScriptInvocationContext next = CreateInvocation(function);
+        Assert.False(TryDispatch(worker, next, out Task capacityChanged));
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId, succeeded);
+        if (succeeded)
+        {
+            await invocation.ResultSource.Task.WaitAsync(TestTimeout);
+        }
+        else
+        {
+            await Assert.ThrowsAnyAsync<Exception>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+
+        await capacityChanged.WaitAsync(TestTimeout);
+        Assert.True(TryDispatch(worker, next, out _));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Admission_DeclinedAttributionOrPostDoesNotLeakCapacity(bool declineBuffer)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: FunctionGroups.Http, maxHttpConcurrency: "1");
+        FunctionMetadata function = await LoadFunctionAsync(worker);
+        var (invocation, _, completeResponse) = CreateHttpInvocation(function);
+        if (declineBuffer)
+        {
+            worker.Channel.FunctionInputBuffers[function.GetFunctionId()].Complete();
+        }
+
+        Assert.True(worker.Channel.TryDispatchInvocation(invocation, post => declineBuffer && post(), out _));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        ScriptInvocationContext next = CreateInvocation(function);
+        bool callbackRan = false;
+        Assert.True(worker.Channel.TryDispatchInvocation(next, _ =>
+        {
+            callbackRan = true;
+            return false;
+        }, out _));
+
+        Assert.True(callbackRan);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => next.ResultSource.Task);
+        if (declineBuffer)
+        {
+            await completeResponse();
+        }
+
+        await worker.Channel.DrainInvocationsAsync().WaitAsync(TestTimeout);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Admission_CancellationRetainsCapacityUntilInvocationAndResponseComplete(bool beforeSend)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: FunctionGroups.Http, maxHttpConcurrency: "1",
+            handlesInvocationCancel: !beforeSend);
+        FunctionMetadata function = await LoadFunctionAsync(worker);
+        var (invocation, _, completeResponse) = CreateHttpInvocation(function);
+        using CancellationTokenSource cancellation = new();
+        invocation.CancellationToken = cancellation.Token;
+        if (beforeSend)
+        {
+            cancellation.Cancel();
+        }
+
+        Assert.True(TryDispatch(worker, invocation, out _));
+        if (beforeSend)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            cancellation.Cancel();
+            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationCancel);
+            Assert.False(invocation.ResultSource.Task.IsCompleted);
+            Assert.False(TryDispatch(worker, CreateInvocation(function), out _));
+            await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
+            await invocation.ResultSource.Task.WaitAsync(TestTimeout);
+        }
+
+        ScriptInvocationContext next = CreateInvocation(function);
+        Assert.False(TryDispatch(worker, next, out Task capacityChanged));
+        await completeResponse();
+        await capacityChanged.WaitAsync(TestTimeout);
+        Assert.True(TryDispatch(worker, next, out _));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    [Fact]
+    public async Task Admission_DuplicateInvocationIdDoesNotReleaseAnotherInvocationsCapacity()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", functionGroupName: FunctionGroups.Http, maxHttpConcurrency: "2");
+        FunctionMetadata function = await LoadFunctionAsync(worker);
+        ScriptInvocationContext first = CreateInvocation(function);
+        Assert.True(TryDispatch(worker, first, out _));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        ScriptInvocationContext duplicate = CreateInvocation(function);
+        duplicate.ExecutionContext.InvocationId = first.ExecutionContext.InvocationId;
+
+        Assert.True(TryDispatch(worker, duplicate, out _));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => duplicate.ResultSource.Task);
+        Assert.True(TryDispatch(worker, CreateInvocation(function), out _));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        ScriptInvocationContext next = CreateInvocation(function);
+        Assert.False(TryDispatch(worker, next, out Task capacityChanged));
+
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
+        await capacityChanged.WaitAsync(TestTimeout);
+        Assert.True(TryDispatch(worker, next, out _));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    private static bool TryDispatch(ClientWorkerChannelTestHarness worker, ScriptInvocationContext invocation, out Task capacityChanged)
+        => worker.Channel.TryDispatchInvocation(invocation, post => post(), out capacityChanged);
+
+    private static (ScriptInvocationContext Invocation, HttpContext HttpContext, Func<Task> CompleteResponse) CreateHttpInvocation(
+        FunctionMetadata function)
+    {
+        ScriptInvocationContext invocation = CreateInvocation(function);
+        DefaultHttpContext httpContext = new();
+        httpContext.Request.Method = "GET";
+        httpContext.Request.Host = new("incoming.example");
+        httpContext.Items.Add(ScriptConstants.AzureFunctionsHttpTriggerContext, null);
+        Func<Task> completeResponse = null;
+        Mock<IHttpResponseFeature> response = new();
+        response.Setup(feature => feature.OnCompleted(It.IsAny<Func<object, Task>>(), It.IsAny<object>()))
+            .Callback((Func<object, Task> callback, object state) => completeResponse = () => callback(state));
+        httpContext.Features.Set(response.Object);
+        invocation.Inputs = [("req", DataType.String, httpContext.Request)];
+
+        return (invocation, httpContext, () => completeResponse());
     }
 
     private static Mock<IHttpProxyService> CreateProxy(Uri endpoint)

@@ -48,6 +48,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions;
     private readonly ILogger _logger;
     private readonly ILogger _activityLogger;
+    private TaskCompletionSource _capacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private IDisposable _ownedHttpProxyService;
     private Uri _httpEndpoint;
     private LifecycleState _lifecycleState;
@@ -187,6 +188,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             }
 
             _retiring = true;
+            SignalCapacityChanged();
             return true;
         }
     }
@@ -196,6 +198,43 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         lock (_lifecycleLock)
         {
             _retiring = true;
+            SignalCapacityChanged();
+        }
+    }
+
+    internal bool TryDispatchInvocation(
+        ScriptInvocationContext context, Func<Func<bool>, bool> dispatch, out Task capacityChanged)
+    {
+        lock (_lifecycleLock)
+        {
+            capacityChanged = null;
+            if (!IsReadyForInvocations)
+            {
+                return false;
+            }
+
+            if (IsHttpFunctionGroup && _ongoingRequests >= MaxHttpConcurrency)
+            {
+                // Capture notification atomically with the full check and completion-driven release.
+                capacityChanged = _capacityChanged.Task;
+                return false;
+            }
+
+            Task responseCompleted = IsHttpFunctionGroup ? GetHttpResponseCompletionTask(context) : Task.CompletedTask;
+            if (!dispatch(() => TryPostInvocation(context)))
+            {
+                context.ResultSource.TrySetException(new InvalidOperationException(
+                    $"Worker '{Id}' is no longer accepting invocations or is unavailable for attribution."));
+                return true;
+            }
+
+            if (IsHttpFunctionGroup)
+            {
+                OngoingRequests++;
+                _ = ObserveRequestCompletionAsync(context, responseCompleted);
+            }
+
+            return true;
         }
     }
 
@@ -284,11 +323,22 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
+    protected override void OnFunctionLoadError(Exception exception)
+    {
+        lock (_lifecycleLock)
+        {
+            _functionLoadFailure.TrySetResult(exception);
+            SignalCapacityChanged();
+        }
+    }
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
-    protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+    protected override void OnChannelFailure(Exception exception)
+    {
+        FailPendingMetadataRequest(exception);
+        StopAcceptingInvocations();
+    }
 
     internal override void WorkerInitResponse(StreamingMessage initMessage)
     {
@@ -362,6 +412,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         lock (_lifecycleLock)
         {
             _lifecycleState = LifecycleState.Disposed;
+            _retiring = true;
+            SignalCapacityChanged();
         }
 
         if (disposing)
@@ -438,7 +490,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             responseCompleted.TrySetResult();
             return Task.CompletedTask;
         });
-        return responseCompleted.Task;
+        return responseCompleted.Task.WaitAsync(request.HttpContext.RequestAborted);
     }
 
     internal async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
@@ -466,7 +518,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 }
             }
 
-            await responseCompleted.ConfigureAwait(false);
+            await responseCompleted.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
         finally
         {
@@ -474,8 +526,16 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             {
                 _ongoingRequests--;
                 RecordIdleTime();
+                SignalCapacityChanged();
             }
         }
+    }
+
+    private void SignalCapacityChanged()
+    {
+        TaskCompletionSource changed = _capacityChanged;
+        _capacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
     }
 
     private void RecordIdleTime()

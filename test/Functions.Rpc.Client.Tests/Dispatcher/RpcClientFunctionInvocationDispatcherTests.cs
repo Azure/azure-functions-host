@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -24,17 +25,17 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly List<WorkerChannel> _initializedChannels = [];
     private readonly List<WorkerChannel> _readyChannels = [];
-    private readonly TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<IReadOnlyList<WorkerChannel>> _readySignal =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Mock<IWorkerChannelRegistry> _registry = new();
+    private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public RpcClientFunctionInvocationDispatcherTests()
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
             .Returns(() => [.. _initializedChannels]);
-        _registry.Setup(registry => registry.GetChangeTask()).Returns(_changed.Task);
+        _registry.Setup(registry => registry.GetChangeTask()).Returns(() => _changed.Task);
         _registry.Setup(registry => registry.GetReadyChannelsAsync())
             .Returns(() => _readyChannels.Count == 0
                 ? new ValueTask<IReadOnlyList<WorkerChannel>>(_readySignal.Task)
@@ -785,6 +786,232 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         _registry.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task InvokeAsync_SkipsFullWorkerBeforeAttribution()
+    {
+        await using ClientWorkerChannelTestHarness first = await CreateHttpWorkerAsync("first", 1);
+        await using ClientWorkerChannelTestHarness second = await CreateHttpWorkerAsync("second", 1);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(second, function);
+        PublishReady(first.Channel);
+        Mock<IWorkerInvocationTracker> tracker = new();
+        tracker.Setup(metrics => metrics.TryDispatchInvocation(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Func<bool>>()))
+            .Returns((string id, string worker, Func<bool> post) => post());
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(invocationTracker: tracker.Object);
+        await dispatcher.InitializeAsync([function]);
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        PublishReady(second.Channel);
+        ScriptInvocationContext invocation = CreateInvocation(function);
+
+        await dispatcher.InvokeAsync(invocation).WaitAsync(TestTimeout);
+
+        StreamingMessage request = await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.Equal(invocation.ExecutionContext.InvocationId.ToString(), request.InvocationRequest.InvocationId);
+        tracker.Verify(metrics => metrics.TryDispatchInvocation(invocation.ExecutionContext.InvocationId.ToString(),
+            "first", It.IsAny<Func<bool>>()), Times.Never);
+        tracker.Verify(metrics => metrics.TryDispatchInvocation(invocation.ExecutionContext.InvocationId.ToString(),
+            "second", It.IsAny<Func<bool>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ConcurrentAdmissionNeverExceedsWorkerLimit()
+    {
+        await using ClientWorkerChannelTestHarness worker = await CreateHttpWorkerAsync("worker", 16);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        TaskCompletionSource allSubmitted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int submitted = 0;
+        Task[] dispatches = Enumerable.Range(0, 50)
+            .Select(_ => Task.Run(async () =>
+            {
+                Task dispatch = dispatcher.InvokeAsync(CreateInvocation(function));
+                if (Interlocked.Increment(ref submitted) == 50)
+                {
+                    allSubmitted.SetResult();
+                }
+
+                await dispatch;
+            })).ToArray();
+
+        Queue<string> active = new();
+        for (int i = 0; i < 16; i++)
+        {
+            StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            active.Enqueue(request.InvocationRequest.InvocationId);
+        }
+
+        await allSubmitted.Task.WaitAsync(TestTimeout);
+        for (int i = 16; i < 50; i++)
+        {
+            Assert.False(worker.Transport.Requests.TryRead(out _));
+            await worker.SendInvocationResponseAsync(active.Dequeue());
+            StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            active.Enqueue(request.InvocationRequest.InvocationId);
+        }
+
+        await Task.WhenAll(dispatches).WaitAsync(TestTimeout);
+        foreach (string id in active)
+        {
+            await worker.SendInvocationResponseAsync(id);
+        }
+
+        await worker.Channel.DrainInvocationsAsync().WaitAsync(TestTimeout);
+        Assert.False(worker.Transport.Requests.TryRead(out _));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SaturatedWorkerWaitsPastReadinessTimeoutAndWakesOnCompletion()
+    {
+        await using ClientWorkerChannelTestHarness worker = await CreateHttpWorkerAsync("worker", 1);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(TimeSpan.FromMilliseconds(50));
+        await dispatcher.InitializeAsync([function]);
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        StreamingMessage first = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Task waiting = dispatcher.InvokeAsync(CreateInvocation(function));
+
+        await Task.Delay(150);
+        Assert.False(waiting.IsCompleted);
+        await worker.SendInvocationResponseAsync(first.InvocationRequest.InvocationId);
+
+        await waiting.WaitAsync(TestTimeout);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.False(_changed.Task.IsCompleted);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SaturatedWorkerWakesWhenAnotherWorkerLinks()
+    {
+        await using ClientWorkerChannelTestHarness first = await CreateHttpWorkerAsync("first", 1);
+        await using ClientWorkerChannelTestHarness second = await CreateHttpWorkerAsync("second", 1);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(first, function);
+        await PrepareReadyChannelAsync(second, function);
+        PublishReady(first.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Task waiting = dispatcher.InvokeAsync(CreateInvocation(function));
+        Assert.False(waiting.IsCompleted);
+
+        PublishReady(second.Channel);
+
+        await waiting.WaitAsync(TestTimeout);
+        await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_BurstAcrossJoiningWorkersHonorsEachWorkersConcurrency()
+    {
+        await using ClientWorkerChannelTestHarness first = await CreateHttpWorkerAsync("first", 16);
+        await using ClientWorkerChannelTestHarness second = await CreateHttpWorkerAsync("second", 16);
+        await using ClientWorkerChannelTestHarness third = await CreateHttpWorkerAsync("third", 16);
+        await using ClientWorkerChannelTestHarness fourth = await CreateHttpWorkerAsync("fourth", 16);
+        FunctionMetadata function = CreateHttpFunction();
+        ClientWorkerChannelTestHarness[] workers = [first, second, third, fourth];
+        foreach (ClientWorkerChannelTestHarness worker in workers)
+        {
+            await PrepareReadyChannelAsync(worker, function);
+        }
+
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        PublishReady(first.Channel);
+        Task[] dispatches = Enumerable.Range(0, 50)
+            .Select(_ => dispatcher.InvokeAsync(CreateInvocation(function))).ToArray();
+
+        for (int i = 0; i < workers.Length; i++)
+        {
+            ClientWorkerChannelTestHarness worker = workers[i];
+            if (i > 0)
+            {
+                PublishReady(worker.Channel);
+            }
+
+            int count = i == 3 ? 2 : 16;
+            for (int request = 0; request < count; request++)
+            {
+                await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            }
+
+            Assert.False(worker.Transport.Requests.TryRead(out _));
+        }
+
+        await Task.WhenAll(dispatches).WaitAsync(TestTimeout);
+        foreach (ClientWorkerChannelTestHarness worker in workers)
+        {
+            Assert.False(worker.Transport.Requests.TryRead(out _));
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_LossOfSaturatedWorkerRestoresReadinessTimeout()
+    {
+        await using ClientWorkerChannelTestHarness worker = await CreateHttpWorkerAsync("worker", 1);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(TimeSpan.FromMilliseconds(50));
+        await dispatcher.InitializeAsync([function]);
+        ScriptInvocationContext active = CreateInvocation(function);
+        await dispatcher.InvokeAsync(active);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Task waiting = dispatcher.InvokeAsync(CreateInvocation(function));
+
+        worker.Channel.StopAcceptingInvocations();
+        worker.Channel.Shutdown(null);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => active.ResultSource.Task);
+        await Assert.ThrowsAsync<TimeoutException>(() => waiting.WaitAsync(TestTimeout));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_CancellationInterruptsCapacityWait(bool stopDispatcher)
+    {
+        await using ClientWorkerChannelTestHarness worker = await CreateHttpWorkerAsync("worker", 1);
+        FunctionMetadata function = CreateHttpFunction();
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([function]);
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        using CancellationTokenSource cancellation = new();
+        Task waiting = dispatcher.InvokeAsync(CreateInvocation(function, cancellation.Token));
+
+        if (stopDispatcher)
+        {
+            dispatcher.PreShutdown();
+        }
+        else
+        {
+            cancellation.Cancel();
+        }
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting.WaitAsync(TestTimeout));
+    }
+
+    private static Task<ClientWorkerChannelTestHarness> CreateHttpWorkerAsync(string id, int limit)
+        => ClientWorkerChannelTestHarness.CreateAsync(id, functionGroupName: FunctionGroups.Http,
+            maxHttpConcurrency: limit.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    private static FunctionMetadata CreateHttpFunction()
+    {
+        FunctionMetadata function = CreateFunction();
+        function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
+        return function;
+    }
+
     private RpcClientFunctionInvocationDispatcher CreateDispatcher(TimeSpan? channelWaitTimeout = null,
         IWorkerInvocationTracker invocationTracker = null)
         => new(
@@ -798,6 +1025,9 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         _readyChannels.AddRange(channels);
         _initializedChannels.AddRange(channels);
         _readySignal.TrySetResult(_readyChannels.ToArray());
+        TaskCompletionSource changed = _changed;
+        _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
     }
 
     private static async Task PrepareReadyChannelAsync(
