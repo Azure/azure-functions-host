@@ -369,7 +369,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             using HttpResponseMessage removed = await management.PostAsync("/admin/infra/instanceState", removedBody, timeout.Token);
             Assert.Equal(HttpStatusCode.OK, removed.StatusCode);
             JsonObject removedCheckpoint = JsonNode.Parse(await removed.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
-            Assert.Equal(startupTime, AssertCheckpoint(removedCheckpoint, workerId, expectedGroup: null, expectedStatus: "RemovalRequested"));
+            Assert.Equal(startupTime, AssertCheckpoint(removedCheckpoint, workerId, expectedGroup: "group", expectedStatus: "RemovalRequested"));
             Assert.False(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
             using StringContent retryBody = new(assignmentJson, Encoding.UTF8, "application/json");
             using HttpResponseMessage retry = await management.PutAsync("/admin/worker/assignment", retryBody, timeout.Token);
@@ -536,7 +536,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         }
         while (true);
         Assert.Equal(startupTime, AssertCheckpoint(
-            terminalCheckpoint, workerId, runtimeLoss ? null : "group", expectedStatus: "RemovalRequested"));
+            terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested"));
         Assert.False(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
         using StringContent terminalRetryBody = new(assignmentJson, Encoding.UTF8, "application/json");
         using HttpResponseMessage terminalRetry = await management.PutAsync("/admin/worker/assignment", terminalRetryBody, timeout.Token);
@@ -565,7 +565,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                 $"/admin/workers/{Uri.EscapeDataString(workerId)}", replayLinkBody, timeout.Token);
             Assert.Equal(HttpStatusCode.Conflict, replayLink.StatusCode);
             Assert.Contains("WorkerTerminated", await replayLink.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and withdrew caller admission without marking protocol health failure.");
+            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, retained the function group, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and withdrew caller admission without marking protocol health failure.");
         }
         else
         {
