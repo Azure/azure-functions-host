@@ -55,6 +55,7 @@ internal sealed partial class FunctionRpcRelay
         private string? _initializationRequestId;
         private int _shutdownRequested;
         private volatile string? _workerId;
+        private volatile WorkerSystemLogContext? _terminalLogContext;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -131,12 +132,21 @@ internal sealed partial class FunctionRpcRelay
 
         public WorkerSystemLogContext GetLogContext()
         {
-            return new()
-            {
-                WorkerId = _workerId,
-                ProxySessionId = id
-            };
+            // Read live state first: termination publishes its context before clearing that state.
+            WorkerPodState state = stateManager.State;
+            return _terminalLogContext ?? CreateLogContext(state);
         }
+
+        private void CaptureLogStateLocked()
+        {
+            _terminalLogContext = CreateLogContext(stateManager.State);
+        }
+
+        private WorkerSystemLogContext CreateLogContext(WorkerPodState state) => WorkerSystemLogContext.FromState(state) with
+        {
+            WorkerId = _workerId,
+            ProxySessionId = id
+        };
 
         public void LogAttachment(FunctionRpcRelaySide side, bool released)
         {
@@ -786,6 +796,8 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
+                // Retain this session's identity before removal clears it from live state.
+                CaptureLogStateLocked();
                 bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
                     terminalState.Side == FunctionRpcRelaySide.Runtime &&
                     terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed

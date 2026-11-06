@@ -52,8 +52,46 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(level, record.Level);
         Assert.Equal(statusCode, context.Response.StatusCode);
         Assert.Contains(statusCode.ToString(CultureInfo.InvariantCulture), record.Message, StringComparison.Ordinal);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.Contains("Worker attached and identified: True.", record.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AssignmentLogging_RetainsDecisionIdentityAfterRemoval()
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        WorkerPodStateManager manager = new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System);
+        Assert.True(manager.OnWorkerAttached(7));
+        Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
+        DefaultHttpContext context = CreateAssignmentContext();
+        WorkerPodState snapshot = manager.State;
+        WorkerAssignmentLoggingMiddleware middleware = new(http =>
+        {
+            IResult result = ManagementApiHandlers.AssignWorker(new()
+            {
+                StartupMode = nameof(WorkerStartupMode.Preconfigured),
+                FunctionAppName = "test-app",
+                FunctionGroupName = "http",
+                IsAlwaysReady = false,
+                Environment = new() { ["setting"] = "private-setting" },
+                FunctionAppDirectory = "private-directory"
+            }, manager, http);
+            snapshot = manager.State;
+            manager.RequestRemoval();
+            http.Response.StatusCode = ((IStatusCodeHttpResult)result).StatusCode!.Value;
+            return Task.CompletedTask;
+        }, factory.CreateLogger<WorkerAssignmentLoggingMiddleware>(), manager);
+
+        await middleware.InvokeAsync(context);
+
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
+        Assert.Equal("WorkerAssignmentRequestCompleted", record.EventName);
+        Assert.Equal(201, context.Response.StatusCode);
+        Assert.Equal(WorkerSystemLogContext.FromState(snapshot), record.Context);
+        Assert.Equal("test-app", record.Context!.FunctionAppName);
+        Assert.Null(manager.State.FunctionAppName);
+        Assert.DoesNotContain("private-", record.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -139,7 +177,7 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         Assert.Equal(eventName, record.EventName);
         Assert.Equal(level, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
         Assert.Empty(record.Details);
         Assert.Empty(record.ExceptionMessage);

@@ -255,13 +255,24 @@ public partial class WorkerSystemLoggingTests
         }
     }
 
-    [Fact]
-    public async Task PositionalLogging_PreservesDiagnosticTextAndEncodesColumns()
+    [Theory]
+    [InlineData("sample-app")]
+    [InlineData(null)]
+    public async Task PositionalLogging_PreservesDiagnosticTextAndEncodesColumns(string? appName)
     {
         StringWriter output = new();
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger("Proxy,category");
+        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
+        {
+            WorkerId = "worker-1",
+            ProxySessionId = 7,
+            PodName = "pod-1",
+            FunctionAppName = appName,
+            FunctionGroupName = "http",
+            Revision = 3
+        });
         logger.LogWarning(new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" key=worker-ready");
         await generator.CompleteAsync();
 
@@ -269,7 +280,9 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(21, fields.Length);
         Assert.Equal("Event,name", fields[4]);
         Assert.Equal("Proxy,category", fields[5]);
-        Assert.Equal("first second third 'quoted' key=worker-ready", fields[7]);
+        string appField = appName is null ? string.Empty : $"FunctionAppName={appName}; ";
+        Assert.Equal($"WorkerId=worker-1; ProxySessionId=7; PodName=pod-1; {appField}FunctionGroupName=http; Revision=3; first second third 'quoted' key=worker-ready", fields[7]);
+        Assert.All(new[] { 1, 2, 3, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, index => Assert.Empty(fields[index]));
         Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
@@ -419,7 +432,7 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
             string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.Matches(
             @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
             record.Message);
@@ -518,6 +531,9 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(
             eventGenerator.ProxyRecords,
             record => string.Equals(record.EventName, "WorkerProxyStopped", StringComparison.Ordinal));
+        Assert.All(eventGenerator.ProxyRecords.Where(record =>
+            record.EventName is "WorkerProxyStarted" or "WorkerProxyShutdownStarted" or "WorkerProxyStopped"),
+            record => Assert.NotEmpty(record.Context!.PodName));
     }
 
     private static string[][] ParseCsvOutput(string output)
