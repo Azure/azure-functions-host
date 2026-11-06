@@ -217,21 +217,59 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(manager.GetWorkerCapabilitySnapshot(1).HttpProxyEndpoint);
     }
 
-    [Fact]
-    public async Task WaitForAssignment_CompletesOnlyAfterAcceptedAssignment()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WaitForAssignment_CompletesAfterAcceptedAssignment(bool workerReady)
     {
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
-        using CancellationTokenSource rejectedWait = new(TimeSpan.FromMilliseconds(100));
-        Task<WorkerAssignment> rejected = manager.WaitForAssignmentAsync(rejectedWait.Token);
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("rejected")));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => rejected);
+        if (workerReady)
+        {
+            manager.OnWorkerAttached(1);
+            manager.OnWorkerStartStream(1, "worker");
+        }
 
-        manager.OnWorkerAttached(1);
-        manager.OnWorkerStartStream(1, "worker");
         WorkerAssignment accepted = CreateAssignment("accepted");
         Task<WorkerAssignment> wait = manager.WaitForAssignmentAsync();
+        Assert.False(wait.IsCompleted);
+
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(accepted));
         Assert.Same(accepted, await wait.WaitAsync(TestTimeout));
+        Assert.Same(accepted, await manager.WaitForAssignmentAsync().WaitAsync(TestTimeout));
+    }
+
+    [Fact]
+    public async Task WaitForAssignment_RejectedAssignmentDoesNotCompleteWaiter()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        Assert.True(manager.OnRuntimeAttached(1, new("namespace", "pod", new("accepted", 1, "stamp"))));
+        Task<WorkerAssignment> wait = manager.WaitForAssignmentAsync();
+
+        Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("rejected")));
+        Assert.False(wait.IsCompleted);
+
+        WorkerAssignment accepted = CreateAssignment("accepted");
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(accepted));
+        Assert.Same(accepted, await wait.WaitAsync(TestTimeout));
+    }
+
+    [Fact]
+    public async Task WaitForAssignment_CancellationDoesNotCancelOtherWaiters()
+    {
+        WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
+        using CancellationTokenSource cancellation = new();
+        Task<WorkerAssignment> canceledWait = manager.WaitForAssignmentAsync(cancellation.Token);
+        Task<WorkerAssignment> activeWait = manager.WaitForAssignmentAsync();
+
+        cancellation.Cancel();
+        OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => canceledWait.WaitAsync(TestTimeout));
+        Assert.Equal(cancellation.Token, exception.CancellationToken);
+        Assert.False(activeWait.IsCompleted);
+
+        WorkerAssignment accepted = CreateAssignment();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(accepted));
+        Assert.Same(accepted, await activeWait.WaitAsync(TestTimeout));
         Assert.Same(accepted, await manager.WaitForAssignmentAsync().WaitAsync(TestTimeout));
     }
 

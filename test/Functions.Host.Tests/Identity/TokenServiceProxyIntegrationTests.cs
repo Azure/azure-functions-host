@@ -596,7 +596,6 @@ public sealed class TokenServiceProxyIntegrationTests
                     "--WorkerProxy:HttpPort", "0",
                     "--WorkerProxy:TokenServiceProxy:Enabled", "true",
                     "--WorkerProxy:TokenServiceProxy:Port", "0",
-                    "--IDENTITY_HEADER", LocalSecret,
                     "--Logging:LogLevel:Default", "Warning",
                     .. overrides
                 ]);
@@ -616,7 +615,7 @@ public sealed class TokenServiceProxyIntegrationTests
                 }.Uri.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped);
                 using StringContent assignment = new($$"""
                     {"startupMode":"Preconfigured","functionAppName":"token-proxy-app","functionGroupName":"http","isAlwaysReady":false,
-                     "environment":{},"functionAppDirectory":"","configLastModifiedTime":1761868800,
+                     "environment":{"IDENTITY_HEADER":"{{LocalSecret}}"},"functionAppDirectory":"","configLastModifiedTime":1761868800,
                      "contentLastModifiedTime":1761868801,"maxHttpConcurrency":16,"httpProxyEndpoint":"{{httpOrigin}}"}
                     """, Encoding.UTF8, "application/json");
                 using HttpResponseMessage accepted = await management.PutAsync("/admin/worker/assignment", assignment);
