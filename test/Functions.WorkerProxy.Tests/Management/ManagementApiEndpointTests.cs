@@ -104,6 +104,55 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData(null, null)]
+    [InlineData(null, 222L)]
+    [InlineData(111L, null)]
+    [InlineData(0L, 0L)]
+    [InlineData(0L, 222L)]
+    [InlineData(111L, 0L)]
+    [InlineData(9007199254740993L, long.MinValue)]
+    [InlineData(long.MaxValue, long.MaxValue)]
+    public async Task AssignmentVersions_CheckpointPreservesSuppliedValuesAndDefaultsOnlyOmittedValues(
+        long? configVersion, long? contentVersion)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject assignment = JsonNode.Parse(ValidAssignment)!.AsObject();
+        assignment.Remove("configLastModifiedTime");
+        assignment.Remove("contentLastModifiedTime");
+        if (configVersion is { } config)
+        {
+            assignment["configLastModifiedTime"] = config;
+        }
+
+        if (contentVersion is { } content)
+        {
+            assignment["contentLastModifiedTime"] = content;
+        }
+
+        using StringContent body = JsonBody(assignment.ToJsonString());
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, body, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = factory.Services.GetRequiredService<WorkerPodStateManager>().State;
+        Assert.Equal(configVersion, assigned.ConfigLastModifiedTime);
+        Assert.Equal(contentVersion, assigned.ContentLastModifiedTime);
+
+        using HttpResponseMessage response = await PostStateAsync(client, "null", timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        string json = await response.Content.ReadAsStringAsync(timeout.Token);
+        using JsonDocument document = JsonDocument.Parse(json);
+        Assert.Equal(configVersion ?? 0, document.RootElement.GetProperty("configLastModifiedTime").GetInt64());
+        Assert.Equal(contentVersion ?? 0, document.RootElement.GetProperty("contentLastModifiedTime").GetInt64());
+        WorkerOriginState checkpoint = Assert.IsType<WorkerOriginState>(
+            JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerOriginState));
+        Assert.Equal(WorkerOriginState.FromState(assigned), checkpoint);
+        Assert.Equal(checkpoint, JsonSerializer.Deserialize(
+            JsonSerializer.Serialize(checkpoint, WorkerProxyJsonContext.Default.WorkerOriginState),
+            WorkerProxyJsonContext.Default.WorkerOriginState));
+    }
+
+    [Theory]
     [InlineData("http://127.0.0.1:48801")]
     [InlineData("0.0.0.0:48801")]
     public async Task Assignment_InvalidAllocatedOriginCannotClaimIdentity(string origin)
@@ -285,6 +334,15 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage exact = await client.PutAsync(AssignPath, exactContent, timeout.Token);
         await AssertAssignmentSuccessAsync(exact, HttpStatusCode.NoContent, timeout.Token);
         Assert.Same(assigned, manager.State);
+
+        using HttpResponseMessage checkpoint = await PostStateAsync(client, "null", timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, checkpoint.StatusCode);
+        using JsonDocument state = JsonDocument.Parse(await checkpoint.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal(0, state.RootElement.GetProperty(field).GetInt64());
+        string otherField = string.Equals(field, "configLastModifiedTime", StringComparison.Ordinal)
+            ? "contentLastModifiedTime"
+            : "configLastModifiedTime";
+        Assert.Equal(original[otherField]!.GetValue<long>(), state.RootElement.GetProperty(otherField).GetInt64());
     }
 
     [Theory]
@@ -317,6 +375,11 @@ public class ManagementApiEndpointTests
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, changedContent, timeout.Token);
         await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
         Assert.Same(assigned, manager.State);
+
+        using HttpResponseMessage checkpoint = await PostStateAsync(client, "null", timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, checkpoint.StatusCode);
+        using JsonDocument state = JsonDocument.Parse(await checkpoint.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal(original[field]!.GetValue<long>(), state.RootElement.GetProperty(field).GetInt64());
     }
 
     [Theory]

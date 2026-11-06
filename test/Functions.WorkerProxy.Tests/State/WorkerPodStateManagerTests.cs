@@ -52,7 +52,8 @@ public partial class WorkerPodStateManagerTests
         Assert.False(initial.IsUnhealthy);
         Assert.Equal(WorkerAssignmentState.Unassigned, unavailable.AssignmentState);
         Assert.Equal(1, unavailable.Revision);
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        WorkerAssignment assignment = CreateAssignment(configVersion: 111, contentVersion: 222);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         WorkerPodState assigned = manager.State;
         Assert.True(assigned.IsUnhealthy);
         Assert.Equal(WorkerAssignmentState.Assigned, assigned.AssignmentState);
@@ -69,7 +70,9 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(assigned.FunctionAppName, recovered.FunctionAppName);
         Assert.Equal(assigned.FunctionGroupName, recovered.FunctionGroupName);
         Assert.Equal(assigned.AssignmentState, recovered.AssignmentState);
-        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
+        Assert.Equal(111, WorkerOriginState.FromState(recovered).ConfigLastModifiedTime);
+        Assert.Equal(222, WorkerOriginState.FromState(recovered).ContentLastModifiedTime);
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(assignment));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         manager.OnWorkerAttached(1);
         manager.OnSessionTerminated(1, assignmentFailed);
@@ -78,8 +81,10 @@ public partial class WorkerPodStateManagerTests
         manager.SetAuthenticationConfigurationError(false);
         Assert.False(manager.State.HasAuthenticationConfigurationError);
         Assert.Equal(assignmentFailed, manager.State.IsUnhealthy);
+        Assert.Equal(111, WorkerOriginState.FromState(manager.State).ConfigLastModifiedTime);
+        Assert.Equal(222, WorkerOriginState.FromState(manager.State).ContentLastModifiedTime);
         Assert.Equal(assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated, manager.State.AssignmentState);
-        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
     }
 
     [Theory]
@@ -520,18 +525,20 @@ public partial class WorkerPodStateManagerTests
     {
         WorkerPodStateManager manager = CreateReadyManager();
         TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Task<(string AppName, WorkerAssignmentResult Result)>[] attempts = Enumerable.Range(0, 32).Select(index => Task.Run(async () =>
+        Task<(WorkerAssignment Assignment, WorkerAssignmentResult Result)>[] attempts = Enumerable.Range(0, 32).Select(index => Task.Run(async () =>
         {
             await start.Task;
-            string appName = $"app-{index}";
-            return (appName, manager.Assign(CreateAssignment(appName)));
+            WorkerAssignment assignment = CreateAssignment($"app-{index}", configVersion: index, contentVersion: index + 100);
+            return (assignment, manager.Assign(assignment));
         })).ToArray();
 
         start.SetResult();
-        (string AppName, WorkerAssignmentResult Result)[] results = await Task.WhenAll(attempts).WaitAsync(TestTimeout);
-        (string AppName, WorkerAssignmentResult Result) winner = Assert.Single(results, result => result.Result == WorkerAssignmentResult.Created);
+        (WorkerAssignment Assignment, WorkerAssignmentResult Result)[] results = await Task.WhenAll(attempts).WaitAsync(TestTimeout);
+        (WorkerAssignment Assignment, WorkerAssignmentResult Result) winner = Assert.Single(results, result => result.Result == WorkerAssignmentResult.Created);
 
-        Assert.Equal(winner.AppName, manager.State.FunctionAppName);
+        Assert.Equal(winner.Assignment.FunctionAppName, manager.State.FunctionAppName);
+        Assert.Equal(winner.Assignment.ConfigLastModifiedTime, manager.State.ConfigLastModifiedTime);
+        Assert.Equal(winner.Assignment.ContentLastModifiedTime, manager.State.ContentLastModifiedTime);
         Assert.Equal(31, results.Count(result => result.Result == WorkerAssignmentResult.AssignmentConflict));
         Assert.Equal(3, manager.State.Revision);
     }
@@ -617,9 +624,10 @@ public partial class WorkerPodStateManagerTests
     private static WorkerAssignment CreateAssignment(
         string appName = "app",
         WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured,
-        string? httpProxyEndpoint = null)
+        string? httpProxyEndpoint = null, long? configVersion = null, long? contentVersion = null)
         => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot",
-            httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri($"https://{httpProxyEndpoint}"));
+            httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri($"https://{httpProxyEndpoint}"),
+            configLastModifiedTime: configVersion, contentLastModifiedTime: contentVersion);
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });
