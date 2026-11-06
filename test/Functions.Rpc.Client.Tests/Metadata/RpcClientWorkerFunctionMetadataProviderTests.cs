@@ -65,6 +65,35 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
     }
 
     [Fact]
+    public async Task GetFunctionMetadataAsync_PreservesWholeAppGroupsThroughValidationAndCache()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "http-indexer", functionGroupName: "http", maxHttpConcurrency: "16");
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+        RpcFunctionMetadata queue = CreateMetadata("QueueProcessor", "queue", """{"type":"queueTrigger","name":"item","direction":"in"}""");
+        queue.Properties.Add("FunctionGroupName", "http");
+        Task<FunctionMetadataResult> request = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        await worker.SendFunctionMetadataResponseAsync(
+        [
+            CreateMetadata("Http", "http", HttpTriggerBinding),
+            CreateMetadata("Durable", "durable", """{"type":"orchestrationTrigger","name":"context","direction":"in"}"""),
+            CreateMetadata("Blob", "blob", """{"type":"blobTrigger","source":"EventGrid","name":"item","direction":"in"}"""),
+            queue,
+            CreateMetadata("LegacyBlob", "legacy", """{"type":"blobTrigger","name":"item","direction":"in"}"""),
+        ]);
+        FunctionMetadataResult result = await request.WaitAsync(TestTimeout);
+
+        Assert.Equal(["http", "durable", "blob", "function:QueueProcessor", "function:LegacyBlob"],
+            result.Functions.Select(function => function.GetFunctionGroup()));
+        Assert.Equal("http", result.Functions[3].Properties["FunctionGroupName"]);
+        Assert.Same(result, await provider.GetFunctionMetadataAsync([]));
+        Assert.Equal(["http", "durable", "blob", "function:QueueProcessor", "function:LegacyBlob"],
+            (await provider.GetFunctionMetadataAsync([])).Functions.Select(function => function.GetFunctionGroup()));
+    }
+
+    [Fact]
     public async Task GetFunctionMetadataAsync_WaitsForFirstInitializedChannel()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");

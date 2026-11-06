@@ -115,6 +115,7 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
         internal void CompleteInitialization(string? httpUri = null)
         {
             WorkerInitResponse response = new() { Result = new StatusResult { Status = StatusResult.Types.Status.Success } };
+            response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "function:TestFunction");
             if (httpUri is not null)
             {
                 response.Capabilities.Add(RpcWorkerConstants.HttpUri, httpUri);

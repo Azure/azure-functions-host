@@ -2128,6 +2128,32 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.DoesNotContain("private-failure-sentinel", record.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GetChangeTask_DoesNotWaitForChannelSetup()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockSetup: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await registry.ActivateAsync([CreateFunction("TestFunction")], new ManagedDependencyOptions(), functionTimeout: null);
+        await LinkAsync(registry, channel.Id);
+        await channel.SetupEntered.WaitAsync(TestTimeout);
+
+        try
+        {
+            Task<Task> observation = Task.Factory.StartNew(() => registry.GetChangeTask(), CancellationToken.None,
+                TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+            Task changed = await observation.WaitAsync(TestTimeout);
+            Assert.False(changed.IsCompleted);
+            channel.AllowSetup();
+            await changed.WaitAsync(TestTimeout);
+        }
+        finally
+        {
+            channel.AllowSetup();
+        }
+    }
+
     private static async Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)
         => (await registry.LinkAsync(workerId, CreateEndpoint(workerId)).ConfigureAwait(false)).Channel;
 
@@ -2375,7 +2401,7 @@ public sealed partial class WorkerChannelRegistryTests
             SharedMemory = sharedMemory;
             _remainingSetupFailures = setupFailureCount;
             _setupFailure = setupFailure ?? new InvalidOperationException("Channel setup failed.");
-            _functionGroupName = functionGroupName;
+            _functionGroupName = functionGroupName ?? "function:TestFunction";
             _maxHttpConcurrency = maxHttpConcurrency;
             if (!blockStart)
             {
@@ -2541,7 +2567,7 @@ public sealed partial class WorkerChannelRegistryTests
                     response.Capabilities.Add(RpcWorkerConstants.SharedMemoryDataTransfer, "1");
                 }
 
-                if (_functionGroupName is not null)
+                if (_functionGroupName is not null && !response.Capabilities.ContainsKey(RpcClientWorkerChannel.FunctionGroupNameCapability))
                 {
                     response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroupName);
                 }

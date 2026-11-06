@@ -5,7 +5,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -14,15 +16,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionMetadataManager _metadataManager;
         private readonly IEnvironment _environment; // TODO: replace options pattern
         private readonly ILogger _logger;
+        private readonly FunctionGroupListenerOptions _options;
 
         public FunctionGroupListenerDecorator(
             IFunctionMetadataManager metadataManager,
             IEnvironment environment,
-            ILogger<FunctionGroupListenerDecorator> logger)
+            ILogger<FunctionGroupListenerDecorator> logger,
+            IOptions<FunctionGroupListenerOptions> options)
         {
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
 
         public IListener Decorate(ListenerDecoratorContext context)
@@ -35,6 +40,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (!_environment.TryGetFunctionsTargetGroup(out string targetGroup))
             {
                 // If no group configured, short-circuit.
+                return context.Listener;
+            }
+
+            // The target also identifies non-serving validation runtimes, even when group filtering is disabled.
+            if (string.Equals(targetGroup, FunctionGroups.ValidationWorker, StringComparison.OrdinalIgnoreCase))
+            {
+                return new NoOpListener(context.Listener);
+            }
+
+            if (!_options.RestrictListenersToTargetGroup)
+            {
                 return context.Listener;
             }
 

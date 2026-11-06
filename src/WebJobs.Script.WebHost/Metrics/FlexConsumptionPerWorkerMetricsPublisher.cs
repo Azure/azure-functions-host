@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
@@ -111,14 +110,14 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
     }
 
     /// <inheritdoc />
-    public bool TryDispatchInvocation(string invocationId, string workerId, CancellationToken cancellationToken, Func<bool> dispatch)
+    public bool TryDispatchInvocation(string invocationId, string workerId, Func<bool> dispatch)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(invocationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         ArgumentNullException.ThrowIfNull(dispatch);
         lock (SyncLock)
         {
-            if (!IsStarted || cancellationToken.IsCancellationRequested ||
+            if (!IsStarted ||
                 !_workers.TryGetValue(workerId, out WorkerActivity worker) || worker.UnlinkedAt is not null ||
                 _workerInvocations.ContainsKey(invocationId))
             {

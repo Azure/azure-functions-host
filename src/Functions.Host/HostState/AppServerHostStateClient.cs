@@ -18,42 +18,42 @@ namespace Azure.Functions.Host.HostState;
 /// Sends snapshots to the AppServer <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
-/// Sends the current mesh instance identity on each request. The endpoint is resolved on the first publication and reused
-/// for the client's lifetime.
+/// Owns one named HTTP client, configured once with the container instance identity on the first publication.
+/// The endpoint is resolved on the first publication and reused for this publisher client's lifetime.
 /// </remarks>
-internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
+internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient, IDisposable
 {
     internal const string HttpClientName = "AppServerHostState";
     private const string HostStatePath = "admin/infra/host/state";
     private const string DefaultEndpoint = "http://localhost:6060/";
 
-    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+    private HttpClient? _httpClient;
     private Uri? _hostStateUri;
 
     public async Task<HttpStatusCode> PublishAsync(RuntimeState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        string? containerName = _configuration[EnvironmentSettingNames.ContainerName];
-        if (string.IsNullOrWhiteSpace(containerName))
-        {
-            throw new InvalidOperationException("CONTAINER_NAME is required for AppServer Host-state publication.");
-        }
-
-        using HttpClient client = _httpClientFactory.CreateClient(HttpClientName);
+        // The publisher serializes attempts; defer client creation so root construction needs no publication configuration.
+        HttpClient client = _httpClient ??= _httpClientFactory.CreateClient(HttpClientName);
         using HttpRequestMessage request = new(HttpMethod.Put, _hostStateUri ??= GetHostStateUri())
         {
             Content = JsonContent.Create(
                 new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
                 AppServerJsonSerializerContext.Default.HostStateRequest),
         };
-        request.Headers.Add(ScriptConstants.ContainerInstanceHeader, containerName);
         // Only status is consumed; do not buffer an unused response body.
         using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
         return response.StatusCode;
     }
+
+    /// <summary>
+    /// Releases the owned HTTP client when the root container is disposed, after publication has stopped.
+    /// </summary>
+    public void Dispose() => _httpClient?.Dispose();
 
     private Uri GetHostStateUri()
     {

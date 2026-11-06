@@ -366,7 +366,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task InstanceState_InitializationBeforeAssignment_RemainsUnlinked()
+    public async Task InstanceState_InitializationBeforeAssignment_BecomesLinkedAfterAssignment()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -391,16 +391,34 @@ public partial class FunctionRpcRelayTests
 
         StreamingMessage initialized = CreateInitResponse(string.Empty, null);
         await worker.WriteAsync(initialized, timeout.Token);
-        await runtime.ReadAsync(timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Task<StreamingMessage> forwarded = runtime.ReadAsync(timeout.Token);
+        Assert.False(forwarded.IsCompleted);
         Assert.False(manager.State.RuntimeInitialized);
+        WorkerOriginState pending = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.Starting, pending.Status);
+        Assert.Equal(WorkerLinkState.Unlinked, pending.Link.State);
 
         await AssignWorkerAsync(management, timeout.Token);
+        StreamingMessage response = await forwarded;
+        Assert.Equal("test-group", response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
+
+        WorkerPodState snapshot = manager.State;
+        while (!snapshot.IsRuntimeInitialized)
+        {
+            snapshot = Assert.IsType<WorkerPodState>((await manager.WaitForChangeAsync(snapshot.Revision, timeout.Token)).State);
+        }
 
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
-        Assert.False(manager.State.IsRuntimeInitialized);
+        Assert.True(manager.State.IsRuntimeInitialized);
         WorkerOriginState state = await ReadManagementStateAsync(management, timeout.Token);
-        Assert.Equal(WorkerStatus.Starting, state.Status);
-        Assert.Equal(WorkerLinkState.Unlinked, state.Link.State);
+        Assert.Equal(WorkerStatus.Running, state.Status);
+        Assert.Equal(WorkerLinkState.Linked, state.Link.State);
+        Assert.Equal("runtime-pod", state.Link.Runtime?.PodName);
     }
 
     [Theory]
