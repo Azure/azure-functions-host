@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -27,6 +28,41 @@ public partial class FunctionRpcRelayTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
+    public async Task AttachmentRejected_DistinguishesRemovalFromShutdown(bool shutdown, bool runtimeSide)
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        if (shutdown)
+        {
+            await relay.StopAsync(timeout.Token);
+        }
+        else
+        {
+            Assert.True(factory.Services.GetRequiredService<WorkerPodStateManager>().RequestRemoval());
+        }
+
+        FunctionRpcRelaySide side = runtimeSide ? FunctionRpcRelaySide.Runtime : FunctionRpcRelaySide.Worker;
+        await using RelayClient replacement = CreateClient(factory, side, timeout.Token);
+        Grpc.Core.RpcException rejected = await replacement.WriteAndReadRejectionAsync(
+            runtimeSide ? CreateMessage("replacement") : CreateStartStream("replacement"), timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, rejected.StatusCode);
+        await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+            string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal)), timeout.Token);
+        CapturedProxyLog rejection = Assert.Single(generator.ProxyRecords, record =>
+            string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal));
+        Assert.Contains(
+            shutdown ? nameof(FunctionRpcRelayAttachmentFailure.Shutdown) : nameof(FunctionRpcRelayAttachmentFailure.PodStateRejected),
+            rejection.Message);
+        Assert.Contains(side.ToString(), rejection.Message);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public async Task RuntimeEventStream_EofBeforeWorkerInitializationRequestsRemoval(bool attachWorker, bool sendProtocolInput)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -45,6 +81,7 @@ public partial class FunctionRpcRelayTests
         {
             await runtime.WriteAsync(CreateMessage("runtime-admitted"), timeout.Token);
         }
+
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
         await runtime.CompleteRequestAsync(timeout.Token);
 
@@ -197,6 +234,7 @@ public partial class FunctionRpcRelayTests
         {
             Assert.Equal(HttpStatusCode.OK, readiness.StatusCode);
         }
+
         using (HttpResponseMessage reassignment = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",

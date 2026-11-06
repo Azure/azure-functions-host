@@ -136,10 +136,16 @@ internal sealed partial class FunctionRpcRelay(
         {
             lock (_syncLock)
             {
-                if (_stopping || _stateManager.State.RemovalRequested)
+                if (_stopping)
                 {
                     throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
-                        "The FunctionRpc relay is shutting down or the worker pod has requested removal.");
+                        "The FunctionRpc relay is shutting down.");
+                }
+
+                if (_stateManager.State.RemovalRequested)
+                {
+                    throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.PodStateRejected,
+                        "The worker pod has requested removal and is not accepting FunctionRpc streams.");
                 }
 
                 if (_currentSession?.IsTerminalAndReleased == true)
