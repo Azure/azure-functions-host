@@ -11,6 +11,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -2149,6 +2151,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task InvokeResponse_CoLocatedHttpDoesNotCompleteResponse()
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.HttpUri, "http://localhost:1234" }
+            });
+            ScriptInvocationContext context = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously), logger: _logger);
+            context.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
+            Mock<IHttpResponseBodyFeature> responseBody = new(MockBehavior.Strict);
+            DefaultHttpContext httpContext = new();
+            httpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new();
+            httpContext.Features.Set(responseBody.Object);
+            context.Inputs = [("req", DataType.String, httpContext.Request)];
+
+            await _workerChannel.SendInvocationRequest(context);
+            await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(context.ExecutionContext.InvocationId.ToString()));
+
+            Assert.True(context.ResultSource.Task.IsCompletedSuccessfully);
+            responseBody.Verify(feature => feature.CompleteAsync(), Times.Never);
+        }
+
+        [Fact]
         public async Task Ensure_SuccessfulForwardingAsync_Is_Invoked_OnlyFor_HttpInvocationResponses()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
@@ -2423,6 +2448,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ObjectDisposedException exception = await Assert.ThrowsAsync<ObjectDisposedException>(
                 () => context.ResultSource.Task);
             Assert.Contains("WorkerChannel.TryTrackInvocation", exception.StackTrace, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task TryPostInvocation_CoLocatedWorkerDoesNotApplyClientConcurrency()
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>
+            {
+                { "FunctionGroupName", "http" },
+                { "MaxHttpConcurrency", "1" }
+            });
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            ScriptInvocationContext first = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+            ScriptInvocationContext second = GetTestScriptInvocationContext(
+                Guid.NewGuid(), new(TaskCreationOptions.RunContinuationsAsynchronously));
+
+            Assert.True(_workerChannel.TryPostInvocation(first));
+            Assert.True(_workerChannel.TryPostInvocation(second));
+            Assert.Equal(2, _workerChannel.FunctionInputBuffers[first.FunctionMetadata.GetFunctionId()].Count);
+
+            _workerChannel.Shutdown(new InvalidOperationException("Worker terminated"));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => first.ResultSource.Task);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => second.ResultSource.Task);
         }
 
         [Fact]

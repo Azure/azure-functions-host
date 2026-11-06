@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
+using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Google.Protobuf.WellKnownTypes;
@@ -35,23 +36,31 @@ namespace Azure.Functions.Rpc.Client;
 /// Concurrent and repeated starts share one initialization attempt. A token already canceled when <see cref="StartAsync"/> is called does not
 /// begin initialization. Once initialization begins, cancellation only stops the individual caller's wait; shared initialization continues
 /// until it succeeds, fails, times out, or the channel is disposed.
+/// HTTP assignment concurrency counts accepted invocations from buffer admission through worker response handling and HTTP response
+/// completion. These slots belong to the channel, not the ScriptHost-scoped dispatcher. HTTP completion is observed without forcing
+/// finalization or delaying the invocation result; worker processing and the natural response lifetime must both finish before release.
 /// </remarks>
 internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+    private const string InvocationCompletionProperty = nameof(RpcClientWorkerChannel) + "." + nameof(InvocationCompletion);
 
     private static readonly TimeSpan InitialIdleThreshold = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
+    private readonly ILogger _logger;
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly RuntimeWorkerCredentials _credentials;
     private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions;
-    private readonly ILogger _logger;
     private readonly ILogger _activityLogger;
     private IDisposable _ownedHttpProxyService;
     private Uri _httpEndpoint;
+    // Initialized only for HTTP workers, using the concurrency limit established during WorkerInit.
+    private ConcurrencyLimiter _httpConcurrency;
+    private Task _capacityAvailable;
+    // Startup transitions are serialized, but admission and eligibility read this state without taking the lifecycle lock.
     private LifecycleState _lifecycleState;
     private TimeProvider _activityTimeProvider = TimeProvider.System;
     private long? _idleSince;
@@ -96,7 +105,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     {
         _credentials = credentials;
         _appAuthenticationOptions = appAuthenticationOptions;
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _ownedHttpProxyService = httpProxyService as IDisposable;
         Completion = ownedChannel.Reader.Completion;
         _activityLogger = logger;
@@ -161,7 +170,8 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+    internal bool IsTerminated => Interlocked.CompareExchange(ref _lifecycleState, default, default) is LifecycleState.Disposed
+        || Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
     internal bool IsDraining
     {
@@ -360,6 +370,158 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     }
 
     /// <summary>
+    /// Observes available capacity without reserving it. Call after failed admission and retry admission when it completes.
+    /// One pending zero-permit acquisition is shared across dispatchers; canceling a caller's wait does not cancel it.
+    /// </summary>
+    internal Task GetCapacityAvailableTask()
+    {
+        lock (_lifecycleLock)
+        {
+            if (IsTerminated || _draining || _httpConcurrency is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            if (_capacityAvailable is null || _capacityAvailable.IsCompleted)
+            {
+                _capacityAvailable = WaitForCapacityAsync(_httpConcurrency);
+            }
+
+            return _capacityAvailable;
+        }
+    }
+
+    /// <summary>
+    /// Reserves a channel-owned slot before posting. Rejection rolls back the lease; accepted work owns it through final completion.
+    /// </summary>
+    /// <remarks>The limiter and base posting synchronize ownership; lifecycle disposal may race acquisition without serializing admission.</remarks>
+    internal bool TryAcceptInvocation(ScriptInvocationContext context, out bool atCapacity)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        atCapacity = false;
+
+        if (IsTerminated)
+        {
+            return false;
+        }
+
+        ConcurrencyLimiter limiter = Interlocked.CompareExchange(ref _httpConcurrency, null, null);
+        if (limiter is null)
+        {
+            lock (_lifecycleLock)
+            {
+                return !_draining && !IsTerminated && base.TryPostInvocation(context);
+            }
+        }
+
+        if (context.Properties.ContainsKey(InvocationCompletionProperty))
+        {
+            throw new InvalidOperationException("The invocation already owns a worker concurrency lease.");
+        }
+
+        RateLimitLease lease;
+        try
+        {
+            lease = limiter.AttemptAcquire(1);
+        }
+        catch (ObjectDisposedException) when (IsTerminated)
+        {
+            // Shutdown won the race after the terminal check; no ownership was acquired.
+            return false;
+        }
+
+        if (!lease.IsAcquired)
+        {
+            lease.Dispose();
+            atCapacity = !IsTerminated;
+            return false;
+        }
+
+        bool accepted = false;
+        try
+        {
+            HttpRequest request = null;
+            bool waitForHttp = context.FunctionMetadata.IsHttpTriggerFunction() && TryGetHttpRequest(context, out request);
+            bool trackActivity = IsAlwaysReady is not true;
+            InvocationCompletion completion = new(this, context, lease, waitForHttp, trackActivity);
+            context.Properties.Add(InvocationCompletionProperty, completion);
+            if (waitForHttp)
+            {
+                // Register before posting: invocation completion may unblock the HTTP pipeline immediately.
+                request.HttpContext.Response.OnCompleted(static state => ((InvocationCompletion)state).OnHttpCompletedAsync(), completion);
+            }
+
+            // Admission must be atomic with upstream idle-retirement/scale-in claims, but response setup stays outside the lock.
+            lock (_lifecycleLock)
+            {
+                accepted = !_draining && !IsTerminated && base.TryPostInvocation(context);
+                if (accepted && trackActivity)
+                {
+                    OngoingRequests++;
+                    _ = ObserveRequestCompletionAsync(context, completion.HttpResponseCompleted);
+                }
+            }
+            return accepted;
+        }
+        finally
+        {
+            if (!accepted)
+            {
+                context.Properties.Remove(InvocationCompletionProperty);
+                lease.Dispose();
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public override bool TryPostInvocation(ScriptInvocationContext invocationContext)
+        => TryAcceptInvocation(invocationContext, out _);
+
+    /// <inheritdoc />
+    protected override void OnInvocationCompleted(ScriptInvocationContext context)
+    {
+        if (context.Properties.TryGetValue(InvocationCompletionProperty, out object value) && value is InvocationCompletion completion)
+        {
+            completion.OnInvocationCompleted();
+        }
+        else
+        {
+            base.OnInvocationCompleted(context);
+        }
+    }
+
+    /// <summary>
+    /// Removes lifecycle ownership before the lease is returned and another invocation can be admitted.
+    /// </summary>
+    private void ReleaseCompletedInvocation(ScriptInvocationContext context) => base.OnInvocationCompleted(context);
+
+    /// <summary>
+    /// Uses the limiter's level-triggered availability observation without consuming a worker slot.
+    /// Disposal completes a pending observation with a failed lease; dispatch must resample channel eligibility.
+    /// </summary>
+    private static async Task WaitForCapacityAsync(ConcurrencyLimiter limiter)
+    {
+        using RateLimitLease available = await limiter.AcquireAsync(0);
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnInvocationSendFailureAsync(ScriptInvocationContext context)
+    {
+        // Forwarding precedes the outbound write. A failed write must not free a slot while HTTP is active.
+        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwardingTask)
+        {
+            try
+            {
+                await forwardingTask;
+            }
+            catch (Exception exception)
+            {
+                LogMessages.ForwardingCleanupFailed(_logger, exception);
+            }
+        }
+    }
+
+    /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
     /// </summary>
     /// <param name="cancellationToken">A token that cancels this caller's wait without canceling shared initialization.</param>
@@ -377,7 +539,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
             if (_lifecycleState is LifecycleState.NotStarted)
             {
-                _lifecycleState = LifecycleState.Started;
+                Interlocked.Exchange(ref _lifecycleState, LifecycleState.Started);
 
                 try
                 {
@@ -409,6 +571,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
         lock (_lifecycleLock)
         {
+            ObjectDisposedException.ThrowIf(_lifecycleState is LifecycleState.Disposed, this);
             if (FunctionGroupName is not null)
             {
                 return;
@@ -441,6 +604,10 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             MaxHttpConcurrency = maxHttpConcurrency;
             IsAlwaysReady = response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string alwaysReady)
                 && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
+            if (maxHttpConcurrency is { } limit)
+            {
+                Interlocked.Exchange(ref _httpConcurrency, new(new() { PermitLimit = limit, QueueLimit = 0 }));
+            }
         }
     }
 
@@ -448,7 +615,15 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
-    protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+    /// <inheritdoc />
+    protected override void OnChannelFailure(Exception exception)
+    {
+        StopAdmission();
+        if (exception is not null)
+        {
+            FailPendingMetadataRequest(exception);
+        }
+    }
 
     internal override void WorkerInitResponse(StreamingMessage initMessage)
     {
@@ -517,12 +692,10 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         base.UpdateCapabilities(fields, strategy);
     }
 
+    /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        lock (_lifecycleLock)
-        {
-            _lifecycleState = LifecycleState.Disposed;
-        }
+        StopAdmission();
 
         if (disposing)
         {
@@ -558,6 +731,19 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         if (disposalException is not null)
         {
             ExceptionDispatchInfo.Capture(disposalException).Throw();
+        }
+    }
+
+    /// <summary>
+    /// Makes the channel ineligible before disposing its limiter, waking shared availability waits without allowing readmission.
+    /// Active leases remain invocation-owned and can be safely returned after limiter disposal.
+    /// </summary>
+    private void StopAdmission()
+    {
+        lock (_lifecycleLock)
+        {
+            Interlocked.Exchange(ref _lifecycleState, LifecycleState.Disposed);
+            _httpConcurrency?.Dispose();
         }
     }
 
@@ -680,5 +866,76 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
         [LoggerMessage(1003, LogLevel.Debug, "Worker {WorkerId} disconnected while handling WorkerTerminate.")]
         public static partial void WorkerTerminateConnectionClosed(ILogger logger, Exception exception, string workerId);
+    }
+
+    /// <summary>
+    /// Joins worker completion with the owned server response lifetime and returns the concurrency lease exactly once.
+    /// Manual HTTP invocations and webhook functions without a server response need only worker completion.
+    /// </summary>
+    private sealed class InvocationCompletion(
+        RpcClientWorkerChannel channel, ScriptInvocationContext context, RateLimitLease lease, bool waitForHttp, bool trackActivity)
+    {
+        private const int HttpCompleted = 1;
+        private const int InvocationCompleted = 2;
+        private readonly ScriptInvocationContext _context = context;
+        private readonly RpcClientWorkerChannel _channel = channel;
+        private readonly TaskCompletionSource _httpResponseCompleted = waitForHttp && trackActivity
+            ? new(TaskCreationOptions.RunContinuationsAsynchronously) : null;
+
+        private RateLimitLease _lease = lease;
+        private int _completed = waitForHttp ? 0 : HttpCompleted;
+
+        internal Task HttpResponseCompleted => _httpResponseCompleted?.Task ?? Task.CompletedTask;
+
+        /// <summary>
+        /// Observes natural response completion without forcing finalization or delaying the invocation result.
+        /// </summary>
+        internal Task OnHttpCompletedAsync()
+        {
+            _httpResponseCompleted?.TrySetResult();
+            if (Interlocked.Or(ref _completed, HttpCompleted) == InvocationCompleted)
+            {
+                Release();
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Releases only when both worker processing and any owned response lifetime have ended.
+        /// </summary>
+        internal void OnInvocationCompleted()
+        {
+            if (Interlocked.Or(ref _completed, InvocationCompleted) == HttpCompleted)
+            {
+                Release();
+            }
+        }
+
+        /// <summary>
+        /// Returns the completed invocation's permit without allowing concurrent callbacks to dispose the same lease.
+        /// </summary>
+        private void ReleaseLease() => Interlocked.Exchange(ref _lease, null)?.Dispose();
+
+        /// <summary>
+        /// Ends lifecycle ownership before publishing capacity, returning the permit even if lifecycle cleanup fails.
+        /// </summary>
+        private void Release()
+        {
+            try
+            {
+                _channel.ReleaseCompletedInvocation(_context);
+            }
+            finally
+            {
+                ReleaseLease();
+            }
+        }
+    }
+
+    private static partial class LogMessages
+    {
+        [LoggerMessage(0, LogLevel.Error, "HTTP forwarding failed while cleaning up an invocation that could not be sent.")]
+        public static partial void ForwardingCleanupFailed(ILogger logger, Exception exception);
     }
 }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -24,17 +25,17 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly List<WorkerChannel> _initializedChannels = [];
     private readonly List<WorkerChannel> _readyChannels = [];
-    private readonly TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<IReadOnlyList<WorkerChannel>> _readySignal =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Mock<IWorkerChannelRegistry> _registry = new();
+    private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public RpcClientFunctionInvocationDispatcherTests()
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
             .Returns(() => [.. _initializedChannels]);
-        _registry.Setup(registry => registry.GetChangeTask()).Returns(_changed.Task);
+        _registry.Setup(registry => registry.GetChangeTask()).Returns(() => _changed.Task);
         _registry.Setup(registry => registry.GetReadyChannelsAsync())
             .Returns(() => _readyChannels.Count == 0
                 ? new ValueTask<IReadOnlyList<WorkerChannel>>(_readySignal.Task)
@@ -798,6 +799,9 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         _readyChannels.AddRange(channels);
         _initializedChannels.AddRange(channels);
         _readySignal.TrySetResult(_readyChannels.ToArray());
+        TaskCompletionSource changed = _changed;
+        _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
     }
 
     private static async Task PrepareReadyChannelAsync(
@@ -821,7 +825,8 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     private static ScriptInvocationContext CreateInvocation(
         FunctionMetadata function,
         CancellationToken cancellationToken = default)
-        => new()
+    {
+        ScriptInvocationContext invocation = new()
         {
             FunctionMetadata = function,
             ExecutionContext = new()
@@ -836,4 +841,16 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
             AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
             Logger = NullLogger.Instance,
         };
+
+        if (function.IsHttpTriggerFunction())
+        {
+            DefaultHttpContext http = new();
+            http.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new();
+            http.Request.Method = "GET";
+            http.Request.Host = new("customer.example");
+            invocation.Inputs = [("req", DataType.String, http.Request)];
+        }
+
+        return invocation;
+    }
 }
