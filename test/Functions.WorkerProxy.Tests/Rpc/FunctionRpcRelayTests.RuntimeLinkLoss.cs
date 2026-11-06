@@ -153,6 +153,11 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(expectedConcurrency, manager.State.MaxHttpConcurrency);
         long sessionId = Assert.IsType<long>(manager.State.SessionId);
         DateTimeOffset startupTime = manager.State.StartupTime;
+        while (!manager.State.IsRuntimeInitialized)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
         manager.SetAuthenticationConfigurationError(hasAuthenticationError);
         WorkerOriginState running = await ReadManagementStateAsync(management, timeout.Token);
         Assert.Equal(WorkerStatus.Running, running.Status);

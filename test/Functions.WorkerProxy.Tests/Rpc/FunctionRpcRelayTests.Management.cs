@@ -400,6 +400,85 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
+    [InlineData("")]
+    [InlineData("worker-init")]
+    public async Task InstanceState_UnmatchedInitializationResponses_RemainUnlinkedUntilCurrentRequestMatches(string requestId)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            timeout.Token,
+            CreateRuntimeIdentityHeaders("valid"));
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        StreamingMessage init = new()
+        {
+            RequestId = requestId,
+            WorkerInitRequest = new() { HostVersion = "test-host" }
+        };
+        StreamingMessage start = CreateStartStream();
+        await runtime.WriteAsync(init, timeout.Token);
+        await worker.WriteAsync(start, timeout.Token);
+        Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(init, await worker.ReadAsync(timeout.Token));
+
+        StreamingMessage unmatched = CreateInitResponse("unmatched-response", null);
+        StreamingMessage initialBarrier = CreateMessage("initial-response-written");
+        await worker.WriteAllAsync([unmatched, initialBarrier], timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        Task<StreamingMessage> forwarded = runtime.ReadAsync(timeout.Token);
+        Assert.False(forwarded.IsCompleted);
+        await AssignWorkerAsync(management, timeout.Token);
+        Assert.Equal("test-group", (await forwarded).WorkerInitResponse.Capabilities[FunctionGroupNameCapability]);
+        Assert.Equal(initialBarrier, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.False(manager.State.IsRuntimeInitialized);
+        WorkerOriginState state = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.Starting, state.Status);
+        Assert.Equal(WorkerLinkState.Unlinked, state.Link.State);
+
+        WorkerPodState assigned = manager.State;
+        StreamingMessage replayBarrier = CreateMessage("replayed-response-written");
+        await worker.WriteAllAsync([unmatched, replayBarrier], timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+        Assert.Equal(replayBarrier, await runtime.ReadAsync(timeout.Token));
+
+        Assert.Same(assigned, manager.State);
+        Assert.False(manager.State.IsRuntimeInitialized);
+        Assert.Equal(state, await ReadManagementStateAsync(management, timeout.Token));
+
+        StreamingMessage nextInit = new()
+        {
+            RequestId = "next-init",
+            WorkerInitRequest = new() { HostVersion = "test-host" }
+        };
+        await runtime.WriteAsync(nextInit, timeout.Token);
+        Assert.Equal(nextInit, await worker.ReadAsync(timeout.Token));
+
+        StreamingMessage staleBarrier = CreateMessage("stale-response-written");
+        await worker.WriteAllAsync([CreateInitResponse(requestId, null), staleBarrier], timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+        Assert.Equal(staleBarrier, await runtime.ReadAsync(timeout.Token));
+        Assert.Same(assigned, manager.State);
+
+        Task<WorkerStatePollResult> initializationPoll =
+            manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
+        await worker.WriteAsync(CreateInitResponse(nextInit.RequestId, null), timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+
+        Assert.True((await initializationPoll).State?.IsRuntimeInitialized);
+        WorkerOriginState running = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.Running, running.Status);
+        Assert.Equal(WorkerLinkState.Linked, running.Link.State);
+    }
+
+    [Theory]
     [InlineData("malformed")]
     [InlineData("null")]
     [InlineData("missing")]

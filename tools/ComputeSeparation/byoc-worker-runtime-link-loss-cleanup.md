@@ -61,8 +61,9 @@ flowchart TD
 The checks use the same `RemovalRequested` state. `/admin/instance/ready` remains available because
 it reports the WorkerProxy management process, not customer invocation admission.
 
-Runtime loss also terminates initialization waiting for an assigned HTTP proxy origin, releases its
-waiter and queued messages, and leaves no published destination. Session termination retains worker
+Runtime loss also terminates initialization waiting for an assigned function group and, when needed,
+an HTTP proxy origin, releases its waiter and queued messages, and leaves no published destination.
+Session termination retains worker
 and session log correlation even though the removal snapshot clears live identity; rejected
 replacement streams still emit the existing admission diagnostic.
 
@@ -91,6 +92,8 @@ replacement streams still emit the existing admission diagnostic.
 
 Four test methods use loopback gRPC and existing HTTP and management APIs. One focused in-process
 theory injects transport read and write failures that loopback gRPC cannot produce deterministically.
+An additional in-process theory delays Runtime handler completion while Worker messages continue,
+verifying that Runtime write failure is recorded before shared queue cleanup.
 
 | Test | Proves |
 | --- | --- |
@@ -98,8 +101,12 @@ theory injects transport read and write failures that loopback gRPC cannot produ
 | `RuntimeEventStream_CancellationRequestsRemoval` | Runtime call cancellation uses the same handler completion transition |
 | `ApplicationShutdown_DoesNotRequestRemoval` | Application-owned shutdown is excluded |
 | `RemovalRequested_IsStickyPollableAndClosesNewAdmission` | Mapped HTTP origin and default/explicit capacity are advertised before removal and cleared afterward in both startup modes; an identified Runtime transitions from linked/running to unlinked/removal-requested and wakes a pending infrastructure-state poll while gRPC, assignment, readiness, and HTTP admission remain closed |
-| `Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter` | Runtime EOF/cancellation clears pending mapped-origin initialization and requests removal with correlated diagnostics; application shutdown releases the same wait without removal |
+| `Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter` | Runtime EOF/cancellation clears pending assignment initialization for HTTP and non-HTTP workers and requests removal with correlated diagnostics; application shutdown releases the same wait without removal |
 | `Relay_RuntimeStreamFailureRequestsRemovalAndPreservesFault` | Runtime read and write faults preserve the terminal error and select W2 |
+| `Relay_RuntimeWriteFailureWithContinuingWorkerMessagesRequestsRemoval` | Concurrent Worker queue failures cannot override the originating Runtime write failure or suppress removal, before or after assignment |
+| `Relay_LateRuntimeWriteFailurePreservesFirstTermination` | Runtime write failures after shutdown or Worker termination cannot override the first terminal outcome or request removal |
+| `InstanceState_InitializationBeforeAssignment_BecomesLinkedAfterAssignment` | Successful initialization waits for authoritative assignment capabilities, then publishes the correlated linked state |
+| `InstanceState_UnmatchedInitializationResponses_RemainUnlinkedUntilCurrentRequestMatches` | Unmatched and replayed responses cannot publish linked state; a stale response cannot consume a newer request, while a matching response can complete initialization |
 
 ## Assumptions and limitations
 

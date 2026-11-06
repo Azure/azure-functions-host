@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -21,6 +22,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 using GrpcRpcException = Grpc.Core.RpcException;
 
@@ -313,6 +315,136 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(FunctionRpcRelaySide.Runtime, runtimeState.Side);
         Assert.True(manager.State.RemovalRequested);
         Assert.False(manager.State.IsWorkerReady);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Relay_RuntimeWriteFailureWithContinuingWorkerMessagesRequestsRemoval(bool assigned)
+    {
+        WorkerPodStateManager manager = CreatePodStateManager();
+        await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        // Delay the Runtime handler's continuation while allowing its writer to finish independently.
+        PumpingSynchronizationContext runtimeContext = new(flowToCallbacks: false);
+        Channel<StreamingMessage> workerMessages = Channel.CreateUnbounded<StreamingMessage>();
+        StreamingMessage current = CreateStartStream();
+        Mock<IAsyncStreamReader<StreamingMessage>> workerReader = new(MockBehavior.Strict);
+        workerReader.SetupGet(reader => reader.Current).Returns(() => current);
+        workerReader.Setup(reader => reader.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(async (CancellationToken cancellationToken) =>
+            {
+                current = await workerMessages.Reader.ReadAsync(cancellationToken);
+                return true;
+            });
+        IOException expectedException = new("Injected Runtime write failure.");
+        TaskCompletionSource<bool> writeEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IServerStreamWriter<StreamingMessage>> runtimeWriter = new(MockBehavior.Strict);
+        runtimeWriter.Setup(writer => writer.WriteAsync(It.IsAny<StreamingMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                writeEntered.TrySetResult(true);
+                return Task.FromException(expectedException);
+            });
+
+        Task<FunctionRpcRelayTerminalState> runtimeTask;
+        SynchronizationContext? previousContext = SynchronizationContext.Current;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(runtimeContext);
+            runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
+                new BlockingStreamReader(), runtimeWriter.Object, timeout.Token);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previousContext);
+        }
+
+        Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+            workerReader.Object, new TestServerStreamWriter(), timeout.Token);
+        if (assigned)
+        {
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        }
+
+        try
+        {
+            await workerMessages.Writer.WriteAsync(CreateStartStream(), timeout.Token);
+            await runtimeContext.RunUntilAsync(writeEntered.Task, timeout.Token);
+            await workerMessages.Writer.WriteAsync(CreateMessage("after-write-failure"), timeout.Token);
+            FunctionRpcRelayTerminalState workerState = await workerTask.WaitAsync(timeout.Token);
+            await runtimeContext.RunUntilAsync(runtimeTask, timeout.Token);
+
+            Assert.True(manager.State.RemovalRequested);
+            Assert.Equal(FunctionRpcRelaySide.Runtime, workerState.Side);
+            Assert.Same(expectedException, workerState.Exception);
+            Assert.Same(workerState, await runtimeTask);
+        }
+        finally
+        {
+            timeout.Cancel();
+            using CancellationTokenSource cleanupTimeout = new(TestTimeout);
+            await runtimeContext.RunUntilAsync(Task.WhenAll(runtimeTask, workerTask), cleanupTimeout.Token);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Relay_LateRuntimeWriteFailurePreservesFirstTermination(bool shutdown)
+    {
+        WorkerPodStateManager manager = CreatePodStateManager();
+        await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        Channel<StreamingMessage> workerMessages = Channel.CreateUnbounded<StreamingMessage>();
+        TaskCompletionSource<bool> writeEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> writeCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IServerStreamWriter<StreamingMessage>> runtimeWriter = new(MockBehavior.Strict);
+        runtimeWriter.Setup(writer => writer.WriteAsync(It.IsAny<StreamingMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                writeEntered.TrySetResult(true);
+                return writeCompletion.Task;
+            });
+        Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
+            new BlockingStreamReader(), runtimeWriter.Object, timeout.Token);
+        Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+            CreateMessageReader(workerMessages.Reader), new TestServerStreamWriter(), timeout.Token);
+        Task stopTask = Task.CompletedTask;
+        try
+        {
+            await workerMessages.Writer.WriteAsync(CreateStartStream(), timeout.Token);
+            await writeEntered.Task.WaitAsync(timeout.Token);
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+            Task<WorkerStatePollResult> terminationPoll =
+                manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
+
+            if (shutdown)
+            {
+                stopTask = relay.StopAsync(timeout.Token);
+            }
+            else
+            {
+                workerMessages.Writer.Complete();
+            }
+
+            Assert.Equal(WorkerAssignmentState.Terminated, (await terminationPoll).State?.AssignmentState);
+        }
+        finally
+        {
+            writeCompletion.TrySetException(new IOException("Late Runtime write failure."));
+        }
+
+        FunctionRpcRelayTerminalState[] terminalStates =
+            await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
+        Assert.All(terminalStates, state =>
+        {
+            Assert.Equal(shutdown ? FunctionRpcRelayTerminationReason.Shutdown : FunctionRpcRelayTerminationReason.PeerClosed, state.Reason);
+            Assert.Equal(shutdown ? (FunctionRpcRelaySide?)null : FunctionRpcRelaySide.Worker, state.Side);
+            Assert.Null(state.Exception);
+        });
+        Assert.False(manager.State.RemovalRequested);
+        await stopTask.WaitAsync(timeout.Token);
     }
 
     [Fact]

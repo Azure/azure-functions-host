@@ -597,6 +597,15 @@ internal sealed partial class FunctionRpcRelay
                     LogProtocolMessage(message, forwarded: true);
                 }
             }
+            catch (Exception exception) when (side is FunctionRpcRelaySide.Runtime)
+            {
+                // Preserve the originating failure before queue closure can fault the Worker processor.
+                FunctionRpcRelayTerminationReason reason = exception is OperationCanceledException || cancellationToken.IsCancellationRequested
+                    ? FunctionRpcRelayTerminationReason.Canceled
+                    : FunctionRpcRelayTerminationReason.Faulted;
+                TryTerminate(new FunctionRpcRelayTerminalState(id, reason, side, exception));
+                throw;
+            }
             finally
             {
                 if (runtimeWrites is not null)
@@ -624,6 +633,7 @@ internal sealed partial class FunctionRpcRelay
                 if (_terminalState is null && _initializationRequestId is not null &&
                     string.Equals(_initializationRequestId, message.RequestId ?? string.Empty, StringComparison.Ordinal))
                 {
+                    _initializationRequestId = null;
                     stateManager.OnRuntimeInitialized(id);
                 }
             }

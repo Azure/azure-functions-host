@@ -416,7 +416,7 @@ public partial class FunctionRpcRelayTests
             environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", maxHttpConcurrency: maxHttpConcurrency,
             httpProxyEndpoint: httpProxyEndpoint is null ? null : new Uri($"https://{httpProxyEndpoint}"));
 
-    private sealed class PumpingSynchronizationContext : SynchronizationContext
+    private sealed class PumpingSynchronizationContext(bool flowToCallbacks = true) : SynchronizationContext
     {
         private readonly Channel<(SendOrPostCallback Callback, object? State)> _callbacks =
             Channel.CreateUnbounded<(SendOrPostCallback, object?)>();
@@ -437,7 +437,7 @@ public partial class FunctionRpcRelayTests
                 SynchronizationContext? previousContext = Current;
                 try
                 {
-                    SetSynchronizationContext(this);
+                    SetSynchronizationContext(flowToCallbacks ? this : null);
                     callback(state);
                 }
                 finally
