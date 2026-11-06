@@ -20,6 +20,7 @@ using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic.FileIO;
 using OpenTelemetry;
@@ -515,6 +516,8 @@ public partial class WorkerSystemLoggingTests
             Assert.False(string.IsNullOrEmpty(started.Context.State!.PodName));
             Assert.Null(started.Context.State.FunctionAppName);
             Assert.Null(started.Context.WorkerId);
+
+            await StopApplicationAsync(factory, eventGenerator);
         }
         finally
         {
@@ -565,9 +568,20 @@ public partial class WorkerSystemLoggingTests
         });
     }
 
-    private sealed class CapturingEventGenerator : IWorkerSystemEventGenerator
+    private static async Task StopApplicationAsync(WorkerProxyWebApplicationFactory factory, CapturingEventGenerator eventGenerator)
     {
+        // Let the entry point own graceful shutdown before factory disposal can stop and dispose the host again.
+        factory.Services.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+        await eventGenerator.Stopped.WaitAsync(TimeSpan.FromSeconds(30));
+    }
+
+    private sealed class CapturingEventGenerator(WorkerPodEventGenerator? inner = null) : IWorkerSystemEventGenerator, IDisposable
+    {
+        private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public ConcurrentQueue<CapturedProxyLog> ProxyRecords { get; } = [];
+
+        public Task Stopped => _stopped.Task;
 
         public void LogEvent(
             LogLevel level,
@@ -589,6 +603,16 @@ public partial class WorkerSystemLoggingTests
                 exceptionType,
                 exceptionMessage,
                 context));
+            inner?.LogEvent(level, eventName, source, details, summary, exceptionType, exceptionMessage, context, timestamp);
+            if (string.Equals(eventName, "WorkerProxyStopped", StringComparison.Ordinal))
+            {
+                _stopped.TrySetResult();
+            }
+        }
+
+        public void Dispose()
+        {
+            inner?.Dispose();
         }
     }
 
