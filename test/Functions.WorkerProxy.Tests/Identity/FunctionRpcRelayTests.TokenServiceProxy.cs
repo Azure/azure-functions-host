@@ -74,9 +74,16 @@ public partial class FunctionRpcRelayTests
         {
             HttpProxy = new() { SessionId = replacementSession, Hello = new() { Version = TokenServiceProxyProtocol.Version, Limits = limits.ToLimits() } }
         }, timeout.Token);
-        Assert.Equal(StatusCode.Unavailable, rejected.StatusCode);
+        Assert.Equal(StatusCode.Unauthenticated, rejected.StatusCode);
+        using HttpClient http = factory.CreateHttpForwardingClient();
+        using HttpResponseMessage invocation = await http.GetAsync("/after-removal", timeout.Token);
+        Assert.Equal(HttpStatusCode.Unauthorized, invocation.StatusCode);
         using HttpResponseMessage freshRequest = await identity.GetAsync("/msi/token?resource=new", timeout.Token);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, freshRequest.StatusCode);
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        WorkerOriginState checkpoint = await ReadManagementStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.RemovalRequested, checkpoint.Status);
+        Assert.Equal(WorkerLinkState.Unlinked, checkpoint.Link.State);
         Assert.Same(removed, manager.State);
     }
 }

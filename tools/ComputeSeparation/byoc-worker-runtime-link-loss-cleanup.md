@@ -60,11 +60,14 @@ flowchart TD
     State --> Grpc[New FunctionRpc attachment rejected]
     State --> Ready[Worker readiness remains unavailable]
     State --> Assign[Assignment remains unavailable]
-    State --> Http[HTTP forwarding returns 503]
+    State --> Http[HTTP forwarding rejects new work]
 ```
 
-The checks use the same `RemovalRequested` state. `/admin/instance/ready` remains available because
-it reports the WorkerProxy management process, not customer invocation admission.
+The checks use the same `RemovalRequested` state. Authenticated management assignment and
+instance-state polling remain available while customer invocation admission is closed.
+Clearing assignment also withdraws Runtime authentication keys, so new HTTP and gRPC calls may
+be rejected by authentication before reaching the removal guard. An authenticated HTTP request
+that reaches the forwarding guard receives `503`.
 
 Runtime loss also terminates initialization waiting for an assigned function group and, when needed,
 an HTTP proxy origin, releases its waiter and queued messages, and leaves no published destination.
@@ -109,7 +112,7 @@ verifying that Runtime write failure is recorded before shared queue cleanup.
 | `InstanceState_PreInitRuntimeLossRequestsRemovalAndClearsIdentity` | Pre-protocol loss clears identified or unidentified Runtime state and rejects replacement Runtime and assignment requests |
 | `Relay_RuntimeOnlyTerminationBeforeProtocolInputRequestsRemoval` | Runtime-only cancellation before protocol input permanently prevents a later Worker attachment |
 | `Relay_CanceledPreInitRuntimeCannotSendLateMessagesAfterRemoval` | A canceled Runtime reader cannot publish late protocol input or restore readiness after removal |
-| `Relay_ProxyBootstrapPrecedesCustomerAndRuntimeLossRequestsRemoval` | Infrastructure bootstrap still precedes Worker startup, but Runtime loss fails pending identity requests and cannot start a replacement proxy session |
+| `Relay_ProxyBootstrapPrecedesCustomerAndRuntimeLossRequestsRemoval` | Infrastructure bootstrap still precedes Worker startup, but Runtime loss fails pending identity requests, withdraws authentication for new Runtime calls, and leaves management polling available |
 | `AttachmentRejected_DistinguishesRemovalFromShutdown` | Removal-driven rejection retains a distinct diagnostic reason from application shutdown |
 | `Relay_TerminationWhileWaitingForAssignment_ReleasesWaiter` | Runtime EOF/cancellation clears pending assignment initialization for HTTP and non-HTTP workers and requests removal with correlated diagnostics; application shutdown releases the same wait without removal |
 | `Relay_RuntimeStreamFailureRequestsRemovalAndPreservesFault` | Runtime read and write faults preserve the terminal error and select W2 |

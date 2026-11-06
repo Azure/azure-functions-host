@@ -230,11 +230,6 @@ public partial class FunctionRpcRelayTests
         Assert.False(manager.RequestRemoval());
         Assert.Same(removedState, manager.State);
 
-        using (HttpResponseMessage readiness = await management.GetAsync("/admin/instance/ready", timeout.Token))
-        {
-            Assert.Equal(HttpStatusCode.OK, readiness.StatusCode);
-        }
-
         using (HttpResponseMessage reassignment = await PutManagementJsonAsync(
             management,
             "/admin/worker/assignment",
