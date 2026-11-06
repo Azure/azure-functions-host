@@ -2567,7 +2567,7 @@ public sealed partial class WorkerChannelRegistryTests
                     response.Capabilities.Add(RpcWorkerConstants.SharedMemoryDataTransfer, "1");
                 }
 
-                if (_functionGroupName is not null)
+                if (_functionGroupName is not null && !response.Capabilities.ContainsKey(RpcClientWorkerChannel.FunctionGroupNameCapability))
                 {
                     response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroupName);
                 }

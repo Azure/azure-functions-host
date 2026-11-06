@@ -107,7 +107,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
         RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
-        await registry.LinkAsync("durable-indexer", indexer.Endpoint, timeout.Token);
+        await registry.LinkAsync("durable-indexer", indexer.Endpoint, cancellationToken: timeout.Token);
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         await indexer.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
@@ -117,7 +117,7 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         Task<string> invocation = InvokeHttpFunctionAsync(scriptHost, timeout.Token);
         Assert.False(invocation.IsCompleted);
-        await registry.LinkAsync("http-worker", http.Endpoint, timeout.Token);
+        await registry.LinkAsync("http-worker", http.Endpoint, cancellationToken: timeout.Token);
         string selectedWorker = await invocation.WaitAsync(timeout.Token);
 
         Assert.Equal("http-worker", selectedWorker);

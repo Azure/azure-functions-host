@@ -117,6 +117,7 @@ public partial class FunctionRpcRelayTests
         StreamingMessage expected = response.Clone();
         expected.WorkerInitResponse.Capabilities["custom-capability"] = "finalized";
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "assigned-group";
+        expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
         await worker.WriteAsync(response, timeout.Token);
         Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
 
@@ -170,6 +171,7 @@ public partial class FunctionRpcRelayTests
         response.WorkerInitResponse.Capabilities.Clear();
         StreamingMessage expected = response.Clone();
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "assigned-group";
+        expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
         if (rewrite)
         {
             expected.WorkerInitResponse.Capabilities["custom-capability"] = "finalized";

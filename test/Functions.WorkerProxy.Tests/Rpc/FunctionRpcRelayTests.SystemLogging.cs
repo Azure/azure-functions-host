@@ -168,6 +168,7 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(initResponse, cancellationToken);
         StreamingMessage expected = initResponse.Clone();
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "telemetry-group";
+        expected.WorkerInitResponse.Capabilities["IsAlwaysReady"] = bool.FalseString;
         Assert.Equal(expected, await runtime.ReadAsync(cancellationToken));
     }
 

@@ -48,7 +48,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     }
 
     /// <summary>
-    /// Creates a ScriptHost-scoped dispatcher with an explicit matching-channel wait timeout.
+    /// Initializes a new instance of the <see cref="RpcClientFunctionInvocationDispatcher"/> class for a ScriptHost with
+    /// an explicit matching-channel wait timeout.
     /// </summary>
     internal RpcClientFunctionInvocationDispatcher(
         IWorkerChannelRegistry channelRegistry,
