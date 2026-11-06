@@ -64,7 +64,8 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         bool useKestrel = false,
         bool authenticate = true,
         IConfiguration? managementConfiguration = null,
-        ILoggerProvider? loggerProvider = null)
+        ILoggerProvider? loggerProvider = null,
+        IRuntimeDrainManager? drainManager = null)
     {
         IHost host = new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -104,6 +105,11 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             services.AddSingleton(registry);
+                            if (drainManager is not null)
+                            {
+                                services.AddSingleton(drainManager);
+                            }
+
                             services.AddOptions<MvcOptions>().Configure<IOptions<JsonOptions>, ILoggerFactory>(static (options, json, loggerFactory) =>
                                 options.InputFormatters.Insert(0, new WorkerLinkRequestInputFormatter(json.Value, loggerFactory.CreateLogger<SystemTextJsonInputFormatter>())));
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
@@ -149,6 +155,21 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerId}");
         request.Content = new StringContent(json ?? string.Empty, Encoding.UTF8, "application/json");
+
+        return await Client.SendAsync(request, cancellationToken);
+    }
+
+    internal async Task<HttpResponseMessage> PostDrainAsync(
+        string? json,
+        CancellationToken cancellationToken)
+    {
+        using HttpRequestMessage request = new(
+            HttpMethod.Post,
+            "/admin/runtime/drain");
+        request.Content = new StringContent(
+            json ?? string.Empty,
+            Encoding.UTF8,
+            "application/json");
 
         return await Client.SendAsync(request, cancellationToken);
     }

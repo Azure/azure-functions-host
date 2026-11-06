@@ -2348,7 +2348,8 @@ public sealed partial class WorkerChannelRegistryTests
             IConfiguration configuration = null,
             IWorkerHostConfigurationParser workerHostConfigurationParser = null,
             bool registryOwnedAttempt = false,
-            TimeProvider timeProvider = null)
+            TimeProvider timeProvider = null,
+            TimeSpan? runtimeDrainGracePeriod = null)
         {
             Logger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             Logger.Setup(logger => logger.Log(
@@ -2413,7 +2414,8 @@ public sealed partial class WorkerChannelRegistryTests
             Registry = linkTimeout.HasValue
                 ? new(DuplexFactory.Object, ChannelFactory.Object, Logger.Object,
                     timeProvider ?? TimeProvider.System, linkTimeout.Value,
-                    workerHostConfigurationParser, registryOwnedAttempt, InvocationTracker.Object)
+                    workerHostConfigurationParser, registryOwnedAttempt,
+                    InvocationTracker.Object, runtimeDrainGracePeriod)
                 : new(DuplexFactory.Object, ChannelFactory.Object, Logger.Object,
                     timeProvider ?? TimeProvider.System, workerHostConfigurationParser,
                     invocationTracker: InvocationTracker.Object);

@@ -78,6 +78,9 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<WorkerChannelRegistry>();
         services.AddSingleton<IWorkerChannelRegistry>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
         services.AddSingleton<IHostConfigurationSourceProvider>(provider => provider.GetRequiredService<WorkerChannelRegistry>());
+        services.AddSingleton<IRuntimeDrainWorkerManager>(
+            provider => provider.GetRequiredService<WorkerChannelRegistry>());
+        services.AddSingleton<IRuntimeDrainManager, RuntimeDrainManager>();
         services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
 
