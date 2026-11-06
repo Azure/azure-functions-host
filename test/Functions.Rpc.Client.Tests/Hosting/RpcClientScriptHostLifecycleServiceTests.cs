@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -20,6 +21,7 @@ public sealed class RpcClientScriptHostLifecycleServiceTests
     private readonly Mock<IRpcClientFunctionInvocationDispatcher> _dispatcher = new(MockBehavior.Strict);
     private readonly ManagedDependencyOptions _managedDependencyOptions = new();
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
+    private readonly Mock<ILogger<RpcClientScriptHostLifecycleService>> _logger = new();
     private readonly ScriptJobHostOptions _scriptHostOptions = new()
     {
         FunctionTimeout = TimeSpan.FromMinutes(5),
@@ -38,6 +40,7 @@ public sealed class RpcClientScriptHostLifecycleServiceTests
             .Callback((IReadOnlyList<FunctionMetadata> functions, ManagedDependencyOptions _, TimeSpan? _, CancellationToken _) =>
             {
                 FunctionMetadata activatedFunction = Assert.Single(functions);
+                Assert.Equal("function:TestFunction", activatedFunction.Properties["FunctionGroup"]);
                 Assert.Equal(LogCategories.CreateFunctionUserCategory(function.Name),
                     activatedFunction.Properties[LogConstants.CategoryNameKey]);
                 Assert.Equal(_scriptHostOptions.InstanceId,
@@ -56,6 +59,47 @@ public sealed class RpcClientScriptHostLifecycleServiceTests
 
         _registry.VerifyAll();
         _dispatcher.VerifyAll();
+    }
+
+    [Theory]
+    [InlineData("durable", true)]
+    [InlineData(42, true)]
+    [InlineData(null, true)]
+    [InlineData("function:TestFunction", false)]
+    [InlineData("FUNCTION:TESTFUNCTION", false)]
+    public async Task InitializedAsync_OverwritesExistingGroupAndWarnsOnlyOnConflict(object existing, bool warning)
+    {
+        FunctionMetadata function = CreateFunction();
+        function.Properties["FunctionGroup"] = existing;
+        List<string> warnings = [];
+        _logger.Setup(value => value.IsEnabled(LogLevel.Warning)).Returns(true);
+        _logger.Setup(value => value.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(new InvocationAction(call =>
+            {
+                var formatter = (Delegate)call.Arguments[4];
+                warnings.Add((string)formatter.DynamicInvoke(call.Arguments[2], call.Arguments[3]));
+            }));
+        _registry.Setup(value => value.ActivateAsync(It.IsAny<IReadOnlyList<FunctionMetadata>>(), _managedDependencyOptions,
+            _scriptHostOptions.FunctionTimeout, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _dispatcher.Setup(value => value.InitializeAsync(It.IsAny<IEnumerable<FunctionMetadata>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        RpcClientScriptHostLifecycleService service = CreateService();
+
+        await service.InitializedAsync([function], CancellationToken.None);
+        await service.InitializedAsync([function], CancellationToken.None);
+
+        Assert.Equal("function:TestFunction", function.Properties["FunctionGroup"]);
+        if (warning)
+        {
+            string message = Assert.Single(warnings);
+            Assert.Contains("TestFunction", message, StringComparison.Ordinal);
+            Assert.Contains("Host-derived group function:TestFunction", message, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Empty(warnings);
+        }
     }
 
     [Fact]
@@ -143,7 +187,8 @@ public sealed class RpcClientScriptHostLifecycleServiceTests
             _registry.Object,
             _dispatcher.Object,
             Options.Create(_scriptHostOptions),
-            Options.Create(_managedDependencyOptions));
+            Options.Create(_managedDependencyOptions),
+            _logger.Object);
 
     private static FunctionMetadata CreateFunction()
         => new()

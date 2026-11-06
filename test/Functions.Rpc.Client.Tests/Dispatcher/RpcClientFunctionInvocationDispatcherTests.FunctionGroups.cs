@@ -10,6 +10,9 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -18,6 +21,88 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed partial class RpcClientFunctionInvocationDispatcherTests
 {
+    [Fact]
+    public async Task InitializeAsync_CapturesGroupBeforeInvocationAndIgnoresWorkerGroupProperty()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        FunctionMetadata function = CreateFunction();
+        function.Properties["FunctionGroup"] = "durable";
+        await PrepareReadyChannelAsync(worker, function);
+        PublishReady(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await InitializeMetadataAsync(dispatcher, function);
+        string cached = dispatcher.GetFunctionGroup(function);
+        Assert.Equal("function:TestFunction", cached);
+        Assert.Same(cached, function.Properties["FunctionGroup"]);
+
+        // Finalized metadata is stable in production; changing bindings here detects accidental hot-path reclassification.
+        function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
+        Assert.Equal("http", function.GetFunctionGroup());
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        await dispatcher.InvokeAsync(CreateInvocation(function));
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+
+        Assert.Same(cached, dispatcher.GetFunctionGroup(function));
+    }
+
+    [Fact]
+    public async Task GetFunctionGroup_ReplacementMetadataAndScriptHostAreIndependent()
+    {
+        FunctionMetadata original = CreateFunction();
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await InitializeMetadataAsync(dispatcher, original);
+        Assert.Equal("function:TestFunction", dispatcher.GetFunctionGroup(original));
+        FunctionMetadata replacement = CreateFunction();
+        replacement.Bindings.Add(new() { Name = "context", Type = "activityTrigger", Direction = BindingDirection.In });
+        await InitializeMetadataAsync(dispatcher, replacement);
+        Assert.Equal("durable", dispatcher.GetFunctionGroup(replacement));
+        Assert.Equal("function:TestFunction", dispatcher.GetFunctionGroup(original));
+
+        FunctionMetadata restartedFunction = CreateFunction();
+        restartedFunction.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
+        using RpcClientFunctionInvocationDispatcher restarted = CreateDispatcher();
+        await InitializeMetadataAsync(restarted, restartedFunction);
+
+        Assert.Equal("http", restarted.GetFunctionGroup(restartedFunction));
+        Assert.Equal("function:TestFunction", dispatcher.GetFunctionGroup(original));
+    }
+
+    [Fact]
+    public async Task GetFunctionGroup_RepeatedFunctionSpecificLookupsDoNotAllocate()
+    {
+        FunctionMetadata function = CreateFunction();
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await InitializeMetadataAsync(dispatcher, function);
+        string group = dispatcher.GetFunctionGroup(function);
+        for (int i = 0; i < 10; i++)
+        {
+            Assert.Same(group, dispatcher.GetFunctionGroup(function));
+        }
+
+        bool reused = true;
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 1_000; i++)
+        {
+            reused &= ReferenceEquals(group, dispatcher.GetFunctionGroup(function));
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(reused);
+        Assert.Equal(0L, allocated);
+    }
+
+    private static Task InitializeMetadataAsync(RpcClientFunctionInvocationDispatcher dispatcher, FunctionMetadata function)
+    {
+        Mock<IWorkerChannelRegistry> registry = new();
+        registry.Setup(value => value.ActivateAsync(It.IsAny<IReadOnlyList<FunctionMetadata>>(), It.IsAny<ManagedDependencyOptions>(),
+            It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        RpcClientScriptHostLifecycleService lifecycle = new(registry.Object, dispatcher, Options.Create(new ScriptJobHostOptions()),
+            Options.Create(new ManagedDependencyOptions()), NullLogger<RpcClientScriptHostLifecycleService>.Instance);
+
+        return lifecycle.InitializedAsync([function], CancellationToken.None);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

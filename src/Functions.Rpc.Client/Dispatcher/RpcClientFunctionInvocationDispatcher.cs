@@ -90,7 +90,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
         }
 
-        string functionGroup = invocationContext.FunctionMetadata.GetFunctionGroup();
+        string functionGroup = GetFunctionGroup(invocationContext.FunctionMetadata);
         // Capture invalidation before sampling so a matching worker arriving during selection cannot be missed.
         Task changed = _channelRegistry.GetChangeTask();
         ValueTask<IReadOnlyList<WorkerChannel>> readyChannels = _channelRegistry.GetReadyChannelsAsync();
@@ -176,7 +176,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     }
 
     /// <summary>
-    /// Initializes this dispatcher's local lifecycle; function loading remains owned by the root registry.
+    /// Initializes the local lifecycle; metadata enrichment and function loading remain owned by the ScriptHost lifecycle and root registry.
     /// </summary>
     public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
     {
@@ -198,6 +198,14 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Reads the Host-derived group captured during initialization. Unknown definitions are classified without mutating shared metadata.
+    /// </summary>
+    internal string GetFunctionGroup(FunctionMetadata metadata)
+        => metadata.Properties.TryGetValue(RpcClientScriptHostLifecycleService.FunctionGroupKey, out object value) && value is string group
+            ? group
+            : metadata.GetFunctionGroup();
 
     /// <summary>
     /// Queries all initialized channels, including those not yet ready for invocation, and keys their status by worker ID.
