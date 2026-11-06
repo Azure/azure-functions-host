@@ -812,5 +812,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.TryGetFunctionsTargetGroup(out string group)
                 && string.Equals(group, FunctionGroups.ValidationWorker, StringComparison.InvariantCultureIgnoreCase);
         }
+
+        /// <summary>
+        /// Returns true if the Host assignment or target group indicates validation mode.
+        /// </summary>
+        /// <param name="environment">The environment to use.</param>
+        /// <param name="assignmentState">The active Host assignment state.</param>
+        public static bool IsInValidationMode(this IEnvironment environment, IHostAssignmentState assignmentState)
+        {
+            ArgumentNullException.ThrowIfNull(assignmentState);
+
+            return assignmentState.IsDiscoveryPod || environment.IsInValidationMode();
+        }
     }
 }

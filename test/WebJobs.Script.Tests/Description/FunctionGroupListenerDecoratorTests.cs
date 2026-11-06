@@ -24,6 +24,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             Other,
         }
 
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public void Decorate_DiscoveryAssignmentSuppressesAllListeners(bool isDiscoveryPod, bool expectedSuppressed)
+        {
+            IFunctionDefinition definition = Mock.Of<IFunctionDefinition>();
+            IListener original = Mock.Of<IListener>();
+            IFunctionMetadataManager metadata = Mock.Of<IFunctionMetadataManager>();
+            IEnvironment environment = CreateEnvironment(null);
+
+            var context = new ListenerDecoratorContext(definition, original.GetType(), original);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, CreateAssignmentState(isDiscoveryPod), _logger);
+
+            IListener result = decorator.Decorate(context);
+
+            Assert.Equal(expectedSuppressed, !ReferenceEquals(context.Listener, result));
+        }
+
         [Fact]
         public void Decorate_NoTargetGroupConfigured_ReturnsOriginalListener()
         {
@@ -34,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment(null);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, CreateAssignmentState(), _logger);
 
             // Act
             var result = decorator.Decorate(context);
@@ -53,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, CreateAssignmentState(), _logger);
 
             // Act
             var result = decorator.Decorate(context);
@@ -72,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, CreateAssignmentState(), _logger);
 
             // Act
             var result = decorator.Decorate(context);
@@ -91,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("other");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, CreateAssignmentState(), _logger);
 
             // Act
             var result = decorator.Decorate(context);
@@ -136,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment(targetGroup);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger);
+            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, CreateAssignmentState(), _logger);
 
             // Act
             var result = decorator.Decorate(context);
@@ -184,6 +202,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             var environment = new Mock<IEnvironment>(MockBehavior.Strict);
             environment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns(group);
             return environment.Object;
+        }
+
+        private static IHostAssignmentState CreateAssignmentState(bool isDiscoveryPod = false)
+        {
+            return Mock.Of<IHostAssignmentState>(state => state.IsDiscoveryPod == isDiscoveryPod);
         }
     }
 }

@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
-    public interface IInstanceManager
+    public interface IInstanceManager : IHostAssignmentState
     {
         IDictionary<string, string> GetInstanceInfo();
 

@@ -153,6 +153,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
             }
 
+            hostAssignmentContext.ApiServerAssignmentContext = hostAssignmentRequest.ApiServerAssignmentContext;
+
             // Don't update StartupContext for warmup requests
             if (!hostAssignmentContext.IsWarmupRequest)
             {

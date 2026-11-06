@@ -52,6 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("isWarmupRequest")]
         public bool IsWarmupRequest { get; set; }
 
+        /// <summary>
+        /// Gets or sets assignment state supplied separately by the Functions API server.
+        /// </summary>
+        [JsonIgnore]
+        public ApiServerAssignmentContext ApiServerAssignmentContext { get; set; }
+
         public long? PackageContentLength { get; set; }
 
         public string AzureFilesConnectionString

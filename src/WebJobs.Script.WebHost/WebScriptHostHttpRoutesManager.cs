@@ -17,13 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEnvironment _environment;
+        private readonly IHostAssignmentState _assignmentState;
 
-        public WebScriptHostHttpRoutesManager(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IEnvironment environment)
+        public WebScriptHostHttpRoutesManager(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IEnvironment environment, IHostAssignmentState assignmentState)
         {
             _httpOptions = httpOptions;
             _router = router;
             _loggerFactory = loggerFactory;
             _environment = environment;
+            _assignmentState = assignmentState ?? throw new ArgumentNullException(nameof(assignmentState));
         }
 
         public void InitializeHttpFunctionRoutes(IScriptJobHost host)
@@ -69,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, isProxy, _httpOptions.Value.RoutePrefix);
                 }
-                else if (warmupRouteBuilder != null && !_environment.IsInValidationMode() && function.IsWarmupFunction())
+                else if (warmupRouteBuilder != null && !_environment.IsInValidationMode(_assignmentState) && function.IsWarmupFunction())
                 {
                     warmupRouteBuilder.MapFunctionRoute(function.Metadata.Name, "warmup", function.Metadata.Name);
                 }

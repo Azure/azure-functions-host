@@ -22,10 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly IEnvironment _environment;
+        private readonly IHostAssignmentState _assignmentState;
         private Timer _syncTimer;
         private bool _disposed = false;
 
-        public FunctionsSyncService(ILoggerFactory loggerFactory, IScriptHostManager scriptHostManager, IPrimaryHostStateProvider primaryHostStateProvider, IFunctionsSyncManager functionsSyncManager, IEnvironment environment)
+        public FunctionsSyncService(ILoggerFactory loggerFactory, IScriptHostManager scriptHostManager, IPrimaryHostStateProvider primaryHostStateProvider, IFunctionsSyncManager functionsSyncManager, IEnvironment environment, IHostAssignmentState assignmentState)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _primaryHostStateProvider = primaryHostStateProvider;
             _functionsSyncManager = functionsSyncManager;
             _environment = environment;
+            _assignmentState = assignmentState ?? throw new ArgumentNullException(nameof(assignmentState));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
@@ -46,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return _primaryHostStateProvider.IsPrimary &&
                        (_scriptHostManager.State == ScriptHostState.Running) &&
-                       !_environment.IsInValidationMode();
+                       !_environment.IsInValidationMode(_assignmentState);
             }
         }
 

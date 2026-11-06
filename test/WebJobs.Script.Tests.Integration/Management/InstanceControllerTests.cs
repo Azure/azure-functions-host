@@ -17,6 +17,7 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -296,6 +297,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             instanceManager.Verify(i => i.StartAssignment(It.IsAny<HostAssignmentContext>()),
                 shouldInvokeMethod ? Times.Once() : Times.Never());
             Assert.True(areRequiredMetricsLogged(testmetricslogger, [MetricEventNames.LinuxContainerSpecializationAssign]));
+        }
+
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        public async Task Assignment_ApiServerContextFlowsToHostState(bool? isDiscoveryPod, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var loggerFactory = new LoggerFactory();
+            var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
+            var instanceManager = new LegionInstanceManager(
+                TestHelpers.CreateHttpClientFactory(),
+                scriptWebEnvironment,
+                environment,
+                loggerFactory.CreateLogger<LegionInstanceManager>(),
+                new TestMetricsLogger(),
+                null);
+            instanceManager.Reset();
+            var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
+            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, new TestMetricsLogger());
+            var assignmentContext = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+            };
+            string encryptedContext = EncryptionHelper.Encrypt(
+                JsonConvert.SerializeObject(assignmentContext),
+                TestHelpers.EncryptionKey.ToKeyBytes());
+            var requestJson = new JObject
+            {
+                ["encryptedContext"] = encryptedContext
+            };
+            if (isDiscoveryPod.HasValue)
+            {
+                requestJson["apiServerAssignmentContext"] = new JObject
+                {
+                    ["isDiscoveryPod"] = isDiscoveryPod.Value
+                };
+            }
+
+            IActionResult result = await instanceController.Assign(requestJson.ToObject<HostAssignmentRequest>());
+
+            Assert.IsType<AcceptedResult>(result);
+            Assert.Equal(expected, ((IHostAssignmentState)instanceManager).IsDiscoveryPod);
         }
 
         [Fact]

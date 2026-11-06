@@ -13,15 +13,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly IFunctionMetadataManager _metadataManager;
         private readonly IEnvironment _environment; // TODO: replace options pattern
+        private readonly IHostAssignmentState _assignmentState;
         private readonly ILogger _logger;
 
         public FunctionGroupListenerDecorator(
             IFunctionMetadataManager metadataManager,
             IEnvironment environment,
+            IHostAssignmentState assignmentState,
             ILogger<FunctionGroupListenerDecorator> logger)
         {
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _assignmentState = assignmentState ?? throw new ArgumentNullException(nameof(assignmentState));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -30,6 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (context is null)
             {
                 throw new ArgumentNullException(nameof(context));
+            }
+
+            if (_assignmentState.IsDiscoveryPod)
+            {
+                return new NoOpListener(context.Listener);
             }
 
             if (!_environment.TryGetFunctionsTargetGroup(out string targetGroup))

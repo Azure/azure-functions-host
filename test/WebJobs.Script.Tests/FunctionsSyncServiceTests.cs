@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IFunctionsSyncManager> _mockSyncManager;
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
+        private readonly Mock<IHostAssignmentState> _mockAssignmentState;
         private readonly int _testDueTime = 1000;
 
         public FunctionsSyncServiceTests()
@@ -48,13 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns((string)null);
+            _mockAssignmentState = new Mock<IHostAssignmentState>(MockBehavior.Strict);
+            _mockAssignmentState.SetupGet(p => p.IsDiscoveryPod).Returns(false);
 
             _syncService = new(
                 _loggerFactory,
                 _mockScriptHostManager.Object,
                 _mockPrimaryHostStateProviderMock.Object,
                 _mockSyncManager.Object,
-                _mockEnvironment.Object)
+                _mockEnvironment.Object,
+                _mockAssignmentState.Object)
             {
                 DueTime = _testDueTime
             };
@@ -75,10 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(FunctionGroups.ValidationWorker, false)]
-        [InlineData("function:http", true)]
-        [InlineData(null, true)]
-        public void ShouldSyncTriggers_DisabledForValidationPod(string functionGroup, bool expected)
+        [InlineData(FunctionGroups.ValidationWorker, false, false)]
+        [InlineData("function:http", false, true)]
+        [InlineData(null, true, false)]
+        [InlineData(null, false, true)]
+        public void ShouldSyncTriggers_DisabledForValidationPod(string functionGroup, bool isDiscoveryPod, bool expected)
         {
             _mockPrimaryHostStateProviderMock.Setup(p => p.IsPrimary).Returns(true);
             _mockScriptHostManager.Setup(p => p.State).Returns(ScriptHostState.Running);
@@ -87,9 +92,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns(functionGroup);
+            IHostAssignmentState assignmentState = Mock.Of<IHostAssignmentState>(state => state.IsDiscoveryPod == isDiscoveryPod);
 
             var syncService = new FunctionsSyncService(_loggerFactory, _mockScriptHostManager.Object, _mockPrimaryHostStateProviderMock.Object, _mockSyncManager.Object,
-                                                        mockEnvironment.Object);
+                                                        mockEnvironment.Object, assignmentState);
             syncService.DueTime = _testDueTime;
 
             Assert.Equal(expected, syncService.ShouldSyncTriggers);

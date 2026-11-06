@@ -225,8 +225,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var context = new HostAssignmentContext();
             context.Environment = new Dictionary<string, string>();
             context.IsWarmupRequest = false;
+            context.ApiServerAssignmentContext = new ApiServerAssignmentContext { IsDiscoveryPod = true };
             bool result = _instanceManager.StartAssignment(context);
             Assert.False(result);
+            Assert.False(((IHostAssignmentState)_instanceManager).IsDiscoveryPod);
         }
 
         public void Dispose()

@@ -12,5 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         [JsonProperty("assignmentContext", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public HostAssignmentContext AssignmentContext { get; set; }
+
+        /// <summary>
+        /// Gets or sets assignment state supplied by the Functions API server.
+        /// </summary>
+        [JsonProperty("apiServerAssignmentContext", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public ApiServerAssignmentContext ApiServerAssignmentContext { get; set; }
     }
 }

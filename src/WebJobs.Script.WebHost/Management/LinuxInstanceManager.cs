@@ -35,6 +35,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
+        /// <inheritdoc />
+        public bool IsDiscoveryPod
+        {
+            get
+            {
+                lock (_assignmentLock)
+                {
+                    return _assignmentContext?.ApiServerAssignmentContext?.IsDiscoveryPod == true;
+                }
+            }
+        }
+
         public abstract Task<string> SpecializeMSISidecar(HostAssignmentContext context);
 
         public async Task<bool> AssignInstanceAsync(HostAssignmentContext context)

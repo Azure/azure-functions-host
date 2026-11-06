@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -558,6 +559,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
 
             Assert.Equal(expected, env.IsInValidationMode());
+        }
+
+        [Theory]
+        [InlineData(null, true, true)]
+        [InlineData(FunctionGroups.ValidationWorker, false, true)]
+        [InlineData("function:http", false, false)]
+        public void IsInValidationMode_AssignmentStatePreservesLegacyBehavior(string functionGroup, bool isDiscoveryPod, bool expected)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (!string.IsNullOrEmpty(functionGroup))
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup, functionGroup);
+            }
+
+            IHostAssignmentState assignmentState = Mock.Of<IHostAssignmentState>(state => state.IsDiscoveryPod == isDiscoveryPod);
+
+            Assert.Equal(expected, env.IsInValidationMode(assignmentState));
         }
     }
 }
