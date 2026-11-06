@@ -92,7 +92,7 @@ public class ManagementApiEndpointTests
         Assert.Equal("FunctionsSplitWorkerProxy", state.GetProperty("functionsContainerType").GetString());
         Assert.Equal("test-group", state.GetProperty("functionGroup").GetString());
         Assert.False(state.GetProperty("isAlwaysReady").GetBoolean());
-        Assert.False(state.GetProperty("isDiscoveryPod").GetBoolean());
+        Assert.False(state.TryGetProperty("isDiscoveryPod", out _));
         Assert.False(state.GetProperty("isUnhealthy").GetBoolean());
         Assert.Equal("Starting", state.GetProperty("status").GetString());
         Assert.Equal("Unlinked", state.GetProperty("link").GetProperty("state").GetString());
@@ -108,10 +108,10 @@ public class ManagementApiEndpointTests
     [InlineData("isDiscoveryPod", null, HttpStatusCode.OK)]
     [InlineData("isDiscoveryPod", "false", HttpStatusCode.OK)]
     [InlineData("isDiscoveryPod", "true", HttpStatusCode.OK)]
-    [InlineData("isDiscoveryPod", "null", HttpStatusCode.BadRequest)]
-    [InlineData("isDiscoveryPod", "\"false\"", HttpStatusCode.BadRequest)]
+    [InlineData("isDiscoveryPod", "null", HttpStatusCode.OK)]
+    [InlineData("isDiscoveryPod", "\"legacy\"", HttpStatusCode.OK)]
     [InlineData("isAlwaysReady", null, HttpStatusCode.BadRequest)]
-    public async Task InfraState_CheckpointBindingPreservesDiscoveryCompatibilityAndOtherValidation(
+    public async Task InfraState_CheckpointBindingIgnoresLegacyDiscoveryMemberAndPreservesOtherValidation(
         string field, string? value, HttpStatusCode expectedStatus)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -134,7 +134,7 @@ public class ManagementApiEndpointTests
         if (expectedStatus == HttpStatusCode.OK)
         {
             using JsonDocument current = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
-            Assert.Equal(JsonValueKind.False, current.RootElement.GetProperty("isDiscoveryPod").ValueKind);
+            Assert.False(current.RootElement.TryGetProperty("isDiscoveryPod", out _));
         }
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
