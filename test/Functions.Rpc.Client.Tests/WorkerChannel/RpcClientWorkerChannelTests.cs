@@ -656,6 +656,22 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     [Fact]
+    public async Task TerminateWorkerAsync_WaitsForSupportedWorkerToCloseTheChannel()
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
+            WorkerId, handlesWorkerTerminate: true);
+
+        Task terminate = harness.Channel.TerminateWorkerAsync();
+        StreamingMessage message = await harness.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerTerminate);
+
+        Assert.Equal(WorkerConstants.WorkerTerminateGracePeriodInSeconds, message.WorkerTerminate.GracePeriod.Seconds);
+        Assert.False(harness.Transport.DisposeStarted.IsCompleted);
+        harness.Transport.CompleteResponses();
+
+        await terminate.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
     public async Task StartAsync_ConcurrentAndRepeatedCallsShareInitialization()
     {
         TestDuplexChannel<StreamingMessage> duplexChannel = new();

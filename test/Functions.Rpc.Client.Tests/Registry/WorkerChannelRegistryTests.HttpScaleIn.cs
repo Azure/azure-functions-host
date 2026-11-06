@@ -36,7 +36,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public async Task PostScaleIn_HttpAlwaysReady_PublishesBeforeDrainAndPreservesOnDemand(int retained)
+    public async Task PostScaleIn_HttpAlwaysReady_UsesSharedDrainAndPreservesOnDemand(int retained)
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -51,51 +51,20 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.True(second.Channel.TryDispatchInvocation(secondWork));
         await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        await using CapacityAppServer appServer = new();
-        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry, appServer.Configure);
-        await appServer.WaitForCapacityAsync(37);
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
         using HttpResponseMessage onDemandRejection = await host.PostAsync(
             """{"functionGroup":"http","isAlwaysReady":false,"desiredWorkerCount":0}""");
         Assert.Equal(HttpStatusCode.BadRequest, onDemandRejection.StatusCode);
         Assert.True(onDemand.Channel.IsReadyForInvocations);
-        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource reduced = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        appServer.Publish = async (state, token) =>
-        {
-            if (state.HttpCapacity < 37)
-            {
-                Assert.True(first.Channel.IsReadyForInvocations);
-                Assert.True(second.Channel.IsReadyForInvocations);
-                Assert.Equal(0, first.DisposeCount + second.DisposeCount);
-                reduced.TrySetResult();
-                await release.Task.WaitAsync(token);
-            }
-
-            return HttpStatusCode.OK;
-        };
         string body = $$"""{"functionGroup":"HtTp","isAlwaysReady":true,"desiredWorkerCount":{{retained}}}""";
-        Task<HttpResponseMessage> scaleIn = host.PostAsync(body);
-        await reduced.Task.WaitAsync(TestTimeout);
-        Task<HttpResponseMessage> concurrentRepeat = host.PostAsync(body);
-        Assert.False(scaleIn.IsCompleted);
-        Assert.False(concurrentRepeat.IsCompleted);
-        Assert.True(first.Channel.IsReadyForInvocations);
-        Assert.True(second.Channel.IsReadyForInvocations);
-        release.TrySetResult();
-        using HttpResponseMessage response = await scaleIn.WaitAsync(TestTimeout);
-        using HttpResponseMessage repeated = await concurrentRepeat.WaitAsync(TestTimeout);
+        using HttpResponseMessage response = await host.PostAsync(body);
+        using HttpResponseMessage repeated = await host.PostAsync(body);
         Assert.Equal(2 - retained, await ReadNewlyDrainingWorkerCountAsync(response));
         Assert.Equal(0, await ReadNewlyDrainingWorkerCountAsync(repeated));
-        RuntimeState state = appServer.StateManager.Current;
         Assert.Equal(retained, new[] { first, second }.Count(worker => worker.Channel.IsReadyForInvocations));
-        long remainingCapacity = 17 + (first.Channel.IsReadyForInvocations ? 7 : 0) +
-            (second.Channel.IsReadyForInvocations ? 13 : 0);
-        Assert.Equal(remainingCapacity, state.HttpCapacity);
-        Assert.Equal(3, state.WorkerCount);
         Assert.Equal(0, first.DisposeCount + second.DisposeCount);
         Assert.True(onDemand.Channel.IsReadyForInvocations);
         Assert.Equal(0, onDemand.DisposeCount);
-        appServer.Publish = (_, _) => Task.FromResult(HttpStatusCode.OK);
         await CompleteHttpWorkAsync(first, firstWork);
         await CompleteHttpWorkAsync(second, secondWork);
         await WaitUntilAsync(() => first.DisposeCount + second.DisposeCount == 2 - retained);
@@ -118,32 +87,14 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.True(second.Channel.TryDispatchInvocation(secondWork));
         await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
-        await using CapacityAppServer appServer = new();
-        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry, appServer.Configure);
-        await appServer.WaitForCapacityAsync(20);
-        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource selected = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        appServer.Publish = async (state, token) =>
-        {
-            if (state.HttpCapacity == 10)
-            {
-                selected.TrySetResult();
-                await release.Task.WaitAsync(token);
-            }
-
-            return HttpStatusCode.OK;
-        };
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
         Task<HttpResponseMessage> retainOne = host.PostAsync(
             """{"functionGroup":"http","isAlwaysReady":true,"desiredWorkerCount":1}""");
-        await selected.Task.WaitAsync(TestTimeout);
         Task<HttpResponseMessage> retainNone = host.PostAsync(
             """{"functionGroup":"http","isAlwaysReady":true,"desiredWorkerCount":0}""");
-        release.TrySetResult();
         using HttpResponseMessage one = await retainOne.WaitAsync(TestTimeout);
         using HttpResponseMessage none = await retainNone.WaitAsync(TestTimeout);
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(one));
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(none));
-        Assert.Equal(0, appServer.StateManager.Current.HttpCapacity);
+        Assert.Equal(2, (await ReadNewlyDrainingWorkerCountAsync(one)) + await ReadNewlyDrainingWorkerCountAsync(none));
         Assert.False(first.Channel.IsReadyForInvocations);
         Assert.False(second.Channel.IsReadyForInvocations);
         Assert.Equal(0, first.DisposeCount + second.DisposeCount);
@@ -221,7 +172,7 @@ public sealed partial class WorkerChannelRegistryTests
         {
             if (state.HttpCapacity == 0)
             {
-                Assert.True(selected.Channel.IsReadyForInvocations);
+                Assert.False(selected.Channel.IsReadyForInvocations);
                 Assert.False(selected.Transport.DisposeStarted.IsCompleted);
                 Assert.False(invocation.ResultSource.Task.IsCompleted);
             }
@@ -248,61 +199,6 @@ public sealed partial class WorkerChannelRegistryTests
         await rpcResponse.WaitAsync(TestTimeout);
         Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
         Assert.Equal("started-finished", Encoding.UTF8.GetString(responseBody.ToArray()));
-        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task PostScaleIn_HttpAlwaysReady_FailedOrCanceledPublicationDoesNotDrain(bool cancel)
-    {
-        RegistryHarness harness = new();
-        await using WorkerChannelRegistry registry = harness.Registry;
-        ChannelControl selected = CreateHttpWorker("always", true, 10);
-        await LinkAndReadyWorkersAsync(harness, registry, CreateHttpFunction(), selected);
-        await using CapacityAppServer appServer = new();
-        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry, appServer.Configure);
-        await appServer.WaitForCapacityAsync(10);
-        TaskCompletionSource attempted = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        appServer.Publish = (state, _) =>
-        {
-            if (state.HttpCapacity == 0)
-            {
-                Assert.True(selected.Channel.IsReadyForInvocations);
-                attempted.TrySetResult();
-                return Task.FromResult(cancel ? HttpStatusCode.InternalServerError : HttpStatusCode.Unauthorized);
-            }
-
-            return Task.FromResult(HttpStatusCode.OK);
-        };
-        using CancellationTokenSource cancellation = new();
-        using HttpRequestMessage request = new(HttpMethod.Post, "/admin/workers/scale-in")
-        {
-            Content = new StringContent(
-                """{"functionGroup":"http","isAlwaysReady":true,"desiredWorkerCount":0}""", Encoding.UTF8, "application/json"),
-        };
-        Task<HttpResponseMessage> scaleIn = host.Client.SendAsync(request, cancellation.Token);
-        await attempted.Task.WaitAsync(TestTimeout);
-        if (cancel)
-        {
-            Assert.False(scaleIn.IsCompleted);
-            cancellation.Cancel();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => scaleIn.WaitAsync(TestTimeout));
-        }
-        else
-        {
-            using HttpResponseMessage failure = await scaleIn.WaitAsync(TestTimeout);
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, failure.StatusCode);
-            Assert.Contains("CapacityPublicationFailed", await failure.Content.ReadAsStringAsync(), StringComparison.Ordinal);
-        }
-
-        appServer.Publish = (_, _) => Task.FromResult(HttpStatusCode.OK);
-        await WaitUntilAsync(() => selected.Channel.IsHttpCapacityAvailable);
-        Assert.True(selected.Channel.IsReadyForInvocations);
-        Assert.Equal(0, selected.DisposeCount);
-        using HttpResponseMessage retry = await host.PostAsync(
-            """{"functionGroup":"http","isAlwaysReady":true,"desiredWorkerCount":0}""");
-        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(retry));
         await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
     }
 

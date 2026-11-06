@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Azure.Functions.Rpc.Client;
@@ -15,13 +14,6 @@ public interface IRuntimeStateManager
     /// Gets the latest immutable snapshot, retained while its counts and capacity are unchanged.
     /// </summary>
     RuntimeState Current { get; }
-
-    /// <summary>
-    /// Waits for a fresh registry observation, including changes that do not alter snapshot values.
-    /// </summary>
-    /// <param name="cancellationToken">Cancels only this caller's wait.</param>
-    /// <returns>The snapshot from a fresh, non-invalidated observation.</returns>
-    Task<RuntimeState> RefreshAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets a one-shot task that completes when the current snapshot changes.

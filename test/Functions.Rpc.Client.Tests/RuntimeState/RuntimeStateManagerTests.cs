@@ -23,41 +23,6 @@ public sealed class RuntimeStateManagerTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task RefreshAsync_ObservesUnchangedRegistryWithoutLosingFutureWakeups()
-    {
-        await using ClientWorkerChannelTestHarness http = await CreateReadyChannelAsync("http", "http", "10");
-        await using RuntimeHarness harness = new();
-        harness.Publish([http.Channel], [http.Channel]);
-        await harness.Manager.StartAsync(CancellationToken.None);
-        RuntimeState initial = await WaitForStateAsync(harness.Manager, state => state.HttpCapacity == 10);
-        for (int i = 0; i < 3; i++)
-        {
-            Assert.Same(initial, await harness.Manager.RefreshAsync(CancellationToken.None).WaitAsync(TestTimeout));
-        }
-
-        harness.Publish([http.Channel], []);
-        RuntimeState latest = await harness.Manager.RefreshAsync(CancellationToken.None).WaitAsync(TestTimeout);
-        Assert.Equal(0, latest.HttpCapacity);
-        Assert.Equal(1, latest.WorkerCount);
-    }
-
-    [Fact]
-    public async Task RefreshAsync_CanceledCallerDoesNotCancelSharedObservation()
-    {
-        await using RuntimeHarness harness = new();
-        await harness.Manager.StartAsync(CancellationToken.None);
-        using CancellationTokenSource canceled = new();
-        canceled.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => harness.Manager.RefreshAsync(canceled.Token));
-        Assert.Same(harness.Manager.Current,
-            await harness.Manager.RefreshAsync(CancellationToken.None).WaitAsync(TestTimeout));
-        await harness.Manager.StopAsync(CancellationToken.None);
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => harness.Manager.RefreshAsync(CancellationToken.None));
-    }
-
-    [Fact]
     public async Task Current_SumsOnlyRegistryReadyHttpChannelsWithoutScriptHost()
     {
         await using ClientWorkerChannelTestHarness http = await CreateReadyChannelAsync("http", "http", "10");

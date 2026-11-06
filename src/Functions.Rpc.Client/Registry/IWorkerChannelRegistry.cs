@@ -52,32 +52,18 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
         WorkerLinkRuntimeIdentity runtimeIdentity = null);
 
     /// <summary>
-    /// Atomically commits excess usable workers in one exact non-HTTP function group and capacity class to drain.
+    /// Commits excess usable workers in one function group and capacity class to the shared drain and unlink lifecycle.
     /// </summary>
-    /// <param name="functionGroup">The exact trusted function group.</param>
+    /// <param name="functionGroup">The trusted function group.</param>
     /// <param name="isAlwaysReady">The exact always-ready capacity class.</param>
     /// <param name="desiredWorkerCount">The absolute number of matching usable workers to retain.</param>
-    /// <returns>The number of workers newly committed to drain.</returns>
-    int ScaleInWorkers(
-        string functionGroup,
-        bool isAlwaysReady,
-        int desiredWorkerCount);
-
-    /// <summary>
-    /// Selects excess workers, publishing reduced HTTP Always Ready capacity before committing their drain.
-    /// </summary>
-    /// <param name="functionGroup">The trusted function group; non-HTTP groups use exact matching.</param>
-    /// <param name="isAlwaysReady">The exact capacity class. HTTP on-demand scale-in is unsupported.</param>
-    /// <param name="desiredWorkerCount">The absolute number of matching usable workers to retain.</param>
-    /// <param name="publishCapacity">Publishes freshly computed capacity and completes only after a successful outbound response.</param>
-    /// <param name="cancellationToken">Cancels selection or publication before drain commitment.</param>
+    /// <param name="cancellationToken">Cancels selection before drain commitment.</param>
     /// <returns>The number of newly draining workers, without waiting for accepted work to finish.</returns>
-    /// <remarks>HTTP selections are serialized. Failed publication releases reserved capacity without starting drain.</remarks>
+    /// <remarks>HTTP on-demand workers are retired only by the idle monitor.</remarks>
     Task<int> ScaleInWorkersAsync(
         string functionGroup,
         bool isAlwaysReady,
         int desiredWorkerCount,
-        Func<CancellationToken, Task> publishCapacity,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -90,7 +76,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retires ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold.
+    /// Selects ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold, then uses the shared drain and unlink lifecycle.
     /// </summary>
     /// <param name="threshold">The minimum continuous idle duration. Equality does not permit retirement.</param>
     /// <param name="cancellationToken">Cancels the scan before the next retirement begins.</param>

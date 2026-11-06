@@ -52,6 +52,11 @@ internal sealed record WorkerPodState(
     public bool RemovalRequested { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether the Host has started draining this worker.
+    /// </summary>
+    public bool IsDraining { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether the assigned worker has completed initialization with an identified Runtime.
     /// </summary>
     public bool IsRuntimeInitialized => IsWorkerReady &&
@@ -63,6 +68,8 @@ internal sealed record WorkerPodState(
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
     public WorkerPodStatus PodStatus => RemovalRequested || AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
         ? WorkerPodStatus.RemovalRequested
+        : IsDraining
+        ? WorkerPodStatus.Draining
         : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
         ? WorkerPodStatus.Running
         : WorkerPodStatus.Starting;

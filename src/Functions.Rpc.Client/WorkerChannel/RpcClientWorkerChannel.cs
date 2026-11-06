@@ -9,6 +9,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -19,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
@@ -34,7 +36,7 @@ namespace Azure.Functions.Rpc.Client;
 /// begin initialization. Once initialization begins, cancellation only stops the individual caller's wait; shared initialization continues
 /// until it succeeds, fails, times out, or the channel is disposed.
 /// </remarks>
-internal sealed class RpcClientWorkerChannel : WorkerChannel
+internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
     internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
@@ -56,7 +58,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private int _ongoingRequests;
     private bool _hasReceivedRequest;
     private bool _retiring;
-    private bool _httpCapacityReserved;
 
     public RpcClientWorkerChannel(
         string workerId,
@@ -171,30 +172,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             lock (_lifecycleLock)
             {
-                return !_httpCapacityReserved && IsReadyForInvocations;
+                return IsReadyForInvocations;
             }
-        }
-    }
-
-    internal bool TryReserveHttpScaleIn()
-    {
-        lock (_lifecycleLock)
-        {
-            if (_httpCapacityReserved || !IsHttpFunctionGroup || IsAlwaysReady is not true || !IsReadyForInvocations)
-            {
-                return false;
-            }
-
-            _httpCapacityReserved = true;
-            return true;
-        }
-    }
-
-    internal void ReleaseHttpScaleInReservation()
-    {
-        lock (_lifecycleLock)
-        {
-            _httpCapacityReserved = false;
         }
     }
 
@@ -235,8 +214,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 return null;
             }
 
-            _retiring = true;
-            return DrainInvocationsAsync();
+            return BeginScaleInLocked();
         }
     }
 
@@ -250,7 +228,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration)
+    internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration, out Task drainTask)
     {
         lock (_lifecycleLock)
         {
@@ -259,11 +237,74 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             if (!IsHttpFunctionGroup || IsAlwaysReady is true || !IsReadyForInvocations ||
                 _ongoingRequests != 0 || idleDuration <= idleThreshold)
             {
+                drainTask = null;
                 return false;
             }
 
-            _retiring = true;
+            drainTask = BeginScaleInLocked();
             return true;
+        }
+    }
+
+    private Task BeginScaleInLocked()
+    {
+        _retiring = true;
+        Task drainTask = DrainInvocationsAsync();
+        Task notificationTask = NotifyWorkerProxyDrainingAsync();
+        return Task.WhenAll(drainTask, notificationTask);
+    }
+
+    internal async Task TerminateWorkerAsync()
+    {
+        if (string.IsNullOrEmpty(WorkerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage)))
+        {
+            return;
+        }
+
+        int gracePeriodSeconds = WorkerConstants.WorkerTerminateGracePeriodInSeconds;
+        try
+        {
+            await SendStreamingMessageAsync(new()
+            {
+                WorkerTerminate = new()
+                {
+                    GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(gracePeriodSeconds))
+                }
+            }).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!Utility.IsFatal(exception))
+        {
+            LogMessages.WorkerTerminateSendFailed(_logger, exception, Id);
+            return;
+        }
+
+        Task channelCompletion = OwnedChannelCompletion;
+        Task timeout = Task.Delay(TimeSpan.FromSeconds(gracePeriodSeconds));
+        if (await Task.WhenAny(channelCompletion, timeout).ConfigureAwait(false) != channelCompletion)
+        {
+            LogMessages.WorkerTerminateGracePeriodElapsed(_logger, Id, gracePeriodSeconds);
+            return;
+        }
+
+        try
+        {
+            await channelCompletion.ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!Utility.IsFatal(exception))
+        {
+            LogMessages.WorkerTerminateConnectionClosed(_logger, exception, Id);
+        }
+    }
+
+    private async Task NotifyWorkerProxyDrainingAsync()
+    {
+        try
+        {
+            await SendStreamingMessageAsync(new() { WorkerDraining = new() }).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!Utility.IsFatal(exception))
+        {
+            LogMessages.DrainingNotificationFailed(_logger, exception, Id);
         }
     }
 
@@ -579,5 +620,20 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
 
         return startStreamTimeout;
+    }
+
+    private static partial class LogMessages
+    {
+        [LoggerMessage(1000, LogLevel.Warning, "Failed to notify WorkerProxy that worker {WorkerId} is draining.")]
+        public static partial void DrainingNotificationFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(1001, LogLevel.Warning, "Failed to send WorkerTerminate to worker {WorkerId}; closing the Host channel.")]
+        public static partial void WorkerTerminateSendFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(1002, LogLevel.Warning, "Worker {WorkerId} did not disconnect within {GracePeriodSeconds} seconds after WorkerTerminate; closing the Host channel.")]
+        public static partial void WorkerTerminateGracePeriodElapsed(ILogger logger, string workerId, int gracePeriodSeconds);
+
+        [LoggerMessage(1003, LogLevel.Debug, "Worker {WorkerId} disconnected while handling WorkerTerminate.")]
+        public static partial void WorkerTerminateConnectionClosed(ILogger logger, Exception exception, string workerId);
     }
 }

@@ -25,11 +25,8 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
     private readonly ILogger<RuntimeStateManager> _logger;
     private readonly Lock _stateLock = new();
     private TaskCompletionSource _stateChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private TaskCompletionSource _refreshRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private TaskCompletionSource<RuntimeState> _refreshed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RuntimeState _current;
     private bool _stopping;
-    private bool _trackingStopped;
     private CancellationTokenRegistration _stoppingRegistration;
 
     /// <summary>
@@ -71,22 +68,6 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
         lock (_stateLock)
         {
             return _stateChanged.Task;
-        }
-    }
-
-    /// <inheritdoc />
-    public Task<RuntimeState> RefreshAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        lock (_stateLock)
-        {
-            if (_stopping || _trackingStopped || ExecuteTask is null || ExecuteTask.IsCompleted)
-            {
-                throw new InvalidOperationException("Runtime state tracking is not running.");
-            }
-
-            _refreshRequested.TrySetResult();
-            return _refreshed.Task.WaitAsync(cancellationToken);
         }
     }
 
@@ -145,14 +126,6 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
         finally
         {
             WithdrawCapacity(stopping: false);
-            lock (_stateLock)
-            {
-                _trackingStopped = true;
-                if (_refreshRequested.Task.IsCompleted)
-                {
-                    _refreshed.TrySetException(new InvalidOperationException("Runtime state tracking stopped."));
-                }
-            }
         }
     }
 
@@ -165,12 +138,6 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
 
             // Capture the invalidation marker before reading registry inputs so concurrent changes trigger another pass.
             Task registryChanged = _channelRegistry.GetChangeTask();
-            Task refreshRequested;
-            lock (_stateLock)
-            {
-                refreshRequested = _refreshRequested.Task;
-            }
-
             wakeups.Clear();
             wakeups.Add(registryChanged);
             bool invalidated = false;
@@ -223,12 +190,6 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
                     if (!invalidated)
                     {
                         snapshot = ReplaceSnapshotLocked(_stopping ? 0 : httpCapacity, initializedChannels.Count);
-                        if (_refreshRequested.Task.IsCompleted)
-                        {
-                            _refreshed.TrySetResult(_current);
-                            _refreshed = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                            _refreshRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                        }
                     }
                 }
 
@@ -246,21 +207,11 @@ internal sealed partial class RuntimeStateManager : BackgroundService, IRuntimeS
             {
                 Log.RecomputeFailed(_logger, exception);
                 WithdrawCapacity(stopping: false);
-                lock (_stateLock)
-                {
-                    if (_refreshRequested.Task.IsCompleted)
-                    {
-                        _refreshed.TrySetException(exception);
-                        _refreshed = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                        _refreshRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    }
-                }
                 wakeups.Add(Task.Delay(RecomputeRetryDelay, _timeProvider, cancellationToken));
             }
 
             if (!invalidated)
             {
-                wakeups.Add(refreshRequested);
                 await Task.WhenAny(wakeups).WaitAsync(cancellationToken);
             }
 

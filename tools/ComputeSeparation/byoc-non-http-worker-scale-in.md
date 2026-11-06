@@ -29,10 +29,10 @@ Success returns the number of Workers newly committed to drain:
 For HTTP Always Ready workers, set `"functionGroup": "http"` and `"isAlwaysReady": true`. HTTP group matching
 is case-insensitive, consistent with assignment classification. Non-HTTP group matching remains exact.
 
-The HTTP response waits for successful reduced-capacity publication to AppServer before committing drain, but
-does not wait for accepted work to finish or physical Worker deletion. Repeating the same retained count is
-a no-op after enough matching Workers have already entered drain. HTTP selections are serialized, including
-concurrent repeated requests, so two requests cannot reserve the same worker or drain below their retained target.
+The HTTP response reports workers committed to the shared drain lifecycle; it does not wait for capacity
+publication, accepted work to finish, or physical Worker deletion. The existing change-driven AppServer publisher
+observes the resulting Runtime state. Repeating the same retained count is a no-op after enough matching Workers
+have entered drain.
 
 Requests fail with `400` when the body is malformed, a required field is missing, the desired count is
 negative, or the request targets on-demand HTTP capacity (`"isAlwaysReady": false`).
@@ -59,50 +59,38 @@ WorkerProxy replaces worker-supplied classification capabilities with its accept
 sees them. Host then uses the existing registry and channel lifecycle:
 
 1. The registry calculates the excess matching count under its state lock.
-2. For HTTP Always Ready workers, the registry reserves selected workers' advertised capacity while keeping
-   invocation admission open. It wakes `RuntimeStateManager`; selected slots no longer contribute HTTP capacity,
-   but their links still contribute to the linked worker count.
-3. The Host publisher refreshes runtime state and sends the reduced capacity through the existing AppServer
-   `PUT /admin/infra/host/state` client. Publication is serialized with background and final-shutdown sends,
-   so a stale in-flight publication cannot overtake the reduction. Drain begins only after a successful HTTP
-   response from AppServer; that response is not an applied-state acknowledgement.
-4. The selected channel closes invocation admission under the existing lifecycle lock shared by dispatch and
-   idle retirement. Dispatch using an older ready snapshot rechecks that lock and tries another channel in the
-   invocation's function group. Existing invocation attribution and on-demand HTTP activity tracking are preserved.
-   Non-HTTP scale-in skips the publication barrier because it does not reduce HTTP capacity.
-5. The selected channel drains the base `WorkerChannel` accepted-invocation tracking used by `TryPostInvocation`
+2. The selected channel closes invocation admission under the existing lifecycle lock shared by dispatch and
+   idle retirement. The registry signals `RuntimeStateManager`; the change-driven publisher sends the resulting
+   state through the existing AppServer `PUT /admin/infra/host/state` client. Dispatch using an older ready
+   snapshot rechecks the lifecycle lock and tries another channel in the invocation's function group. Existing
+   invocation attribution and on-demand HTTP activity tracking are preserved. The channel also sends the
+   `WorkerDraining` control message to WorkerProxy; it is consumed there, not forwarded to the language worker,
+   and updates the current pod state to Legion's `Draining` status.
+3. The same drain-and-unlink path handles count-based scale-in and on-demand HTTP idle retirement; their entry
+   points differ only in worker selection. Idle retirement selects only on-demand HTTP workers with zero active
+   requests, while this API selects excess workers by function group and capacity class.
+4. The selected channel drains the base `WorkerChannel` accepted-invocation tracking used by `TryPostInvocation`
    and shutdown, including queued inputs and input conversion. The drain waits for all accepted results even if
    an earlier result fails or is canceled. Channel disposal uses that same shutdown completion path for work that
    cannot reach the worker, so neither the invocation nor drain can hang in the input buffer.
-6. For HTTP proxy invocations, the result remains pending until `DefaultHttpProxyService` finishes forwarding
+5. For HTTP proxy invocations, the result remains pending until `DefaultHttpProxyService` finishes forwarding
    the response, even if the worker has already sent its successful gRPC response. This keeps the Runtime link
    open while an accepted HTTP response is still streaming.
-7. After those invocations reach a terminal result, the registry uses the existing unlink path to close and
-   dispose only the selected channel. Concurrent explicit unlink or terminal-channel cleanup is a no-op for the
-   deferred drain cleanup. Successfully admitted worker IDs remain terminal after unlink and cannot be reused
-   in the same registry.
+6. After those invocations reach a terminal result, the registry verifies the selected channel still owns its
+   slot and detaches it. If the worker advertised `HandlesWorkerTerminateMessage`, Host sends `WorkerTerminate`
+   with the existing five-second grace period and waits for WorkerProxy to close the Host-side connection as the
+   worker exits. If the connection does not close in time, or sending the message fails, Host disposes the channel
+   to force the disconnect. Workers without that capability are disconnected directly. The empty slot is then
+   removed; concurrent explicit unlink or terminal-channel cleanup is a no-op for the deferred drain cleanup.
+   Successfully admitted worker IDs remain terminal after unlink and cannot be reused in the same registry.
 
-Invocation success, failure, and cancellation all satisfy drain completion. The API adds no drain timeout:
-forcibly closing a channel on a timer would violate the accepted-work drain contract. Registry shutdown still
-cancels the background wait and owns final channel disposal.
+Invocation success, failure, and cancellation all satisfy drain completion. The API adds no invocation-drain
+timeout: forcibly closing a channel before accepted work reaches a terminal result would violate the drain
+contract. The separate WorkerTerminate handshake is bounded by the existing five-second grace period.
 
-### Publication failure and cancellation
-
-The publication barrier uses the existing AppServer publisher's transient-error retry/backoff policy and existing
-HTTP request timeout; it adds no new timeout, retry policy, or configuration. While publication is pending,
-selected workers remain invocation-ready. The lower advertised capacity informs AppServer that these slots
-are about to leave before Host closes their admission gates.
-
-An authentication rejection fails the scale-in request with `503` and `CapacityPublicationFailed`. Cancellation
-aborts publication/retries. Neither outcome commits selected workers to drain: their capacity reservations are
-released, runtime state is signaled to restore their advertised capacity, and a later request can select them.
-Unexpected publication or tracking errors propagate instead of silently draining. A partially delivered or
-successfully published reduction followed by cancellation can temporarily under-advertise capacity until the
-restored state is published; it cannot retire a worker without the successful publication barrier.
-
-Host scale-in diagnostics use event `710` for committed selections, `711` for a failed required capacity
-publication, and `712` for request cancellation before commitment. The existing AppServer publisher records
-successful outbound snapshots as event `1000` and reports rejected or failed publication attempts separately.
+Host scale-in diagnostics use event `710` for committed selections and `712` for request cancellation before
+commitment. The existing AppServer publisher records successful outbound snapshots as event `1000` and reports
+rejected or failed publication attempts separately.
 
 ## Scope and dependencies
 

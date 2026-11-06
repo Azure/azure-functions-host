@@ -252,6 +252,32 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Records that the Host has removed the current worker from its invocation rotation.
+    /// </summary>
+    /// <param name="sessionId">The relay session that received the drain notification.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnWorkerDraining(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (_state.SessionId != sessionId || !_state.IsWorkerReady ||
+                _state.AssignmentState != WorkerAssignmentState.Ready || _state.IsDraining)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                IsDraining = true
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Records identity supplied by an admitted Runtime stream, not by worker messages.
     /// </summary>
     /// <param name="sessionId">The attaching relay session identifier.</param>

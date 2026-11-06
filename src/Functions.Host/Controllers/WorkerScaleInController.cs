@@ -3,10 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerScaleIn;
 using Azure.Functions.Rpc.Client;
@@ -27,22 +25,18 @@ public sealed partial class WorkerScaleInController : Controller
 {
     private readonly ILogger<WorkerScaleInController> _logger;
     private readonly IWorkerChannelRegistry _registry;
-    private readonly IAppServerHostStatePublisher _publisher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerScaleInController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker selection and drain commitment.</param>
-    /// <param name="publisher">Publishes reduced HTTP capacity before drain commitment.</param>
     public WorkerScaleInController(
         ILogger<WorkerScaleInController> logger,
-        IWorkerChannelRegistry registry,
-        IAppServerHostStatePublisher publisher)
+        IWorkerChannelRegistry registry)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
     }
 
     /// <summary>
@@ -72,13 +66,7 @@ public sealed partial class WorkerScaleInController : Controller
         try
         {
             newlyDrainingWorkerCount = await _registry.ScaleInWorkersAsync(
-                functionGroup, isAlwaysReady, desiredWorkerCount, _publisher.PublishCurrentAsync, cancellationToken);
-        }
-        catch (HttpRequestException exception) when (!Utility.IsFatal(exception))
-        {
-            Log.CapacityPublicationFailed(_logger, exception);
-            return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                new RequestValidationResponse([new(ErrorCodes.CapacityPublicationFailed, "appServer")]));
+                functionGroup, isAlwaysReady, desiredWorkerCount, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -135,16 +123,12 @@ public sealed partial class WorkerScaleInController : Controller
     private static class ErrorCodes
     {
         public const string InvalidBody = nameof(InvalidBody);
-        public const string CapacityPublicationFailed = nameof(CapacityPublicationFailed);
         public const string InvalidValue = nameof(InvalidValue);
         public const string Required = nameof(Required);
     }
 
     private static partial class Log
     {
-        [LoggerMessage(711, LogLevel.Warning, "HTTP worker scale-in did not commit because AppServer capacity publication failed.")]
-        public static partial void CapacityPublicationFailed(ILogger logger, Exception exception);
-
         [LoggerMessage(712, LogLevel.Information, "Worker scale-in was canceled before drain commitment.")]
         public static partial void ScaleInCanceled(ILogger logger);
 

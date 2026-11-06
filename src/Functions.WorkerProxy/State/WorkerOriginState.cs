@@ -49,9 +49,12 @@ internal sealed record WorkerOriginState(
     /// <returns>The corresponding platform checkpoint.</returns>
     public static WorkerOriginState FromState(WorkerPodState state)
     {
-        WorkerStatus status = state.PodStatus == WorkerPodStatus.RemovalRequested
-            ? WorkerStatus.RemovalRequested
-            : state.IsRuntimeInitialized ? WorkerStatus.Running : WorkerStatus.Starting;
+        WorkerStatus status = state.PodStatus switch
+        {
+            WorkerPodStatus.RemovalRequested => WorkerStatus.RemovalRequested,
+            WorkerPodStatus.Draining => WorkerStatus.Draining,
+            _ => state.IsRuntimeInitialized ? WorkerStatus.Running : WorkerStatus.Starting
+        };
 
         return new(
             ContainerType,

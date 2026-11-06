@@ -36,7 +36,7 @@ internal sealed partial class AppServerHostStatePublisher(
     IOptionsMonitor<StandbyOptions> standbyOptions,
     TimeProvider timeProvider,
     IReadOnlyPolicyRegistry<string> policyRegistry,
-    ILoggerFactory loggerFactory) : BackgroundService, IAppServerHostStatePublisher
+    ILoggerFactory loggerFactory) : BackgroundService
 {
     internal const string PublicationPolicyName = "AppServerHostStatePublication";
     internal const string ChangeTaskKey = "AppServerHostStateChange";
@@ -62,40 +62,6 @@ internal sealed partial class AppServerHostStatePublisher(
         Retry,
         Rejected,
         Unchanged,
-    }
-
-    /// <inheritdoc />
-    public async Task PublishCurrentAsync(CancellationToken cancellationToken)
-    {
-        await WaitForSpecializationAsync(cancellationToken);
-        Context context = new() { [CancellationTokenKey] = cancellationToken };
-        PublicationOutcome outcome = await _publicationPolicy.ExecuteAsync(async (retryContext, token) =>
-        {
-            await _publicationGate.WaitAsync(token);
-            try
-            {
-                // Sample after taking the publication gate so an older background send cannot overtake withdrawal.
-                Task changed = _stateManager.GetChangeTask();
-                RuntimeState state = await _stateManager.RefreshAsync(token);
-                retryContext[ChangeTaskKey] = changed;
-                PublicationOutcome result = await TryPublishAsync(state, token);
-                if (result is not PublicationOutcome.Retry)
-                {
-                    _lastCompletedSnapshot = state;
-                }
-
-                return result;
-            }
-            finally
-            {
-                _publicationGate.Release();
-            }
-        }, context, cancellationToken);
-
-        if (outcome is not PublicationOutcome.Published)
-        {
-            throw new HttpRequestException("AppServer rejected the capacity publication required for HTTP worker scale-in.");
-        }
     }
 
     /// <inheritdoc />

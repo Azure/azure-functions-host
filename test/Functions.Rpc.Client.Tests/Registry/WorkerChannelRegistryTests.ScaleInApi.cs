@@ -14,7 +14,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
-using Azure.Functions.Host.HostState;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -26,6 +25,8 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -90,11 +91,68 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(2, await ReadNewlyDrainingWorkerCountAsync(response));
         await firstMatch.Transport.DisposeStarted.WaitAsync(TestTimeout);
         await secondMatch.Transport.DisposeStarted.WaitAsync(TestTimeout);
+        await firstMatch.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        await secondMatch.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
         Assert.Equal(0, wrongCaseGroup.DisposeCount);
         Assert.Equal(0, wrongClass.DisposeCount);
         Assert.Equal(0, httpWorker.DisposeCount);
         Assert.True(httpWorker.Channel.IsReadyForInvocations);
         Assert.Equal(10, httpWorker.Channel.MaxHttpConcurrency);
+    }
+
+    [Fact]
+    public async Task PostScaleIn_SupportedWorkerTerminatesBeforeHostDisconnect()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        ChannelControl selected = new("selected", functionGroupName: FunctionGroups.Durable, isAlwaysReady: false)
+        {
+            Capabilities = new Dictionary<string, string>
+            {
+                [RpcWorkerConstants.HandlesWorkerTerminateMessage] = bool.TrueString
+            }
+        };
+        await LinkAndReadyWorkersAsync(harness, registry, function, selected);
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
+
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
+        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        StreamingMessage terminate = await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerTerminate);
+
+        Assert.Equal(WorkerConstants.WorkerTerminateGracePeriodInSeconds, terminate.WorkerTerminate.GracePeriod.Seconds);
+        Assert.False(selected.Transport.DisposeStarted.IsCompleted);
+        selected.Complete();
+
+        await selected.Transport.DisposeStarted.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task PostScaleIn_SupportedWorkerDisconnectsAfterTerminateGracePeriod()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateFunction("DurableFunction");
+        ChannelControl selected = new("selected", functionGroupName: FunctionGroups.Durable, isAlwaysReady: false)
+        {
+            Capabilities = new Dictionary<string, string>
+            {
+                [RpcWorkerConstants.HandlesWorkerTerminateMessage] = bool.TrueString
+            }
+        };
+        await LinkAndReadyWorkersAsync(harness, registry, function, selected);
+        await using ScaleInApiHost host = await ScaleInApiHost.StartAsync(registry);
+
+        using HttpResponseMessage response = await host.PostAsync(
+            """{"functionGroup":"durable","isAlwaysReady":false,"desiredWorkerCount":0}""");
+        Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(response));
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        await selected.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerTerminate);
+
+        await selected.Transport.DisposeStarted.WaitAsync(
+            TimeSpan.FromSeconds(WorkerConstants.WorkerTerminateGracePeriodInSeconds + 2));
     }
 
     [Fact]
@@ -141,6 +199,7 @@ public sealed partial class WorkerChannelRegistryTests
         StreamingMessage request = await retained.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
         string invocationId = invocation.ExecutionContext.InvocationId.ToString();
         Assert.Equal(invocationId, request.InvocationRequest.InvocationId);
+        await draining.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
         Assert.False(draining.Transport.Requests.TryRead(out _));
         Assert.False(unrelated.Transport.Requests.TryRead(out _));
         harness.InvocationTracker.Verify(
@@ -494,7 +553,6 @@ public sealed partial class WorkerChannelRegistryTests
                             });
 
                             services.AddSingleton(registry);
-                            services.AddSingleton(Mock.Of<IAppServerHostStatePublisher>());
                             configureServices?.Invoke(services);
                             services.AddAuthentication();
                             services.AddAuthorization(options =>

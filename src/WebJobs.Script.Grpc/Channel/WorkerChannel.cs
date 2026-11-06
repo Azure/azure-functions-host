@@ -214,6 +214,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal GrpcCapabilities WorkerCapabilities => _workerCapabilities;
 
+        internal Task OwnedChannelCompletion => _ownedChannel.Reader.Completion;
+
         /// <summary>
         /// Gets the worker initialization task.
         /// </summary>
