@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             var definition = CreateDefinition("OtherFunction");
             var context = new ListenerDecoratorContext(definition, listener.Object.GetType(), listener.Object);
             var decorator = new FunctionGroupListenerDecorator(Mock.Of<IFunctionMetadataManager>(), CreateEnvironment(targetGroup),
-                _logger, Options.Create(new ScriptJobHostOptions { FunctionGroupTargetingEnabled = targetingEnabled }));
+                _logger, Options.Create(new FunctionGroupListenerOptions { RestrictListenersToTargetGroup = targetingEnabled }));
 
             IListener result = decorator.Decorate(context);
             await result.StartAsync(CancellationToken.None);
@@ -67,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment(null);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new ScriptJobHostOptions()));
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -86,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new ScriptJobHostOptions()));
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new ScriptJobHostOptions()));
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment("other");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new ScriptJobHostOptions()));
+            var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);
@@ -169,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IEnvironment environment = CreateEnvironment(targetGroup);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
-            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger, Options.Create(new ScriptJobHostOptions()));
+            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger, Options.Create(new FunctionGroupListenerOptions()));
 
             // Act
             var result = decorator.Decorate(context);

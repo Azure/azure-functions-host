@@ -2,16 +2,22 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Script.Composition;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -92,6 +98,75 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     webHostOptions: new ScriptApplicationHostOptions()));
 
             Assert.True(string.Equals("rootServiceProvider", exception.ParamName, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public void ListenerOptions_DefaultRetainsFunctionGroupTargeting()
+        {
+            using ServiceProvider services = new ServiceCollection().AddOptions().BuildServiceProvider();
+
+            Assert.True(services.GetRequiredService<IOptions<FunctionGroupListenerOptions>>().Value.RestrictListenersToTargetGroup);
+        }
+
+        [Fact]
+        public void UseGroupNeutralFunctionListeners_RejectsNullServices()
+        {
+            Assert.Throws<ArgumentNullException>(() => ScriptServiceCollectionExtensions.UseGroupNeutralFunctionListeners(null));
+        }
+
+        [Theory]
+        [InlineData(true, "http", false, true)]
+        [InlineData(true, "http", true, true)]
+        [InlineData(false, "http", false, false)]
+        [InlineData(false, "http", true, false)]
+        [InlineData(true, "deployment:validation", false, true)]
+        [InlineData(false, "deployment:validation", true, true)]
+        public void AddWebScriptHost_ListenerTargetingComesFromComposition(
+            bool targeted, string targetGroup, bool customerSetting, bool suppressed)
+        {
+            IWorkerComposition composition = targeted
+                ? new RecordingWorkerComposition(false) : new GroupNeutralWorkerComposition();
+            var environment = new TestEnvironment(new Dictionary<string, string>
+            {
+                [EnvironmentSettingNames.AzureWebsiteSku] = ScriptConstants.FlexConsumptionSku,
+                [EnvironmentSettingNames.FunctionsTargetGroup] = targetGroup,
+            });
+            FunctionMetadata metadata = new()
+            {
+                Name = "QueueFunction",
+                Bindings = { new BindingMetadata { Name = "message", Type = "queueTrigger", Direction = BindingDirection.In } },
+            };
+            Mock<IFunctionMetadataManager> metadataManager = new();
+            metadataManager.Setup(manager => manager.TryGetFunctionMetadata("QueueFunction", out metadata, false)).Returns(true);
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(configureWebJobs: null, configure: ConfigureScriptPath,
+                    configureRootServices: services =>
+                    {
+                        services.AddSingleton<IEnvironment>(environment);
+                    }, composition: composition)
+                .ConfigureAppConfiguration(builder => builder.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["AzureFunctionsJobHost:functionGroupTargetingEnabled"] = customerSetting.ToString(),
+                    ["AzureFunctionsJobHost:targetGroupEnabled"] = customerSetting.ToString(),
+                    ["FunctionGroupListenerOptions:RestrictListenersToTargetGroup"] = customerSetting.ToString(),
+                }))
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<IEnvironment>(environment);
+                    services.AddSingleton(metadataManager.Object);
+                })
+                .Build();
+            _ = host.Services.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value;
+            Assert.Equal(targeted, host.Services.GetRequiredService<IOptions<FunctionGroupListenerOptions>>().Value.RestrictListenersToTargetGroup);
+            FunctionGroupListenerDecorator decorator = Assert.Single(host.Services.GetServices<IListenerDecorator>()
+                .OfType<FunctionGroupListenerDecorator>());
+            IFunctionDefinition definition = Mock.Of<IFunctionDefinition>(value =>
+                value.Descriptor == new Microsoft.Azure.WebJobs.Host.Protocols.FunctionDescriptor { LogName = "QueueFunction" });
+            IListener listener = Mock.Of<IListener>();
+
+            IListener result = decorator.Decorate(new ListenerDecoratorContext(definition, listener.GetType(), listener));
+
+            Assert.Equal(suppressed, !ReferenceEquals(listener, result));
         }
 
         [Fact]
@@ -218,6 +293,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         private void ConfigureScriptPath(ScriptApplicationHostOptions options) => options.ScriptPath = _scriptPath;
+
+        private sealed class GroupNeutralWorkerComposition : IWorkerComposition
+        {
+            public void ConfigureWebHostServices(IServiceCollection services, IMvcBuilder mvcBuilder)
+                => ServerWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
+
+            public void ConfigureScriptHostServices(IServiceCollection services, IServiceProvider rootServiceProvider)
+            {
+                ServerWorkerComposition.Instance.ConfigureScriptHostServices(services, rootServiceProvider);
+                services.UseGroupNeutralFunctionListeners();
+            }
+        }
 
         private sealed class RecordingWorkerComposition : IWorkerComposition
         {

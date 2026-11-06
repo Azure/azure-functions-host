@@ -114,7 +114,6 @@ public class RpcClientScriptHostStartupIntegrationTests
         IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
         ScriptHost scriptHost = scriptServices.GetRequiredService<ScriptHost>();
         Assert.Equal("http", Assert.Single(scriptHost.Functions).Metadata.GetFunctionGroup());
-        Assert.False(scriptServices.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.FunctionGroupTargetingEnabled);
 
         Task<string> invocation = InvokeHttpFunctionAsync(scriptHost, timeout.Token);
         Assert.False(invocation.IsCompleted);

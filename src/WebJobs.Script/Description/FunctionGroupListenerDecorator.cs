@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,13 +16,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionMetadataManager _metadataManager;
         private readonly IEnvironment _environment; // TODO: replace options pattern
         private readonly ILogger _logger;
-        private readonly ScriptJobHostOptions _options;
+        private readonly FunctionGroupListenerOptions _options;
 
         public FunctionGroupListenerDecorator(
             IFunctionMetadataManager metadataManager,
             IEnvironment environment,
             ILogger<FunctionGroupListenerDecorator> logger,
-            IOptions<ScriptJobHostOptions> options)
+            IOptions<FunctionGroupListenerOptions> options)
         {
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -42,17 +43,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return context.Listener;
             }
 
-            _logger.LogInformation("Function group target is {targetGroup}", targetGroup);
-
+            // The target also identifies non-serving validation runtimes, even when group filtering is disabled.
             if (string.Equals(targetGroup, FunctionGroups.ValidationWorker, StringComparison.OrdinalIgnoreCase))
             {
                 return new NoOpListener(context.Listener);
             }
 
-            if (!_options.FunctionGroupTargetingEnabled)
+            if (!_options.RestrictListenersToTargetGroup)
             {
                 return context.Listener;
             }
+
+            _logger.LogInformation("Function group target is {targetGroup}", targetGroup);
 
             // The log name matches the internal metadata we track.
             string functionName = context.FunctionDefinition.Descriptor.LogName;

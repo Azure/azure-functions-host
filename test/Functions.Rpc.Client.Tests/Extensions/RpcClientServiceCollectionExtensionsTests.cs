@@ -172,7 +172,6 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         await using (ServiceProvider childServiceProvider = services.BuildServiceProvider())
         {
             Assert.Same(rootRegistry.Object, childServiceProvider.GetRequiredService<IWorkerChannelRegistry>());
-            Assert.False(childServiceProvider.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.FunctionGroupTargetingEnabled);
         }
 
         rootRegistry.Verify(registry => registry.DisposeAsync(), Times.Never);
