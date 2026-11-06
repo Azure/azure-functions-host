@@ -13,6 +13,13 @@ internal sealed record WorkerSystemLogContext
 
     public WorkerPodState? State { get; init; }
 
+    internal static WorkerSystemLogContext FromState(WorkerPodState state) => new()
+    {
+        WorkerId = state.WorkerId,
+        ProxySessionId = state.SessionId,
+        State = state
+    };
+
     internal WorkerSystemLogContext Merge(WorkerSystemLogContext inner) => inner.State is not null ? inner : new()
     {
         WorkerId = inner.WorkerId ?? WorkerId,

@@ -6,10 +6,6 @@ The loopback worker FunctionRpc listener (50054) remains plaintext and pod-local
 
 This slice adds authentication, TLS and the platform assignment/state contract. Existing multiworker registration, Host configuration delivery and optional Token Service proxying remain compatibility dependencies, not new identity, configuration, restart or worker-reuse features.
 
-## RPC log identity
-
-Existing RPC session/protocol events append available `PodName`, accepted `FunctionAppName`/`FunctionGroupName`, and snapshot `Revision` after the existing `WorkerId=...; ProxySessionId=...;` Summary prefix. Identity is omitted until known; terminal/release/late-failure events retain their session's snapshot even after live identity is cleared. Revision identifies that snapshot, not current readiness. The 21-column layout, identifier normalization and length limits remain unchanged; Host-only columns stay empty. No assignment/lifecycle, HTTP, event-type, buffering, or query-tooling changes are included.
-
 ## Keys and identities
 
 The platform sends the target WorkerProxy's `CONTAINER_ENCRYPTION_KEY` to Host as `runtimeAccessKey` in Link. Host retains that key by worker identity and uses it only for that worker's caller tokens. WorkerProxy validates them using its own startup container key, not a runtime or customer container key. There is no separate runtime-access-key environment setting.

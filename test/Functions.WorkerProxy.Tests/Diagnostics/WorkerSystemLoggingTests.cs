@@ -431,7 +431,7 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
             string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.Matches(
             @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
             record.Message);
@@ -530,6 +530,9 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(
             eventGenerator.ProxyRecords,
             record => string.Equals(record.EventName, "WorkerProxyStopped", StringComparison.Ordinal));
+        Assert.All(eventGenerator.ProxyRecords.Where(record =>
+            record.EventName is "WorkerProxyStarted" or "WorkerProxyShutdownStarted" or "WorkerProxyStopped"),
+            record => Assert.NotEmpty(record.Context!.State!.PodName));
     }
 
     private static string[][] ParseCsvOutput(string output)

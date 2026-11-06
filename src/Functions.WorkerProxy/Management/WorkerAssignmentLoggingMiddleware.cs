@@ -34,29 +34,26 @@ internal sealed partial class WorkerAssignmentLoggingMiddleware(
         }
 
         long start = Stopwatch.GetTimestamp();
+        WorkerPodState entryState = stateManager.State;
         try
         {
             await next(context);
         }
         catch (Exception exception)
         {
-            LogResult(start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception,
+            LogResult(context.Features.Get<WorkerSystemLogContext>()?.State ?? entryState,
+                start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception,
                 exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested);
             throw;
         }
 
-        LogResult(start, context.Response.StatusCode);
+        LogResult(context.Features.Get<WorkerSystemLogContext>()?.State ?? entryState, start, context.Response.StatusCode);
     }
 
-    private void LogResult(long start, int? statusCode, Exception? exception = null, bool requestCanceled = false)
+    private void LogResult(WorkerPodState state, long start, int? statusCode, Exception? exception = null, bool requestCanceled = false)
     {
-        WorkerPodState state = stateManager.State;
         double durationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
-        {
-            WorkerId = state.WorkerId,
-            ProxySessionId = state.SessionId
-        });
+        using IDisposable? scope = logger.BeginScope(WorkerSystemLogContext.FromState(state));
         if (requestCanceled)
         {
             Log.RequestCanceled(logger, durationMs, state.AssignmentState, state.IsWorkerReady);

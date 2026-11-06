@@ -39,8 +39,20 @@ public partial class WorkerSystemLoggingTests
         Assert.True(manager.OnWorkerAttached(7));
         Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
         DefaultHttpContext context = CreateAssignmentContext();
+        WorkerPodState snapshot = manager.State;
         WorkerAssignmentLoggingMiddleware middleware = new(http =>
         {
+            ManagementApiHandlers.AssignWorker(new()
+            {
+                StartupMode = nameof(WorkerStartupMode.Preconfigured),
+                FunctionAppName = "test-app",
+                FunctionGroupName = "http",
+                IsAlwaysReady = false,
+                Environment = [],
+                FunctionAppDirectory = string.Empty
+            }, manager, http);
+            snapshot = manager.State;
+            manager.RequestRemoval();
             http.Response.StatusCode = statusCode;
             return Task.CompletedTask;
         }, factory.CreateLogger<WorkerAssignmentLoggingMiddleware>(), manager);
@@ -52,7 +64,9 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(level, record.Level);
         Assert.Equal(statusCode, context.Response.StatusCode);
         Assert.Contains(statusCode.ToString(CultureInfo.InvariantCulture), record.Message, StringComparison.Ordinal);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal(WorkerSystemLogContext.FromState(snapshot), record.Context);
+        Assert.Equal("test-app", record.Context!.State!.FunctionAppName);
+        Assert.Null(manager.State.FunctionAppName);
         Assert.Contains("Worker attached and identified: True.", record.Message, StringComparison.Ordinal);
     }
 
@@ -139,7 +153,7 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         Assert.Equal(eventName, record.EventName);
         Assert.Equal(level, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal(WorkerSystemLogContext.FromState(manager.State), record.Context);
         Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
         Assert.Empty(record.Details);
         Assert.Empty(record.ExceptionMessage);
