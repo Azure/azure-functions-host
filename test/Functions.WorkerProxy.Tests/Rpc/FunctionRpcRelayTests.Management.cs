@@ -741,7 +741,7 @@ public partial class FunctionRpcRelayTests
         WorkerOriginState terminated = await ReadManagementStateAsync(terminatedResponse, timeout.Token);
         Assert.Equal(assigned.Self, terminated.Self);
         Assert.Equal(assigned.IsAlwaysReady, terminated.IsAlwaysReady);
-        Assert.Equal(runtimeCloses ? null : assigned.FunctionGroup, terminated.FunctionGroup);
+        Assert.Equal(assigned.FunctionGroup, terminated.FunctionGroup);
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
         Assert.Equal(

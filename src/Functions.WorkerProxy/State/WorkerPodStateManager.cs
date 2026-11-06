@@ -427,7 +427,6 @@ internal sealed class WorkerPodStateManager
                 AssignmentState = WorkerAssignmentState.Unassigned,
                 StartupMode = null,
                 FunctionAppName = null,
-                FunctionGroupName = null,
                 HttpProxyEndpoint = null,
                 MaxHttpConcurrency = null,
                 IsAlwaysReady = null,
