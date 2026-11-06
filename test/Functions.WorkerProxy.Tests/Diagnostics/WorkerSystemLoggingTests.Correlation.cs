@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,37 @@ namespace Azure.Functions.WorkerProxy.Tests.Diagnostics;
 
 public partial class WorkerSystemLoggingTests
 {
+    [Theory]
+    [InlineData(7L, 7L)]
+    [InlineData(7L, 8L)]
+    [InlineData(7L, null)]
+    [InlineData(null, null)]
+    public void LogExporter_MergesSnapshotFieldsOnlyWithinTheSameSession(long? outerSessionId, long? innerSessionId)
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+        ILogger logger = factory.CreateLogger(WorkerProxyLogExporter.RelayCategory);
+        WorkerSystemLogContext outer = new()
+        {
+            WorkerId = "outer-worker", ProxySessionId = outerSessionId, PodName = "pod",
+            FunctionAppName = "outer-app", FunctionGroupName = "outer-group", Revision = 1
+        };
+        WorkerSystemLogContext inner = WorkerSystemLogContext.FromState(
+            WorkerPodState.CreateUnassigned("pod", Timestamp) with { SessionId = innerSessionId, Revision = 2 });
+        using IDisposable? outerScope = logger.BeginScope(outer);
+        using IDisposable? innerScope = logger.BeginScope(inner);
+        logger.LogInformation("Nested identity.");
+
+        WorkerSystemLogContext context = Assert.Single(generator.ProxyRecords).Context!;
+        bool sameSession = outerSessionId is not null && outerSessionId == innerSessionId;
+        Assert.Equal(sameSession ? "outer-worker" : null, context.WorkerId);
+        Assert.Equal(sameSession ? "outer-app" : null, context.FunctionAppName);
+        Assert.Equal(sameSession ? "outer-group" : null, context.FunctionGroupName);
+        Assert.Equal(innerSessionId, context.ProxySessionId);
+        Assert.Equal("pod", context.PodName);
+        Assert.Equal(2, context.Revision);
+    }
+
     [Fact]
     public async Task ConsoleLogging_PreservesCorrelationInExistingColumns()
     {

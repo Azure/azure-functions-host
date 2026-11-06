@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
 
@@ -16,7 +15,7 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 internal static class ManagementApiHandlers
 {
-    public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager, HttpContext? context = null)
+    public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager, HttpContext context)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
             request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
@@ -25,7 +24,7 @@ internal static class ManagementApiHandlers
         }
 
         WorkerAssignmentResult result = manager.Assign(assignment, out WorkerPodState state);
-        context?.Features.Set(WorkerSystemLogContext.FromState(state));
+        context.Features.Set(state);
         return result switch
         {
             WorkerAssignmentResult.Created => TypedResults.Created("/admin/worker/assignment"),

@@ -55,7 +55,7 @@ internal sealed partial class FunctionRpcRelay
         private string? _initializationRequestId;
         private int _shutdownRequested;
         private volatile string? _workerId;
-        private WorkerPodState _logState = stateManager.State;
+        private volatile WorkerSystemLogContext? _terminalLogContext;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -132,22 +132,21 @@ internal sealed partial class FunctionRpcRelay
 
         public WorkerSystemLogContext GetLogContext()
         {
-            lock (_stateLock)
-            {
-                WorkerPodState current = stateManager.State;
-                if (_terminalState is null && (current.SessionId is null || current.SessionId == id))
-                {
-                    _logState = current;
-                }
-
-                return new()
-                {
-                    WorkerId = _workerId,
-                    ProxySessionId = id,
-                    State = _logState
-                };
-            }
+            // Read live state first: termination publishes its context before clearing that state.
+            WorkerPodState state = stateManager.State;
+            return _terminalLogContext ?? CreateLogContext(state);
         }
+
+        private void CaptureLogStateLocked()
+        {
+            _terminalLogContext = CreateLogContext(stateManager.State);
+        }
+
+        private WorkerSystemLogContext CreateLogContext(WorkerPodState state) => WorkerSystemLogContext.FromState(state) with
+        {
+            WorkerId = _workerId,
+            ProxySessionId = id
+        };
 
         public void LogAttachment(FunctionRpcRelaySide side, bool released)
         {
@@ -798,7 +797,7 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 // Retain this session's identity before removal clears it from live state.
-                _ = GetLogContext();
+                CaptureLogStateLocked();
                 bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
                     terminalState.Side == FunctionRpcRelaySide.Runtime &&
                     terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed

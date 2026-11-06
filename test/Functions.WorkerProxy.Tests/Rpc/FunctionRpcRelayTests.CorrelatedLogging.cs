@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -9,9 +10,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -100,8 +103,8 @@ public partial class FunctionRpcRelayTests
         CapturedProxyLog attached = Assert.Single(generator.ProxyRecords, record =>
             string.Equals(record.EventName, "PeerAttached", StringComparison.Ordinal));
         Assert.Null(attached.Context!.WorkerId);
-        Assert.Null(attached.Context.State!.FunctionAppName);
-        Assert.Null(attached.Context.State.FunctionGroupName);
+        Assert.Null(attached.Context.FunctionAppName);
+        Assert.Null(attached.Context.FunctionGroupName);
         StreamingMessage startStream = CreateStartStream();
         startStream.StartStream.WorkerId = "telemetry-worker";
         await worker.WriteAsync(startStream, timeout.Token);
@@ -156,8 +159,8 @@ public partial class FunctionRpcRelayTests
             {
                 Assert.Equal("telemetry-worker", record.Context!.WorkerId);
                 Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
-                Assert.Equal(assignment.FunctionAppName, record.Context.State!.FunctionAppName);
-                Assert.Equal("telemetry-group", record.Context.State.FunctionGroupName);
+                Assert.Equal(assignment.FunctionAppName, record.Context.FunctionAppName);
+                Assert.Equal("telemetry-group", record.Context.FunctionGroupName);
             });
             foreach (string stage in new[] { "RequestForwarded", "RequestReceived", "ResponseForwarded", "ResponseReceived" })
             {
@@ -211,8 +214,8 @@ public partial class FunctionRpcRelayTests
         Assert.All(generator.ProxyRecords.Where(record => record.EventName is "SessionTerminated" or "PeerReleased"),
             record =>
             {
-                Assert.Equal(assignment.FunctionAppName, record.Context!.State!.FunctionAppName);
-                Assert.Equal("telemetry-group", record.Context.State.FunctionGroupName);
+                Assert.Equal(assignment.FunctionAppName, record.Context!.FunctionAppName);
+                Assert.Equal("telemetry-group", record.Context.FunctionGroupName);
                 Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
             });
         if (runtimeCloses)
@@ -232,6 +235,58 @@ public partial class FunctionRpcRelayTests
         Assert.DoesNotContain(generator.ProxyRecords, record =>
             record.Message.Contains(sentinel, StringComparison.Ordinal)
             || (record.Context?.ToString().Contains(sentinel, StringComparison.Ordinal) ?? false));
+    }
+
+    [Fact]
+    public async Task Relay_LateFailureRetainsIdentityAfterSessionReplacement()
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        WorkerPodStateManager manager = CreatePodStateManager();
+        await using FunctionRpcRelay relay = new(factory.Services.GetRequiredService<ILogger<FunctionRpcRelay>>(),
+            CreateCapabilityProvider(), manager);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using CancellationTokenSource oldCall = new();
+        TaskCompletionSource<bool> delayedRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IAsyncStreamReader<StreamingMessage>> oldReader = new();
+        StreamingMessage oldStart = CreateStartStream();
+        oldStart.StartStream.WorkerId = "old-worker";
+        oldReader.SetupGet(reader => reader.Current).Returns(oldStart);
+        oldReader.SetupSequence(reader => reader.MoveNext(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true).Returns(delayedRead.Task);
+        Task<FunctionRpcRelayTerminalState> oldWorker = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+            oldReader.Object, new TestServerStreamWriter(), oldCall.Token);
+        await WaitForLogAsync(() => string.Equals(manager.State.WorkerId, "old-worker", StringComparison.Ordinal), timeout.Token);
+        long oldSession = manager.State.SessionId!.Value;
+        oldCall.Cancel();
+        await oldWorker.WaitAsync(timeout.Token);
+        StreamingMessage newStart = CreateStartStream();
+        newStart.StartStream.WorkerId = "new-worker";
+        Task<FunctionRpcRelayTerminalState> replacement = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+            new SingleMessageThenBlockStreamReader(newStart), new TestServerStreamWriter(), timeout.Token);
+        try
+        {
+            await WaitForLogAsync(() => string.Equals(manager.State.WorkerId, "new-worker", StringComparison.Ordinal), timeout.Token);
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment("new-group")));
+            delayedRead.TrySetException(new IOException("late-error"));
+            await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+                string.Equals(record.EventName, "SecondaryStreamFailure", StringComparison.Ordinal)), timeout.Token);
+
+            CapturedProxyLog late = Assert.Single(generator.ProxyRecords, record =>
+                string.Equals(record.EventName, "SecondaryStreamFailure", StringComparison.Ordinal));
+            Assert.Equal(oldSession, late.Context!.ProxySessionId);
+            Assert.Equal("old-worker", late.Context.WorkerId);
+            Assert.Null(late.Context.FunctionAppName);
+            Assert.Null(late.Context.FunctionGroupName);
+            Assert.Equal("new-worker", manager.State.WorkerId);
+            Assert.Equal("new-group", manager.State.FunctionGroupName);
+        }
+        finally
+        {
+            delayedRead.TrySetResult(false);
+            await relay.StopAsync(timeout.Token);
+            await replacement.WaitAsync(timeout.Token);
+        }
     }
 
     private static async Task WaitForLogAsync(Func<bool> predicate, CancellationToken cancellationToken)

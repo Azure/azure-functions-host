@@ -41,17 +41,17 @@ internal sealed partial class WorkerAssignmentLoggingMiddleware(
         }
         catch (Exception exception)
         {
-            LogResult(context.Features.Get<WorkerSystemLogContext>()?.State ?? entryState,
-                start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception,
+            LogResult(context, entryState, start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception,
                 exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested);
             throw;
         }
 
-        LogResult(context.Features.Get<WorkerSystemLogContext>()?.State ?? entryState, start, context.Response.StatusCode);
+        LogResult(context, entryState, start, context.Response.StatusCode);
     }
 
-    private void LogResult(WorkerPodState state, long start, int? statusCode, Exception? exception = null, bool requestCanceled = false)
+    private void LogResult(HttpContext context, WorkerPodState entryState, long start, int? statusCode, Exception? exception = null, bool requestCanceled = false)
     {
+        WorkerPodState state = context.Features.Get<WorkerPodState>() ?? entryState;
         double durationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         using IDisposable? scope = logger.BeginScope(WorkerSystemLogContext.FromState(state));
         if (requestCanceled)

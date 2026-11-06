@@ -70,13 +70,10 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         StringBuilder fields = new();
         Add(nameof(context.WorkerId), NormalizeIdentifier(context.WorkerId));
         Add(nameof(context.ProxySessionId), context.ProxySessionId?.ToString(CultureInfo.InvariantCulture));
-        if (context.State is { } state)
-        {
-            Add(nameof(state.PodName), NormalizeIdentifier(state.PodName));
-            Add(nameof(state.FunctionAppName), NormalizeIdentifier(state.FunctionAppName));
-            Add(nameof(state.FunctionGroupName), NormalizeIdentifier(state.FunctionAppName is not null ? state.FunctionGroupName : null));
-            Add(nameof(state.Revision), state.Revision.ToString(CultureInfo.InvariantCulture));
-        }
+        Add(nameof(context.PodName), NormalizeIdentifier(context.PodName));
+        Add(nameof(context.FunctionAppName), NormalizeIdentifier(context.FunctionAppName));
+        Add(nameof(context.FunctionGroupName), NormalizeIdentifier(context.FunctionGroupName));
+        Add(nameof(context.Revision), context.Revision?.ToString(CultureInfo.InvariantCulture));
 
         return fields.Length == 0
             ? summary
