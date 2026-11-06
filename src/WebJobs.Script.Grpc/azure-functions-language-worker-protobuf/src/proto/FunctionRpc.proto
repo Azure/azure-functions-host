@@ -101,9 +101,9 @@ message StreamingMessage {
     WorkerDraining worker_draining = 36;
 
     // Host explicitly requests a ZIP from a worker advertising ExtensionPayload="1".
-    GetExtensionPayloadRequest get_extension_payload_request = 35;
+    GetExtensionPayloadRequest get_extension_payload_request = 37;
     // Worker sends ordered ZIP chunks followed by one terminal result while connected.
-    ExtensionPayloadResponse extension_payload_response = 36;
+    ExtensionPayloadResponse extension_payload_response = 38;
   }
 }
 

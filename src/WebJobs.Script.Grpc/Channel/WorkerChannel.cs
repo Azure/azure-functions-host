@@ -1755,13 +1755,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <summary>
-        /// Gets an initialized worker capability without exposing the mutable capability collection.
-        /// </summary>
-        /// <param name="name">The protocol capability name.</param>
-        /// <returns>The advertised value, or <see langword="null"/> when absent.</returns>
-        protected string GetCapabilityState(string name) => _workerCapabilities.GetCapabilityState(name);
-
-        /// <summary>
         /// Fails the pending metadata request without replacing an existing result or failure.
         /// </summary>
         /// <param name="exception">The metadata request failure.</param>
