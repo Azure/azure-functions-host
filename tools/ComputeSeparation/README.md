@@ -20,12 +20,12 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | Profile | Runs locally |
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
-| `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. The worker acquires a token before opening its worker connection; Host linking proceeds independently of assignment. |
+| `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. Authenticated assignment precedes Link; the worker acquires a token before opening its worker connection. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project`, `project-identity`, and `container` link the worker automatically. `project` and `container` assign the worker pod first: AppHost sends both calls through the fake platform in `project`, and calls the WorkerProxy and Host directly in `container`. The identity profile starts linking while assignment waits for the worker, avoiding a circular wait on startup token acquisition. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project`, `project-identity`, and `container` link the worker automatically. AppHost authenticates and records assignment before linking; neither assignment nor identity bootstrap requires the customer worker to connect first. The identity profile can therefore acquire its startup token over the pending Link without a circular startup wait. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
@@ -38,6 +38,11 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 ```
 
 Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
+
+Container cleanup reuses the run's actual container keys, pod/worker/request identities, network/alias and PEM paths when
+invoking `docker compose stop` or `down`; Compose requires all interpolated settings even for cleanup. Cleanup-only port
+values are zero because those commands never create resources. They do not replace the allocated ports supplied to `up`.
+Worker cleanup completes before the runtime network is removed, and a delayed stop event cannot remove a newer generation.
 
 ## Host configuration delivery
 
@@ -77,7 +82,7 @@ Once the Host has started, GET or POST requests return:
 Hello from the BYOC .NET isolated worker. Worker ID: aspire-<worker-guid>
 ```
 
-Each worker gets an independently generated GUID-based ID, matching the identity used for its Host link.
+Each local worker gets an independently generated GUID-based StartStream ID. Host Link uses its protected WorkerProxy pod name instead.
 Override the first with `ComputeSeparation:WorkerId` and the second with `ComputeSeparation:SecondWorker:WorkerId`;
 neither ID is derived from the other. The proxy names remain `worker-proxy-1` and `worker-proxy-2`.
 
@@ -103,7 +108,8 @@ An `OperationCanceledException` on an aborted assignment request instead emits
 Single and batched function loads log received/forwarded boundaries. Batch records contain counts,
 not per-function records or worker exception text; unsuccessful or missing result statuses produce a Warning.
 Expected Host shutdown during linking is Information/`Canceled`; initialization timeouts remain Warning/`Failed`.
-The platform must use the worker's `StartStream` identity for `PUT /admin/workers/{workerId}`.
+The platform uses the protected WorkerProxy pod name for `PUT /admin/workers/{workerId}`.
+The local worker's separate `StartStream` identity remains available for diagnostic correlation.
 Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
 Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.
 
@@ -120,8 +126,23 @@ In project mode, the `fake-platform` resource is a local stand-in for the platfo
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
+Each run generates three distinct synthetic keys: runtime container, WorkerProxy container and shared app. The runtime validates Link's `x-ms-site-token` with its own container key, including after specialization. WorkerProxy validates assignment and state-poll site tokens with its own key, even before a customer worker exists. That WorkerProxy key is also delivered to Host as `runtimeAccessKey` for data-plane caller JWTs. The app key is supplied through each process's normal configuration, not injected through WorkerProxy assignment. This local fixture does not establish deployed provisioning.
+
+Both receivers validate their own container key and pod identity at startup; invalid server configuration fails named options validation rather than returning a caller 401. Missing or invalid caller tokens under valid server configuration still return 401/Unauthenticated. The runtime's application proof key is read from live specialization configuration only when validating a reverse proof, so absent or invalid application-key configuration does not block management startup or caller-token signing.
+
+The runtime binds and validates a fresh application-authentication options snapshot at that proof boundary, rather than
+caching `IOptionsMonitor` values: direct specialization/provider updates need not emit a reload token. Linked credentials
+hold only the selected worker identity/key and receive the validated application values explicitly. Each channel owns a
+separate outbound HTTP handler pipeline that adds its caller token after request transformation without mutating incoming
+customer headers; disposing one channel does not dispose another worker's transport or the ordinary Host HTTP service.
+
+Assignment simulations send requested config/content Unix epoch seconds as integer numbers (synthetic zero versions for this harness) and an effective HTTP `maxHttpConcurrency` of 16. Requested versions participate in retry identity but do not confirm loaded configuration or content; their nullable numeric-string compatibility and exact Int64 precision are covered by the endpoint/native fixtures. HTTP concurrency is a separate startup-capacity contract: omission defaults to 16, explicit integers must be from 1 through 1000, and explicit null or numeric strings are invalid. Non-HTTP groups accept integers from 0 through 1000 without a default. Equivalent effective values share retry identity; invalid HTTP zero is never coerced to the default.
+
+Link uses `PUT /admin/workers/{workerId}` with the WorkerProxy pod name in the path and the existing `workerPodName`, `workerGrpcEndpoint`, and `runtimeAccessKey` fields. The merged optional `runtimeIdentity` is a nested object containing resource namespace, pod name, and app name/site ID/stamp; the concrete transport encodes it as one binary gRPC metadata entry, alongside the selected-worker caller JWT. Omitted/null identity remains conservative and does not create a platform identity. The harness sends `workerGrpcEndpoint` as scheme-less host:port with the actual mapped port; Host supplies HTTPS for its outbound gRPC connection. WorkerProxy returns its worker-bound app-key proof in `WorkerInitResponse.capabilities["WorkerProxyAppToken"]` before Host accepts Link. Exact retries must retain endpoint, decoded worker key, and all declared runtime identity values.
+
+HTTP routing remains negotiated through `HttpUri`; the harness sends the actual mapped HTTP authority as `httpProxyEndpoint` in assignment and WorkerProxy constructs HTTPS. It never guesses an external port or advertises the customer-local destination. AppHost also creates synthetic PEM files outside WorkerProxy, supplies their paths in project mode and mounts them read-only in container mode. Production images instead generate the PEM pair in their container-startup script. WorkerProxy never generates a replacement. The scoped runtime certificate policy checks expiry only. See [the runtime connection contract](../../src/Functions.WorkerProxy/README.md).
 One fake platform keeps an array of known worker proxies: `worker-proxy-1`, and `worker-proxy-2` in the multiple-worker
-profile. Aspire supplies each entry's management address, mapped HTTP authority, runtime gRPC endpoint, and worker ID.
+profile. Aspire supplies each entry's management address, mapped HTTPS authority, runtime gRPC endpoint, per-proxy container key, and protected pod identity.
 The assignment sends that scheme-less HTTP authority, including default ports, and publishes it as the effective
 HTTPS runtime origin. No proxy origin is configured at startup. Assign and link requests select an entry by name; an unknown name returns
 `404` instead of choosing a different worker. Each worker has a distinct worker ID, request ID, pod name, and proxy
@@ -137,10 +158,11 @@ from the mapped proxy endpoint to prevent a forwarding loop.
 
 Roll out assignment producers together with this WorkerProxy version: each platform must send the mapped authority
 for HTTP workers before initialization completes. Older producers that rely on the startup setting are not compatible with this
-HTTP initialization flow. Most local profiles assign before linking. In `project-identity`, linking opens the runtime
-transport early for token acquisition; WorkerProxy holds a successful HTTP initialization response until assignment
-is accepted, without blocking runtime token traffic or worker EOF detection. Messages behind initialization remain
-ordered; worker request-stream completion terminates the session and cancels that wait, even without call cancellation.
+HTTP initialization flow. The harness authenticates and records assignment before linking, including in `project-identity`;
+assignment does not require the customer to start, so pending Link can carry startup token acquisition before `StartStream`.
+The relay also holds a successful HTTP initialization response until assignment is accepted without blocking runtime
+token traffic or worker EOF detection. Messages behind initialization remain ordered; worker request-stream completion
+terminates the session and cancels that wait, even without call cancellation.
 Placeholder assignment tokens use the configured Host container name as their audience, matching Host placeholder authentication.
 
 ## Host state publication (prototype)
@@ -190,6 +212,7 @@ of endpoint resolution. It resolves and caches `MESH_INIT_URI` on its first publ
 to `http://localhost:6060/` when unset; later configuration changes do not replace that endpoint for the root Host's
 lifetime. Container mode has no fake AppServer receiver; its Host will log publication failures and retry the default
 endpoint without preventing the worker link or invocation.
+Host state publication does not establish WorkerProxy `Running`/`Linked` state or confirmed loaded versions.
 
 ## Endpoints
 
@@ -199,12 +222,14 @@ The happy path, in order:
 
 | Step | Endpoint on | Caller | Request | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | WorkerProxy | Platform | `PUT /admin/worker/assignment` | Assigns the pod once its worker has connected. |
+| 1 | WorkerProxy | Platform | `PUT /admin/worker/assignment` | Authenticates and records configuration without waiting for the customer worker. |
 | 2 | Host | Platform | `POST /admin/instance/assign` | Assigns the placeholder Host to the app, which then specializes. Not sent in `project`, whose Host starts already specialized. |
 | 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
 | 4 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
 
-`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
+WorkerProxy management availability is established with one authenticated `POST /admin/infra/instanceState`, initially with an empty body or JSON `null`. It returns HTTP 200 with a complete typed startup checkpoint, including the actual pod name, startup time, and revision before assignment. Platform/app identity fields use explicit `unknown` placeholders and confirmed-version fields remain zero; neither establishes a trusted application identity, a loaded version, or a matched app cohort. The next poll sends the complete last checkpoint; an unchanged checkpoint long-polls and returns 204 at its deadline. Stale revision/process hints and valid extra metadata never install identity or acknowledge a runtime. Separate readiness GET routes and `GET /admin/worker/state` do not exist. The local adapter polls with a WorkerProxy-key site token rather than an anonymous Aspire health check. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
+
+Assignment before customer startup is recorded as `Assigned`; a validated `StartStream` makes the attached assigned worker `Ready`. WorkerProxy reports `Running`/`Linked` with the supplied runtime identity only after it writes a correlated successful initialization response to that identified runtime; missing identity stays `Starting`/`Unlinked`. This is a WorkerProxy-side write milestone, not an acknowledgement that Host validated its proof or that function loading/serving converged. An admitted Runtime EventStream ending unexpectedly requests sticky removal even before initialization: live assignment, mapped origin/capacity, and runtime identity are cleared, replacement streams are rejected, and assignment returns terminal `503 WorkerNotReady`. Authentication can reject new caller requests before the HTTP removal guard's `503`; authenticated management/state polling remains available. Worker-first assigned termination instead retains its `Terminated`/`409 WorkerTerminated` retry classification without an automatic health failure; worker protocol violations remain failed/unhealthy. Duplicate/rejected runtime streams and planned application shutdown do not select runtime-loss removal. See [the W2 lifecycle contract](byoc-worker-runtime-link-loss-cleanup.md). Requested versions and platform/app placeholders remain distinct from confirmed loaded versions. Effective HTTP concurrency and always-ready status are captured after authenticated initialization, and capacity counts only registry-ready HTTP workers; shutdown and idle retirement withdraw that capacity. The runtime retires on-demand HTTP workers according to the merged idle thresholds, without treating cancellation alone as completed execution.
 
 ### Test-only
 
@@ -222,7 +247,7 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 `compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-placeholder-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension.
 
 > [!NOTE]
-> In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 4) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* can be sent at any time.
+> In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until the management listeners are available, then send the numbered requests (1 to 4) in the order they appear in the file. Assignment need not wait for the sample worker; Link waits within its bounded initialization attempt. The requests marked *Optional* can be sent at any time.
 
 ### Add a second worker after startup
 
@@ -256,7 +281,7 @@ POST http://localhost:7060/simulate/worker/worker-proxy-2/link
 
 `project-placeholder-manual` runs the Host the way it starts before it is assigned to an app: in placeholder mode (`WEBSITE_PLACEHOLDER_MODE=1`), with placeholder content, until it is assigned. It exercises how the Host behaves when specialization and the worker link overlap.
 
-AppHost generates a random key for each run and gives it to both the Host and the fake platform. The fake platform uses it to authenticate and encrypt its `POST /admin/instance/assign` request, as the Host expects. The Host answers `202`, leaves placeholder mode, and specializes on its next request. Specialization reloads configuration without waiting for a linked worker or restarting a ScriptHost. Linking the first worker starts the ScriptHost independently.
+AppHost gives the runtime's synthetic container key to the fake platform. The fake uses it to authenticate and encrypt `POST /admin/instance/assign` and supplies the shared app key in the normal specialization environment. The Host's `202` acknowledges assignment initiation, not completed configuration installation. Existing request buffering and specialization reload configuration before Link processing; compute separation does not wait for a placeholder ScriptHost restart. The ScriptHost starts after the first worker links.
 
 ## Container behavior
 
@@ -268,6 +293,10 @@ The dashboard has two independent resources, each backed by its own Compose proj
 | `worker-pod-1` | WorkerProxy and the sample worker, sharing a network namespace. |
 
 Stopping `worker-pod-1` removes only that pod's containers, leaving the same Host and network running. Stopping `runtime` stops the Host but keeps the network until AppHost shutdown. A small adapter runs these Compose groups because Aspire's native containers do not support the Proxy/worker shared-network arrangement.
+
+The container profile assigns WorkerProxy through its mapped management endpoint before linking its HTTPS runtime endpoints, using the same authentication contract as project mode.
+
+The WorkerProxy Dockerfile uses the repository root as its build context. Its sibling `Dockerfile.dockerignore` explicitly includes the product version props, shared management handler, RPC authentication helper, Token Service proxy sources, tracked writer, narrowly source-linked `BufferedConsoleWriter.cs`, and protobuf inputs compiled by `Functions.WorkerProxy.csproj`. Keep these rules aligned when adding linked inputs; reopening ancestor directories must not admit unrelated source trees. Build outputs, local settings and environment files remain excluded.
 
 `worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, pod name (`WORKER_POD_NAME`, passed to WorkerProxy as `WEBSITE_POD_NAME`), worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Aspire does not currently create additional container pods automatically; use the multiple-worker project profile above for the manual late-link flow.
 
@@ -281,13 +310,13 @@ The Host and WorkerProxy can forward managed-identity HTTP requests over the exi
 
 See [Token Service proxy configuration](../../src/Functions.WorkerProxy/README.md) for the required Host, WorkerProxy, and customer environment variables, configuration examples, limits, and failure behavior. The bridge is disabled by default; the `project-identity` profile below supplies its development-only settings automatically.
 
-Host linking can proceed independently of WorkerProxy assignment; the manual harness's assign-before-link sequence is not a platform requirement. Customer-only restarts do not imply a new per-pod credential or a WorkerProxy restart.
+The harness authenticates and records WorkerProxy assignment before opening Link. Assignment does not require the customer to start, so the identity scenario can establish its authenticated transport and token bootstrap before customer `StartStream` without racing runtime admission against assignment. Customer-only restart recovery is not demonstrated by this first-start flow.
 
 ### Debug the complete first-start flow
 
 Run the `project-identity` profile or select it in Visual Studio. It is project-mode only; no Azure subscription, production credentials, or Docker is required.
 
-The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential; only WorkerProxy and its customer receive the per-pod credential. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated Token Service proxy port to loopback.
+The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential. The fake platform provisions the per-pod `IDENTITY_HEADER` in the authenticated assignment environment, and AppHost supplies that same credential to its customer; WorkerProxy reads only its accepted assignment, not a startup process-environment fallback. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated Token Service proxy port to loopback.
 
 The full token path is:
 
@@ -308,7 +337,7 @@ Open the mock's `http` endpoint from the dashboard to use these development-only
 
 For example, posting `{"statusCode":429,"retryAfterSeconds":7}` makes the next upstream request return 429 and `Retry-After: 7`; posting `{}` restores success. These controls do not bypass SDK token caching: to exercise another upstream request, restart the customer sample or make a raw authenticated local HTTP request. WorkerProxy itself never caches tokens. Mock tokens are deliberately invalid for Azure services.
 
-The `Functions.Host.Tests` identity suite remains a faster automated socket/gRPC check. The interactive profile adds actual outbound HTTP and separate processes; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
+The existing `Functions.Host.Tests` identity suite uses normal startup keys, supplied PEMs and authenticated assignment with its controlled HTTP upstream. The interactive profile adds separate processes and the sample's actual startup call; neither substitutes for real Token Service interoperability, all-language qualification, or container network-isolation certification. Other existing profiles are unchanged and do not provision identity settings.
 
 Worker restart, registration, assignment, and persistent pod-transport behavior remain owned by the existing WorkerProxy lifecycle. The registry-owned setup from [#12100](https://github.com/Azure/azure-functions-host/pull/12100) is integrated, but it does not change relay transport lifetime. This checkout still couples worker-stream termination to transport termination; the identity scenario is a first-start flow, not proof of preserved transport across customer-only restarts.
 

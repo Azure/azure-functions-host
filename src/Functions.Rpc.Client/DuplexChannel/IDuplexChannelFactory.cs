@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -24,8 +25,11 @@ internal interface IDuplexChannelFactory<T>
     /// channel rather than from this method.
     /// </remarks>
     /// <param name="endpoint">The service endpoint.</param>
-    /// <param name="runtimeIdentity">Optional Runtime identity serialized as binary gRPC metadata by the transport.</param>
+    /// <param name="headers">The request headers to send when opening the channel.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
+    /// <param name="runtimeIdentity">Optional Runtime identity serialized as binary gRPC metadata by the transport.</param>
     /// <returns>The connected duplex channel.</returns>
-    Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, WorkerLinkRuntimeIdentity runtimeIdentity = null, CancellationToken cancellationToken = default);
+    Task<DuplexChannel<T>> ConnectAsync(
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null);
 }

@@ -3,7 +3,10 @@
 
 using System;
 using System.Linq;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -12,17 +15,44 @@ using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed class RpcClientServiceCollectionExtensionsTests
 {
+    [Fact]
+    public void HttpProxyHandler_SharesOnlyCertificateValidationWithGrpc()
+    {
+        using SocketsHttpHandler defaults = new();
+        using SocketsHttpHandler forwarding = RpcClientServiceCollectionExtensions.CreateHttpProxyHandler();
+        using SocketsHttpHandler grpc = RpcClientFactory.CreateHttpHandler();
+
+        Assert.Equal(defaults.ConnectTimeout, forwarding.ConnectTimeout);
+        Assert.Equal(Timeout.InfiniteTimeSpan, forwarding.ConnectTimeout);
+        Assert.Equal(defaults.KeepAlivePingDelay, forwarding.KeepAlivePingDelay);
+        Assert.Equal(defaults.KeepAlivePingTimeout, forwarding.KeepAlivePingTimeout);
+        Assert.Equal(defaults.KeepAlivePingPolicy, forwarding.KeepAlivePingPolicy);
+        Assert.True(forwarding.UseProxy);
+        Assert.Null(forwarding.Proxy);
+        Assert.False(forwarding.AllowAutoRedirect);
+        Assert.False(forwarding.UseCookies);
+        Assert.True(grpc.UseProxy);
+        Assert.Null(grpc.Proxy);
+        Assert.NotEqual(grpc.ConnectTimeout, forwarding.ConnectTimeout);
+        Assert.NotEqual(grpc.KeepAlivePingDelay, forwarding.KeepAlivePingDelay);
+        Assert.Same(RpcClientFactory.CertificateValidationCallback, forwarding.SslOptions.RemoteCertificateValidationCallback);
+        Assert.Same(grpc.SslOptions.RemoteCertificateValidationCallback, forwarding.SslOptions.RemoteCertificateValidationCallback);
+    }
+
     [Fact]
     public void AddRpcClientServices_RegistersClientLifecycleAsSingletons()
     {
@@ -31,9 +61,14 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         IServiceCollection result = services.AddRpcClientServices();
 
         Assert.Same(services, result);
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHttpProxyService));
+        Assert.DoesNotContain(services, descriptor => string.Equals(
+            descriptor.ServiceType.FullName, "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", StringComparison.Ordinal));
+        ServiceDescriptor workerTransport = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(Func<DelegatingHandler, IHttpProxyService>)));
+        Assert.Equal(ServiceLifetime.Singleton, workerTransport.Lifetime);
+        Assert.NotNull(workerTransport.ImplementationFactory);
         AssertSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>(services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerHostConfigurationParser));
-        AssertSingleton(services, typeof(IHttpProxyService), "Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService");
         AssertSingleton<IRpcClientFactory, RpcClientFactory>(services);
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
@@ -176,6 +211,86 @@ public sealed class RpcClientServiceCollectionExtensionsTests
 
         rootRegistry.Verify(registry => registry.DisposeAsync(), Times.Never);
         Assert.False(channelDisposed);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AddRpcClientServices_DoesNotOverrideOrdinaryOrCustomHttpProxyRegistrations(bool registerAfter)
+    {
+        ServiceCollection services = new();
+        services.AddLogging();
+        IHttpProxyService custom = Mock.Of<IHttpProxyService>();
+        if (!registerAfter)
+        {
+            services.AddSingleton(custom);
+        }
+
+        services.AddRpcClientServices();
+        if (registerAfter)
+        {
+            services.AddSingleton(custom);
+        }
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.Same(custom, provider.GetRequiredService<IHttpProxyService>());
+        Func<DelegatingHandler, IHttpProxyService> factory = provider.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>();
+        IHttpProxyService worker = factory(new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials()));
+        using IDisposable workerLifetime = Assert.IsAssignableFrom<IDisposable>(worker);
+        IHttpProxyService second = factory(new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials("second-worker")));
+        using IDisposable secondLifetime = Assert.IsAssignableFrom<IDisposable>(second);
+        Assert.Equal("Microsoft.Azure.WebJobs.Script.Http.DefaultHttpProxyService", worker.GetType().FullName);
+        Assert.NotSame(custom, worker);
+        Assert.NotSame(worker, second);
+    }
+
+    [Fact]
+    public async Task DedicatedWorkerTransport_IsOwnedByItsChannelAndSurvivesScriptHostChildDisposal()
+    {
+        ServiceCollection services = new();
+        services.AddLogging();
+        TaskCompletionSource<HttpMessageInvoker> captured = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IHttpForwarder> forwarder = new();
+        forwarder.Setup(value => value.SendAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<HttpMessageInvoker>(),
+            It.IsAny<ForwarderRequestConfig>(), It.IsAny<HttpTransformer>()))
+            .Returns((HttpContext _, string _, HttpMessageInvoker invoker, ForwarderRequestConfig _, HttpTransformer _) =>
+            {
+                captured.TrySetResult(invoker);
+                return ValueTask.FromResult(ForwarderError.None);
+            });
+        services.AddSingleton(forwarder.Object);
+        services.AddRpcClientServices();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Func<DelegatingHandler, IHttpProxyService> factory = provider.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>();
+        IHttpProxyService transport = factory(new WorkerProxyHttpMessageHandler(RuntimeWorkerTestData.CreateCredentials()));
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
+            "worker", httpProxyService: transport);
+        IServiceCollection forwardingServices = new ServiceCollection();
+        foreach (ServiceDescriptor descriptor in services.Where(descriptor =>
+            descriptor.ServiceType == typeof(Func<DelegatingHandler, IHttpProxyService>)))
+        {
+            forwardingServices.Add(descriptor);
+        }
+        await using (ServiceProvider child = provider.CreateChildContainer(forwardingServices).BuildServiceProvider())
+        {
+            Assert.Same(factory, child.GetRequiredService<Func<DelegatingHandler, IHttpProxyService>>());
+        }
+        DefaultHttpContext http = new();
+        http.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
+        ScriptInvocationContext invocation = new()
+        {
+            FunctionMetadata = new() { Name = "Http" },
+            ExecutionContext = new() { InvocationId = Guid.NewGuid() },
+            Inputs = [("req", DataType.String, http.Request)]
+        };
+        transport.StartForwarding(invocation, new("https://worker-proxy:28080/"));
+        HttpMessageInvoker owned = await captured.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await transport.EnsureSuccessfulForwardingAsync(invocation);
+
+        await worker.DisposeAsync();
+
+        using HttpRequestMessage request = new(HttpMethod.Get, "https://worker-proxy:28080/");
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => owned.SendAsync(request, CancellationToken.None));
     }
 
     [Fact]

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -31,25 +32,53 @@ internal sealed class RpcClientWorkerChannelFactory(
     IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
     IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
     IAppCapabilitiesStore appCapabilitiesStore,
-    IHttpProxyService httpProxyService,
-    IMetricsLogger metricsLogger) : IRpcClientWorkerChannelFactory
+    Func<DelegatingHandler, IHttpProxyService> httpProxyServiceFactory,
+    IOptionsFactory<RuntimeApplicationAuthenticationOptions> appAuthenticationOptions,
+    IMetricsLogger metricsLogger,
+    IOptionsMonitor<WorkerProcessCountOptions> processOptions = null) : IRpcClientWorkerChannelFactory
 {
+    internal const string WorkerOptionsName = "RpcClient";
+
     private readonly IAppCapabilitiesStore _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
     private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
     private readonly IEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     private readonly IScriptEventManager _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
     private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
     private readonly IScriptHostManager _hostManager = hostManager ?? throw new ArgumentNullException(nameof(hostManager));
-    private readonly IHttpProxyService _httpProxyService = httpProxyService ?? throw new ArgumentNullException(nameof(httpProxyService));
+
+    private readonly Func<DelegatingHandler, IHttpProxyService> _httpProxyServiceFactory = httpProxyServiceFactory
+        ?? throw new ArgumentNullException(nameof(httpProxyServiceFactory));
+
+    private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions = appAuthenticationOptions
+        ?? throw new ArgumentNullException(nameof(appAuthenticationOptions));
+
     private readonly ILoggerFactory _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly IMetricsLogger _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
     private readonly ISharedMemoryManager _sharedMemoryManager = sharedMemoryManager ?? throw new ArgumentNullException(nameof(sharedMemoryManager));
     private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions = workerConcurrencyOptions ?? throw new ArgumentNullException(nameof(workerConcurrencyOptions));
+    private readonly WorkerProcessCountOptions _processOptions = processOptions?.Get(WorkerOptionsName) ?? new();
 
-    public RpcClientWorkerChannel Create(string workerId, DuplexChannel<StreamingMessage> ownedChannel)
+    internal static bool HasValidTimeouts(WorkerProcessCountOptions options) =>
+        options.ProcessStartupTimeout > TimeSpan.Zero && options.InitializationTimeout > TimeSpan.Zero
+        && options.ProcessStartupTimeout.TotalMilliseconds + options.InitializationTimeout.TotalMilliseconds
+            + RpcClientFactory.DefaultConnectTimeout.TotalMilliseconds <= uint.MaxValue - 1;
+
+    internal static TimeSpan GetLinkTimeout(WorkerProcessCountOptions options)
+    {
+        if (!HasValidTimeouts(options))
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Worker startup and initialization require bounded positive timeouts.");
+        }
+
+        return RpcClientFactory.DefaultConnectTimeout + options.ProcessStartupTimeout + options.InitializationTimeout;
+    }
+
+    public RpcClientWorkerChannel Create(
+        string workerId, DuplexChannel<StreamingMessage> ownedChannel, RuntimeWorkerCredentials credentials)
     {
         ArgumentException.ThrowIfNullOrEmpty(workerId);
         ArgumentNullException.ThrowIfNull(ownedChannel);
+        ArgumentNullException.ThrowIfNull(credentials);
 
         RpcWorkerConfig workerConfig = new()
         {
@@ -58,24 +87,57 @@ internal sealed class RpcClientWorkerChannelFactory(
                 Language = "external",
                 WorkerDirectory = string.Empty,
             },
-            CountOptions = new(),
+            CountOptions = new()
+            {
+                ProcessStartupTimeout = _processOptions.ProcessStartupTimeout,
+                InitializationTimeout = _processOptions.InitializationTimeout
+            },
         };
         ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{workerConfig.Description.Language}.{workerId}");
-        return new(
-            workerId,
-            ownedChannel,
-            _eventManager,
-            _hostManager,
-            workerConfig,
-            workerLogger,
-            _metricsLogger,
-            attemptCount: 0,
-            _environment,
-            _applicationHostOptions,
-            _sharedMemoryManager,
-            _workerConcurrencyOptions,
-            _hostingConfigOptions,
-            _appCapabilitiesStore,
-            _httpProxyService);
+        WorkerProxyHttpMessageHandler authenticationHandler = new(credentials);
+        IHttpProxyService httpProxyService = null;
+        try
+        {
+            httpProxyService = _httpProxyServiceFactory(authenticationHandler);
+
+            return new(
+                workerId,
+                ownedChannel,
+                _eventManager,
+                _hostManager,
+                workerConfig,
+                workerLogger,
+                _metricsLogger,
+                attemptCount: 0,
+                _environment,
+                _applicationHostOptions,
+                _sharedMemoryManager,
+                _workerConcurrencyOptions,
+                _hostingConfigOptions,
+                _appCapabilitiesStore,
+                httpProxyService,
+                credentials,
+                _appAuthenticationOptions);
+        }
+        catch
+        {
+            try
+            {
+                if (httpProxyService is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+                else
+                {
+                    authenticationHandler.Dispose();
+                }
+            }
+            catch (Exception exception) when (!Utility.IsFatal(exception))
+            {
+                workerLogger.LogWarning(exception, "Failed to dispose HTTP forwarding resources after worker channel creation failed.");
+            }
+
+            throw;
+        }
     }
 }

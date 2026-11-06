@@ -149,7 +149,7 @@ public sealed partial class WorkerChannelRegistryTests
                 ["FunctionGroupName"] = "http",
                 ["IsAlwaysReady"] = "False",
                 ["MaxHttpConcurrency"] = "16",
-                ["HttpUri"] = "http://worker:8080/",
+                ["HttpUri"] = "https://worker:8080/",
             },
             HttpProxyService = proxy.Object,
         };
@@ -214,6 +214,7 @@ public sealed partial class WorkerChannelRegistryTests
         FakeTimeProvider time = new();
         TaskCompletionSource disposalWaitStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock<TimeProvider> clock = new();
+        clock.Setup(provider => provider.GetUtcNow()).Returns(time.GetUtcNow);
         clock.Setup(provider => provider.GetTimestamp()).Returns(time.GetTimestamp);
         clock.SetupGet(provider => provider.TimestampFrequency).Returns(time.TimestampFrequency);
         clock.Setup(provider => provider.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object>(),

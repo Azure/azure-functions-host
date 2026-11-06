@@ -9,9 +9,11 @@ using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -32,8 +34,10 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
         await using DuplexChannel<StreamingMessage> channel =
-            await channelFactory.ConnectAsync(server.Endpoint, runtimeIdentity);
+            await channelFactory.ConnectAsync(
+                server.Endpoint, RuntimeWorkerTestData.CreateCredentials().CreateHeaders(), runtimeIdentity: runtimeIdentity);
         await server.Service.Connected.WaitAsync(TestTimeout);
+        Assert.NotNull(server.Service.RequestHeaders.GetValue("x-ms-functions-worker-token"));
 
         Grpc.Core.Metadata.Entry[] identityHeaders = [.. server.Service.RequestHeaders
             .Where(header => string.Equals(header.Key, "x-ms-functions-runtime-identity-bin", StringComparison.Ordinal))];
@@ -56,6 +60,42 @@ public class FunctionRpcDuplexChannelIntegrationTests
             Assert.Equal(runtimeIdentity.App.FunctionAppSiteId, app.GetProperty("functionAppSiteId").GetInt32());
             Assert.Equal(runtimeIdentity.App.AntaresStampName, app.GetProperty("antaresStampName").GetString());
         }
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ForwardsNeutralHeaderSequenceAsGrpcMetadata()
+    {
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+        int enumerations = 0;
+        IEnumerable<KeyValuePair<string, string>> headers = GetHeaders();
+
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, headers);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        Assert.Equal("neutral-transport-value", server.Service.RequestHeaders.GetValue("x-test-header"));
+        Assert.Equal("opaque-caller-token", server.Service.RequestHeaders.GetValue("x-ms-functions-worker-token"));
+        Assert.Equal(1, enumerations);
+
+        IEnumerable<KeyValuePair<string, string>> GetHeaders()
+        {
+            enumerations++;
+            yield return new("x-test-header", "neutral-transport-value");
+            yield return new("x-ms-functions-worker-token", "opaque-caller-token");
+        }
+    }
+
+    [Fact]
+    public async Task ConnectAsync_RejectsMissingHeadersBeforeCreatingClient()
+    {
+        Mock<IRpcClientFactory> clientFactory = new(MockBehavior.Strict);
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory.Object);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            channelFactory.ConnectAsync(new("https://worker-proxy:50053"), null));
+
+        clientFactory.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -132,12 +172,13 @@ public class FunctionRpcDuplexChannelIntegrationTests
     public async Task ConnectionFailureDoesNotReturnPartialStream()
     {
         int unusedPort = GetUnusedPort();
-        Uri endpoint = new($"http://{IPAddress.Loopback}:{unusedPort}");
+        Uri endpoint = new($"https://{IPAddress.Loopback}:{unusedPort}");
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
-        await Assert.ThrowsAnyAsync<Exception>(() => channelFactory.ConnectAsync(endpoint, null, timeoutSource.Token));
+        await Assert.ThrowsAnyAsync<Exception>(() => channelFactory.ConnectAsync(
+            endpoint, RuntimeWorkerTestData.CreateCredentials().CreateHeaders(), timeoutSource.Token));
     }
 
     [Fact]
@@ -149,7 +190,29 @@ public class FunctionRpcDuplexChannelIntegrationTests
         using CancellationTokenSource cancellationSource = new();
         cancellationSource.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => channelFactory.ConnectAsync(server.Endpoint, null, cancellationSource.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => channelFactory.ConnectAsync(
+            server.Endpoint, RuntimeWorkerTestData.CreateCredentials().CreateHeaders(), cancellationSource.Token));
+    }
+
+    [Fact]
+    public async Task CancellationAfterConnectDoesNotCancelTheOwnedDuplexCall()
+    {
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
+        using CancellationTokenSource cancellation = new();
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint, cancellation.Token);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        cancellation.Cancel();
+        await channel.Writer.WriteAsync(new() { RequestId = "after-link-request-cancellation" });
+        StreamingMessage request = await server.Service.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal("after-link-request-cancellation", request.RequestId);
+        await server.Service.SendResponseAsync(new() { RequestId = "still-connected" });
+        Assert.Equal("still-connected", (await ReadNextAsync(channel)).RequestId);
+
+        await channel.DisposeAsync();
+        await channel.Reader.Completion.WaitAsync(TestTimeout);
     }
 
     [Fact]

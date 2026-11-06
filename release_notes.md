@@ -4,6 +4,7 @@
 - My change description (#PR)
 -->
 
+- Authenticate runtime-to-WorkerProxy Link and TLS connections, validate worker-bound app proofs before admission, and isolate credentialed HTTP forwarding. (#12123)
 - Add WorkerProxy management/runtime authentication, app-proof signing, startup-provisioned TLS and the platform assignment/state contract; compatible runtime integration is a dependent follow-up. (#12124)
 - Update PS 7.4 worker to [v4.0.5575](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5575) (#12110)
 - Update PS 7.6 worker to [v4.0.5576](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5576) (#12110)

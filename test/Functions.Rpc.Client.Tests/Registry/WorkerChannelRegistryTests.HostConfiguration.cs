@@ -346,7 +346,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
         Task<Microsoft.Azure.WebJobs.Script.Grpc.WorkerChannel> waiter = registry.WaitForFirstInitializedAsync();
-        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"), null, cancellation.Token);
+        Task<WorkerLinkResult> link = registry.LinkAsync("worker", CreateEndpoint("worker"), RuntimeWorkerTestData.WorkerKey, cancellation.Token);
         await canceled.StartEntered.WaitAsync(TestTimeout);
 
         cancellation.Cancel();
@@ -385,7 +385,7 @@ public sealed partial class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            registry.LinkAsync("worker", CreateEndpoint("worker"), null, cancellation.Token).WaitAsync(TestTimeout));
+            registry.LinkAsync("worker", CreateEndpoint("worker"), RuntimeWorkerTestData.WorkerKey, cancellation.Token).WaitAsync(TestTimeout));
 
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
