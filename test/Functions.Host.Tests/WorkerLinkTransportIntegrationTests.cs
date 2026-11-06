@@ -97,12 +97,11 @@ public sealed class WorkerLinkTransportIntegrationTests
                 antaresStampName = "test-stamp"
             }
         };
-        await using WebApplication runtimeTransport = await WorkerProxyTestTransport.StartAsync(
-            Loopback(endpoints.GetRelayAddress(ProxySide.Runtime)), certificates, "worker-proxy-test", token);
-        Uri grpcEndpoint = new(runtimeTransport.Urls.Single());
+        Uri grpcEndpoint = Loopback(endpoints.GetRelayAddress(ProxySide.Runtime));
         string legacyJson = JsonSerializer.Serialize(new
         {
             workerGrpcEndpoint = grpcEndpoint.AbsoluteUri,
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey,
             runtimeIdentity = JsonSerializer.Serialize(identity)
         });
         using HttpResponseMessage legacy = await host.PutAsync(legacyJson, token, "worker-proxy-test");
@@ -116,7 +115,7 @@ public sealed class WorkerLinkTransportIntegrationTests
             workerPodName = "worker-proxy-test",
             workerGrpcEndpoint = grpcEndpoint.AbsoluteUri,
             runtimeIdentity = identity,
-            runtimeAccessKey = "test-only-key"
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey
         });
         Task<HttpResponseMessage> link = host.PutAsync(json, token, "worker-proxy-test");
         Assert.True(await worker.ResponseStream.MoveNext(token));
@@ -157,7 +156,11 @@ public sealed class WorkerLinkTransportIntegrationTests
     {
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["WEBSITE_SITE_NAME"] = "test-app",
+            ["WEBSITE_AUTH_ENCRYPTION_KEY"] = ManagementTokenTestData.AppKey
+        }).Build());
         services.AddRpcClientServices();
         Mock<IScriptHostManager> manager = new();
         manager.As<IServiceProvider>().Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))

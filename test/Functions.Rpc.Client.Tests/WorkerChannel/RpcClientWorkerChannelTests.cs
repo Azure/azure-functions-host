@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
@@ -13,15 +15,17 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Moq.Protected;
 using Xunit;
 using RpcExceptionMessage = Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcException;
 
@@ -36,13 +40,16 @@ public sealed class RpcClientWorkerChannelTests
     private readonly Mock<IEnvironment> _environment = new();
     private readonly RpcClientWorkerChannelFactory _factory;
     private readonly IMetricsLogger _metricsLogger = Mock.Of<IMetricsLogger>();
+    private readonly ConcurrentQueue<string> _logs = new();
 
     public RpcClientWorkerChannelTests()
     {
         _factory = CreateFactory();
     }
 
-    private RpcClientWorkerChannelFactory CreateFactory()
+    private RpcClientWorkerChannelFactory CreateFactory(
+        IOptionsFactory<RuntimeApplicationAuthenticationOptions> appAuthenticationOptions = null,
+        Func<DelegatingHandler, IHttpProxyService> httpProxyServiceFactory = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -55,19 +62,248 @@ public sealed class RpcClientWorkerChannelTests
 
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
+        Mock<ILogger> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        logger.Setup(value => value.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(new InvocationAction(call => _logs.Enqueue((string)((Delegate)call.Arguments[4])
+                .DynamicInvoke(call.Arguments[2], call.Arguments[3]))));
+        Mock<ILoggerFactory> loggers = new();
+        loggers.Setup(value => value.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
 
         return new(
             new ScriptEventManager(),
             hostManager.Object,
             _environment.Object,
-            NullLoggerFactory.Instance,
+            loggers.Object,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             _appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            httpProxyServiceFactory ?? (_ => Mock.Of<IHttpProxyService>()),
+            appAuthenticationOptions ?? RuntimeWorkerTestData.CreateApplicationOptions(),
             _metricsLogger);
+    }
+
+    [Theory]
+    [InlineData("MissingKey")]
+    [InlineData("InvalidKey")]
+    public async Task StartAsync_InvalidApplicationOptionsFailBeforeInitPublicationAndDoNotLeakValues(string reason)
+    {
+        Mock<IOptionsFactory<RuntimeApplicationAuthenticationOptions>> options = new(MockBehavior.Strict);
+        options.Setup(value => value.Create(Options.DefaultName)).Throws(
+            new OptionsValidationException(Options.DefaultName, typeof(RuntimeApplicationAuthenticationOptions), [reason]));
+        RpcClientWorkerChannelFactory factory = CreateFactory(appAuthenticationOptions: options.Object);
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = factory.Create(
+            WorkerId, transport, RuntimeWorkerTestData.CreateCredentials(WorkerId));
+        options.VerifyNoOtherCalls();
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Add("UntrustedCapability", "must-not-be-published");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException error = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+
+        Assert.Equal(WorkerLinkFailureReason.AuthenticationUnavailable, error.Reason);
+        Assert.Null(channel.WorkerCapabilities.GetCapabilityState("UntrustedCapability"));
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        Assert.Null(channel.HostConfiguration);
+        Assert.Contains(_logs, message => message.Contains("AuthenticationUnavailable", StringComparison.Ordinal));
+        Assert.DoesNotContain(_logs, message => message.Contains(RuntimeWorkerTestData.AppKey, StringComparison.Ordinal));
+        options.Verify(value => value.Create(Options.DefaultName), Times.Once);
+        options.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UpdateCapabilities_OnlyCopiesWhenSanitizingAReservedProof(bool containsProof, bool replace)
+    {
+        await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(WorkerId);
+        Dictionary<string, string> values = new() { ["PublicCapability"] = "enabled" };
+        if (containsProof)
+        {
+            values.Add("WorkerProxyAppToken", "private-reload-proof");
+        }
+        Mock<IDictionary<string, string>> fields = new(MockBehavior.Strict);
+        fields.Setup(value => value.ContainsKey("WorkerProxyAppToken")).Returns(containsProof);
+        fields.SetupGet(value => value.Count).Returns(values.Count);
+        int enumerations = 0;
+        fields.Setup(value => value.GetEnumerator()).Returns(() =>
+        {
+            enumerations++;
+
+            return values.GetEnumerator();
+        });
+        string httpUri = null;
+        fields.Setup(value => value.TryGetValue(RpcWorkerConstants.HttpUri, out httpUri)).Returns(false);
+
+        harness.Channel.UpdateCapabilities(fields.Object,
+            replace ? GrpcCapabilitiesUpdateStrategy.Replace : GrpcCapabilitiesUpdateStrategy.Merge);
+
+        Assert.Equal(containsProof ? 1 : 2, enumerations);
+        Assert.Equal("enabled", harness.Channel.WorkerCapabilities.GetCapabilityState("PublicCapability"));
+        Assert.Null(harness.Channel.WorkerCapabilities.GetCapabilityState("WorkerProxyAppToken"));
+        Assert.Equal(containsProof, values.ContainsKey("WorkerProxyAppToken"));
+    }
+
+    [Fact]
+    public async Task DisposeAsync_DisposesOnlyTheChannelsOwnHttpTransportOnce()
+    {
+        Mock<IHttpProxyService> first = new();
+        Mock<IHttpProxyService> second = new();
+        Mock<IDisposable> firstLifetime = first.As<IDisposable>();
+        Mock<IDisposable> secondLifetime = second.As<IDisposable>();
+        Queue<IHttpProxyService> services = new([first.Object, second.Object]);
+        RpcClientWorkerChannelFactory factory = CreateFactory(httpProxyServiceFactory: _ => services.Dequeue());
+        await using RpcClientWorkerChannel firstChannel = factory.Create(
+            "first", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("first"));
+        await using RpcClientWorkerChannel secondChannel = factory.Create(
+            "second", new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials("second"));
+
+        await firstChannel.DisposeAsync();
+        await firstChannel.DisposeAsync();
+
+        firstLifetime.Verify(value => value.Dispose(), Times.Once);
+        secondLifetime.Verify(value => value.Dispose(), Times.Never);
+        await secondChannel.DisposeAsync();
+        secondLifetime.Verify(value => value.Dispose(), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Create_FailedHttpPipelineCreationDisposesTheHandlerAndPreservesThePrimaryFailure(bool cleanupFails)
+    {
+        InvalidOperationException primary = new("controlled HTTP factory failure");
+        Mock<HttpMessageHandler> inner = new();
+        if (cleanupFails)
+        {
+            inner.Protected().Setup("Dispose", ItExpr.IsAny<bool>())
+                .Throws(new InvalidOperationException("controlled HTTP cleanup failure"));
+        }
+        RpcClientWorkerChannelFactory factory = CreateFactory(httpProxyServiceFactory: handler =>
+        {
+            handler.InnerHandler = inner.Object;
+
+            throw primary;
+        });
+
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => factory.Create(
+            WorkerId, new TestDuplexChannel<StreamingMessage>(), RuntimeWorkerTestData.CreateCredentials(WorkerId)));
+
+        Assert.Same(primary, error);
+        inner.Protected().Verify("Dispose", Times.Once(), ItExpr.Is<bool>(value => value));
+        if (cleanupFails)
+        {
+            Assert.Contains(_logs, message => message.Contains("Failed to dispose HTTP forwarding resources", StringComparison.Ordinal));
+        }
+    }
+
+    [Theory]
+    [InlineData(StatusResult.Types.Status.Success, "valid")]
+    [InlineData(StatusResult.Types.Status.Success, "missing")]
+    [InlineData(StatusResult.Types.Status.Success, "invalid")]
+    [InlineData(StatusResult.Types.Status.Failure, "valid")]
+    [InlineData(StatusResult.Types.Status.Cancelled, "valid")]
+    public async Task StartAsync_ReverseProofIsRemovedBeforeLoggingOrCapabilityPublication(StatusResult.Types.Status status, string proofKind)
+    {
+        bool initializationFails = status is not StatusResult.Types.Status.Success;
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
+        bool valid = string.Equals(proofKind, "valid", StringComparison.Ordinal);
+        string proof = RuntimeWorkerTestData.CreateAppProof(WorkerId) + (valid ? string.Empty : "A");
+        response.Capabilities.Remove("WorkerProxyAppToken");
+        if (!string.Equals(proofKind, "missing", StringComparison.Ordinal))
+        {
+            response.Capabilities["WorkerProxyAppToken"] = proof;
+        }
+
+        if (initializationFails)
+        {
+            response.Result = new()
+            {
+                Status = status,
+                Exception = new() { Message = "worker-initialization-error" }
+            };
+        }
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+        if (valid && !initializationFails)
+        {
+            await start.WaitAsync(TestTimeout);
+        }
+        else if (valid && status is StatusResult.Types.Status.Cancelled)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => start.WaitAsync(TestTimeout));
+        }
+        else if (valid)
+        {
+            await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(() => start.WaitAsync(TestTimeout));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        }
+
+        if (!valid || initializationFails)
+        {
+            _appCapabilitiesStore.Verify(value => value.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never);
+            Assert.Null(channel.FunctionGroupName);
+            Assert.Null(channel.MaxHttpConcurrency);
+        }
+        else
+        {
+            Assert.Equal("http", channel.FunctionGroupName);
+            Assert.Equal(16, channel.MaxHttpConcurrency);
+        }
+        Assert.False(response.Capabilities.ContainsKey("WorkerProxyAppToken"));
+        string log = string.Join(Environment.NewLine, _logs);
+        Assert.DoesNotContain(proof, log, StringComparison.Ordinal);
+        Assert.DoesNotContain("WorkerProxyAppToken", log, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData((StatusResult.Types.Status)42)]
+    public async Task StartAsync_ValidProofWithMalformedResultFailsBeforeCapabilityPublication(StatusResult.Types.Status? status)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Result = status is { } value ? new() { Status = value } : null;
+        response.Capabilities.Add("UntrustedCapability", "must-not-be-published");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
+        response.AppCapabilities.Add("UntrustedAppCapability", "must-not-be-published");
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
+        Assert.False(channel.IsReadyForInvocations);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        _appCapabilitiesStore.Verify(value => value.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never);
+        Assert.False(response.Capabilities.ContainsKey("WorkerProxyAppToken"));
+        string log = string.Join(Environment.NewLine, _logs);
+        Assert.DoesNotContain("Worker process initialized", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("Worker capabilities:", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("must-not-be-published", log, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -87,7 +323,7 @@ public sealed class RpcClientWorkerChannelTests
             RuntimeVersion = "24.0",
         };
 
-        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, WorkerId) });
         await start.WaitAsync(TestTimeout);
 
         Assert.Equal(StreamingMessage.ContentOneofCase.WorkerInitRequest, initRequest.ContentCase);
@@ -118,7 +354,7 @@ public sealed class RpcClientWorkerChannelTests
             },
         };
 
-        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, WorkerId) });
 
         Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException exception =
             await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(() => start.WaitAsync(TestTimeout));
@@ -342,7 +578,7 @@ public sealed class RpcClientWorkerChannelTests
         Task start = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(transport);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
-        response.Capabilities.Clear();
+        response.Capabilities.Remove(RpcClientWorkerChannel.FunctionGroupNameCapability);
         if (group is not null)
         {
             response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = group;
@@ -567,14 +803,14 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
-        => _factory.Create(WorkerId, duplexChannel);
+        => _factory.Create(WorkerId, duplexChannel, RuntimeWorkerTestData.CreateCredentials(WorkerId));
 
     private static WorkerInitResponse CreateSuccessfulInitResponse()
-        => new()
+        => RuntimeWorkerTestData.Authenticate(new()
         {
             Result = new() { Status = StatusResult.Types.Status.Success },
             Capabilities = { [RpcClientWorkerChannel.FunctionGroupNameCapability] = "function:TestFunction" },
-        };
+        }, WorkerId);
 
     private static async Task<StreamingMessage> SendStartStreamAndReadInitRequestAsync(TestDuplexChannel<StreamingMessage> duplexChannel)
     {

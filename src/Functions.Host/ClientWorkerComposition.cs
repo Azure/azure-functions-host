@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Identity;
@@ -36,6 +37,9 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
 
     public static ClientWorkerComposition Instance { get; } = new();
 
+    // Trigger discovery owns publication for split compute; serving hosts must not publish on startup.
+    public bool SupportsBackgroundTriggerSync => false;
+
     public void ConfigureWebHostServices(IServiceCollection services, IMvcBuilder mvcBuilder)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -53,6 +57,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         });
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
+        ContainerManagementAuthenticationHandler.AddServices(services);
         services.AddAppServerHostStatePublisher();
         services.AddOptions<TokenServiceProxyOptions>().BindConfiguration(TokenServiceProxyOptions.HostSectionName);
         services.AddSingleton<ITokenServiceProxyRequestHandler, HostTokenServiceForwarder>();

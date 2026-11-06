@@ -3,18 +3,23 @@
 
 using System;
 using System.Linq;
+using System.Net.Http;
+using Azure.Functions.Authentication;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -33,7 +38,31 @@ public static class RpcClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
-        services.AddDefaultHttpProxyService();
+        services.AddHttpForwarder();
+        services.AddSingleton<Func<DelegatingHandler, IHttpProxyService>>(provider =>
+        {
+            IHttpForwarder forwarder = provider.GetRequiredService<IHttpForwarder>();
+            ILogger<DefaultHttpProxyService> logger = provider.GetRequiredService<ILogger<DefaultHttpProxyService>>();
+
+            return authenticationHandler =>
+            {
+                authenticationHandler.InnerHandler = CreateHttpProxyHandler();
+
+                return new DefaultHttpProxyService(forwarder, logger, authenticationHandler);
+            };
+        });
+        services.AddOptions<RuntimeApplicationAuthenticationOptions>()
+            .Configure<IConfiguration>((options, configuration) =>
+            {
+                options.AppName = configuration[RuntimeWorkerAuthentication.AppNameSetting];
+                options.EncodedAppKey = configuration[RuntimeWorkerAuthentication.AppKeySetting];
+            });
+        services.AddSingleton<IValidateOptions<RuntimeApplicationAuthenticationOptions>, RuntimeApplicationAuthenticationOptionsValidator>();
+        services.AddOptions<WorkerProcessCountOptions>(RpcClientWorkerChannelFactory.WorkerOptionsName)
+            .BindConfiguration("RpcClient:Worker")
+            .Validate(options => RpcClientWorkerChannelFactory.HasValidTimeouts(options),
+                "RpcClient worker startup and initialization timeouts must be positive and have a bounded total.")
+            .ValidateOnStart();
         services.AddSingleton<IWorkerHostConfigurationParser, WorkerHostConfigurationParser>();
         services.AddOptions<TokenServiceProxyOptions>().ValidateOnStart();
         services.AddSingleton<IValidateOptions<TokenServiceProxyOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyOptions>>();
@@ -95,8 +124,7 @@ public static class RpcClientServiceCollectionExtensions
     /// <param name="rootServiceProvider">The root provider that owns the Client channel registry.</param>
     /// <returns>The supplied service collection.</returns>
     public static IServiceCollection AddRpcClientScriptHostServices(
-        this IServiceCollection services,
-        IServiceProvider rootServiceProvider)
+        this IServiceCollection services, IServiceProvider rootServiceProvider)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(rootServiceProvider);
@@ -124,6 +152,16 @@ public static class RpcClientServiceCollectionExtensions
 
         return services;
     }
+
+    internal static SocketsHttpHandler CreateHttpProxyHandler() => new()
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false,
+        SslOptions = new()
+        {
+            RemoteCertificateValidationCallback = RpcClientFactory.CertificateValidationCallback
+        }
+    };
 
     private static void ThrowIfRegistered<TService>(IServiceCollection services, string registrationMethod)
     {

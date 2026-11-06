@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -39,9 +40,13 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     /// </summary>
     /// <param name="clientFactory">The factory that owns reusable endpoint channels.</param>
     /// <param name="logger">The logger used for partial connection cleanup failures.</param>
-    public FunctionRpcDuplexChannelFactory(IRpcClientFactory clientFactory, ILogger<FunctionRpcDuplexChannelFactory> logger,
-        IOptions<TokenServiceProxyOptions> proxyOptions = null, ITokenServiceProxyRequestHandler proxyHandler = null,
-        TimeProvider timeProvider = null, TokenServiceProxyAdmission proxyAdmission = null)
+    public FunctionRpcDuplexChannelFactory(
+        IRpcClientFactory clientFactory,
+        ILogger<FunctionRpcDuplexChannelFactory> logger,
+        IOptions<TokenServiceProxyOptions> proxyOptions = null,
+        ITokenServiceProxyRequestHandler proxyHandler = null,
+        TimeProvider timeProvider = null,
+        TokenServiceProxyAdmission proxyAdmission = null)
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -52,9 +57,12 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     }
 
     /// <inheritdoc />
-    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, WorkerLinkRuntimeIdentity runtimeIdentity = null,
-        CancellationToken cancellationToken = default)
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint, IEnumerable<KeyValuePair<string, string>> headers, CancellationToken cancellationToken = default,
+        WorkerLinkRuntimeIdentity runtimeIdentity = null)
     {
+        ArgumentNullException.ThrowIfNull(headers);
+        cancellationToken.ThrowIfCancellationRequested();
         if (_proxyOptions.Enabled && _proxyHandler is null)
         {
             throw new InvalidOperationException("An enabled Token Service proxy requires a root-owned HTTP request handler.");
@@ -64,10 +72,18 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        Metadata headers = runtimeIdentity is null
-            ? null
-            : new() { { RuntimeIdentityHeaderName, JsonSerializer.SerializeToUtf8Bytes(runtimeIdentity, IdentityJsonOptions) } };
-        var call = client.EventStream(headers);
+        Metadata metadata = new();
+        foreach ((string name, string value) in headers)
+        {
+            metadata.Add(name, value);
+        }
+
+        if (runtimeIdentity is not null)
+        {
+            metadata.Add(RuntimeIdentityHeaderName, JsonSerializer.SerializeToUtf8Bytes(runtimeIdentity, IdentityJsonOptions));
+        }
+
+        var call = client.EventStream(metadata, cancellationToken: CancellationToken.None);
         try
         {
             GrpcDuplexChannel<StreamingMessage> channel = call.AsChannel();

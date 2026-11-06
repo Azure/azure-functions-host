@@ -356,7 +356,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.Null(manager.Services);
         Assert.Empty(Directory.EnumerateFiles(testHost.ScriptPath));
 
-        await registry.LinkAsync("first", first.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("first", first.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         await first.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
@@ -371,7 +371,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.Single(scriptHost.Functions);
         Assert.False(File.Exists(Path.Combine(testHost.ScriptPath, "host.json")));
 
-        await registry.LinkAsync("later", later.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("later", later.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
 
         Assert.Equal("1", later.Service.InitRequest!.Capabilities["HostConfiguration"]);
         Assert.Same(scriptServices, manager.Services);
@@ -413,7 +413,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("first", first.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("first", first.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         await first.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
@@ -422,7 +422,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.Null(sourceProvider.GetConfigurationSource());
         Assert.Equal("local", scriptServices.GetRequiredService<IConfiguration>()["AzureFunctionsJobHost:extensions:custom:setting"]);
 
-        await registry.LinkAsync("later", later.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("later", later.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
 
         Assert.Null(sourceProvider.GetConfigurationSource());
         Assert.Same(scriptServices, manager.Services);
@@ -461,7 +461,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
         WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() =>
-            registry.LinkAsync("worker", invalid.Endpoint, null, timeout.Token));
+            registry.LinkAsync("worker", invalid.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token));
 
         Assert.Null(exception.InnerException);
         Assert.DoesNotContain("customer-secret", exception.ToString(), StringComparison.Ordinal);
@@ -481,7 +481,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         Assert.DoesNotContain(testHost.Logs, log =>
             log.Message?.Contains("customer-secret", StringComparison.Ordinal) is true ||
             log.Exception?.ToString().Contains("customer-secret", StringComparison.Ordinal) is true);
-        await registry.LinkAsync("worker", valid.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("worker", valid.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         await coordinator.ActivationTask.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         Assert.Single(manager.Services!.GetRequiredService<ScriptHost>().Functions);
@@ -499,7 +499,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("worker", worker.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("worker", worker.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
 
         IServiceProvider scriptServices = Assert.IsAssignableFrom<IServiceProvider>(manager.Services);
@@ -527,7 +527,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("worker", worker.Endpoint, null, timeout.Token);
+        await registry.LinkAsync("worker", worker.Endpoint, RuntimeWorkerTestData.WorkerKey, timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
 
         IHostConfigurationSourceProvider sourceProvider = testHost.Host.Services.GetRequiredService<IHostConfigurationSourceProvider>();
@@ -604,6 +604,8 @@ public class RpcClientScriptHostStartupIntegrationTests
             {
                 [EnvironmentSettingNames.FunctionWorkerRuntime] = "dotnet-isolated",
                 [EnvironmentSettingNames.AzureWebJobsSecretStorageType] = "Files",
+                ["WEBSITE_SITE_NAME"] = "test-app",
+                ["WEBSITE_AUTH_ENCRYPTION_KEY"] = RuntimeWorkerTestData.AppKey,
                 ["AzureFunctionsWebHost:ScriptPath"] = ScriptPath,
                 ["AzureFunctionsWebHost:LogPath"] = Path.Combine(_directory, "logs"),
                 ["AzureFunctionsWebHost:SecretsPath"] = Path.Combine(_directory, "secrets"),
@@ -693,8 +695,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
-            builder.WebHost.ConfigureKestrel(options =>
-                options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
+            RuntimeWorkerTestData.ConfigureTlsListener(builder);
             TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency, functionGroupName);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
@@ -748,7 +749,8 @@ public class RpcClientScriptHostStartupIntegrationTests
                     {
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
                             InitRequest = request.WorkerInitRequest;
-                            response.WorkerInitResponse = new() { Result = Success(), HostConfiguration = hostConfiguration };
+                            response.WorkerInitResponse = RuntimeWorkerTestData.Authenticate(
+                                new() { Result = Success(), HostConfiguration = hostConfiguration }, workerId);
                             response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
                             response.WorkerInitResponse.Capabilities.Add(
                                 RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency.ToString(CultureInfo.InvariantCulture));
