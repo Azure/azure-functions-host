@@ -283,7 +283,8 @@ public partial class WorkerSystemLoggingTests
         string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
         Assert.Equal(21, fields.Length);
         Assert.Equal("WorkerProxyStartupFailed", fields[4]);
-        Assert.Equal($"WorkerProxy failed to start ({typeof(InvalidOperationException).FullName}).", fields[7]);
+        Assert.EndsWith($"WorkerProxy failed to start ({typeof(InvalidOperationException).FullName}).", fields[7], StringComparison.Ordinal);
+        Assert.Contains("rc=StartupFailed;", fields[7], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -418,7 +419,12 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
             string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal("worker-id", record.Context!.WorkerId);
+        Assert.Equal(7, record.Context.ProxySessionId);
+        Assert.Equal("test-app", record.Context.State!.FunctionAppName);
+        Assert.Equal("test-group", record.Context.State.FunctionGroupName);
+        Assert.Equal("Created", record.Context.ReasonCode);
+        Assert.Equal(manager.State.Revision, record.Context.State.Revision);
         Assert.Matches(
             @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
             record.Message);
@@ -503,6 +509,12 @@ public partial class WorkerSystemLoggingTests
             Assert.Contains(
                 eventGenerator.ProxyRecords,
                 record => record.EventName == "WorkerProxyStarted");
+            CapturedProxyLog started = Assert.Single(eventGenerator.ProxyRecords, record =>
+                string.Equals(record.EventName, "WorkerProxyStarted", StringComparison.Ordinal));
+            Assert.False(string.IsNullOrEmpty(started.Context!.BuildVersion));
+            Assert.False(string.IsNullOrEmpty(started.Context.State!.PodName));
+            Assert.Null(started.Context.State.FunctionAppName);
+            Assert.Null(started.Context.WorkerId);
         }
         finally
         {
@@ -515,6 +527,11 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(
             eventGenerator.ProxyRecords,
             record => string.Equals(record.EventName, "WorkerProxyStopped", StringComparison.Ordinal));
+        CapturedProxyLog stopped = Assert.Single(eventGenerator.ProxyRecords, record =>
+            string.Equals(record.EventName, "WorkerProxyStopped", StringComparison.Ordinal));
+        Assert.Equal("Shutdown", stopped.Context!.Phase);
+        Assert.Equal("ApplicationStopping", stopped.Context.ReasonCode);
+        Assert.True(stopped.Context.ElapsedMs >= 0);
     }
 
     private static string[][] ParseCsvOutput(string output)

@@ -34,28 +34,46 @@ internal sealed partial class WorkerAssignmentLoggingMiddleware(
         }
 
         long start = Stopwatch.GetTimestamp();
+        WorkerSystemLogContext initial = WorkerSystemLogContext.FromState(stateManager.State);
         try
         {
             await next(context);
         }
         catch (Exception exception)
         {
-            LogResult(start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception,
+            LogResult(context, initial, start, exception is BadHttpRequestException badRequest ? badRequest.StatusCode : null, exception,
                 exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested);
             throw;
         }
 
-        LogResult(start, context.Response.StatusCode);
+        LogResult(context, initial, start, context.Response.StatusCode);
     }
 
-    private void LogResult(long start, int? statusCode, Exception? exception = null, bool requestCanceled = false)
+    private void LogResult(HttpContext http, WorkerSystemLogContext initial, long start, int? statusCode, Exception? exception = null, bool requestCanceled = false)
     {
-        WorkerPodState state = stateManager.State;
+        WorkerSystemLogContext captured = http.Features.Get<WorkerSystemLogContext>() ?? initial;
+        WorkerPodState state = captured.State!;
         double durationMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-        using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
+        string outcome = requestCanceled ? "Canceled"
+            : statusCode is null or >= 500 ? "Failed"
+            : exception is null && statusCode is >= 200 and < 400 ? "Completed" : "Rejected";
+        using IDisposable? scope = logger.BeginScope(captured with
         {
-            WorkerId = state.WorkerId,
-            ProxySessionId = state.SessionId
+            RequestId = http.TraceIdentifier,
+            Operation = "Assignment",
+            Phase = "Completed",
+            Outcome = outcome,
+            ReasonCode = captured.ReasonCode ?? (requestCanceled ? "CallerCanceled" : statusCode switch
+            {
+                400 => "InvalidRequest",
+                401 => "Unauthenticated",
+                403 => "Forbidden",
+                415 => "UnsupportedMediaType",
+                _ => exception is OperationCanceledException ? "UnknownCancellation" : outcome
+            }),
+            StatusCode = statusCode,
+            ElapsedMs = durationMs,
+            CancellationSource = requestCanceled ? "Caller" : exception is OperationCanceledException ? "Unknown" : null
         });
         if (requestCanceled)
         {

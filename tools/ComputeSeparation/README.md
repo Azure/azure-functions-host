@@ -90,15 +90,17 @@ neither ID is derived from the other. The proxy names remain `worker-proxy-1` an
 
 WorkerProxy emits only its own platform records, separately from ordinary ASP.NET Core/YARP console output.
 Worker `RpcLog` messages are forwarded unchanged, not processed by proxy telemetry.
-The local OpenTelemetry log exporter writes through the unchanged shared `BufferedConsoleWriter`
-to stdout; there is no OTLP exporter. Disposal uses the writer's existing best-effort drain
+The local OpenTelemetry log exporter writes through a proxy-only nonblocking path in the shared `BufferedConsoleWriter`
+to stdout; there is no OTLP exporter. Full/failed buffers drop records and schedule one bounded stderr
+health notice rather than blocking request forwarding. Host writer callers are unchanged.
+Disposal uses the writer's existing best-effort drain
 (up to five seconds). Explicit `ForceFlush` is unsupported and returns `false`.
 
 Records use the existing `MS_FUNCTIONS_WORKER_POD_LOGS` prefix and 21-column positional format.
-Worker/session IDs (when known) and operation details are included in the message; the InvocationId column is empty.
-The shared log context contains only `WorkerId` and `ProxySessionId`. Event-specific details such as
-relay side, protocol stage/status, and assignment status/duration are written directly in the log message,
-not duplicated in context attributes.
+Worker/session IDs (when known) retain their existing Summary prefixes; physical identity columns remain empty.
+Immutable accepted app/group/pod identity and operation outcomes are encoded in a bounded versioned
+`WP1[...]` Summary envelope alongside readable text. See the [contract and query-local normalization
+runbook](../../src/Functions.WorkerProxy/Logging/README.md) for field definitions and compatibility limits.
 Assignment 5xx responses and thrown failures emit `WorkerAssignmentRequestFailed`; validation failures
 remain `WorkerAssignmentRequestRejected`. Exceptions are rethrown, and assignment failure records include
 only the exception type. When a thrown failure has no known HTTP status, the log reports `unavailable`
@@ -107,11 +109,15 @@ An `OperationCanceledException` on an aborted assignment request instead emits
 `WorkerAssignmentRequestCanceled` at Information and is rethrown. Unrelated failures remain errors.
 Single and batched function loads log received/forwarded boundaries. Batch records contain counts,
 not per-function records or worker exception text; unsuccessful or missing result statuses produce a Warning.
-Expected Host shutdown during linking is Information/`Canceled`; initialization timeouts remain Warning/`Failed`.
+Cancellation alone is not evidence of healthy shutdown: side, phase, reason and observable cancellation
+source distinguish caller/peer cancellation, known proxy shutdown and unknown cancellation.
 The platform uses the protected WorkerProxy pod name for `PUT /admin/workers/{workerId}`.
 The local worker's separate `StartStream` identity remains available for diagnostic correlation.
 Scope correlation to the app/deployment and proxy instance; session IDs are local to one process.
-Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing HTTP activity instrumentation is unchanged.
+Successful HTTP and invocation platform logs are not emitted. Failed HTTP outcomes distinguish readiness,
+transport, worker 5xx and caller cancellation. Observed unsuccessful invocation responses and failed
+RPC writes include available protocol identities without tracking every invocation.
+Existing HTTP activity instrumentation is unchanged.
 
 Fields are bounded and encoded without splitting valid UTF-16 surrogate pairs; unsafe identities are fingerprinted rather than truncated.
 Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs

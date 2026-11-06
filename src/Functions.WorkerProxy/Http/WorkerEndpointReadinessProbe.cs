@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -52,7 +53,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
 
         if (_readyDestinations.TryRemove(destination, out _))
         {
-            Log.DestinationInvalidated(_logger, destination);
+            Log.DestinationInvalidated(_logger);
         }
     }
 
@@ -91,9 +92,9 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             {
                 addresses = await Dns.GetHostAddressesAsync(destination.Host, deadline.Token);
             }
-            catch (SocketException exception)
+            catch (SocketException)
             {
-                Log.DestinationResolutionFailed(_logger, exception, destination);
+                LogFailure(WorkerEndpointReadinessResult.NameResolutionFailed);
                 return WorkerEndpointReadinessResult.NameResolutionFailed;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -102,14 +103,14 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (OperationCanceledException)
             {
-                Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
+                LogFailure(GetFailureResult(lastError));
                 return GetFailureResult(lastError);
             }
         }
 
         if (addresses.Length == 0)
         {
-            Log.DestinationResolutionFailed(_logger, exception: null, destination);
+            LogFailure(WorkerEndpointReadinessResult.NameResolutionFailed);
             return WorkerEndpointReadinessResult.NameResolutionFailed;
         }
 
@@ -125,7 +126,8 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                     await socket.ConnectAsync(new IPEndPoint(address, destination.Port), deadline.Token);
                     if (_readyDestinations.TryAdd(destination, 0))
                     {
-                        Log.DestinationReady(_logger, destination, stopwatch.Elapsed.TotalMilliseconds, attempts);
+                        using IDisposable? scope = BeginOutcomeScope("Ready", "Ready");
+                        Log.DestinationReady(_logger, stopwatch.Elapsed.TotalMilliseconds, attempts);
                     }
 
                     return WorkerEndpointReadinessResult.Ready;
@@ -140,7 +142,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
+                    LogFailure(GetFailureResult(lastError));
                     return GetFailureResult(lastError);
                 }
             }
@@ -155,15 +157,38 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (OperationCanceledException)
             {
-                Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
+                LogFailure(GetFailureResult(lastError));
                 return GetFailureResult(lastError);
             }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
+        LogFailure(GetFailureResult(lastError));
 
         return GetFailureResult(lastError);
+
+        IDisposable? BeginOutcomeScope(string outcome, string reason) => _logger.BeginScope(new WorkerSystemLogContext
+        {
+            Operation = "Http",
+            Phase = "Readiness",
+            Outcome = outcome,
+            ReasonCode = reason,
+            Attempts = attempts,
+            ElapsedMs = stopwatch.Elapsed.TotalMilliseconds
+        });
+
+        void LogFailure(WorkerEndpointReadinessResult result)
+        {
+            using IDisposable? scope = BeginOutcomeScope("NotReady", result.ToString());
+            if (result is WorkerEndpointReadinessResult.NameResolutionFailed)
+            {
+                Log.DestinationResolutionFailed(_logger, stopwatch.Elapsed.TotalMilliseconds, attempts);
+            }
+            else
+            {
+                Log.DestinationNotReady(_logger, stopwatch.Elapsed.TotalMilliseconds, attempts);
+            }
+        }
     }
 
     private static WorkerEndpointReadinessResult GetFailureResult(Exception? lastError)
@@ -181,33 +206,21 @@ internal sealed partial class WorkerEndpointReadinessProbe(
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Warning, "Worker HTTP destination {Destination} could not be resolved.")]
-        public static partial void DestinationResolutionFailed(ILogger logger, Exception? exception, Uri destination);
+        [LoggerMessage(0, LogLevel.Warning, "Worker HTTP destination could not be resolved after {ElapsedMilliseconds} ms and {Attempts} connection attempts.")]
+        public static partial void DestinationResolutionFailed(ILogger logger, double elapsedMilliseconds, int attempts);
 
         [LoggerMessage(1, LogLevel.Information,
-            "Worker HTTP destination {Destination} became ready after {ElapsedMilliseconds} ms and {Attempts} attempts.")]
-        public static partial void DestinationReady(ILogger logger, Uri destination, double elapsedMilliseconds, int attempts);
-
-        public static void DestinationNotReady(
-            ILogger logger,
-            Exception? exception,
-            Uri destination,
-            TimeSpan elapsed,
-            int attempts)
-        {
-            DestinationNotReady(logger, exception, destination, elapsed.TotalMilliseconds, attempts);
-        }
+            "Worker HTTP destination became ready after {ElapsedMilliseconds} ms and {Attempts} attempts.")]
+        public static partial void DestinationReady(ILogger logger, double elapsedMilliseconds, int attempts);
 
         [LoggerMessage(2, LogLevel.Warning,
-            "Worker HTTP destination {Destination} was not ready after {ElapsedMilliseconds} ms and {Attempts} attempts.")]
-        private static partial void DestinationNotReady(
+            "Worker HTTP destination was not ready after {ElapsedMilliseconds} ms and {Attempts} attempts.")]
+        public static partial void DestinationNotReady(
             ILogger logger,
-            Exception? exception,
-            Uri destination,
             double elapsedMilliseconds,
             int attempts);
 
-        [LoggerMessage(3, LogLevel.Debug, "Worker HTTP destination {Destination} readiness was invalidated.")]
-        public static partial void DestinationInvalidated(ILogger logger, Uri destination);
+        [LoggerMessage(3, LogLevel.Debug, "Worker HTTP destination readiness was invalidated.")]
+        public static partial void DestinationInvalidated(ILogger logger);
     }
 }

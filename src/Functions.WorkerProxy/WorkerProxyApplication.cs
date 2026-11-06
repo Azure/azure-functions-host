@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Authentication;
@@ -34,6 +36,9 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal static partial class WorkerProxyApplication
 {
+    private static string? BuildVersion => typeof(WorkerProxyApplication).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
     /// <summary>
     /// Runs the proxy, recording startup failures before releasing its logging resources.
     /// </summary>
@@ -72,7 +77,8 @@ internal static partial class WorkerProxyApplication
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         generator.LogEvent(LogLevel.Critical, "WorkerProxyStartupFailed", WorkerProxyLogExporter.ApplicationCategory,
             details: string.Empty, summary: $"WorkerProxy failed to start ({exception.GetType().FullName}).",
-            exceptionType: string.Empty, exceptionMessage: string.Empty);
+            exceptionType: string.Empty, exceptionMessage: string.Empty,
+            context: new() { BuildVersion = BuildVersion, Operation = "Lifecycle", Phase = "Startup", Outcome = "Failed", ReasonCode = "StartupFailed" });
     }
 
     /// <summary>
@@ -110,6 +116,9 @@ internal static partial class WorkerProxyApplication
             LogLevel.Information);
         builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
             WorkerProxyLogExporter.AssignmentCategory,
+            LogLevel.Information);
+        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
+            WorkerProxyLogExporter.HttpForwardingCategory,
             LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         ContainerManagementAuthenticationHandler.AddServices(builder.Services);
@@ -167,9 +176,44 @@ internal static partial class WorkerProxyApplication
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
-        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
-        app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
-        app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
+        WorkerPodStateManager manager = app.Services.GetRequiredService<WorkerPodStateManager>();
+        long? stopping = null;
+        WorkerSystemLogContext? shutdownContext = null;
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            using IDisposable? scope = logger.BeginScope(WorkerSystemLogContext.FromState(manager.State) with
+            {
+                BuildVersion = BuildVersion,
+                Operation = "Lifecycle",
+                Phase = "Startup",
+                Outcome = "Started"
+            });
+            Log.WorkerProxyStarted(logger);
+        });
+        app.Lifetime.ApplicationStopping.Register(() =>
+        {
+            stopping = Stopwatch.GetTimestamp();
+            shutdownContext = WorkerSystemLogContext.FromState(manager.State) with
+            {
+                Operation = "Lifecycle",
+                Phase = "Shutdown",
+                ReasonCode = "ApplicationStopping",
+                CancellationSource = "Shutdown"
+            };
+            using IDisposable? scope = logger.BeginScope(shutdownContext);
+            Log.WorkerProxyShutdownStarted(logger);
+        });
+        app.Lifetime.ApplicationStopped.Register(() =>
+        {
+            using IDisposable? scope = logger.BeginScope((shutdownContext ?? WorkerSystemLogContext.FromState(manager.State)) with
+            {
+                Operation = "Lifecycle",
+                Phase = "Shutdown",
+                Outcome = "Stopped",
+                ElapsedMs = stopping is { } start ? Stopwatch.GetElapsedTime(start).TotalMilliseconds : null
+            });
+            Log.WorkerProxyStopped(logger);
+        });
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)

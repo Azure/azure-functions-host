@@ -52,7 +52,11 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(level, record.Level);
         Assert.Equal(statusCode, context.Response.StatusCode);
         Assert.Contains(statusCode.ToString(CultureInfo.InvariantCulture), record.Message, StringComparison.Ordinal);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal("worker-id", record.Context!.WorkerId);
+        Assert.Equal(7, record.Context.ProxySessionId);
+        Assert.Same(manager.State, record.Context.State);
+        Assert.Equal(statusCode, record.Context.StatusCode);
+        Assert.Equal("Assignment", record.Context.Operation);
         Assert.Contains("Worker attached and identified: True.", record.Message, StringComparison.Ordinal);
     }
 
@@ -139,7 +143,10 @@ public partial class WorkerSystemLoggingTests
         CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
         Assert.Equal(eventName, record.EventName);
         Assert.Equal(level, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
+        Assert.Equal("worker-id", record.Context!.WorkerId);
+        Assert.Equal(7, record.Context.ProxySessionId);
+        Assert.Same(manager.State, record.Context.State);
+        Assert.Equal(requestAborted && cancellationException ? "Caller" : cancellationException ? "Unknown" : null, record.Context.CancellationSource);
         Assert.DoesNotContain(sentinel, record.Message, StringComparison.Ordinal);
         Assert.Empty(record.Details);
         Assert.Empty(record.ExceptionMessage);
@@ -208,5 +215,58 @@ public partial class WorkerSystemLoggingTests
         context.SetEndpoint(new RouteEndpoint(_ => Task.CompletedTask,
             RoutePatternFactory.Parse("/admin/worker/assignment"), 0, EndpointMetadataCollection.Empty, "Assignment"));
         return context;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssignmentLogging_UsesAtomicDecisionSnapshotAfterRemoval(bool rejected)
+    {
+        CapturingEventGenerator generator = new();
+        using ILoggerFactory logs = CreateLoggerFactory(generator);
+        WorkerPodStateManager manager = new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System);
+        WorkerAssignRequest request = new()
+        {
+            StartupMode = "Preconfigured",
+            FunctionAppName = "accepted-app",
+            FunctionGroupName = "http",
+            IsAlwaysReady = false,
+            Environment = new() { ["SECRET"] = "private-environment" },
+            FunctionAppDirectory = "private-directory"
+        };
+        if (rejected)
+        {
+            ManagementApiHandlers.AssignWorker(request, manager);
+            request = new()
+            {
+                StartupMode = request.StartupMode,
+                FunctionAppName = "rejected-app",
+                FunctionGroupName = request.FunctionGroupName,
+                IsAlwaysReady = request.IsAlwaysReady,
+                Environment = request.Environment,
+                FunctionAppDirectory = request.FunctionAppDirectory
+            };
+        }
+
+        WorkerPodState? decision = null;
+        DefaultHttpContext context = CreateAssignmentContext();
+        WorkerAssignmentLoggingMiddleware middleware = new(http =>
+        {
+            ManagementApiHandlers.AssignWorker(request, manager, http);
+            decision = manager.State;
+            http.Response.StatusCode = rejected ? 409 : 201;
+            manager.RequestRemoval();
+            return Task.CompletedTask;
+        }, logs.CreateLogger<WorkerAssignmentLoggingMiddleware>(), manager);
+
+        await middleware.InvokeAsync(context);
+
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords);
+        Assert.Same(decision, record.Context!.State);
+        Assert.Equal("accepted-app", record.Context.State!.FunctionAppName);
+        Assert.Equal(rejected ? "AssignmentConflict" : "Created", record.Context.ReasonCode);
+        Assert.Null(manager.State.FunctionAppName);
+        Assert.DoesNotContain("rejected-app", record.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("private-", record.ToString(), StringComparison.Ordinal);
     }
 }

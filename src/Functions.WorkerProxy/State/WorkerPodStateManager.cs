@@ -465,6 +465,19 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Captures the assignment decision and its exact state before a concurrent lifecycle transition.
+    /// </summary>
+    public WorkerAssignmentResult Assign(WorkerAssignment assignment, out WorkerPodState state)
+    {
+        lock (_stateLock)
+        {
+            WorkerAssignmentResult result = Assign(assignment);
+            state = _state;
+            return result;
+        }
+    }
+
+    /// <summary>
     /// Records or replays assignment atomically with worker readiness and terminal state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)

@@ -121,12 +121,12 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(initialized, timeout.Token);
         await runtime.ReadAsync(timeout.Token);
 
-        StreamingMessage loadRequest = new() { FunctionLoadRequest = new() { FunctionId = sentinel } };
+        StreamingMessage loadRequest = new() { FunctionLoadRequest = new() { FunctionId = "function-id" } };
         StreamingMessage loadResponse = new()
         {
             FunctionLoadResponse = new()
             {
-                FunctionId = sentinel,
+                FunctionId = "function-id",
                 Result = loadStatus is { } responseStatus ? new()
                 {
                     Status = responseStatus,
@@ -162,7 +162,7 @@ public partial class FunctionRpcRelayTests
                 CapturedProxyLog record = Assert.Single(records, record =>
                     string.Equals(record.Message, $"FunctionRpc {operation} reached {stage} with RPC status {statusText ?? "(null)"}.",
                         StringComparison.Ordinal));
-                Assert.Equal(status is not null and not StatusResult.Types.Status.Success ? LogLevel.Warning : LogLevel.Information,
+                Assert.Equal(stage.StartsWith("Response", StringComparison.Ordinal) && status is not StatusResult.Types.Status.Success ? LogLevel.Warning : LogLevel.Information,
                     record.Level);
             }
         }
@@ -208,6 +208,11 @@ public partial class FunctionRpcRelayTests
             && record.Context?.ProxySessionId == preLink.Context.ProxySessionId);
         Assert.Equal(8, generator.ProxyRecords.Count(record =>
             string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)));
+        CapturedProxyLog failure = Assert.Single(generator.ProxyRecords, record =>
+            string.Equals(record.EventName, "InvocationResponseFailed", StringComparison.Ordinal));
+        Assert.Equal(invocationId, failure.Context!.InvocationId);
+        Assert.Equal("ResponseReceived", failure.Context.Phase);
+        Assert.Null(failure.Context.FunctionId);
         Assert.DoesNotContain(generator.ProxyRecords, record =>
             record.Message.Contains(invocationId, StringComparison.Ordinal));
         Assert.DoesNotContain(generator.ProxyRecords, record =>
