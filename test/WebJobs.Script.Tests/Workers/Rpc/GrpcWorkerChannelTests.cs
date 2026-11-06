@@ -704,6 +704,120 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task ExecutingInvocation_CancellationCleanupDoesNotHoldOwnershipLockAcrossCallback()
+        {
+            using CancellationTokenSource cancellation = new();
+            using ManualResetEventSlim releaseCallback = new(false);
+            TaskCompletionSource callbackEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            using WorkerChannel.ExecutingInvocation invocation = new(new ScriptInvocationContext(), Mock.Of<IInvocationMessageDispatcher>());
+            CancellationTokenRegistration registration = cancellation.Token.Register(() =>
+            {
+                callbackEntered.SetResult();
+                if (!releaseCallback.Wait(TimeSpan.FromSeconds(10)))
+                {
+                    throw new TimeoutException("Cancellation callback was not released.");
+                }
+
+                invocation.SetCancellationRegistration(default);
+            });
+            invocation.SetCancellationRegistration(registration);
+            Task cancel = Task.Run(cancellation.Cancel);
+
+            try
+            {
+                await callbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Task completion = invocation.CompleteCancellationRegistrationAsync().AsTask();
+                Assert.False(completion.IsCompleted);
+                releaseCallback.Set();
+                await Task.WhenAll(cancel, completion).WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            finally
+            {
+                releaseCallback.Set();
+                await cancel.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task ExecutingInvocation_CleanupDisposesCancellationRegistration(bool shutdown, bool installBeforeCleanup)
+        {
+            using CancellationTokenSource cancellation = new();
+            Mock<IInvocationMessageDispatcher> dispatcher = new();
+            Mock<IDisposable> disposable = dispatcher.As<IDisposable>();
+            using WorkerChannel.ExecutingInvocation invocation = new(new ScriptInvocationContext(), dispatcher.Object);
+            int callbacks = 0;
+            CancellationTokenRegistration registration = cancellation.Token.Register(() => callbacks++);
+            if (installBeforeCleanup)
+            {
+                invocation.SetCancellationRegistration(registration);
+            }
+
+            if (shutdown)
+            {
+                invocation.Dispose();
+            }
+            else
+            {
+                await invocation.CompleteCancellationRegistrationAsync();
+            }
+
+            if (!installBeforeCleanup)
+            {
+                // Registration was created before cleanup but installed after response or shutdown ownership ended.
+                invocation.SetCancellationRegistration(registration);
+            }
+
+            cancellation.Cancel();
+            invocation.Dispose();
+            invocation.Dispose();
+
+            Assert.Equal(0, callbacks);
+            disposable.Verify(value => value.Dispose(), Times.Once());
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task SendInvocationRequest_CompletionDisposesCancellationRegistration(bool shutdown)
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>
+            {
+                [RpcWorkerConstants.HandlesInvocationCancelMessage] = "true",
+            });
+            using CancellationTokenSource cancellation = new();
+            TaskCompletionSource<ScriptInvocationResult> result = new();
+            Guid invocationId = Guid.NewGuid();
+            ScriptInvocationContext context = GetTestScriptInvocationContext(invocationId, result, cancellation.Token);
+            await _workerChannel.SendInvocationRequest(context);
+
+            if (shutdown)
+            {
+                _workerChannel.Shutdown(new InvalidOperationException("Worker terminated."));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => result.Task);
+            }
+            else
+            {
+                await _workerChannel.InvokeResponse(new InvocationResponse
+                {
+                    InvocationId = invocationId.ToString(),
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                });
+                Assert.True(result.Task.IsCompletedSuccessfully);
+            }
+
+            cancellation.Cancel();
+
+            Assert.False(_workerChannel.IsExecutingInvocation(invocationId.ToString()));
+            Assert.False(context.Properties.ContainsKey(ScriptConstants.CancellationTokenRegistration));
+            Assert.DoesNotContain(_logger.GetLogMessages(), message =>
+                string.Equals(message.FormattedMessage, $"Sending InvocationCancel request for invocation: '{invocationId}'", StringComparison.Ordinal));
+        }
+
+        [Fact]
         public async Task SendInvocationRequest_SignalCancellation_WithoutCancellationCapability_NoAction()
         {
             var cancellationWaitTimeMs = 3000;
@@ -850,6 +964,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             });
             await result;
             Assert.Equal(result.Status, TaskStatus.RanToCompletion);
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task Drain_FailedOrCanceledInvocationStillWaitsForRemainingInvocation(bool canceled, bool completeBeforeDrain)
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            TaskCompletionSource<ScriptInvocationResult> failed = new();
+            TaskCompletionSource<ScriptInvocationResult> remaining = new();
+            Assert.True(_workerChannel.TryPostInvocation(GetTestScriptInvocationContext(Guid.NewGuid(), failed)));
+            Assert.True(_workerChannel.TryPostInvocation(GetTestScriptInvocationContext(Guid.NewGuid(), remaining)));
+
+            void CompleteFailedInvocation()
+            {
+                if (canceled)
+                {
+                    failed.SetCanceled();
+                }
+                else
+                {
+                    failed.SetException(new InvalidOperationException("Invocation failed."));
+                }
+            }
+
+            if (completeBeforeDrain)
+            {
+                CompleteFailedInvocation();
+            }
+
+            Task drain = _workerChannel.DrainInvocationsAsync();
+            if (!completeBeforeDrain)
+            {
+                CompleteFailedInvocation();
+            }
+
+            Assert.False(drain.IsCompleted);
+            remaining.SetResult(new());
+            await drain.WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.True(drain.IsCompletedSuccessfully);
+            Assert.Equal(canceled, failed.Task.IsCanceled);
+            Assert.Equal(!canceled, failed.Task.IsFaulted);
         }
 
         [Fact]

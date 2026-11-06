@@ -741,6 +741,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                                 Capabilities =
                                 {
                                     ["WorkerProxyAppToken"] = proof,
+                                    ["FunctionGroupName"] = "deployment:validation",
                                     ["UntrustedCapability"] = "must-not-be-published"
                                 },
                                 AppCapabilities = { ["UntrustedAppCapability"] = "must-not-be-published" }

@@ -41,7 +41,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         IScriptEventManager eventManager = null,
         string advertisedHttpUri = null,
         IHttpProxyService httpProxyService = null,
-        string functionGroupName = null,
+        string functionGroupName = "function:TestFunction",
         string maxHttpConcurrency = null,
         bool handlesInvocationCancel = false)
     {

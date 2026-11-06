@@ -103,7 +103,7 @@ public sealed class RpcClientWorkerChannelTests
         await SendStartStreamAndReadInitRequestAsync(transport);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
         response.Capabilities.Add("UntrustedCapability", "must-not-be-published");
-        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
         response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
         await transport.SendResponseAsync(new() { WorkerInitResponse = response });
 
@@ -222,7 +222,7 @@ public sealed class RpcClientWorkerChannelTests
         Task start = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(transport);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
-        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
         response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
         bool valid = string.Equals(proofKind, "valid", StringComparison.Ordinal);
         string proof = RuntimeWorkerTestData.CreateAppProof(WorkerId) + (valid ? string.Empty : "A");
@@ -287,7 +287,7 @@ public sealed class RpcClientWorkerChannelTests
         WorkerInitResponse response = CreateSuccessfulInitResponse();
         response.Result = status is { } value ? new() { Status = value } : null;
         response.Capabilities.Add("UntrustedCapability", "must-not-be-published");
-        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
         response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "16");
         response.AppCapabilities.Add("UntrustedAppCapability", "must-not-be-published");
 
@@ -364,6 +364,44 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     [Theory]
+    [InlineData(-1, false)]
+    [InlineData(-1, true)]
+    [InlineData(123, false)]
+    [InlineData(123, true)]
+    public async Task StartAsync_UnknownInitializationStatusRejectsCapabilities(int status, bool delivered)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        channel.SetupFunctionInvocationBuffers([new() { Name = "Http", Language = "external" }]);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Result.Status = (StatusResult.Types.Status)status;
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        response.Capabilities[RpcClientWorkerChannel.MaxHttpConcurrencyCapability] = "16";
+        response.Capabilities[RpcWorkerConstants.HttpUri] = "http://untrusted-worker:1234/";
+        response.AppCapabilities.Add("UntrustedCapability", "1");
+        if (delivered)
+        {
+            response.HostConfiguration = new()
+            {
+                Status = HostConfiguration.Types.Status.Available,
+                Content = ByteString.CopyFromUtf8("""{"version":"2.0"}"""),
+            };
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.Null(channel.MaxHttpConcurrency);
+        Assert.Null(channel.HostConfiguration);
+        Assert.False(channel.IsReadyForInvocations);
+        _appCapabilitiesStore.Verify(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Never());
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -418,8 +456,7 @@ public sealed class RpcClientWorkerChannelTests
     [InlineData("background", "invalid", false, null)]
     [InlineData("background", null, false, null)]
     [InlineData("background", "0", false, null)]
-    [InlineData(null, "10", false, null)]
-    [InlineData("", null, false, null)]
+    [InlineData("deployment:validation", null, false, null)]
     public async Task StartAsync_CapturesOnlyApplicableAssignmentCapabilities(string group, string supplied, bool isHttp, int? expected)
     {
         await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
@@ -451,7 +488,7 @@ public sealed class RpcClientWorkerChannelTests
         Task start = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(transport);
         WorkerInitResponse response = CreateSuccessfulInitResponse();
-        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "hTtP");
+        response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "hTtP";
         if (supplied is not null)
         {
             response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, supplied);
@@ -459,10 +496,54 @@ public sealed class RpcClientWorkerChannelTests
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = response });
 
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start.WaitAsync(TestTimeout));
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
         Assert.Contains("MaxHttpConcurrency", exception.Message, StringComparison.Ordinal);
+        Assert.False(channel.Completion.IsCompleted);
         Assert.Null(channel.FunctionGroupName);
         Assert.Null(channel.MaxHttpConcurrency);
+    }
+
+    [Fact]
+    public async Task StartAsync_CapturesAssignmentBeforeInitializationCompletes()
+    {
+        using ManualResetEventSlim releaseInitialization = new(false);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
+            .Callback(() =>
+            {
+                entered.TrySetResult();
+                if (!releaseInitialization.Wait(TestTimeout))
+                {
+                    throw new TimeoutException("Initialization was not released.");
+                }
+            })
+            .Returns(true);
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse initial = CreateSuccessfulInitResponse();
+        initial.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = "http";
+        initial.Capabilities[RpcClientWorkerChannel.MaxHttpConcurrencyCapability] = "10";
+        initial.AppCapabilities.Add("TestAppCapability", "1");
+        await transport.SendResponseAsync(new() { WorkerInitResponse = initial });
+
+        try
+        {
+            await entered.Task.WaitAsync(TestTimeout);
+            Assert.False(start.IsCompleted);
+            Assert.Equal("http", channel.FunctionGroupName);
+            Assert.Equal(10, channel.MaxHttpConcurrency);
+        }
+        finally
+        {
+            releaseInitialization.Set();
+        }
+
+        await start.WaitAsync(TestTimeout);
+        Assert.Equal("http", channel.FunctionGroupName);
+        Assert.Equal(10, channel.MaxHttpConcurrency);
     }
 
     [Fact]
@@ -484,6 +565,33 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal("http", harness.Channel.FunctionGroupName);
         Assert.True(harness.Channel.IsHttpFunctionGroup);
         Assert.Equal(10, harness.Channel.MaxHttpConcurrency);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task StartAsync_WithoutAssignedGroupFails(string group)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(transport);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Remove(RpcClientWorkerChannel.FunctionGroupNameCapability);
+        if (group is not null)
+        {
+            response.Capabilities[RpcClientWorkerChannel.FunctionGroupNameCapability] = group;
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = response });
+
+        WorkerLinkException exception = await Assert.ThrowsAsync<WorkerLinkException>(() => start.WaitAsync(TestTimeout));
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, exception.Reason);
+        Assert.Contains("FunctionGroupName", exception.Message, StringComparison.Ordinal);
+        Assert.False(channel.Completion.IsCompleted);
+        Assert.Null(channel.FunctionGroupName);
+        Assert.False(channel.IsReadyForInvocations);
     }
 
     [Fact]
@@ -701,6 +809,7 @@ public sealed class RpcClientWorkerChannelTests
         => RuntimeWorkerTestData.Authenticate(new()
         {
             Result = new() { Status = StatusResult.Types.Status.Success },
+            Capabilities = { [RpcClientWorkerChannel.FunctionGroupNameCapability] = "function:TestFunction" },
         }, WorkerId);
 
     private static async Task<StreamingMessage> SendStartStreamAndReadInitRequestAsync(TestDuplexChannel<StreamingMessage> duplexChannel)

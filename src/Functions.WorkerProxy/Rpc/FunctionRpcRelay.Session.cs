@@ -487,6 +487,10 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
+        /// <summary>
+        /// Waits for this worker's assignment before freezing the initial successful response's authoritative capabilities.
+        /// The separate processor leaves relay readers available while assignment is pending.
+        /// </summary>
         private async Task<StreamingMessage?> FinalizeCapabilitiesAsync(StreamingMessage message, CancellationToken cancellationToken)
         {
             FrozenDictionary<string, string>? capabilities;
@@ -505,15 +509,17 @@ internal sealed partial class FunctionRpcRelay
             if (capabilities is null)
             {
                 (WorkerPodState state, string? httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
-                if (finalized.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out string? httpUri)
-                    && !string.IsNullOrWhiteSpace(httpUri))
+                // Every worker needs assigned group identity, including workers without an HTTP endpoint.
+                while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
                 {
-                    // Keep the runtime reader available for startup token traffic while assignment catches up with StartStream.
-                    while (state.SessionId == id && state.IsWorkerAttached && state.AssignmentState == WorkerAssignmentState.Unassigned)
-                    {
-                        await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
-                        (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
-                    }
+                    await stateManager.WaitForChangeAsync(state.Revision, cancellationToken);
+                    (state, httpProxyEndpoint) = stateManager.GetWorkerCapabilitySnapshot(id);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                if (state.SessionId != id || !state.IsWorkerAttached || state.AssignmentState != WorkerAssignmentState.Ready)
+                {
+                    throw new InvalidOperationException("The worker session has no ready assignment for capability finalization.");
                 }
 
                 Uri? destination = capabilityFinalizer.FinalizeCapabilities(

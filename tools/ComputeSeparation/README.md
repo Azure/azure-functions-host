@@ -316,7 +316,7 @@ The harness authenticates and records WorkerProxy assignment before opening Link
 
 Run the `project-identity` profile or select it in Visual Studio. It is project-mode only; no Azure subscription, production credentials, or Docker is required.
 
-The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential; only WorkerProxy and its customer receive the per-pod credential. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated Token Service proxy port to loopback.
+The five processes are `mock-token-service`, `functions-host`, `worker-proxy-1`, `isolated-worker`, and `fake-platform`. AppHost generates distinct mock-upstream and per-pod credentials as secret parameters. Only the Host and mock service receive the upstream credential. The fake platform provisions the per-pod `IDENTITY_HEADER` in the authenticated assignment environment, and AppHost supplies that same credential to its customer; WorkerProxy reads only its accepted assignment, not a startup process-environment fallback. The customer gets `IDENTITY_ENDPOINT`; WorkerProxy gets no endpoint variable and always binds its allocated Token Service proxy port to loopback.
 
 The full token path is:
 

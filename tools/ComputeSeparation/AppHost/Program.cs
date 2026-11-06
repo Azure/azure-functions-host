@@ -240,8 +240,8 @@ else
                     name: TokenServiceProxyEndpointName)
                 .WithEnvironment("WorkerProxy__TokenServiceProxy__Enabled", "true")
                 .WithEnvironment("WorkerProxy__TokenServiceProxy__Port",
-                    proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort))
-                .WithEnvironment("IDENTITY_HEADER", localSecret);
+                    proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort));
+            fakePlatform.WithEnvironment($"FakePlatform__WorkerProxies__{index}__IdentityHeader", localSecret);
             worker.WithEnvironment("IDENTITY_ENDPOINT",
                     ReferenceExpression.Create($"http://127.0.0.1:{proxy.GetEndpoint(TokenServiceProxyEndpointName).Property(EndpointProperty.TargetPort)}/msi/token"))
                 .WithEnvironment("IDENTITY_HEADER", localSecret)

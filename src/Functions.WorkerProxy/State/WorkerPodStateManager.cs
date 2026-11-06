@@ -24,6 +24,7 @@ internal sealed class WorkerPodStateManager
     private static readonly TimeSpan PollTimeout = TimeSpan.FromSeconds(60);
     private readonly Lock _stateLock = new();
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
+    private readonly TaskCompletionSource<WorkerAssignment> _assigned = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeProvider _timeProvider;
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
@@ -115,6 +116,12 @@ internal sealed class WorkerPodStateManager
             return (_state, httpProxyEndpoint);
         }
     }
+
+    /// <summary>
+    /// Waits for the pod's worker assignment to be accepted.
+    /// </summary>
+    public Task<WorkerAssignment> WaitForAssignmentAsync(CancellationToken cancellationToken = default)
+        => _assigned.Task.WaitAsync(cancellationToken);
 
     /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
@@ -440,6 +447,7 @@ internal sealed class WorkerPodStateManager
             }
 
             _assignment = assignment;
+            _assigned.TrySetResult(assignment);
             UpdateStateAndNotifyWaitersLocked(assigned);
             return WorkerAssignmentResult.Created;
         }

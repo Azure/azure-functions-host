@@ -101,18 +101,23 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     }
 
     [Fact]
-    public async Task CancelledBeforeDispatch_DoesNotPostOrBill()
+    public async Task DispatchAccepted_TracksInvocationUntilCompletion()
     {
-        using CancellationTokenSource cancellation = new();
+        await PublishAsync();
         _publisher.WorkerLinked("worker");
-        cancellation.Cancel();
         Mock<Func<bool>> dispatch = new();
+        dispatch.Setup(post => post()).Returns(true);
 
-        Assert.False(_publisher.TryDispatchInvocation("invocation", "worker", cancellation.Token, dispatch.Object));
+        Assert.True(_publisher.TryDispatchInvocation("invocation", "worker", dispatch.Object));
+        dispatch.Verify(post => post(), Times.Once);
+
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("invocation", success: false);
         await PublishAsync();
 
-        Assert.Empty(ReadMetrics());
-        dispatch.Verify(post => post(), Times.Never);
+        FlexConsumptionMetricsPublisherBase.Metrics metric = Assert.Single(ReadMetrics());
+        Assert.Equal(1, metric.ExecutionCount);
+        Assert.Equal(0, metric.ExecutionSuccessCount);
     }
 
     [Fact]
@@ -120,7 +125,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     {
         using CancellationTokenSource cancellation = new();
         _publisher.WorkerLinked("worker");
-        Dispatch("invocation", "worker", cancellation.Token);
+        Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         _publisher.InvocationCompleted("invocation", success: false);
         _now = _now.AddSeconds(1);
@@ -194,7 +199,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     {
         using CancellationTokenSource cancellation = new();
         _publisher.WorkerLinked("worker");
-        Dispatch("invocation", "worker", cancellation.Token);
+        Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         _publisher.WorkerUnlinked("worker");
 
@@ -294,11 +299,11 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         if (throws)
         {
             Assert.Throws<InvalidOperationException>(() =>
-                _publisher.TryDispatchInvocation("invocation", "worker", default, () => throw new InvalidOperationException()));
+                _publisher.TryDispatchInvocation("invocation", "worker", () => throw new InvalidOperationException()));
         }
         else
         {
-            Assert.False(_publisher.TryDispatchInvocation("invocation", "worker", default, () => false));
+            Assert.False(_publisher.TryDispatchInvocation("invocation", "worker", () => false));
         }
 
         await PublishAsync();
@@ -316,7 +321,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     {
         using CancellationTokenSource cancellation = new();
         _publisher.WorkerLinked("worker");
-        Dispatch("invocation", "worker", cancellation.Token);
+        Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         cancellation.Cancel();
         _publisher.OnFunctionCompleted("function", "invocation", _now);
@@ -344,7 +349,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         using CancellationTokenSource cancellation = new();
         _publisher.WorkerLinked("worker");
 
-        Assert.True(_publisher.TryDispatchInvocation("invocation", "worker", cancellation.Token, () =>
+        Assert.True(_publisher.TryDispatchInvocation("invocation", "worker", () =>
         {
             _now = _now.AddSeconds(1);
             cancellation.Cancel();
@@ -379,7 +384,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         Assert.Equal(1000, metrics.TotalTimeMS);
         Assert.Equal(1000, metrics.ExecutionTimeMS);
         Assert.Equal(1, metrics.ExecutionCount);
-        Assert.False(_publisher.TryDispatchInvocation("late", "worker", default, () => true));
+        Assert.False(_publisher.TryDispatchInvocation("late", "worker", () => true));
     }
 
     [Fact]
@@ -600,9 +605,9 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         _publisher.Dispose();
     }
 
-    private void Dispatch(string invocationId, string workerId, CancellationToken cancellationToken = default)
+    private void Dispatch(string invocationId, string workerId)
     {
-        Assert.True(_publisher.TryDispatchInvocation(invocationId, workerId, cancellationToken, () => true));
+        Assert.True(_publisher.TryDispatchInvocation(invocationId, workerId, () => true));
     }
 
     private async Task PublishAsync()

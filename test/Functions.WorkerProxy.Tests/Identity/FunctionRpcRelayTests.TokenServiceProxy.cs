@@ -28,12 +28,13 @@ public partial class FunctionRpcRelayTests
         await using WorkerProxyWebApplicationFactory factory = new(new Dictionary<string, string?>
         {
             ["WorkerProxy:TokenServiceProxy:Enabled"] = "true",
-            ["WorkerProxy:TokenServiceProxy:Port"] = "0",
-            ["IDENTITY_HEADER"] = localSecret
+            ["WorkerProxy:TokenServiceProxy:Port"] = "0"
         }, useTestAuthentication: false);
         using CancellationTokenSource timeout = new(TestTimeout);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        AssignAuthenticationState(manager);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(new(
+            WorkerStartupMode.Preconfigured, RuntimeAuthenticationTestData.AppName, "group", false,
+            new Dictionary<string, string> { ["IDENTITY_HEADER"] = localSecret }, string.Empty)));
         TokenServiceProxyOptions limits = new();
         await using RelayClient firstRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         string firstSession = Guid.NewGuid().ToString("N");

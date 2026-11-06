@@ -112,7 +112,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     internal HostConfiguration HostConfiguration { get; private set; }
 
     /// <summary>
-    /// Gets the assigned group captured after successful initialization, or null when not advertised.
+    /// Gets the assigned group captured from the initial successful response, or null before initialization.
     /// </summary>
     internal string FunctionGroupName { get; private set; }
 
@@ -240,15 +240,48 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     protected override void OnWorkerInitResponse(WorkerInitResponse response)
     {
-        if (response.HostConfiguration is not null && response.Result.Status is not StatusResult.Types.Status.Success)
+        // WorkerProxy finalizes assignment-owned capabilities only for explicit successful initialization.
+        if (response.Result is not { Status: StatusResult.Types.Status.Success })
         {
             throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
-                "The worker did not report successful initialization for Host configuration delivery.");
+                "The worker did not report successful initialization.");
         }
 
-        HostConfiguration = response.HostConfiguration?.Clone();
-        IsAlwaysReady = response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string alwaysReady)
-            && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
+        lock (_lifecycleLock)
+        {
+            if (FunctionGroupName is not null)
+            {
+                return;
+            }
+
+            if (!response.Capabilities.TryGetValue(FunctionGroupNameCapability, out string functionGroupName)
+                || string.IsNullOrWhiteSpace(functionGroupName))
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "A client-backed worker must advertise its assigned FunctionGroupName.");
+            }
+
+            int? maxHttpConcurrency = null;
+            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
+            {
+                response.Capabilities.TryGetValue(MaxHttpConcurrencyCapability, out string suppliedConcurrency);
+                if (!int.TryParse(suppliedConcurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
+                    || concurrency is < 1 or > 1000)
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                        "An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
+                }
+
+                maxHttpConcurrency = concurrency;
+            }
+
+            // Read only the original response: capability updates must not reassign an initialized channel.
+            HostConfiguration = response.HostConfiguration?.Clone();
+            FunctionGroupName = functionGroupName;
+            MaxHttpConcurrency = maxHttpConcurrency;
+            IsAlwaysReady = response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string alwaysReady)
+                && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
+        }
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
@@ -374,22 +407,6 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
-            // Assignment properties are captured once; later capability updates do not change this channel's identity.
-            string functionGroupName = GetCapabilityState(FunctionGroupNameCapability);
-            int? maxHttpConcurrency = null;
-            if (string.Equals(functionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!int.TryParse(GetCapabilityState(MaxHttpConcurrencyCapability), NumberStyles.None, CultureInfo.InvariantCulture, out int concurrency)
-                    || concurrency is < 1 or > 1000)
-                {
-                    throw new InvalidOperationException("An HTTP worker must advertise MaxHttpConcurrency as an integer between 1 and 1000.");
-                }
-
-                maxHttpConcurrency = concurrency;
-            }
-
-            FunctionGroupName = functionGroupName;
-            MaxHttpConcurrency = maxHttpConcurrency;
             if (IsHttpFunctionGroup && IsAlwaysReady is null)
             {
                 _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; treating this worker as on-demand for idle retirement.", Id);

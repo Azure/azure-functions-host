@@ -89,6 +89,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(worker);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("Function");
+        function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
         await LinkAsync(registry, worker.Id);
         await registry.ActivateAsync([function], new ManagedDependencyOptions(), null);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
@@ -245,6 +246,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
         FunctionMetadata function = CreateFunction("Function");
+        function.Bindings.Add(new() { Name = "req", Type = "httpTrigger", Direction = BindingDirection.In });
         await ReadyIdleWorkerAsync(registry, worker, function);
         await LinkAsync(registry, other.Id);
         await other.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
@@ -262,6 +264,9 @@ public sealed partial class WorkerChannelRegistryTests
             Assert.Equal(1, other.DisposeCount);
             Assert.False(other.Channel.IsReadyForInvocations);
             Mock<IWorkerChannelRegistry> staleRegistry = new();
+            staleRegistry.SetupSequence(value => value.GetChangeTask())
+                .Returns(Task.CompletedTask)
+                .Returns(() => registry.GetChangeTask());
             staleRegistry.SetupSequence(value => value.GetReadyChannelsAsync())
                 .Returns(new ValueTask<IReadOnlyList<WorkerChannel>>([worker.Channel, other.Channel]))
                 .Returns(() => registry.GetReadyChannelsAsync());

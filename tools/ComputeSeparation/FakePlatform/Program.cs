@@ -77,7 +77,14 @@ simulate.MapPost("/worker/{workerProxyName}/assign", async (string workerProxyNa
         return Results.NotFound($"Unknown worker proxy '{workerProxyName}'.");
     }
 
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty,
+    Dictionary<string, string> environment = [];
+    if (workerProxy.IdentityHeader is not null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerProxy.IdentityHeader);
+        environment["IDENTITY_HEADER"] = workerProxy.IdentityHeader;
+    }
+
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, environment, string.Empty,
         workerProxy.HttpProxyEndpoint.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped), 0, 0, MaxHttpConcurrency: 16);
     using HttpRequestMessage request = new(HttpMethod.Put, "/admin/worker/assignment") { Content = JsonContent.Create(assignment) };
     request.Headers.Add("x-ms-site-token", ManagementToken.Create(workerProxy.RuntimeAccessKey, workerProxy.WorkerId));
@@ -210,6 +217,8 @@ internal partial class Program
         public required string RuntimeAccessKey { get; init; }
 
         public required string WorkerId { get; init; }
+
+        public string? IdentityHeader { get; init; }
     }
 
     private sealed record HostAssignmentContext(int SiteId, string SiteName, Dictionary<string, string> Environment);
