@@ -34,7 +34,8 @@ public partial class WorkerSystemLoggingTests
                 FunctionGroupName = "http",
                 WorkerId = "worker",
                 SessionId = 7,
-                IsWorkerAttached = true
+                IsWorkerAttached = true,
+                IsDraining = true
             }) with
         {
             RequestId = "request",
@@ -58,6 +59,7 @@ public partial class WorkerSystemLoggingTests
         Assert.StartsWith("WorkerId=worker; ProxySessionId=7; WP1[", fields[7], StringComparison.Ordinal);
         Assert.Contains("p=test-pod;a=test-app;g=http;r=3;", fields[7], StringComparison.Ordinal);
         Assert.Contains("ms=12.500;", fields[7], StringComparison.Ordinal);
+        Assert.Contains("dr=true;", fields[7], StringComparison.Ordinal);
         Assert.Contains("b=1.2.3+revision;", fields[7], StringComparison.Ordinal);
         Assert.EndsWith("]; Human-readable, 'summary'.", fields[7], StringComparison.Ordinal);
         Assert.All(new[] { 1, 2, 3, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, index => Assert.Empty(fields[index]));

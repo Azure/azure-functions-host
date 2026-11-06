@@ -113,6 +113,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         AddMetadata("s", context.State?.AssignmentState);
         AddMetadata("wr", context.State?.IsWorkerReady);
         AddMetadata("rm", context.State?.RemovalRequested);
+        AddMetadata("dr", context.State?.IsDraining);
         AddMetadata("q", context.RequestId);
         AddMetadata("i", context.InvocationId);
         AddMetadata("f", context.FunctionId);

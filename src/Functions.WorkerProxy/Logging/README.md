@@ -31,7 +31,7 @@ assembly informational version (including its commit suffix), not collector Sour
 | --- | --- | --- |
 | p, a, g | ProxyPodName, ProxyAppName, FunctionGroupName | Platform pod and accepted assignment identity |
 | r, sr | StateRevision, IdentitySnapshotRevision | Captured revision; terminal transition revision and pre-transition identity revision respectively |
-| s, wr, rm | AssignmentState, WorkerReady, RemovalRequested | State in the identity snapshot, not an assertion of HTTP/Host readiness |
+| s, wr, rm, dr | AssignmentState, WorkerReady, RemovalRequested, WorkerDraining | State in the identity snapshot, including an observed Host drain, not an assertion of HTTP/Host readiness |
 | q, i, f | RequestId, InvocationId, FunctionId | Server HTTP request ID or observed protocol IDs |
 | op, ph, o, rc, sd | Operation, Phase, Outcome, ReasonCode, Side | Allowlisted operation classifications |
 | sc, rpc, ye | StatusCode, RpcStatus, ForwarderError | Actual observed status and YARP result (not exception text) |
@@ -70,7 +70,9 @@ Information and above; raw framework/YARP categories and broad Debug logging are
 CancellationSource `Caller` means HTTP RequestAborted was observed; `PeerCall` means a gRPC call token
 was canceled; `Shutdown` means explicit proxy shutdown was observed; `Unknown` makes no claim about
 intent. Information severity or OperationCanceledException alone **does not mean healthy shutdown**.
-A canceled gRPC transport can reflect a peer crash or network loss. A failed response write does
+A canceled gRPC transport can reflect a peer crash or network loss. WorkerDraining records the
+Host drain flag when observed; it does not establish the cause of a subsequent transport failure.
+A failed response write does
 not prove user code never ran. Observed HTTP status may remain 2xx after a partial-response fault,
 or the default 200 on cancellation before headers; use ResponseStarted and Outcome together.
 There is no reliable outstanding-invocation count, no attribution for failures before the proxy,
