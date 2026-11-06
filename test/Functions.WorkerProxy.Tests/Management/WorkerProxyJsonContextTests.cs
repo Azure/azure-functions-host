@@ -254,13 +254,13 @@ public class WorkerProxyJsonContextTests
     [InlineData("The request is invalid.")]
     public void ErrorEnvelope_RoundTripsAndOmitsNullDetail(string? detail)
     {
-        WorkerApiErrorResponse response = new(new WorkerApiError("WorkerNotReady", detail));
+        WorkerApiErrorResponse response = new(new WorkerApiError("WorkerTerminated", detail));
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerApiErrorResponse);
         using JsonDocument document = JsonDocument.Parse(json);
         AssertProperties(document.RootElement, "error");
         JsonElement error = document.RootElement.GetProperty("error");
-        Assert.Equal("WorkerNotReady", error.GetProperty("code").GetString());
+        Assert.Equal("WorkerTerminated", error.GetProperty("code").GetString());
         if (detail is null)
         {
             AssertProperties(error, "code");
@@ -306,7 +306,7 @@ public class WorkerProxyJsonContextTests
     public void Context_RecursivelyGeneratesMetadataForNestedResponseTypes()
     {
         WorkerPodStateResponse state = new(WorkerPodStatus.ReadyForRequest, WorkerStartupMode.Preconfigured, "group", false);
-        WorkerApiError error = new("WorkerNotReady");
+        WorkerApiError error = new("WorkerTerminated");
 
         string stateJson = JsonSerializer.Serialize(state, WorkerProxyJsonContext.Default.WorkerPodStateResponse);
         string errorJson = JsonSerializer.Serialize(error, WorkerProxyJsonContext.Default.WorkerApiError);

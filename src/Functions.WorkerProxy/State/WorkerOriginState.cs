@@ -26,7 +26,7 @@ internal sealed record WorkerOriginState(
     [property: JsonRequired] PodIdentity Self,
     [property: JsonRequired] bool IsDiscoveryPod,
     [property: JsonRequired] bool IsAlwaysReady,
-    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
     [property: JsonRequired] long ConfigLastModifiedTime,
     [property: JsonRequired] long ContentLastModifiedTime,
     [property: JsonRequired] DateTimeOffset StartupTime,
@@ -43,7 +43,7 @@ internal sealed record WorkerOriginState(
     private static readonly WorkerLink Unlinked = new(WorkerLinkState.Unlinked);
 
     /// <summary>
-    /// Projects a pod snapshot into the platform checkpoint, retaining defaults for runtime linking and lifecycle status.
+    /// Projects a pod snapshot into the platform checkpoint, including the current runtime link and lifecycle status.
     /// </summary>
     /// <param name="state">The current immutable pod snapshot.</param>
     /// <returns>The corresponding platform checkpoint.</returns>
@@ -58,7 +58,7 @@ internal sealed record WorkerOriginState(
             ContentLastModifiedTime: 0,
             state.StartupTime,
             checked((int)state.Revision),
-            WorkerStatus.Starting,
-            Unlinked,
+            state.IsRuntimeInitialized ? WorkerStatus.Running : WorkerStatus.Starting,
+            state.IsRuntimeInitialized ? new(WorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
             state.AssignmentState == WorkerAssignmentState.Failed);
 }
