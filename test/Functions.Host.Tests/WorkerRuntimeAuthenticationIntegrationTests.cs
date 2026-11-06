@@ -177,7 +177,8 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
 
     [Theory]
     [InlineData("valid")]
-    [InlineData("pre-init-retry")]
+    [InlineData("pre-init-runtime-loss")]
+    [InlineData("normal-worker-termination")]
     [InlineData("missing-proxy-key")]
     [InlineData("wrong-proxy-key")]
     [InlineData("missing-runtime-key")]
@@ -192,7 +193,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         const string initializationError = "customer-worker-initialization-failure";
         bool initializationFails = scenario is "failed-init" or "cancelled-init";
         bool malformedResult = scenario is "unknown-init-status" or "null-init-result";
-        bool preInitRetry = string.Equals(scenario, "pre-init-retry", StringComparison.Ordinal);
+        bool preInitRuntimeLoss = string.Equals(scenario, "pre-init-runtime-loss", StringComparison.Ordinal);
         ConcurrentQueue<(string Message, Exception? Error)> diagnostics = new();
         ConcurrentQueue<Uri> forwardedOrigins = new();
         ConcurrentQueue<string> customerPaths = new();
@@ -327,7 +328,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
              "runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}","runtimeIdentity":{{JsonSerializer.Serialize(runtimeIdentity, new JsonSerializerOptions(JsonSerializerDefaults.Web))}}}
             """;
         using StringContent content = new(json, Encoding.UTF8, "application/json");
-        Task<HttpResponseMessage>? linking = preInitRetry ? null : managementReceiver.Client.PutAsync(
+        Task<HttpResponseMessage>? linking = preInitRuntimeLoss ? null : managementReceiver.Client.PutAsync(
             $"/admin/workers/{Uri.EscapeDataString(workerId)}", content, timeout.Token);
         Assert.Empty(registry.GetInitializedChannels());
         Assert.False(linking?.IsCompleted ?? false);
@@ -338,7 +339,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         using AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> workerCall =
             localWorker.EventStream(cancellationToken: timeout.Token);
         await workerCall.RequestStream.WriteAsync(new StreamingMessage { StartStream = new() { WorkerId = workerId } }, timeout.Token);
-        if (preInitRetry)
+        if (preInitRuntimeLoss)
         {
             using GrpcChannel oldChannel = GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions
             {
@@ -356,16 +357,30 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             using AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> old = new FunctionRpc.FunctionRpcClient(oldChannel)
                 .EventStream(headers, cancellationToken: timeout.Token);
             Assert.NotNull((await ReadAsync(old, timeout.Token)).StartStream);
-            var accepted = proxy!.Services.GetRequiredService<ProxyStateManager>().State;
             await old.RequestStream.CompleteAsync();
             Grpc.Core.RpcException dropped = await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => old.ResponseStream.MoveNext(timeout.Token));
             Assert.Equal(Grpc.Core.StatusCode.Unavailable, dropped.StatusCode);
-            while (proxy.Services.GetRequiredService<ProxyRelay>().IsAttached(ProxyRelaySide.Runtime))
+            while (proxy!.Services.GetRequiredService<ProxyRelay>().IsAttached(ProxyRelaySide.Runtime))
             {
                 await Task.Delay(10, timeout.Token);
             }
-            Assert.Same(accepted, proxy.Services.GetRequiredService<ProxyStateManager>().State);
-            linking = managementReceiver.Client.PutAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", content, timeout.Token);
+            Assert.True(proxy.Services.GetRequiredService<ProxyStateManager>().State.RemovalRequested);
+            using StringContent removedBody = new("null", Encoding.UTF8, "application/json");
+            using HttpResponseMessage removed = await management.PostAsync("/admin/infra/instanceState", removedBody, timeout.Token);
+            Assert.Equal(HttpStatusCode.OK, removed.StatusCode);
+            JsonObject removedCheckpoint = JsonNode.Parse(await removed.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
+            Assert.Equal(startupTime, AssertCheckpoint(removedCheckpoint, workerId, expectedGroup: null, expectedStatus: "RemovalRequested"));
+            Assert.False(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
+            using StringContent retryBody = new(assignmentJson, Encoding.UTF8, "application/json");
+            using HttpResponseMessage retry = await management.PutAsync("/admin/worker/assignment", retryBody, timeout.Token);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, retry.StatusCode);
+            Assert.Contains("WorkerNotReady", await retry.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+            using HttpResponseMessage rejectedLink = await managementReceiver.Client.PutAsync(
+                $"/admin/workers/{Uri.EscapeDataString(workerId)}", content, timeout.Token);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, rejectedLink.StatusCode);
+            Assert.Empty(registry.GetInitializedChannels());
+
+            return;
         }
         StreamingMessage init = await ReadAsync(workerCall, timeout.Token);
         Assert.NotNull(init.WorkerInitRequest);
@@ -396,7 +411,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             }
         }, timeout.Token);
         using HttpResponseMessage linkResponse = await linking!;
-        if (scenario is not ("valid" or "pre-init-retry"))
+        if (scenario is not ("valid" or "normal-worker-termination"))
         {
             Assert.Equal(HttpStatusCode.ServiceUnavailable, linkResponse.StatusCode);
             Assert.Empty(registry.GetInitializedChannels());
@@ -495,7 +510,16 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(HttpStatusCode.OK, staleProcessResponse.StatusCode);
         Assert.Equal(state, await staleProcessResponse.Content.ReadAsStringAsync(timeout.Token));
 
-        workerCall.Dispose();
+        bool runtimeLoss = string.Equals(scenario, "valid", StringComparison.Ordinal);
+        if (runtimeLoss)
+        {
+            Assert.True(await registry.UnlinkAsync(workerId, timeout.Token));
+        }
+        else
+        {
+            workerCall.Dispose();
+        }
+
         JsonObject terminalCheckpoint;
         do
         {
@@ -511,13 +535,42 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             await Task.Delay(10, timeout.Token);
         }
         while (true);
-        Assert.Equal(startupTime, AssertCheckpoint(terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested"));
+        Assert.Equal(startupTime, AssertCheckpoint(
+            terminalCheckpoint, workerId, runtimeLoss ? null : "group", expectedStatus: "RemovalRequested"));
         Assert.False(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
         using StringContent terminalRetryBody = new(assignmentJson, Encoding.UTF8, "application/json");
         using HttpResponseMessage terminalRetry = await management.PutAsync("/admin/worker/assignment", terminalRetryBody, timeout.Token);
-        Assert.Equal(HttpStatusCode.Conflict, terminalRetry.StatusCode);
-        Assert.Contains("WorkerTerminated", await terminalRetry.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-        output.WriteLine("Normal worker termination removed runtime identity and reported RemovalRequested without marking the assigned pod unhealthy.");
+        Assert.Equal(runtimeLoss ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.Conflict, terminalRetry.StatusCode);
+        Assert.Contains(runtimeLoss ? "WorkerNotReady" : "WorkerTerminated",
+            await terminalRetry.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        if (runtimeLoss)
+        {
+            using HttpClient rejectedHttp = new(new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            });
+            using HttpRequestMessage rejectedInvocation = new(HttpMethod.Get, new Uri(httpEndpoint, "/invoke"));
+            foreach ((string name, string token) in ProxyAuthentication.CreateHeaders(
+                Convert.FromBase64String(ManagementTokenTestData.WorkerKey), workerId, DateTimeOffset.UtcNow))
+            {
+                rejectedInvocation.Headers.Add(name, token);
+            }
+
+            using HttpResponseMessage rejected = await rejectedHttp.SendAsync(rejectedInvocation, timeout.Token);
+            Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+            Assert.Equal(2, customerPaths.Count);
+            Assert.Empty(registry.GetInitializedChannels());
+            using StringContent replayLinkBody = new(json, Encoding.UTF8, "application/json");
+            using HttpResponseMessage replayLink = await managementReceiver.Client.PutAsync(
+                $"/admin/workers/{Uri.EscapeDataString(workerId)}", replayLinkBody, timeout.Token);
+            Assert.Equal(HttpStatusCode.Conflict, replayLink.StatusCode);
+            Assert.Contains("WorkerTerminated", await replayLink.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and withdrew caller admission without marking protocol health failure.");
+        }
+        else
+        {
+            output.WriteLine("Normal worker termination removed runtime identity and reported RemovalRequested without marking the assigned pod unhealthy.");
+        }
     }
 
     private static DateTimeOffset AssertCheckpoint(
