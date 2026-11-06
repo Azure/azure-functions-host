@@ -156,8 +156,9 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            // Pre-assignment transport sessions may be replaced; an assigned pod's failure is terminal.
-            if (sessionId <= _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            // Pre-assignment transport sessions may be replaced; an assigned pod's termination is terminal.
+            if (sessionId <= _lastSessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated)
             {
                 return false;
             }
@@ -232,7 +233,8 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (sessionId < _lastSessionId || _state.AssignmentState == WorkerAssignmentState.Failed)
+            if (sessionId < _lastSessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated)
             {
                 return false;
             }
@@ -286,7 +288,10 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
-    public bool OnSessionTerminated(long sessionId)
+    /// <param name="sessionId">The terminating relay session identifier.</param>
+    /// <param name="assignmentFailed">Whether a worker protocol violation establishes an assignment health failure.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnSessionTerminated(long sessionId, bool assignmentFailed = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -320,16 +325,18 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
+            WorkerAssignmentState assignmentState = _assignment is null
+                ? WorkerAssignmentState.Unassigned
+                : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
+
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                // Any assigned worker-session loss requires the pod owner to replace this unhealthy pod.
-                AssignmentState = _assignment is null
-                    ? WorkerAssignmentState.Unassigned
-                    : WorkerAssignmentState.Failed
+                // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
+                AssignmentState = assignmentState
             });
             return true;
         }
@@ -352,7 +359,7 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
+                return _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
                     ? WorkerAssignmentResult.WorkerTerminated
                     : WorkerAssignmentResult.AlreadyAssigned;
             }

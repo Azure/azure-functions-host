@@ -33,6 +33,7 @@ internal sealed partial class FunctionRpcRelay
         TokenServiceProxyService? tokenServiceProxy)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
+        private const string IsAlwaysReadyCapability = "IsAlwaysReady";
         private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
@@ -435,23 +436,25 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
-        /// Advertises this session's assigned group and HTTP concurrency, replacing worker-supplied values.
+        /// Advertises the assigned group, HTTP concurrency, and always-ready policy, replacing worker-supplied values.
         /// </summary>
         /// <remarks>
-        /// Only WorkerProxy sets this capability, so any worker-supplied value is always discarded.
+        /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
-        /// the capability is omitted so the runtime never receives an unassigned or stale group.
+        /// the capabilities are omitted so the runtime never receives unassigned or stale policy.
         /// </remarks>
         private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities, WorkerPodState state)
         {
             // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
+            capabilities.Remove(IsAlwaysReadyCapability);
             capabilities.Remove(MaxHttpConcurrencyCapability);
 
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
+                capabilities[IsAlwaysReadyCapability] = state.IsAlwaysReady is true ? bool.TrueString : bool.FalseString;
                 if (string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase) && state.MaxHttpConcurrency is { } concurrency)
                 {
                     capabilities[MaxHttpConcurrencyCapability] = concurrency.ToString(CultureInfo.InvariantCulture);
@@ -649,7 +652,13 @@ internal sealed partial class FunctionRpcRelay
 
                 _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                bool assignmentFailed = terminalState is
+                {
+                    Reason: FunctionRpcRelayTerminationReason.Faulted,
+                    Side: FunctionRpcRelaySide.Worker,
+                    Exception: InvalidDataException
+                };
+                stateManager.OnSessionTerminated(id, assignmentFailed);
                 _completion.SetResult(terminalState);
             }
 

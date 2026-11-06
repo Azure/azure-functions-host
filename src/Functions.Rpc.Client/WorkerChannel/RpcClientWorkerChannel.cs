@@ -3,8 +3,10 @@
 
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -32,12 +34,20 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     internal const string FunctionGroupNameCapability = "FunctionGroupName";
+    internal const string IsAlwaysReadyCapability = "IsAlwaysReady";
     internal const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
 
+    private static readonly TimeSpan InitialIdleThreshold = TimeSpan.FromMinutes(5);
     private readonly TaskCompletionSource<Exception> _functionLoadFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ILogger _activityLogger;
     private LifecycleState _lifecycleState;
+    private TimeProvider _activityTimeProvider = TimeProvider.System;
+    private long? _idleSince;
+    private int _ongoingRequests;
+    private bool _hasReceivedRequest;
+    private bool _retiring;
 
     public RpcClientWorkerChannel(
         string workerId,
@@ -73,6 +83,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             httpProxyService)
     {
         Completion = ownedChannel.Reader.Completion;
+        _activityLogger = logger;
     }
 
     private enum LifecycleState
@@ -96,6 +107,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     /// </summary>
     internal int? MaxHttpConcurrency { get; private set; }
 
+    // Assigned WorkerProxy instances advertise this. Null means missing or malformed handshake metadata.
+    // Only explicit true exempts a worker from idle retirement.
+    internal bool? IsAlwaysReady { get; private set; }
+
     /// <summary>
     /// Gets a value indicating whether the captured startup assignment belongs to the HTTP function group.
     /// </summary>
@@ -103,10 +118,72 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     internal Task<Exception> FunctionLoadFailure => _functionLoadFailure.Task;
 
+    internal Lock LifecycleLock => _lifecycleLock;
+
+    internal int OngoingRequests
+    {
+        get
+        {
+            lock (_lifecycleLock)
+            {
+                return _ongoingRequests;
+            }
+        }
+
+        set
+        {
+            lock (_lifecycleLock)
+            {
+                _ongoingRequests = value;
+                if (value > 0)
+                {
+                    _hasReceivedRequest = true;
+                }
+
+                _idleSince = null;
+            }
+        }
+    }
+
     internal bool IsTerminated => Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
 
     // Terminal signals can precede registry cleanup and the base channel's disposal state.
-    internal bool IsReadyForInvocations => !IsTerminated && IsChannelReadyForInvocations();
+    internal bool IsReadyForInvocations => !Volatile.Read(ref _retiring) && !IsTerminated && IsChannelReadyForInvocations();
+
+    internal void StartIdleTracking(TimeProvider timeProvider)
+    {
+        lock (_lifecycleLock)
+        {
+            _activityTimeProvider = timeProvider;
+            _idleSince = null;
+            RecordIdleTime();
+        }
+    }
+
+    internal bool TryClaimIdleRetirement(TimeSpan threshold, out TimeSpan idleDuration)
+    {
+        lock (_lifecycleLock)
+        {
+            idleDuration = _idleSince is long since ? _activityTimeProvider.GetElapsedTime(since) : TimeSpan.Zero;
+            TimeSpan idleThreshold = _hasReceivedRequest ? threshold : InitialIdleThreshold;
+            if (!IsHttpFunctionGroup || IsAlwaysReady is true || !IsReadyForInvocations ||
+                _ongoingRequests != 0 || idleDuration <= idleThreshold)
+            {
+                return false;
+            }
+
+            _retiring = true;
+            return true;
+        }
+    }
+
+    internal void StopAcceptingInvocations()
+    {
+        lock (_lifecycleLock)
+        {
+            _retiring = true;
+        }
+    }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -156,6 +233,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         }
 
         HostConfiguration = response.HostConfiguration?.Clone();
+        IsAlwaysReady = response.Capabilities.TryGetValue(IsAlwaysReadyCapability, out string alwaysReady)
+            && bool.TryParse(alwaysReady, out bool parsed) ? parsed : null;
     }
 
     protected override void OnFunctionLoadError(Exception exception) => _functionLoadFailure.TrySetResult(exception);
@@ -205,6 +284,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
             FunctionGroupName = functionGroupName;
             MaxHttpConcurrency = maxHttpConcurrency;
+            if (IsHttpFunctionGroup && IsAlwaysReady is null)
+            {
+                _activityLogger.LogWarning("Worker {WorkerId} did not advertise valid IsAlwaysReady metadata; treating this worker as on-demand for idle retirement.", Id);
+            }
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)
@@ -214,6 +297,69 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         catch (Exception exception)
         {
             _startCompletion.TrySetException(exception);
+        }
+    }
+
+    internal static Task GetHttpResponseCompletionTask(ScriptInvocationContext context)
+    {
+        HttpRequest request = context.Inputs?.Select(input => input.Val).OfType<HttpRequest>()
+            .FirstOrDefault(request => request.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext));
+        if (request is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        TaskCompletionSource responseCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        request.HttpContext.Response.OnCompleted(() =>
+        {
+            responseCompleted.TrySetResult();
+            return Task.CompletedTask;
+        });
+        return responseCompleted.Task;
+    }
+
+    internal async Task ObserveRequestCompletionAsync(ScriptInvocationContext context, Task responseCompleted)
+    {
+        try
+        {
+            try
+            {
+                await context.ResultSource.Task.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The invoker owns failure reporting; this observer only tracks request lifetime.
+            }
+
+            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out object value) && value is Task forwarding)
+            {
+                try
+                {
+                    await forwarding.ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // The proxy/invoker owns failure reporting; still wait for response completion.
+                }
+            }
+
+            await responseCompleted.ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_lifecycleLock)
+            {
+                _ongoingRequests--;
+                RecordIdleTime();
+            }
+        }
+    }
+
+    private void RecordIdleTime()
+    {
+        if (_ongoingRequests == 0 && _idleSince is null)
+        {
+            _idleSince = _activityTimeProvider.GetTimestamp();
         }
     }
 

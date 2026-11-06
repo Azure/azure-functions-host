@@ -61,7 +61,8 @@ public partial class FunctionRpcRelayTests
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
         Assert.Equal(WorkerAssignmentState.Ready, ready.AssignmentState);
-        Assert.Equal(WorkerPodStatus.ReadyForRequest, ready.PodStatus);
+        Assert.Equal(WorkerPodStatus.Running, manager.State.PodStatus);
+        Assert.Equal(3, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,
@@ -197,8 +198,9 @@ public partial class FunctionRpcRelayTests
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
-            Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
-            Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
+            Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
+            Assert.False(WorkerOriginState.FromState(failed).IsUnhealthy);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
@@ -334,8 +336,9 @@ public partial class FunctionRpcRelayTests
     private static WorkerAssignment CreateWorkerAssignment(
         string functionGroupName = "test-group",
         int? maxHttpConcurrency = null,
-        string? httpProxyEndpoint = null)
-        => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
+        string? httpProxyEndpoint = null,
+        bool isAlwaysReady = false)
+        => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady,
             environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot", maxHttpConcurrency: maxHttpConcurrency,
             httpProxyEndpoint: httpProxyEndpoint);
 

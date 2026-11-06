@@ -83,6 +83,7 @@ public static class RpcClientServiceCollectionExtensions
             provider.GetRequiredService<IHostApplicationLifetime>(),
             provider.GetRequiredService<ILogger<RpcClientScriptHostStartupCoordinator>>()));
         services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RpcClientScriptHostStartupCoordinator>());
+        services.AddHostedService<HttpWorkerIdleMonitor>();
 
         return services;
     }

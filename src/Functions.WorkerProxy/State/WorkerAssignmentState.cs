@@ -12,5 +12,7 @@ internal enum WorkerAssignmentState
     // The assignment is accepted before the worker establishes StartStream.
     Assigned,
     Ready,
-    Failed
+    Failed,
+    // The assigned session ended; termination alone does not establish a health failure.
+    Terminated
 }

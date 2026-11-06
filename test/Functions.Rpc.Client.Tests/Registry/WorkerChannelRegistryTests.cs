@@ -2169,7 +2169,8 @@ public sealed partial class WorkerChannelRegistryTests
     private static RpcClientWorkerChannelFactory CreateRealChannelFactory(
         IMetricsLogger metricsLogger = null,
         IEnvironment environment = null,
-        ISharedMemoryManager sharedMemoryManager = null)
+        ISharedMemoryManager sharedMemoryManager = null,
+        IHttpProxyService httpProxyService = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -2192,7 +2193,7 @@ public sealed partial class WorkerChannelRegistryTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            httpProxyService ?? Mock.Of<IHttpProxyService>(),
             metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 
@@ -2299,7 +2300,8 @@ public sealed partial class WorkerChannelRegistryTests
                     RpcClientWorkerChannel channel = CreateRealChannelFactory(
                             control.MetricsLogger.Object,
                             control.SharedMemory?.Environment.Object,
-                            control.SharedMemory?.Manager.Object)
+                            control.SharedMemory?.Manager.Object,
+                            control.HttpProxyService)
                         .Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
@@ -2434,6 +2436,10 @@ public sealed partial class WorkerChannelRegistryTests
 
         internal HostConfiguration HostConfiguration { get; init; }
 
+        internal IDictionary<string, string> Capabilities { get; init; } = new Dictionary<string, string>();
+
+        internal IHttpProxyService HttpProxyService { get; init; }
+
         internal WorkerInitRequest InitRequest { get; private set; }
 
         internal StatusResult InitResult { get; init; } = new() { Status = StatusResult.Types.Status.Success };
@@ -2529,6 +2535,7 @@ public sealed partial class WorkerChannelRegistryTests
                     Result = InitResult,
                     HostConfiguration = HostConfiguration,
                 };
+                response.Capabilities.Add(Capabilities);
                 if (SharedMemory is not null)
                 {
                     response.Capabilities.Add(RpcWorkerConstants.SharedMemoryDataTransfer, "1");

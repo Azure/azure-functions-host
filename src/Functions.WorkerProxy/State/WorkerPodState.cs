@@ -54,9 +54,11 @@ internal sealed record WorkerPodState(
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
 
     // This is worker-pod eligibility, not proof of runtime initialization, function loading, or HTTP serving readiness.
-    public WorkerPodStatus PodStatus => AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
-        ? WorkerPodStatus.ReadyForRequest
-        : WorkerPodStatus.None;
+    public WorkerPodStatus PodStatus => AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated
+        ? WorkerPodStatus.RemovalRequested
+        : AssignmentState == WorkerAssignmentState.Ready && IsWorkerReady
+        ? WorkerPodStatus.Running
+        : WorkerPodStatus.Starting;
 
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.

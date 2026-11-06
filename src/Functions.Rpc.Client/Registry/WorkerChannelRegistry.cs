@@ -35,6 +35,7 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IHostConfigurationSourceProvider
 {
     private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan IdleWorkerDisposalTimeout = TimeSpan.FromSeconds(10);
 
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly IWorkerInvocationTracker _invocationTracker;
@@ -403,6 +404,69 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
     }
 
     /// <inheritdoc />
+    public async Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(threshold, TimeSpan.Zero);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        KeyValuePair<string, WorkerSlot>[] slots;
+        lock (_stateLock)
+        {
+            slots = _disposed ? [] : [.. _slots.Where(entry => entry.Value.Channel is { IsReadyForInvocations: true })];
+        }
+
+        await Task.WhenAll(slots.Select(async entry =>
+        {
+            (string workerId, WorkerSlot slot) = entry;
+            cancellationToken.ThrowIfCancellationRequested();
+            using SemaphoreLock gate = await slot.Gate.LockAsync(cancellationToken);
+            RpcClientWorkerChannel removed;
+            TimeSpan idleDuration;
+            lock (_stateLock)
+            {
+                if (_disposed ||
+                    slot.Channel is not { } channel ||
+                    !ReferenceEquals(slot.AttemptedSetupContext, _activeSetupContext) ||
+                    slot.SetupException is not null ||
+                    !channel.TryClaimIdleRetirement(threshold, out idleDuration))
+                {
+                    return;
+                }
+
+                removed = DetachChannelLocked(slot, channel);
+            }
+
+            Task disposal = null;
+            try
+            {
+                disposal = removed.DisposeAsync().AsTask();
+                _ = disposal.ContinueWith(failed =>
+                    Log.ChannelDisposalFailed(_logger, failed.Exception.GetBaseException(), workerId),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+                await disposal.WaitAsync(IdleWorkerDisposalTimeout, _timeProvider, cancellationToken);
+                _logger.LogInformation("Retired idle HTTP worker {WorkerId} after {IdleDuration} with zero ongoing requests.", workerId, idleDuration);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _shutdownSource.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                if (disposal is not { IsFaulted: true })
+                {
+                    Log.ChannelDisposalFailed(_logger, exception, workerId);
+                }
+            }
+            finally
+            {
+                RemoveEmptySlot(workerId, slot);
+            }
+        }));
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<WorkerChannel> GetInitializedChannels()
     {
         lock (_observationLock)
@@ -619,6 +683,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
             return null;
         }
 
+        channel.StopAcceptingInvocations();
         slot.Channel = null;
         slot.AttemptedSetupContext = null;
         slot.SetupException = null;
@@ -828,6 +893,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry, IH
         try
         {
             channel.SetupFunctionInvocationBuffers(setupContext.Functions);
+            channel.StartIdleTracking(_timeProvider);
             channel.SendFunctionLoadRequests(setupContext.ManagedDependencyOptions, setupContext.FunctionTimeout);
             SignalReadyChannelsLocked();
         }

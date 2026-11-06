@@ -62,6 +62,15 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retires ready, on-demand HTTP workers whose continuous zero-request time exceeds the threshold.
+    /// </summary>
+    /// <param name="threshold">The minimum continuous idle duration. Equality does not permit retirement.</param>
+    /// <param name="cancellationToken">Cancels the scan before the next retirement begins.</param>
+    /// <returns>A task that completes after claimed workers have been detached and disposed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The threshold is negative.</exception>
+    Task RetireIdleHttpWorkersAsync(TimeSpan threshold, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Attempts to get an initialized channel.
     /// </summary>
     /// <param name="workerId">The worker identifier.</param>
