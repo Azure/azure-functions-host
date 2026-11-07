@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -40,6 +41,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             await outerStopping.Task.TestWaitAsync(TimeSpan.FromSeconds(5));
             Assert.True(outerLifetime.ApplicationStopping.IsCancellationRequested);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task TestFunctionHost_DisposeAsync_WaitsForShutdown(bool stopApplicationFirst)
+        {
+            var service = new BlockingStopHostedService();
+            var testHost = new TestFunctionHost(_testScriptPath, _testLogPath,
+                configureWebHostServices: services => services.AddSingleton<IHostedService>(service));
+            var lifetime = testHost.WebHostServices.GetRequiredService<IHostApplicationLifetime>();
+            var eventManager = testHost.WebHostServices.GetRequiredService<IScriptEventManager>();
+            Task disposeTask = null;
+
+            try
+            {
+                if (stopApplicationFirst)
+                {
+                    lifetime.StopApplication();
+                    await service.StopStarted.Task.TestWaitAsync(TimeSpan.FromSeconds(10));
+                }
+
+                disposeTask = testHost.DisposeAsync().AsTask();
+                await service.StopStarted.Task.TestWaitAsync(TimeSpan.FromSeconds(10));
+
+                Assert.False(disposeTask.IsCompleted);
+                Assert.Same(disposeTask, testHost.DisposeAsync().AsTask());
+                Assert.Equal(1, service.StopCalls);
+                eventManager.Publish(new DebugNotification(nameof(TestFunctionHost), DateTime.UtcNow));
+            }
+            finally
+            {
+                service.AllowStop.TrySetResult();
+                await (disposeTask ?? testHost.DisposeAsync().AsTask()).TestWaitAsync(TimeSpan.FromSeconds(30));
+            }
+
+            Assert.Equal(1, service.StopCalls);
+            Assert.Throws<ObjectDisposedException>(() => eventManager.Publish(new DebugNotification(nameof(TestFunctionHost), DateTime.UtcNow)));
         }
 
         [Fact]
@@ -134,6 +173,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             await runTask.TestWaitAsync(TimeSpan.FromSeconds(5));
             Assert.True(service.Started);
             Assert.True(service.Stopped);
+        }
+
+        private sealed class BlockingStopHostedService : IHostedService
+        {
+            private int _stopCalls;
+
+            public TaskCompletionSource StopStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public TaskCompletionSource AllowStop { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public int StopCalls => Interlocked.CompareExchange(ref _stopCalls, 0, 0);
+
+            public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public async Task StopAsync(CancellationToken cancellationToken)
+            {
+                if (Interlocked.Increment(ref _stopCalls) == 1)
+                {
+                    StopStarted.TrySetResult();
+                    await AllowStop.Task;
+                }
+            }
         }
 
         private sealed class TrackingHostedService : IHostedService
