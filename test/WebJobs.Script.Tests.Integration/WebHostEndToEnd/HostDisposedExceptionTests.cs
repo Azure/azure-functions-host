@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -72,8 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
 
             var jobhost = host.JobHostServices.GetRequiredService<IScriptJobHost>();
             await jobhost.StopAsync();
-            await host.WebHost.StopAsync();
-            host.WebHost.Dispose();
             await host.DisposeAsync();
 
             // Capture log state after dispose so we have diagnostic context if the expected
