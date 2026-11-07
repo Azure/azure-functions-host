@@ -65,7 +65,7 @@ internal sealed partial class WorkerChannelRegistry :
     private ChannelSetupContext _activeSetupContext;
     private Task _disposeTask;
     private bool _disposed;
-    private bool _runtimeAdmissionClosed;
+    private RuntimeDrainStart _drainStart;
     private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -164,7 +164,7 @@ internal sealed partial class WorkerChannelRegistry :
                 return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, _timeProvider, cancellationToken), isNewLink: false);
             }
 
-            if (_runtimeAdmissionClosed)
+            if (_drainStart is not null)
             {
                 throw new WorkerLinkException(
                     WorkerLinkFailureReason.RuntimeStopping,
@@ -272,17 +272,17 @@ internal sealed partial class WorkerChannelRegistry :
         return Task.FromResult(selections.Count);
     }
 
+    /// <inheritdoc />
     RuntimeDrainStart IRuntimeDrainWorkerManager.CloseAdmission()
     {
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_runtimeAdmissionClosed)
+            if (_drainStart is not null)
             {
-                throw new InvalidOperationException("The Runtime drain admission fence is already closed.");
+                return _drainStart;
             }
 
-            _runtimeAdmissionClosed = true;
             List<string> nonHttpWorkerIds = [];
             List<string> httpWorkerIds = [];
             foreach ((string workerId, WorkerSlot slot) in _slots)
@@ -297,10 +297,13 @@ internal sealed partial class WorkerChannelRegistry :
 
             nonHttpWorkerIds.Sort(StringComparer.Ordinal);
             httpWorkerIds.Sort(StringComparer.Ordinal);
-            return new(nonHttpWorkerIds, httpWorkerIds);
+            _drainStart = new(nonHttpWorkerIds.AsReadOnly(), httpWorkerIds.AsReadOnly());
+
+            return _drainStart;
         }
     }
 
+    /// <inheritdoc />
     void IRuntimeDrainWorkerManager.SelectWorkers(
         IReadOnlyList<string> workerIds)
     {
@@ -312,7 +315,7 @@ internal sealed partial class WorkerChannelRegistry :
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (!_runtimeAdmissionClosed)
+            if (_drainStart is null)
             {
                 throw new InvalidOperationException("The Runtime drain admission fence is open.");
             }
@@ -328,8 +331,7 @@ internal sealed partial class WorkerChannelRegistry :
                 }
 
                 long selectedTimestamp = _timeProvider.GetTimestamp();
-                Task invocationDrain = channel.TryBeginRuntimeDrain();
-                if (invocationDrain is null)
+                if (!channel.TryBeginRuntimeDrain(out Task invocationDrain))
                 {
                     continue;
                 }
@@ -1201,7 +1203,7 @@ internal sealed partial class WorkerChannelRegistry :
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_runtimeAdmissionClosed)
+            if (_drainStart is not null)
             {
                 throw new WorkerLinkException(
                     WorkerLinkFailureReason.RuntimeStopping,

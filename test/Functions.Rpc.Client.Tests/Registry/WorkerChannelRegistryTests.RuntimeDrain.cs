@@ -27,6 +27,61 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed partial class WorkerChannelRegistryTests
 {
     [Fact]
+    public async Task RuntimeDrain_CloseAdmissionReplaysOriginalSnapshotAfterWorkersUnlink()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl last = CreateClassifiedWorker("z-worker");
+        ChannelControl first = CreateClassifiedWorker("a-worker");
+        ChannelControl http = CreateHttpWorker("http-worker", false, 10);
+        foreach (ChannelControl worker in new[] { last, first, http })
+        {
+            harness.Enqueue(worker);
+            await LinkAsync(registry, worker.Id);
+        }
+
+        IRuntimeDrainWorkerManager workers = registry;
+        RuntimeDrainStart[] snapshots = await Task.WhenAll(
+            Enumerable.Range(0, 8).Select(_ => Task.Run(workers.CloseAdmission))).WaitAsync(TestTimeout);
+        RuntimeDrainStart snapshot = snapshots[0];
+        Assert.All(snapshots, value => Assert.Same(snapshot, value));
+        Assert.Equal([first.Id, last.Id], snapshot.NonHttpWorkerIds);
+        Assert.Equal([http.Id], snapshot.HttpWorkerIds);
+        Assert.Throws<NotSupportedException>(() =>
+            Assert.IsAssignableFrom<IList<string>>(snapshot.NonHttpWorkerIds).Add("new-worker"));
+
+        Assert.True(await registry.UnlinkAsync(first.Id));
+        Assert.True(await registry.UnlinkAsync(http.Id));
+
+        Assert.Same(snapshot, workers.CloseAdmission());
+        Assert.Equal([first.Id, last.Id], snapshot.NonHttpWorkerIds);
+        Assert.Equal([http.Id], snapshot.HttpWorkerIds);
+        WorkerLinkException rejected = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => registry.LinkAsync("new-worker", CreateEndpoint("new-worker")));
+        Assert.Equal(WorkerLinkFailureReason.RuntimeStopping, rejected.Reason);
+
+        await registry.DisposeAsync();
+        Assert.Throws<ObjectDisposedException>(() => workers.CloseAdmission());
+    }
+
+    [Fact]
+    public async Task RuntimeDrain_CloseAdmissionReplaysEmptySnapshot()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IRuntimeDrainWorkerManager workers = registry;
+
+        RuntimeDrainStart snapshot = workers.CloseAdmission();
+
+        Assert.Empty(snapshot.NonHttpWorkerIds);
+        Assert.Empty(snapshot.HttpWorkerIds);
+        Assert.Same(snapshot, workers.CloseAdmission());
+        WorkerLinkException rejected = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => registry.LinkAsync("new-worker", CreateEndpoint("new-worker")));
+        Assert.Equal(WorkerLinkFailureReason.RuntimeStopping, rejected.Reason);
+    }
+
+    [Fact]
     public async Task RuntimeDrain_RejectsLinkThatStartedBeforeAdmissionClosed()
     {
         RegistryHarness harness = new();
@@ -175,8 +230,7 @@ public sealed partial class WorkerChannelRegistryTests
         using HttpResponseMessage scaleIn = await host.PostAsync(
             """{"functionGroup":"http","isAlwaysReady":true,"desiredWorkerCount":0}""");
         Assert.Equal(1, await ReadNewlyDrainingWorkerCountAsync(scaleIn));
-        Task drain = selected.Channel.TryBeginRuntimeDrain();
-        Assert.NotNull(drain);
+        Assert.True(selected.Channel.TryBeginRuntimeDrain(out Task drain));
         Assert.False(drain.IsCompleted);
         Assert.True(onDemand.Channel.IsReadyForInvocations);
         appServer.Publish = (_, _) => Task.FromResult(HttpStatusCode.OK);
@@ -188,7 +242,8 @@ public sealed partial class WorkerChannelRegistryTests
 
         manager.Accept(RuntimeDrainMode.Immediate);
 
-        Assert.Same(drain, selected.Channel.TryBeginRuntimeDrain());
+        Assert.True(selected.Channel.TryBeginRuntimeDrain(out Task replay));
+        Assert.Same(drain, replay);
         Assert.False(selected.DisposeStarted.IsCompleted);
         Assert.False(selected.Channel.TryDispatchInvocation(CreateScaleInInvocation(function)));
         await onDemand.DisposeStarted.WaitAsync(TestTimeout);
@@ -324,8 +379,9 @@ public sealed partial class WorkerChannelRegistryTests
             NullLogger<RuntimeDrainManager>.Instance);
         RuntimeDrainReceipt receipt = manager.Accept(RuntimeDrainMode.Immediate);
         Assert.Equal(receipt, manager.Accept(RuntimeDrainMode.Immediate));
-        Task runtimeDrain = selected.Channel.TryBeginRuntimeDrain();
-        Assert.Same(runtimeDrain, selected.Channel.TryBeginRuntimeDrain());
+        Assert.True(selected.Channel.TryBeginRuntimeDrain(out Task runtimeDrain));
+        Assert.True(selected.Channel.TryBeginRuntimeDrain(out Task replay));
+        Assert.Same(runtimeDrain, replay);
         if (cancelFirst)
         {
             cancellation.Cancel();

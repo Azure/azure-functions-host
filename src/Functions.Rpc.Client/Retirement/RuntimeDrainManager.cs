@@ -132,7 +132,7 @@ internal sealed partial class RuntimeDrainManager : IRuntimeDrainManager, IAsync
 
     private async Task DisposeCoreAsync()
     {
-        _shutdownSource.Cancel();
+        await _shutdownSource.CancelAsync().ConfigureAwait(false);
         await _scheduleTask.ConfigureAwait(false);
         _operation?.ScheduleCancellation.Dispose();
         _shutdownSource.Dispose();

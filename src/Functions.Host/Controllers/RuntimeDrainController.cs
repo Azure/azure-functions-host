@@ -83,30 +83,24 @@ public sealed class RuntimeDrainController : Controller
             return [new(RequestValidationErrorCodes.InvalidBody, "request")];
         }
 
-        if (string.IsNullOrWhiteSpace(request.DrainMode))
+        if (request.ValidationError is { } validationError)
+        {
+            return [validationError];
+        }
+
+        if (request.DrainMode is not { } requestedMode)
         {
             return [new(RequestValidationErrorCodes.Required, "drainMode")];
         }
 
-        if (string.Equals(
-            request.DrainMode,
-            nameof(RuntimeDrainMode.Phased),
-            StringComparison.Ordinal))
+        if (!Enum.IsDefined(requestedMode))
         {
-            drainMode = RuntimeDrainMode.Phased;
-            return [];
+            return [new(RequestValidationErrorCodes.InvalidValue, "drainMode")];
         }
 
-        if (string.Equals(
-            request.DrainMode,
-            nameof(RuntimeDrainMode.Immediate),
-            StringComparison.Ordinal))
-        {
-            drainMode = RuntimeDrainMode.Immediate;
-            return [];
-        }
+        drainMode = requestedMode;
 
-        return [new(RequestValidationErrorCodes.InvalidValue, "drainMode")];
+        return [];
     }
 
     private static class ErrorCodes

@@ -818,6 +818,28 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal(1, duplexChannel.DisposeCount);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TryBeginRuntimeDrain_TerminatedChannelOnlyReturnsAnExistingDrain(bool beginDrainFirst)
+    {
+        TestDuplexChannel<StreamingMessage> transport = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(transport);
+        Task original = null;
+        if (beginDrainFirst)
+        {
+            Assert.True(channel.TryBeginRuntimeDrain(out original));
+            Assert.True(channel.TryBeginRuntimeDrain(out Task replay));
+            Assert.Same(original, replay);
+        }
+
+        await channel.DisposeAsync();
+        Assert.True(channel.IsTerminated);
+
+        Assert.Equal(beginDrainFirst, channel.TryBeginRuntimeDrain(out Task result));
+        Assert.Same(original, result);
+    }
+
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
         => _factory.Create(WorkerId, duplexChannel, RuntimeWorkerTestData.CreateCredentials(WorkerId));
 

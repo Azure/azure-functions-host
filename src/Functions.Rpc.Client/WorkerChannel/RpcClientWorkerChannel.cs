@@ -361,21 +361,25 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
-    internal Task TryBeginRuntimeDrain()
+    internal bool TryBeginRuntimeDrain(out Task result)
     {
         lock (_lifecycleLock)
         {
             if (_drainTask is not null)
             {
-                return _drainTask;
+                result = _drainTask;
+                return true;
             }
 
             if (IsTerminated)
             {
-                return null;
+                result = null;
+                return false;
             }
 
-            return BeginDrainLocked();
+            result = BeginDrainLocked();
+
+            return true;
         }
     }
 

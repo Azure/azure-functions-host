@@ -317,6 +317,49 @@ public sealed class RuntimeDrainManagerTests
         workers.Verify(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()), Times.Exactly(2));
     }
 
+    [Fact]
+    public async Task DisposeAsync_DoesNotHoldOperationLockWhileCancellationCallbacksRun()
+    {
+        TaskCompletionSource callbackEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim finishCallback = new();
+        Mock<ITimer> timer = new();
+        timer.Setup(value => value.Dispose()).Callback(() =>
+        {
+            callbackEntered.TrySetResult();
+            Assert.True(finishCallback.Wait(TimeSpan.FromSeconds(5)));
+        });
+        Mock<TimeProvider> time = new() { CallBase = true };
+        time.Setup(value => value.CreateTimer(
+                It.IsAny<TimerCallback>(), It.IsAny<object>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Returns(timer.Object);
+        Mock<IRuntimeDrainWorkerManager> workers = new(MockBehavior.Strict);
+        workers.Setup(value => value.CloseAdmission()).Returns(new RuntimeDrainStart(
+            ["non-http-1", "non-http-2"], ["http-1"]));
+        workers.Setup(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()));
+        await using RuntimeDrainManager manager = new(
+            workers.Object, Mock.Of<IHostApplicationLifetime>(), time.Object, NullLogger<RuntimeDrainManager>.Instance);
+        manager.Accept(RuntimeDrainMode.Phased);
+
+        Task disposal = manager.DisposeAsync().AsTask();
+        try
+        {
+            await callbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.Run(() =>
+            {
+                _ = manager.ScheduleCompletion;
+                Assert.Throws<ObjectDisposedException>(() => manager.Accept(RuntimeDrainMode.Immediate));
+            }).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(disposal.IsCompleted);
+        }
+        finally
+        {
+            finishCallback.Set();
+        }
+
+        await disposal.WaitAsync(TimeSpan.FromSeconds(5));
+        workers.Verify(value => value.SelectWorkers(It.IsAny<IReadOnlyList<string>>()), Times.Once);
+    }
+
     private sealed class RecordingWorkerManager : IRuntimeDrainWorkerManager
     {
         private readonly string[] _allWorkerIds;
