@@ -69,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 Assert.False(disposeTask.IsCompleted);
                 Assert.Same(disposeTask, testHost.DisposeAsync().AsTask());
                 Assert.Equal(1, service.StopCalls);
+
+                // Shared services must remain usable until the hosted service finishes stopping.
                 eventManager.Publish(new DebugNotification(nameof(TestFunctionHost), DateTime.UtcNow));
             }
             finally
