@@ -610,6 +610,11 @@ internal sealed class WorkerPodStateManager
         if (_neverLinkedOutcome == NeverLinkedOutcome.Pending)
         {
             _neverLinkedOutcome = NeverLinkedOutcome.RemovalRequested;
+            if (_state.RemovalRequested)
+            {
+                return;
+            }
+
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
