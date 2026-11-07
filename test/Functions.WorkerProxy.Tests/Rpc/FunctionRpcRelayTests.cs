@@ -19,6 +19,7 @@ using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -179,33 +180,6 @@ public partial class FunctionRpcRelayTests
         Assert.True(relay.IsAttached(side));
         Assert.Null(relay.LastTerminalState);
         Assert.False(manager.State.RemovalRequested);
-    }
-
-    [Fact]
-    public async Task Relay_WorkerPeerCloseStopsSiblingAndAllowsWholeSessionReplacement()
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-
-        await using (RelayClient firstRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
-        await using (RelayClient firstWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
-        {
-            await ExchangeAsync(firstRuntime, firstWorker, "first", timeout.Token);
-            await firstWorker.CompleteRequestAsync(timeout.Token);
-
-            StatusCode[] terminalStatuses = await Task.WhenAll(firstRuntime.WaitForTerminationAsync(timeout.Token),
-                firstWorker.WaitForTerminationAsync(timeout.Token));
-            Assert.All(terminalStatuses, static status => Assert.Equal(StatusCode.Unavailable, status));
-        }
-
-        await WaitForReleaseAsync(relay, timeout.Token);
-        Assert.Equal(FunctionRpcRelayTerminationReason.PeerClosed, relay.LastTerminalState?.Reason);
-        Assert.Equal(FunctionRpcRelaySide.Worker, relay.LastTerminalState?.Side);
-
-        await using RelayClient secondRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient secondWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(secondRuntime, secondWorker, "replacement", timeout.Token);
     }
 
     [Fact]
@@ -443,7 +417,7 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(shutdown ? (FunctionRpcRelaySide?)null : FunctionRpcRelaySide.Worker, state.Side);
             Assert.Null(state.Exception);
         });
-        Assert.False(manager.State.RemovalRequested);
+        Assert.Equal(!shutdown, manager.State.RemovalRequested);
         await stopTask.WaitAsync(timeout.Token);
     }
 
@@ -451,7 +425,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager(), Mock.Of<IHostApplicationLifetime>());
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
@@ -561,7 +535,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager(), Mock.Of<IHostApplicationLifetime>());
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
             relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
@@ -624,7 +598,8 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay(WorkerPodStateManager? stateManager = null)
     {
-        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), stateManager ?? CreatePodStateManager());
+        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(),
+            stateManager ?? CreatePodStateManager(), Mock.Of<IHostApplicationLifetime>());
     }
 
     private static WorkerPodStateManager CreatePodStateManager()

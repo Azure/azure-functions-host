@@ -44,8 +44,9 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </description></item>
 /// <item><description>
 /// <c>POST /admin/infra/instanceState</c>: an absent or null previous checkpoint, or one differing from current
-/// state, returns <c>200</c> with the current infrastructure checkpoint. An equal checkpoint polls for up to
-/// 60 seconds; <c>204</c> means no change. Repeat with the last returned checkpoint after either result.
+/// state, returns <c>200</c> with the current infrastructure checkpoint. A <c>RemovalRequested</c> checkpoint
+/// always returns <c>200</c>, even when unchanged. Other equal checkpoints poll for up to 60 seconds;
+/// <c>204</c> means no change. Repeat with the last returned checkpoint after either result.
 /// Nullable <c>functionGroup</c> may be omitted in the request and is explicitly emitted as null in the response.
 /// </description></item>
 /// </list>

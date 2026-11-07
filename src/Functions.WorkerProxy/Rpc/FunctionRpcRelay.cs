@@ -27,12 +27,14 @@ internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
     WorkerPodStateManager stateManager,
+    IHostApplicationLifetime applicationLifetime,
     TokenServiceProxyService? tokenServiceProxy = null)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+    private readonly CancellationToken _applicationStopping = applicationLifetime.ApplicationStopping;
 
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -136,7 +138,7 @@ internal sealed partial class FunctionRpcRelay(
         {
             lock (_syncLock)
             {
-                if (_stopping)
+                if (_stopping || _applicationStopping.IsCancellationRequested)
                 {
                     throw new FunctionRpcRelayAttachmentException(side, FunctionRpcRelayAttachmentFailure.Shutdown,
                         "The FunctionRpc relay is shutting down.");
@@ -159,6 +161,7 @@ internal sealed partial class FunctionRpcRelay(
                     logger,
                     _capabilityFinalizer,
                     _stateManager,
+                    _applicationStopping,
                     tokenServiceProxy);
 
                 FunctionRpcRelayAttachResult attachResult = session.TryAttach(side, runtimeIdentity);
@@ -200,6 +203,8 @@ internal sealed partial class FunctionRpcRelay(
     /// <returns>A task that completes when the active session has been cleared.</returns>
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        _stateManager.OnApplicationStopping();
+
         FunctionRpcRelaySession? session = null;
         bool initiateStop = false;
 

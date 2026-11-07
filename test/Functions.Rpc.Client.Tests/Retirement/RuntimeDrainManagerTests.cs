@@ -297,7 +297,8 @@ public sealed class RuntimeDrainManagerTests
             });
         await using RuntimeDrainManager manager = new(
             workers.Object, Mock.Of<IHostApplicationLifetime>(), time, logger.Object);
-        manager.Accept(RuntimeDrainMode.Phased);
+        // The blocking logger must not occupy xUnit's synchronization context.
+        await Task.Run(() => manager.Accept(RuntimeDrainMode.Phased));
 
         Task advance = Task.Run(() => time.Advance(TimeSpan.FromSeconds(10)));
         try

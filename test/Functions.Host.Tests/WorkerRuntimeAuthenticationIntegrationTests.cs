@@ -374,7 +374,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             Assert.Equal(startupTime, AssertCheckpoint(
                 removedCheckpoint, workerId, expectedGroup: "group", expectedStatus: "RemovalRequested",
                 expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
-            Assert.False(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
+            Assert.True(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
             using StringContent retryBody = new(assignmentJson, Encoding.UTF8, "application/json");
             using HttpResponseMessage retry = await management.PutAsync("/admin/worker/assignment", retryBody, timeout.Token);
             Assert.Equal(HttpStatusCode.ServiceUnavailable, retry.StatusCode);
@@ -544,7 +544,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(startupTime, AssertCheckpoint(
             terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested",
             expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
-        Assert.False(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
+        Assert.True(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
         using StringContent terminalRetryBody = new(assignmentJson, Encoding.UTF8, "application/json");
         using HttpResponseMessage terminalRetry = await management.PutAsync("/admin/worker/assignment", terminalRetryBody, timeout.Token);
         Assert.Equal(runtimeLoss ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.Conflict, terminalRetry.StatusCode);
@@ -572,11 +572,11 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                 $"/admin/workers/{Uri.EscapeDataString(workerId)}", replayLinkBody, timeout.Token);
             Assert.Equal(HttpStatusCode.Conflict, replayLink.StatusCode);
             Assert.Contains("WorkerTerminated", await replayLink.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, retained the function group, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and withdrew caller admission without marking protocol health failure.");
+            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, retained the function group, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and published an unhealthy RemovalRequested checkpoint.");
         }
         else
         {
-            output.WriteLine("Normal worker termination removed runtime identity and reported RemovalRequested without marking the assigned pod unhealthy.");
+            output.WriteLine("Established Worker stream termination requested sticky removal, removed runtime identity, and published an unhealthy RemovalRequested checkpoint.");
         }
     }
 

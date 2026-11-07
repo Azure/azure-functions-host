@@ -63,7 +63,8 @@ internal static class ManagementApiHandlers
             return InvalidRevision();
         }
 
-        if (originState != WorkerOriginState.FromState(current))
+        WorkerOriginState currentOriginState = WorkerOriginState.FromState(current);
+        if (currentOriginState.Status == WorkerStatus.RemovalRequested || originState != currentOriginState)
         {
             return StateResponse(current);
         }
