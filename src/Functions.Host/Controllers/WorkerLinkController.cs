@@ -81,9 +81,9 @@ public sealed partial class WorkerLinkController : Controller
     /// </para>
     /// <para>
     /// Retry an uncertain outcome with the same case-sensitive worker ID, ordinal <c>Uri.AbsoluteUri</c> endpoint,
-    /// credentials, and Runtime identity values. All declared identity fields participate in value equality with ordinal string
-    /// comparison; omitted and null identity are equivalent, but differ from a supplied identity. Unknown identity
-    /// fields are ignored. Matching pending requests share initialization; they do not create another connection.
+    /// credentials, and Runtime identity values. Runtime identity is required, and all declared identity fields participate in
+    /// value equality with ordinal string comparison. Unknown identity fields are ignored. Matching pending requests share
+    /// initialization; they do not create another connection.
     /// A successful retry returns <c>200</c>. Changing the endpoint, credentials, or identity returns <c>409</c>/<c>LinkConflict</c>.
     /// </para>
     /// <list type="bullet">
@@ -128,7 +128,7 @@ public sealed partial class WorkerLinkController : Controller
         }
 
         return await LinkValidatedWorkerAsync(
-            workerId, grpcEndpoint, request!.RuntimeAccessKey!, request.RuntimeIdentity, started, cancellationToken);
+            workerId, grpcEndpoint, request!.RuntimeAccessKey!, request.RuntimeIdentity!, started, cancellationToken);
     }
 
     private List<RequestValidationError> ValidateRequest(
@@ -163,12 +163,17 @@ public sealed partial class WorkerLinkController : Controller
             errors.Add(new(RequestValidationErrorCodes.Required, "runtimeAccessKey"));
         }
 
+        if (request.RuntimeIdentity is null)
+        {
+            errors.Add(new(RequestValidationErrorCodes.Required, "runtimeIdentity"));
+        }
+
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
     private async Task<IActionResult> LinkValidatedWorkerAsync(
-        string workerId, Uri grpcEndpoint, string runtimeAccessKey, WorkerLinkRuntimeIdentity? runtimeIdentity,
+        string workerId, Uri grpcEndpoint, string runtimeAccessKey, WorkerLinkRuntimeIdentity runtimeIdentity,
         long started, CancellationToken cancellationToken)
     {
         try

@@ -96,9 +96,13 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         await using ServiceProvider runtime = CreateRuntime("test-app", Convert.ToHexString(appKey), true, diagnostics, new());
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost receiver = await WorkerLinkTestHost.StartAsync(timeout.Token, registry, useKestrel: true);
-        string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
-            """;
+        string json = JsonSerializer.Serialize(new
+        {
+            workerPodName = "test-worker-pod",
+            workerGrpcEndpoint = grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey,
+            runtimeIdentity = new WorkerLinkRuntimeIdentity("functions", "runtime-pod", new("test-app", 42, "test-stamp"))
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         using HttpResponseMessage response = await receiver.PutAsync(json, timeout.Token, "test-worker-pod");
 
@@ -164,9 +168,13 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         await using ServiceProvider runtime = CreateRuntime("test-app", Convert.ToHexString(appKey), true, new(), new());
         IWorkerChannelRegistry registry = runtime.GetRequiredService<IWorkerChannelRegistry>();
         await using WorkerLinkTestHost receiver = await WorkerLinkTestHost.StartAsync(timeout.Token, registry, useKestrel: true);
-        string json = $$"""
-            {"workerPodName":"test-worker-pod","workerGrpcEndpoint":"{{grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped)}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}
-            """;
+        string json = JsonSerializer.Serialize(new
+        {
+            workerPodName = "test-worker-pod",
+            workerGrpcEndpoint = grpc.GetComponents(UriComponents.HostAndPort, UriFormat.UriEscaped),
+            runtimeAccessKey = ManagementTokenTestData.WorkerKey,
+            runtimeIdentity = new WorkerLinkRuntimeIdentity("functions", "runtime-pod", new("test-app", 42, "test-stamp"))
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         using HttpResponseMessage response = await receiver.PutAsync(json, timeout.Token, "test-worker-pod");
 
