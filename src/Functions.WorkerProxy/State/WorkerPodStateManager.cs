@@ -26,7 +26,6 @@ internal sealed class WorkerPodStateManager
     private readonly HashSet<TaskCompletionSource<WorkerPodState>> _waiters = [];
     private readonly TaskCompletionSource<WorkerAssignment> _assigned = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeProvider _timeProvider;
-    private readonly TimeProvider _neverLinkedClock;
     private readonly TimeSpan _neverLinkedTimeout;
     private readonly long _startupTimestamp;
     private readonly TaskCompletionSource _runtimeLinkAccepted = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -46,34 +45,17 @@ internal sealed class WorkerPodStateManager
     /// <param name="options">The worker proxy configuration containing the pod identity and never-linked timeout.</param>
     /// <param name="timeProvider">The clock used for startup time, the never-linked deadline, and state-poll deadlines.</param>
     public WorkerPodStateManager(IOptions<WorkerProxyOptions> options, TimeProvider timeProvider)
-        : this(options, timeProvider, WorkerProxyStartupTime.Capture(timeProvider))
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="WorkerPodStateManager"/> class.
-    /// Creates the pod's initial state from an already captured startup timestamp.
-    /// </summary>
-    /// <param name="options">The worker proxy configuration containing the pod identity.</param>
-    /// <param name="timeProvider">The clock used for state-poll deadlines.</param>
-    /// <param name="startupTime">The fixed startup time and monotonic deadline clock.</param>
-    public WorkerPodStateManager(
-        IOptions<WorkerProxyOptions> options,
-        TimeProvider timeProvider,
-        WorkerProxyStartupTime startupTime)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(timeProvider);
-        ArgumentNullException.ThrowIfNull(startupTime);
 
         string podName = options.Value.PodName;
         ArgumentException.ThrowIfNullOrWhiteSpace(podName);
 
         _timeProvider = timeProvider;
-        _neverLinkedClock = startupTime.Clock;
         _neverLinkedTimeout = options.Value.NeverLinkedTimeout;
-        _startupTimestamp = startupTime.Timestamp;
-        _state = WorkerPodState.CreateUnassigned(podName, startupTime.UtcTime);
+        _startupTimestamp = timeProvider.GetTimestamp();
+        _state = WorkerPodState.CreateUnassigned(podName, timeProvider.GetUtcNow());
     }
 
     private enum NeverLinkedOutcome
@@ -336,7 +318,7 @@ internal sealed class WorkerPodStateManager
             }
 
             if (_neverLinkedOutcome == NeverLinkedOutcome.Pending &&
-                _neverLinkedClock.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
+                _timeProvider.GetElapsedTime(_startupTimestamp) >= _neverLinkedTimeout)
             {
                 SelectRemovalRequestedLocked();
             }
@@ -603,7 +585,7 @@ internal sealed class WorkerPodStateManager
                     return;
                 }
 
-                remaining = _neverLinkedTimeout - _neverLinkedClock.GetElapsedTime(_startupTimestamp);
+                remaining = _neverLinkedTimeout - _timeProvider.GetElapsedTime(_startupTimestamp);
                 if (remaining <= TimeSpan.Zero)
                 {
                     SelectRemovalRequestedLocked();
@@ -613,7 +595,7 @@ internal sealed class WorkerPodStateManager
 
             try
             {
-                await _runtimeLinkAccepted.Task.WaitAsync(remaining, _neverLinkedClock, cancellationToken);
+                await _runtimeLinkAccepted.Task.WaitAsync(remaining, _timeProvider, cancellationToken);
                 return;
             }
             catch (TimeoutException)
