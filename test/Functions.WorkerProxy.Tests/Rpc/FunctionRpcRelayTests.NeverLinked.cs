@@ -7,8 +7,10 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -19,8 +21,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
+using Yarp.ReverseProxy.Forwarder;
 using GrpcRpcException = Grpc.Core.RpcException;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -194,6 +199,79 @@ public partial class FunctionRpcRelayTests
             WorkerStatus.RemovalRequested,
             (await ReadManagementStateAsync(management, timeout.Token)).Status);
         Assert.Equal(0, manager.State.MaxHttpConcurrency);
+    }
+
+    [Fact]
+    public async Task NeverLinkedDeadline_ExpiresDuringHttpReadiness_ReturnsServiceUnavailableWithoutForwarding()
+    {
+        ControlledTimeProvider clock = new();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using Socket listener = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        {
+            ExclusiveAddressUse = true
+        };
+        // Reserve the destination without accepting connections until removal is published.
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        IPEndPoint endpoint = Assert.IsType<IPEndPoint>(listener.LocalEndPoint);
+        Uri destination = new($"http://{endpoint}");
+        IOptions<WorkerProxyOptions> options = Options.Create(new WorkerProxyOptions
+        {
+            PodName = "test-pod",
+            WorkerHttpEndpoint = destination.AbsoluteUri,
+            NeverLinkedTimeout = TimeSpan.FromMinutes(5)
+        });
+        WorkerPodStateManager manager = new(options, clock);
+        await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
+        WorkerEndpointReadinessProbe readinessProbe = new(
+            Options.Create(new WorkerEndpointReadinessProbeOptions { TotalTimeout = TestTimeout }),
+            NullLogger<WorkerEndpointReadinessProbe>.Instance);
+        Mock<IHttpForwarder> httpForwarder = new();
+        httpForwarder.Setup(forwarder => forwarder.SendAsync(
+            It.IsAny<HttpContext>(),
+            It.IsAny<string>(),
+            It.IsAny<HttpMessageInvoker>(),
+            It.IsAny<ForwarderRequestConfig>(),
+            It.IsAny<HttpTransformer>())).ReturnsAsync(ForwarderError.None);
+        using HttpClientHandler handler = new();
+        using WorkerHttpForwarder forwarder = new(
+            httpForwarder.Object,
+            Mock.Of<IHttpMessageHandlerFactory>(factory =>
+                factory.CreateHandler(nameof(WorkerHttpForwarder)) == handler));
+        WorkerHttpForwardingMiddleware middleware = new(options, readinessProbe, forwarder, relay, manager);
+        DefaultHttpContext context = new() { RequestAborted = timeout.Token };
+
+        try
+        {
+            Assert.False(manager.State.RemovalRequested);
+            Task request = middleware.InvokeAsync(context);
+            Assert.False(request.IsCompleted);
+            Assert.False(readinessProbe.IsKnownReady(destination));
+
+            Task neverLinked = manager.WatchNeverLinkedAsync(timeout.Token);
+            await clock.WaitForTimerAsync(timeout.Token);
+            clock.Advance(options.Value.NeverLinkedTimeout);
+            await clock.FireTimerAsync(timeout.Token);
+            await neverLinked.WaitAsync(timeout.Token);
+
+            Assert.True(manager.State.RemovalRequested);
+            Assert.False(request.IsCompleted);
+            Assert.False(readinessProbe.IsKnownReady(destination));
+            listener.Listen(1);
+            await request.WaitAsync(timeout.Token);
+
+            Assert.True(readinessProbe.IsKnownReady(destination));
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, context.Response.StatusCode);
+            httpForwarder.Verify(forwarder => forwarder.SendAsync(
+                It.IsAny<HttpContext>(),
+                It.IsAny<string>(),
+                It.IsAny<HttpMessageInvoker>(),
+                It.IsAny<ForwarderRequestConfig>(),
+                It.IsAny<HttpTransformer>()), Times.Never);
+        }
+        finally
+        {
+            await timeout.CancelAsync();
+        }
     }
 
     [Fact]
