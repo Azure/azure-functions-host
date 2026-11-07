@@ -585,7 +585,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         WorkerChannelUnavailableException exception = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
             () => dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout));
 
-        Assert.Contains("No client-backed worker channel became ready", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No worker channel available for function 'TestFunction' in group 'function:TestFunction'", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -607,7 +607,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         {
             WorkerChannelUnavailableException exception = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
                 () => invocation.WaitAsync(TestTimeout));
-            Assert.Contains("No client-backed worker channel became ready", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("No worker channel available for function 'TestFunction' in group 'function:TestFunction'", exception.Message, StringComparison.Ordinal);
         }
         finally
         {

@@ -474,7 +474,7 @@ internal sealed partial class RpcClientInvocationScheduler(
     /// Identifies both the function and its required group when no eligible worker becomes ready before the deadline.
     /// </summary>
     private WorkerChannelUnavailableException MissingWorkerTimeout(ScriptInvocationContext context, string functionGroup)
-        => new($"No worker channel availalble for function '{context.FunctionMetadata.Name}' in group '{functionGroup}' within {_channelWaitTimeout}.");
+        => new($"No worker channel available for function '{context.FunctionMetadata.Name}' in group '{functionGroup}' within {_channelWaitTimeout}.");
 
     /// <summary>
     /// Requires a ready serving channel with the same assigned group, using case-insensitive platform identity.
