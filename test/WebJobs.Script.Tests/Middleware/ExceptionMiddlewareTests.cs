@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
             Assert.Equal("An unhandled host error has occurred.", log.FormattedMessage);
+            Assert.Same(ex, log.Exception);
+
+            await host.StopAsync();
+        }
+
+        [Fact]
+        public async Task Invoke_HandlesWorkerChannelUnavailableExceptions()
+        {
+            var ex = new WorkerChannelUnavailableException("No worker became available.");
+
+            using var host = await GetTestHost(_ => throw ex);
+            var server = host.GetTestServer();
+            var client = server.CreateClient();
+            HttpResponseMessage response = await client.GetAsync(string.Empty);
+
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, (int)response.StatusCode);
+
+            var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
+            Assert.Same(ex, log.Exception);
+
+            await host.StopAsync();
+        }
+
+        [Fact]
+        public async Task Invoke_HandlesOtherTimeoutsAsInternalServerError()
+        {
+            var ex = new TimeoutException("The request timed out.");
+
+            using var host = await GetTestHost(_ => throw ex);
+            var server = host.GetTestServer();
+            var client = server.CreateClient();
+            HttpResponseMessage response = await client.GetAsync(string.Empty);
+
+            Assert.Equal(StatusCodes.Status500InternalServerError, (int)response.StatusCode);
+
+            var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
             Assert.Same(ex, log.Exception);
 
             await host.StopAsync();

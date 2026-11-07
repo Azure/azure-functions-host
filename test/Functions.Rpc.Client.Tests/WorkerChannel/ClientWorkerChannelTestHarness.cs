@@ -44,10 +44,12 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         string functionGroupName = "function:TestFunction",
         string maxHttpConcurrency = null,
         bool handlesInvocationCancel = false,
-        bool handlesWorkerTerminate = false)
+        bool handlesWorkerTerminate = false,
+        IMetricsLogger metricsLogger = null,
+        bool? isAlwaysReady = null)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
-        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
+        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService, metricsLogger)
             .Create(workerId, transport, RuntimeWorkerTestData.CreateCredentials(workerId));
         Task start = channel.StartAsync(CancellationToken.None);
 
@@ -89,6 +91,11 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         if (maxHttpConcurrency is not null)
         {
             initResponse.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency);
+        }
+
+        if (isAlwaysReady is { } alwaysReady)
+        {
+            initResponse.Capabilities.Add(RpcClientWorkerChannel.IsAlwaysReadyCapability, alwaysReady.ToString());
         }
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(initResponse, workerId) });
@@ -152,7 +159,8 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     public ValueTask DisposeAsync() => Channel.DisposeAsync();
 
-    private static RpcClientWorkerChannelFactory CreateFactory(IScriptEventManager eventManager, IHttpProxyService httpProxyService)
+    private static RpcClientWorkerChannelFactory CreateFactory(
+        IScriptEventManager eventManager, IHttpProxyService httpProxyService, IMetricsLogger metricsLogger)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -177,6 +185,6 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             appCapabilitiesStore.Object,
             _ => httpProxyService ?? Mock.Of<IHttpProxyService>(),
             RuntimeWorkerTestData.CreateApplicationOptions(),
-            Mock.Of<IMetricsLogger>());
+            metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 }

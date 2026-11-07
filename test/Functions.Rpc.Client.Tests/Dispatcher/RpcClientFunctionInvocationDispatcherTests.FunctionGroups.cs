@@ -513,7 +513,8 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(TimeSpan.FromMilliseconds(50));
         await dispatcher.InitializeAsync([function]);
 
-        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => dispatcher.InvokeAsync(CreateInvocation(function)));
+        WorkerChannelUnavailableException exception = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(function)));
 
         Assert.Contains("function:TestFunction", exception.Message, StringComparison.Ordinal);
         _registry.Verify(registry => registry.GetReadyChannelsAsync(), Times.Once);

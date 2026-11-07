@@ -14,6 +14,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -230,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <inheritdoc />
-        public bool TryPostInvocation(ScriptInvocationContext invocationContext)
+        public virtual bool TryPostInvocation(ScriptInvocationContext invocationContext)
         {
             ArgumentNullException.ThrowIfNull(invocationContext);
 
@@ -265,6 +266,43 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <param name="name">The capability name.</param>
         /// <returns>The applied capability value, or <see langword="null"/> when absent.</returns>
         protected string GetCapabilityState(string name) => _workerCapabilities.GetCapabilityState(name);
+
+        /// <summary>
+        /// Finds the invocation's HTTP trigger request.
+        /// </summary>
+        /// <param name="context">The invocation context.</param>
+        /// <param name="request">The HTTP trigger request when found.</param>
+        /// <returns>True when the invocation contains an HTTP trigger request.</returns>
+        protected static bool TryGetHttpRequest(ScriptInvocationContext context, out HttpRequest request)
+            => context.TryGetHttpRequest(out request);
+
+        /// <summary>
+        /// Releases accepted ownership after invocation processing and result completion.
+        /// </summary>
+        /// <param name="context">The completed invocation.</param>
+        /// <remarks>Derived channels may defer release for additional request-lifetime work without delaying the invocation result.</remarks>
+        protected virtual void OnInvocationCompleted(ScriptInvocationContext context)
+            => RemoveAcceptedInvocation(context);
+
+        /// <summary>
+        /// Gets the lifetime completion used when draining an accepted invocation.
+        /// </summary>
+        /// <param name="context">The accepted invocation.</param>
+        /// <returns>The invocation result by default; derived channels can wait for their full owned lifetime instead.</returns>
+        protected virtual Task GetInvocationCompletionTask(ScriptInvocationContext context) => context.ResultSource.Task;
+
+        /// <summary>
+        /// Releases derived invocation resources after permanent channel shutdown has removed accepted ownership.
+        /// </summary>
+        /// <param name="context">The invocation whose worker lifetime was terminated.</param>
+        protected virtual void OnInvocationTerminated(ScriptInvocationContext context) { }
+
+        /// <summary>
+        /// Runs after an unsent invocation is failed and before releasing its accepted ownership.
+        /// </summary>
+        /// <param name="context">The failed invocation.</param>
+        /// <returns>A task completing when channel-specific send-failure cleanup has finished.</returns>
+        protected virtual Task OnInvocationSendFailureAsync(ScriptInvocationContext context) => Task.CompletedTask;
 
         internal virtual void DisposeWorkerResources() { }
 
@@ -1002,6 +1040,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
+            bool invocationStarted = false;
             Guid invocationId = context.ExecutionContext.InvocationId;
             string invocationIdString = invocationId.ToString();
             if (!TryTrackInvocation(context, out _, out Exception rejectionException))
@@ -1019,14 +1058,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
                     context.SetException(exception);
-                    RemoveAcceptedInvocation(context);
+                    OnInvocationCompleted(context);
                     return;
                 }
                 else if (_metadataRequestErrors.TryGetValue(functionId, out exception))
                 {
                     _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
                     context.SetException(exception);
-                    RemoveAcceptedInvocation(context);
+                    OnInvocationCompleted(context);
                     return;
                 }
 
@@ -1043,7 +1082,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                         // This will result in an invocation failure with a "FunctionInvocationCanceled" exception.
                         context.ResultSource.TrySetCanceled();
-                        RemoveAcceptedInvocation(context);
+                        OnInvocationCompleted(context);
                         return;
                     }
                 }
@@ -1054,14 +1093,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     if (startException is not null)
                     {
-                        context.SetException(startException);
-                        RemoveAcceptedInvocation(context);
+                        await FailUnsentInvocationAsync(context, startException);
                     }
 
                     TryCloseSharedMemoryResources(invocationIdString);
                     return;
                 }
 
+                invocationStarted = true;
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
                 if (_isHandlesInvocationCancelMessageCapabilityEnabled)
@@ -1071,10 +1110,37 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch (Exception invokeEx)
             {
-                context.SetException(invokeEx);
-                RemoveExecutingInvocation(invocationIdString);
-                RemoveAcceptedInvocation(context);
-                TryCloseSharedMemoryResources(invocationIdString);
+                if (invocationStarted)
+                {
+                    // Sending succeeded: only the worker response or channel termination can relinquish ownership.
+                    context.SetException(invokeEx);
+                }
+                else
+                {
+                    await FailUnsentInvocationAsync(context, invokeEx);
+                }
+            }
+        }
+
+        private async Task FailUnsentInvocationAsync(ScriptInvocationContext context, Exception exception)
+        {
+            context.SetException(exception);
+            try
+            {
+                await OnInvocationSendFailureAsync(context);
+            }
+            finally
+            {
+                string invocationId = context.ExecutionContext.InvocationId.ToString();
+                try
+                {
+                    RemoveExecutingInvocation(invocationId);
+                }
+                finally
+                {
+                    OnInvocationCompleted(context);
+                    TryCloseSharedMemoryResources(invocationId);
+                }
             }
         }
 
@@ -1349,6 +1415,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         await _httpProxyService.EnsureSuccessfulForwardingAsync(context);
                     }
 
+                    if (context.Properties.TryGetValue(ScriptConstants.CancellationTokenRegistration, out CancellationTokenRegistration ctr))
+                    {
+                        await ctr.DisposeAsync();
+                        context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
+                    }
+
                     LogSharedMemoryUsage(invokeResponse);
                     AddWorkerTraceAttributes(invokeResponse, context);
 
@@ -1377,8 +1449,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     TryCloseSharedMemoryResources(invokeResponse);
 
-                    invocation.Dispose();
-                    RemoveAcceptedInvocation(context);
+                    try
+                    {
+                        invocation.Dispose();
+                    }
+                    finally
+                    {
+                        OnInvocationCompleted(context);
+                    }
                 }
             }
         }
@@ -1659,7 +1737,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <summary>
         /// Allows derived channels to complete topology-specific operations when transport or shutdown fails.
         /// </summary>
-        /// <param name="exception">The channel failure.</param>
+        /// <param name="exception">The channel failure, or null during graceful shutdown.</param>
         protected virtual void OnChannelFailure(Exception exception)
         {
         }
@@ -1931,7 +2009,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Count of accepted invocations waiting to be drained out: {invocationCount}", invocations.Length);
             // Draining waits for completion; individual execution failures remain on the invocation result tasks.
-            Task completion = Task.WhenAll(invocations.Select(invocation => invocation.ResultSource.Task));
+            Task completion = Task.WhenAll(invocations.Select(GetInvocationCompletionTask));
             await completion.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
 
@@ -1945,11 +2023,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public void Shutdown(Exception workerException)
         {
             TryFailPendingReload(workerException);
-            if (workerException is not null)
-            {
-                OnChannelFailure(workerException);
-            }
-
+            OnChannelFailure(workerException);
             var shutdownException = workerException;
 
             if (workerException is null || workerException is FunctionTimeoutException)
@@ -2002,6 +2076,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             foreach (ScriptInvocationContext context in invocationsToFail.Values)
             {
                 FailInvocation(context, shutdownException);
+                OnInvocationTerminated(context);
             }
 
             foreach (ExecutingInvocation invocation in executingInvocations)

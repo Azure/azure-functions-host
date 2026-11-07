@@ -139,7 +139,7 @@ public sealed class RpcClientHttpInvocationTests
         ScriptInvocationContext invocation = CreateInvocation(function);
         using MemoryStream body = new(Encoding.UTF8.GetBytes("HTTP body must not be serialized over gRPC"));
         HttpRequest httpRequest = new DefaultHttpContext().Request;
-        httpRequest.HttpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new object();
+        httpRequest.HttpContext.Items[ScriptConstants.AzureFunctionsHttpTriggerContext] = new();
         httpRequest.Method = "POST";
         httpRequest.Host = new("incoming.example");
         httpRequest.Body = body;
