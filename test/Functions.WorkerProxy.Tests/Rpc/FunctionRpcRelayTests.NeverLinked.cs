@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit;
 using GrpcRpcException = Grpc.Core.RpcException;
 
@@ -26,6 +27,29 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
+    [Theory]
+    [InlineData(299, true)]
+    [InlineData(300, false)]
+    public void NeverLinkedDeadline_StartsAtManagerConstruction(int elapsedSeconds, bool accepted)
+    {
+        ControlledTimeProvider clock = new();
+        clock.Advance(TimeSpan.FromMinutes(10));
+        DateTimeOffset startupTime = clock.GetUtcNow();
+        WorkerPodStateManager manager = new(
+            Options.Create(new WorkerProxyOptions
+            {
+                PodName = "test-pod",
+                NeverLinkedTimeout = TimeSpan.FromMinutes(5)
+            }),
+            clock);
+
+        clock.Advance(TimeSpan.FromSeconds(elapsedSeconds));
+
+        Assert.Equal(accepted, manager.OnRuntimeAttached(1, null));
+        Assert.Equal(!accepted, manager.State.RemovalRequested);
+        Assert.Equal(startupTime, manager.StartupTime);
+    }
+
     [Theory]
     [InlineData(null, null)]
     [InlineData(nameof(WorkerStartupMode.Preconfigured), null)]
@@ -208,11 +232,10 @@ public partial class FunctionRpcRelayTests
                 workerHttpEndpoint.AbsoluteUri;
         }
 
-        WorkerProxyStartupTime startupTime = WorkerProxyStartupTime.Capture(clock);
-
         return new(configuration, services =>
         {
-            services.Replace(ServiceDescriptor.Singleton(startupTime));
+            services.Replace(ServiceDescriptor.Singleton<WorkerPodStateManager>(provider =>
+                new(provider.GetRequiredService<IOptions<WorkerProxyOptions>>(), clock)));
             if (eventGenerator is not null)
             {
                 services.Replace(ServiceDescriptor.Singleton<IWorkerSystemEventGenerator>(eventGenerator));

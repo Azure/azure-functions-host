@@ -112,7 +112,6 @@ internal static partial class WorkerProxyApplication
             WorkerProxyLogExporter.AssignmentCategory,
             LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
-        builder.Services.AddSingleton(static _ => WorkerProxyStartupTime.Capture(TimeProvider.System));
         ContainerManagementAuthenticationHandler.AddServices(builder.Services);
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();

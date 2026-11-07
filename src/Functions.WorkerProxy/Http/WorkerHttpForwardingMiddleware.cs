@@ -28,7 +28,7 @@ internal sealed class WorkerHttpForwardingMiddleware(
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        if (TryRejectRemoval(context, stateManager))
+        if (RejectForRemovedPod(context, stateManager))
         {
             return;
         }
@@ -56,7 +56,7 @@ internal sealed class WorkerHttpForwardingMiddleware(
             }
         }
 
-        if (TryRejectRemoval(context, stateManager))
+        if (RejectForRemovedPod(context, stateManager))
         {
             return;
         }
@@ -76,7 +76,7 @@ internal sealed class WorkerHttpForwardingMiddleware(
         WorkerHttpForwardingTelemetry.RecordForwarderError(error);
     }
 
-    private static bool TryRejectRemoval(HttpContext context, WorkerPodStateManager stateManager)
+    private static bool RejectForRemovedPod(HttpContext context, WorkerPodStateManager stateManager)
     {
         if (!stateManager.State.RemovalRequested)
         {
