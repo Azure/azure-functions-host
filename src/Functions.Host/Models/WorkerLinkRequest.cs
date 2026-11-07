@@ -26,9 +26,9 @@ public sealed class WorkerLinkRequest
     public string? RuntimeAccessKey { get; set; }
 
     /// <summary>
-    /// Gets or sets the platform's Runtime identity for Worker-state publication.
+    /// Gets or sets the required platform Runtime identity for Worker-state publication.
     /// The identity must be a nested JSON object; serialized JSON strings are not accepted.
-    /// Omitted or null identities retain the conservative Starting/Unlinked signal.
+    /// Omitted or null identities are rejected.
     /// Unknown identity fields are ignored.
     /// </summary>
     [JsonPropertyName("runtimeIdentity")]

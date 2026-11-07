@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.HostState;
@@ -33,6 +34,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
 {
     private const string WorkerId = "worker-pod-1";
     private const string GrpcEndpoint = "100.86.1.2:48800";
+    private static readonly WorkerLinkRuntimeIdentity RuntimeIdentity =
+        new("functions", "runtime-pod", new("test-app", 42, "test-stamp"));
+
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Fact]
@@ -47,7 +51,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
         registry.Setup(value => value.LinkAsync(
-            WorkerId, new Uri("https://100.86.1.2:48800/"), ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>(), null))
+            WorkerId, new Uri("https://100.86.1.2:48800/"), ManagementTokenTestData.WorkerKey, It.IsAny<CancellationToken>(), RuntimeIdentity))
             .Returns(() =>
             {
                 linkedWithStandbyConfiguration = hostOptions!.CurrentValue.IsStandbyConfiguration;
@@ -106,9 +110,12 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
-            Content = new StringContent(
-                $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{ManagementTokenTestData.WorkerKey}}"}""",
-                Encoding.UTF8, "application/json"),
+            Content = new StringContent(JsonSerializer.Serialize(new
+            {
+                workerGrpcEndpoint = GrpcEndpoint,
+                runtimeAccessKey = ManagementTokenTestData.WorkerKey,
+                runtimeIdentity = RuntimeIdentity
+            }), Encoding.UTF8, "application/json"),
         };
         request.Headers.Add(ManagementTokenTestData.HeaderName,
             ManagementTokenTestData.Create(ManagementTokenTestData.RuntimeKey, ManagementTokenTestData.RuntimePodName));
