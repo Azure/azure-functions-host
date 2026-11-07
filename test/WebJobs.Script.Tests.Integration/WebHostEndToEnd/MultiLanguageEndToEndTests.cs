@@ -44,29 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             const int maxAttempts = 5;
             List<Exception> failures = [];
-
-            // Each language worker currently receives all function metadata. Java processes load requests concurrently,
-            // so another language can initialize its shared classloader before the Java JAR is registered. Preserve the
-            // existing behavior relied on by Logic Apps and retry the isolated scenario, requiring one of five attempts to pass.
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
-                {
-                    await RunMultipleLanguageProvidersScenario();
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    failures.Add(ex);
-                    Console.WriteLine($"Multi-language scenario attempt {attempt} of {maxAttempts} failed:{Environment.NewLine}{ex}");
-                }
-            }
-
-            throw new AggregateException($"Multi-language scenario failed on all {maxAttempts} attempts.", failures);
-        }
-
-        private async Task RunMultipleLanguageProvidersScenario()
-        {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "Node");
             var settings = new Dictionary<string, string>()
             {
@@ -74,37 +51,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             };
             var testEnvironment = new TestEnvironment(settings);
 
-            using (var baseTestDir = new TempDirectory())
+            // Each language worker currently receives all function metadata. Java processes load requests concurrently,
+            // so another language can initialize its shared classloader before the Java JAR is registered. Preserve the
+            // existing behavior relied on by Logic Apps and retry the isolated scenario, requiring one of five attempts to pass.
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                string baseTestPath = baseTestDir.Path;
-
-                var cSharpMetadataList = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("InProcCSFunction") };
-                var javascriptMetadataList = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetJavascriptSampleMetadata("JavascriptFunction") };
-                var javaMetadataList = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetJavaSampleMetadata("JavaFunction") };
-
-                var cSharpFunctionProvider = new TestCodelessFunctionProvider(cSharpMetadataList, null);
-                var javascriptFunctionProvider = new TestCodelessFunctionProvider(javascriptMetadataList, null);
-                var javaFunctionProvider = new TestCodelessFunctionProvider(javaMetadataList, null);
-
-                var functions = new[] { "InProcCSFunction", "JavascriptFunction", "JavaFunction" };
-                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider, javaFunctionProvider }, testEnvironment))
+                using (var baseTestDir = new TempDirectory())
                 {
-                    var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
-                    using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");
-                    Assert.Equal(HttpStatusCode.OK, cSharpHttpTriggerResponse.StatusCode);
-                    Assert.Equal("Hello, Azure! Codeless Provider ran a function successfully.", await cSharpHttpTriggerResponse.Content.ReadAsStringAsync());
+                    string baseTestPath = baseTestDir.Path;
 
-                    var javaFunctionKey = await host.GetFunctionSecretAsync("JavaFunction");
-                    using var javaHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/JavaFunction?code={javaFunctionKey}");
-                    Assert.Equal(HttpStatusCode.BadRequest, javaHttpTriggerResponse.StatusCode);
-                    Assert.Equal("Please pass a name on the query string or in the request body", await javaHttpTriggerResponse.Content.ReadAsStringAsync());
+                    var cSharpMetadataList = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("InProcCSFunction") };
+                    var javascriptMetadataList = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetJavascriptSampleMetadata("JavascriptFunction") };
+                    var javaMetadataList = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetJavaSampleMetadata("JavaFunction") };
 
-                    var javascriptFunctionKey = await host.GetFunctionSecretAsync("JavascriptFunction");
-                    using var javascriptHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/JavascriptFunction?name=Azure&code={javascriptFunctionKey}");
-                    Assert.Equal(HttpStatusCode.OK, javascriptHttpTriggerResponse.StatusCode);
-                    Assert.Equal("Hello Azure", await javascriptHttpTriggerResponse.Content.ReadAsStringAsync());
+                    var cSharpFunctionProvider = new TestCodelessFunctionProvider(cSharpMetadataList, null);
+                    var javascriptFunctionProvider = new TestCodelessFunctionProvider(javascriptMetadataList, null);
+                    var javaFunctionProvider = new TestCodelessFunctionProvider(javaMetadataList, null);
+
+                    var functions = new[] { "InProcCSFunction", "JavascriptFunction", "JavaFunction" };
+                    await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider, javaFunctionProvider }, testEnvironment))
+                    {
+                        try
+                        {
+                            var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
+                            using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");
+                            Assert.Equal(HttpStatusCode.OK, cSharpHttpTriggerResponse.StatusCode);
+                            Assert.Equal("Hello, Azure! Codeless Provider ran a function successfully.", await cSharpHttpTriggerResponse.Content.ReadAsStringAsync());
+
+                            var javaFunctionKey = await host.GetFunctionSecretAsync("JavaFunction");
+                            using var javaHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/JavaFunction?code={javaFunctionKey}");
+                            Assert.Equal(HttpStatusCode.BadRequest, javaHttpTriggerResponse.StatusCode);
+                            Assert.Equal("Please pass a name on the query string or in the request body", await javaHttpTriggerResponse.Content.ReadAsStringAsync());
+
+                            var javascriptFunctionKey = await host.GetFunctionSecretAsync("JavascriptFunction");
+                            using var javascriptHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/JavascriptFunction?name=Azure&code={javascriptFunctionKey}");
+                            Assert.Equal(HttpStatusCode.OK, javascriptHttpTriggerResponse.StatusCode);
+                            Assert.Equal("Hello Azure", await javascriptHttpTriggerResponse.Content.ReadAsStringAsync());
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            failures.Add(ex);
+                            Console.WriteLine($"Multi-language scenario attempt {attempt} of {maxAttempts} failed:{Environment.NewLine}{ex}");
+                        }
+                    }
                 }
             }
+
+            throw new AggregateException($"Multi-language scenario failed on all {maxAttempts} attempts.", failures);
         }
 
         /// <summary>
