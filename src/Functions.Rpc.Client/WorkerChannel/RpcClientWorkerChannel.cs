@@ -50,6 +50,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private readonly IOptionsFactory<RuntimeApplicationAuthenticationOptions> _appAuthenticationOptions;
     private readonly ILogger _logger;
     private readonly ILogger _activityLogger;
+    private Task _drainTask;
     private IDisposable _ownedHttpProxyService;
     private Uri _httpEndpoint;
     private LifecycleState _lifecycleState;
@@ -257,7 +258,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
                 return null;
             }
 
-            return BeginScaleInLocked();
+            return BeginDrainLocked();
         }
     }
 
@@ -284,17 +285,18 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
                 return false;
             }
 
-            drainTask = BeginScaleInLocked();
+            drainTask = BeginDrainLocked();
             return true;
         }
     }
 
-    private Task BeginScaleInLocked()
+    private Task BeginDrainLocked()
     {
         _draining = true;
         Task drainTask = DrainInvocationsAsync();
         Task notificationTask = NotifyWorkerProxyDrainingAsync();
-        return Task.WhenAll(drainTask, notificationTask);
+        _drainTask = Task.WhenAll(drainTask, notificationTask);
+        return _drainTask;
     }
 
     internal async Task TerminateWorkerAsync()
@@ -357,6 +359,39 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         {
             _draining = true;
         }
+    }
+
+    internal bool TryBeginRuntimeDrain(out Task result)
+    {
+        lock (_lifecycleLock)
+        {
+            if (_drainTask is not null)
+            {
+                result = _drainTask;
+                return true;
+            }
+
+            if (IsTerminated)
+            {
+                result = null;
+                return false;
+            }
+
+            result = BeginDrainLocked();
+
+            return true;
+        }
+    }
+
+    internal void ExpireRuntimeDrain(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        lock (_lifecycleLock)
+        {
+            _draining = true;
+        }
+
+        Shutdown(exception);
     }
 
     /// <summary>

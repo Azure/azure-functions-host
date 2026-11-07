@@ -12,6 +12,7 @@ using System.Xml.Linq;
 using Azure.Functions.Authentication;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.HostState;
+using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Authorization;
@@ -169,7 +170,7 @@ public class ClientWorkerCompositionTests
     }
 
     [Fact]
-    public void ConfigureWebHostServices_UsesSystemTextJsonOnlyForWorkerLinkRequests()
+    public void ConfigureWebHostServices_UsesSystemTextJsonOnlyForComputeManagementRequests()
     {
         ServiceCollection services = new();
         IMvcBuilder mvcBuilder = services.AddMvc().AddNewtonsoftJson();
@@ -177,17 +178,24 @@ public class ClientWorkerCompositionTests
         using ServiceProvider provider = services.BuildServiceProvider();
         MvcOptions options = provider.GetRequiredService<IOptions<MvcOptions>>().Value;
         WorkerLinkRequestInputFormatter formatter = Assert.IsType<WorkerLinkRequestInputFormatter>(options.InputFormatters[0]);
+        RuntimeDrainRequestInputFormatter drainFormatter = Assert.IsType<RuntimeDrainRequestInputFormatter>(options.InputFormatters[1]);
         EmptyModelMetadataProvider metadataProvider = new();
         DefaultHttpContext context = new();
         context.Request.ContentType = "application/json";
 
         InputFormatterContext linkContext = new(context, "request", new ModelStateDictionary(),
             metadataProvider.GetMetadataForType(typeof(WorkerLinkRequest)), (stream, encoding) => new StreamReader(stream, encoding));
+        InputFormatterContext drainContext = new(context, "request", new ModelStateDictionary(),
+            metadataProvider.GetMetadataForType(typeof(RuntimeDrainRequest)), (stream, encoding) => new StreamReader(stream, encoding));
         InputFormatterContext unrelatedContext = new(context, "request", new ModelStateDictionary(),
             metadataProvider.GetMetadataForType(typeof(object)), (stream, encoding) => new StreamReader(stream, encoding));
 
         Assert.True(formatter.CanRead(linkContext));
+        Assert.False(formatter.CanRead(drainContext));
         Assert.False(formatter.CanRead(unrelatedContext));
+        Assert.True(drainFormatter.CanRead(drainContext));
+        Assert.False(drainFormatter.CanRead(linkContext));
+        Assert.False(drainFormatter.CanRead(unrelatedContext));
         Assert.Contains(options.InputFormatters, value => value is NewtonsoftJsonInputFormatter);
     }
 
