@@ -582,7 +582,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         FunctionMetadata function = CreateFunction();
         await dispatcher.InitializeAsync([function]);
 
-        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(
+        WorkerChannelUnavailableException exception = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
             () => dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout));
 
         Assert.Contains("No client-backed worker channel became ready", exception.Message, StringComparison.Ordinal);
@@ -605,14 +605,15 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
 
         try
         {
-            TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => invocation.WaitAsync(TestTimeout));
+            WorkerChannelUnavailableException exception = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
+                () => invocation.WaitAsync(TestTimeout));
             Assert.Contains("No client-backed worker channel became ready", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
             // Stop returning completed snapshots so even a regression cannot leave the retry loop running.
             stopReturningSnapshots.Cancel();
-            await Assert.ThrowsAsync<TimeoutException>(() => invocation.WaitAsync(TestTimeout));
+            await Assert.ThrowsAsync<WorkerChannelUnavailableException>(() => invocation.WaitAsync(TestTimeout));
         }
     }
 

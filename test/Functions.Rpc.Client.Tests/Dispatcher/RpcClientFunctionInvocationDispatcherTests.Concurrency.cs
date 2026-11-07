@@ -118,27 +118,27 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
-    public async Task GetCapacityAvailableTask_SharesWaitWithoutReservingCapacity()
+    public async Task GetCapacityAvailableAsync_SharesWaitWithoutReservingCapacity()
     {
         await using ClientWorkerChannelTestHarness worker = await CreateLimitedWorkerAsync("worker", 1);
         FunctionMetadata function = CreateHttpGroupFunction();
         await PrepareReadyChannelAsync(worker, function);
         ScriptInvocationContext first = CreateInvocation(function);
-        await worker.Channel.GetCapacityAvailableTask().WaitAsync(TestTimeout);
+        await worker.Channel.GetCapacityAvailableAsync().WaitAsync(TestTimeout);
         Assert.True(worker.Channel.TryPostInvocation(first));
         await ReadInvocationAsync(worker);
-        Task available = worker.Channel.GetCapacityAvailableTask();
+        Task available = worker.Channel.GetCapacityAvailableAsync();
         Assert.False(available.IsCompleted);
-        Assert.Same(available, worker.Channel.GetCapacityAvailableTask());
+        Assert.Same(available, worker.Channel.GetCapacityAvailableAsync());
 
         await CompleteInvocationAsync(worker, first);
         await available.WaitAsync(TestTimeout);
-        await worker.Channel.GetCapacityAvailableTask().WaitAsync(TestTimeout);
+        await worker.Channel.GetCapacityAvailableAsync().WaitAsync(TestTimeout);
 
         ScriptInvocationContext second = CreateInvocation(function);
         Assert.True(worker.Channel.TryPostInvocation(second));
         Assert.False(worker.Channel.TryPostInvocation(CreateInvocation(function)));
-        Task nextAvailable = worker.Channel.GetCapacityAvailableTask();
+        Task nextAvailable = worker.Channel.GetCapacityAvailableAsync();
         Assert.NotSame(available, nextAvailable);
         Assert.False(nextAvailable.IsCompleted);
         worker.Channel.Shutdown(new InvalidOperationException("Worker terminated"));
@@ -168,7 +168,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
             Assert.False(worker.Channel.TryPostInvocation(rejected));
         }
 
-        await worker.Channel.GetCapacityAvailableTask().WaitAsync(TestTimeout);
+        await worker.Channel.GetCapacityAvailableAsync().WaitAsync(TestTimeout);
         FunctionMetadata next = CreateHttpGroupFunction();
         next.Name = "NextFunction";
         worker.Channel.SetupFunctionInvocationBuffers([next]);
@@ -177,13 +177,13 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
-    public async Task GetCapacityAvailableTask_DisposalSettlesSharedWait()
+    public async Task GetCapacityAvailableAsync_DisposalSettlesSharedWait()
     {
         await using ClientWorkerChannelTestHarness worker = await CreateLimitedWorkerAsync("worker", 1);
         FunctionMetadata function = CreateHttpGroupFunction();
         worker.Channel.SetupFunctionInvocationBuffers([function]);
         Assert.True(worker.Channel.TryPostInvocation(CreateInvocation(function)));
-        Task available = worker.Channel.GetCapacityAvailableTask();
+        Task available = worker.Channel.GetCapacityAvailableAsync();
         Assert.False(available.IsCompleted);
 
         await worker.Channel.DisposeAsync();
@@ -194,7 +194,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
-    public async Task GetCapacityAvailableTask_GracefulShutdownSettlesSharedWait()
+    public async Task GetCapacityAvailableAsync_GracefulShutdownSettlesSharedWait()
     {
         await using ClientWorkerChannelTestHarness worker = await CreateLimitedWorkerAsync("worker", 1);
         FunctionMetadata function = CreateHttpGroupFunction();
@@ -202,7 +202,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         ScriptInvocationContext active = CreateInvocation(function);
         Assert.True(worker.Channel.TryPostInvocation(active));
         await ReadInvocationAsync(worker);
-        Task available = worker.Channel.GetCapacityAvailableTask();
+        Task available = worker.Channel.GetCapacityAvailableAsync();
         Assert.False(available.IsCompleted);
 
         worker.Channel.Shutdown(null);
@@ -231,7 +231,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
-    public async Task GetCapacityAvailableTask_CancelingObserverPreservesSharedWait()
+    public async Task GetCapacityAvailableAsync_CancelingObserverPreservesSharedWait()
     {
         await using ClientWorkerChannelTestHarness worker = await CreateLimitedWorkerAsync("worker", 1);
         FunctionMetadata function = CreateHttpGroupFunction();
@@ -239,14 +239,14 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         ScriptInvocationContext active = CreateInvocation(function);
         Assert.True(worker.Channel.TryPostInvocation(active));
         await ReadInvocationAsync(worker);
-        Task available = worker.Channel.GetCapacityAvailableTask();
+        Task available = worker.Channel.GetCapacityAvailableAsync();
         using CancellationTokenSource cancellation = new();
         Task observer = available.WaitAsync(cancellation.Token);
 
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => observer);
         Assert.False(available.IsCompleted);
-        Assert.Same(available, worker.Channel.GetCapacityAvailableTask());
+        Assert.Same(available, worker.Channel.GetCapacityAvailableAsync());
         Assert.False(worker.Channel.TryPostInvocation(CreateInvocation(function)));
 
         await CompleteInvocationAsync(worker, active);

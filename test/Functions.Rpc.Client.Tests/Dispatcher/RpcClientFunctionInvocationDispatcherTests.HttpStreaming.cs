@@ -55,7 +55,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
 
         await GetResponseFeature(invocation).FireCompletedAsync();
         Assert.Equal(alwaysReady ? 0 : 1, worker.Channel.OngoingRequests);
-        Assert.False(worker.Channel.GetCapacityAvailableTask().IsCompleted);
+        Assert.False(worker.Channel.GetCapacityAvailableAsync().IsCompleted);
         Task drain = worker.Channel.DrainInvocationsAsync();
         Assert.False(drain.IsCompleted);
         clock.Advance(TimeSpan.FromMinutes(10));
@@ -188,7 +188,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
             await CompleteInvocationAsync(worker, second);
             await response.FireCompletedAsync();
             await GetResponseFeature(second).FireCompletedAsync();
-            await worker.Channel.GetCapacityAvailableTask().WaitAsync(TestTimeout);
+            await worker.Channel.GetCapacityAvailableAsync().WaitAsync(TestTimeout);
         }
     }
 
@@ -215,9 +215,9 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         Assert.False(worker.Channel.TryPostInvocation(CreateHttpInvocation(function, body)));
         await ReadInvocationAsync(worker);
         await CompleteInvocationAsync(worker, invocation);
-        Assert.False(worker.Channel.GetCapacityAvailableTask().IsCompleted);
+        Assert.False(worker.Channel.GetCapacityAvailableAsync().IsCompleted);
         await response.FireCompletedAsync();
-        await worker.Channel.GetCapacityAvailableTask().WaitAsync(TestTimeout);
+        await worker.Channel.GetCapacityAvailableAsync().WaitAsync(TestTimeout);
     }
 
     [Theory]
@@ -319,7 +319,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
             await CompleteInvocationAsync(worker, second).WaitAsync(TestTimeout);
             Assert.NotNull(await second.ResultSource.Task.WaitAsync(TestTimeout));
             Assert.Equal(payload.Length, secondBody.Length);
-            Task released = worker.Channel.GetCapacityAvailableTask();
+            Task released = worker.Channel.GetCapacityAvailableAsync();
             await GetResponseFeature(second).FireCompletedAsync();
             await released.WaitAsync(TestTimeout);
             Assert.False(worker.Transport.Requests.TryPeek(out _));
@@ -462,7 +462,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
             ScriptInvocationContext invocation = CreateHttpInvocation(function, body);
             Assert.True(worker.Channel.TryPostInvocation(invocation));
             await ReadInvocationAsync(worker);
-            Task released = worker.Channel.GetCapacityAvailableTask();
+            Task released = worker.Channel.GetCapacityAvailableAsync();
 
             await Task.WhenAll(
                 Task.Run(() => CompleteInvocationAsync(worker, invocation)),
@@ -471,11 +471,11 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
             Assert.True(invocation.ResultSource.Task.IsCompletedSuccessfully);
             await released.WaitAsync(TestTimeout);
             await GetResponseFeature(invocation).FireCompletedAsync();
-            await worker.Channel.GetCapacityAvailableTask().WaitAsync(TestTimeout);
+            await worker.Channel.GetCapacityAvailableAsync().WaitAsync(TestTimeout);
 
             ScriptInvocationContext probe = CreateHttpInvocation(function, body);
             Assert.True(worker.Channel.TryPostInvocation(probe));
-            Task nextAvailable = worker.Channel.GetCapacityAvailableTask();
+            Task nextAvailable = worker.Channel.GetCapacityAvailableAsync();
             Assert.False(nextAvailable.IsCompleted);
             Assert.False(worker.Channel.TryPostInvocation(CreateHttpInvocation(function, body)));
             await GetResponseFeature(invocation).FireCompletedAsync();
@@ -501,7 +501,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         Assert.True(invocation.ResultSource.Task.IsCompletedSuccessfully);
 
         worker.Channel.Shutdown(new InvalidOperationException("Worker terminated"));
-        Task available = worker.Channel.GetCapacityAvailableTask();
+        Task available = worker.Channel.GetCapacityAvailableAsync();
         await GetResponseFeature(invocation).FireCompletedAsync();
         await GetResponseFeature(invocation).FireCompletedAsync();
 
@@ -660,7 +660,7 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
 
         await waiting.WaitAsync(TestTimeout);
         await Assert.ThrowsAsync<InvalidOperationException>(() => second.ResultSource.Task.WaitAsync(TestTimeout));
-        Task released = worker.Channel.GetCapacityAvailableTask();
+        Task released = worker.Channel.GetCapacityAvailableAsync();
         await GetResponseFeature(second).FireCompletedAsync();
         await released.WaitAsync(TestTimeout);
         await worker.Channel.DrainInvocationsAsync().WaitAsync(TestTimeout);

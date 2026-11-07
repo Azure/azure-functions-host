@@ -374,7 +374,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     /// Observes available capacity without reserving it. Call after failed admission and retry admission when it completes.
     /// One pending zero-permit acquisition is shared across dispatchers; canceling a caller's wait does not cancel it.
     /// </summary>
-    internal Task GetCapacityAvailableTask()
+    internal Task GetCapacityAvailableAsync()
     {
         lock (_lifecycleLock)
         {

@@ -286,10 +286,11 @@ public sealed partial class RpcClientFunctionInvocationDispatcherTests
         Task first = dispatcher.InvokeAsync(CreateInvocation(function));
         Task second = dispatcher.InvokeAsync(CreateInvocation(function));
 
-        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(
+        WorkerChannelUnavailableException exception = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
             () => second.WaitAsync(TimeSpan.FromSeconds(3)));
         Assert.Contains("http", exception.Message, StringComparison.OrdinalIgnoreCase);
-        TimeoutException firstException = await Assert.ThrowsAsync<TimeoutException>(() => first.WaitAsync(TestTimeout));
+        WorkerChannelUnavailableException firstException = await Assert.ThrowsAsync<WorkerChannelUnavailableException>(
+            () => first.WaitAsync(TestTimeout));
         Assert.Contains("http", firstException.Message, StringComparison.OrdinalIgnoreCase);
     }
 

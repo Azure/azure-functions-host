@@ -38,6 +38,7 @@ internal sealed partial class RpcClientInvocationScheduler(
     IWorkerInvocationTracker invocationTracker = null) : IDisposable
 {
     private readonly IWorkerChannelRegistry _channelRegistry = channelRegistry ?? throw new ArgumentNullException(nameof(channelRegistry));
+    // Admission may race Stop while creating linked tokens, so keep the canceled source alive until the scheduler is collected.
     private readonly CancellationTokenSource _stoppedSource = new();
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly TimeSpan _channelWaitTimeout = channelWaitTimeout;
@@ -49,6 +50,8 @@ internal sealed partial class RpcClientInvocationScheduler(
         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
         QueueLimit = int.MaxValue,
     });
+
+    private int _stopped;
 
     /// <summary>
     /// Admits a validated invocation to its matching worker group. The owning dispatcher checks its public lifecycle first.
@@ -80,11 +83,23 @@ internal sealed partial class RpcClientInvocationScheduler(
 
     /// <summary>
     /// Cancels pending queue/channel waits and disposes the FIFO gate without releasing accepted worker permits.
+    /// Repeated calls are ignored.
     /// </summary>
     internal void Stop()
     {
-        _stoppedSource.Cancel();
-        _httpAdmission.Dispose();
+        if (Interlocked.Exchange(ref _stopped, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _stoppedSource.Cancel();
+        }
+        finally
+        {
+            _httpAdmission.Dispose();
+        }
     }
 
     /// <summary>
@@ -417,7 +432,7 @@ internal sealed partial class RpcClientInvocationScheduler(
                     {
                         if (IsEligible(channel, functionGroup))
                         {
-                            changes.Add(((RpcClientWorkerChannel)channel).GetCapacityAvailableTask());
+                            changes.Add(((RpcClientWorkerChannel)channel).GetCapacityAvailableAsync());
                         }
                     }
 
@@ -458,8 +473,8 @@ internal sealed partial class RpcClientInvocationScheduler(
     /// <summary>
     /// Identifies both the function and its required group when no eligible worker becomes ready before the deadline.
     /// </summary>
-    private TimeoutException MissingWorkerTimeout(ScriptInvocationContext context, string functionGroup)
-        => new($"No client-backed worker channel became ready for function '{context.FunctionMetadata.Name}' in group '{functionGroup}' within {_channelWaitTimeout}.");
+    private WorkerChannelUnavailableException MissingWorkerTimeout(ScriptInvocationContext context, string functionGroup)
+        => new($"No worker channel availalble for function '{context.FunctionMetadata.Name}' in group '{functionGroup}' within {_channelWaitTimeout}.");
 
     /// <summary>
     /// Requires a ready serving channel with the same assigned group, using case-insensitive platform identity.
