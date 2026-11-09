@@ -56,6 +56,11 @@ internal sealed record WorkerPodState(
     public bool RemovalRequested { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether removal follows a clean Runtime stream close after draining.
+    /// </summary>
+    public bool IsExpectedRetirement { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether the Host has started draining this worker.
     /// </summary>
     public bool IsDraining { get; init; }

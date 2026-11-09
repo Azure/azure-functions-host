@@ -475,7 +475,8 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Publishes sticky removal and clears live worker and assignment identity.
     /// </summary>
-    public bool RequestRemoval()
+    /// <param name="runtimeClosedCleanly">Whether the Runtime stream closed without fault or cancellation.</param>
+    public bool RequestRemoval(bool runtimeClosedCleanly = false)
     {
         lock (_stateLock)
         {
@@ -500,7 +501,8 @@ internal sealed class WorkerPodStateManager
                 IsAlwaysReady = null,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                RemovalRequested = true
+                RemovalRequested = true,
+                IsExpectedRetirement = runtimeClosedCleanly && _state.IsDraining && !_state.IsUnhealthy
             });
             return true;
         }

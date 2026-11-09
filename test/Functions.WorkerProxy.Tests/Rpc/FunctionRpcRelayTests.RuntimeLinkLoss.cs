@@ -134,6 +134,82 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
+    [InlineData("Preconfigured", false, false)]
+    [InlineData("SpecializationRequired", false, false)]
+    [InlineData("Preconfigured", true, false)]
+    [InlineData("SpecializationRequired", true, false)]
+    [InlineData("Preconfigured", false, true)]
+    [InlineData("SpecializationRequired", false, true)]
+    public async Task RuntimeRetirement_DrainThenDisconnectPreservesHealth(
+        string startupMode, bool hasAuthenticationError, bool cancelRuntime)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using CancellationTokenSource runtimeCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await using RelayClient runtime = CreateClient(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
+            runtimeCancellation.Token,
+            CreateRuntimeIdentityHeaders("valid"));
+        WorkerAssignRequest assignment = new()
+        {
+            StartupMode = startupMode,
+            FunctionAppName = "test-app",
+            FunctionGroupName = "http",
+            HttpProxyEndpoint = "worker-pod:28080",
+            IsAlwaysReady = false,
+            Environment = [],
+            FunctionAppDirectory = "/home/site/wwwroot",
+            ConfigLastModifiedTime = 111,
+            ContentLastModifiedTime = 222
+        };
+        await InitializeAndAssignWorkerAsync(
+            worker, runtime, management, assignment, "http://localhost:1234/", timeout.Token);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        while (!manager.State.IsRuntimeInitialized)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        manager.SetAuthenticationConfigurationError(hasAuthenticationError);
+        WorkerOriginState running = await ReadManagementStateAsync(management, timeout.Token);
+        Task<HttpResponseMessage> drainPoll = PollManagementStateAsync(management, running, timeout.Token);
+        await WaitForManagementPollAsync(manager, timeout.Token);
+        await runtime.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+        using HttpResponseMessage drainResponse = await drainPoll;
+        WorkerOriginState draining = await ReadManagementStateAsync(drainResponse, timeout.Token);
+        Assert.Equal(WorkerStatus.Draining, draining.Status);
+        Assert.Equal(hasAuthenticationError, draining.IsUnhealthy);
+
+        if (cancelRuntime)
+        {
+            runtimeCancellation.Cancel();
+        }
+        else
+        {
+            await runtime.CompleteRequestAsync(timeout.Token);
+        }
+
+        await Task.WhenAll(
+            runtime.WaitForTerminationAsync(timeout.Token),
+            worker.WaitForTerminationAsync(timeout.Token));
+        WorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
+        Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
+        Assert.Equal(hasAuthenticationError || cancelRuntime, removed.IsUnhealthy);
+        Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
+        Assert.True(removed.RevisionId > draining.RevisionId);
+        Assert.Equal(running.FunctionGroup, removed.FunctionGroup);
+        Assert.Equal(running.ConfigLastModifiedTime, removed.ConfigLastModifiedTime);
+        Assert.Equal(running.ContentLastModifiedTime, removed.ContentLastModifiedTime);
+        Assert.True(manager.State.RemovalRequested);
+        Assert.False(manager.RequestRemoval());
+        await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+    }
+
+    [Theory]
     [InlineData("Preconfigured", null, 16, false, false)]
     [InlineData("Preconfigured", 10, 10, false, false)]
     [InlineData("SpecializationRequired", null, 16, false, false)]

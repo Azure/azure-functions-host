@@ -805,7 +805,8 @@ internal sealed partial class FunctionRpcRelay
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
                 if (runtimePeerTerminated)
                 {
-                    stateManager.RequestRemoval();
+                    stateManager.RequestRemoval(
+                        runtimeClosedCleanly: terminalState.Reason == FunctionRpcRelayTerminationReason.PeerClosed);
                 }
                 else
                 {
