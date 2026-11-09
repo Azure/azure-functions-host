@@ -134,26 +134,38 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData("Preconfigured", "RuntimeHalfClose", false)]
-    [InlineData("SpecializationRequired", "RuntimeHalfClose", false)]
-    [InlineData("Preconfigured", "WorkerFirst", false)]
-    [InlineData("SpecializationRequired", "WorkerFirst", false)]
-    [InlineData("Preconfigured", "RuntimeDisposed", false)]
-    [InlineData("SpecializationRequired", "RuntimeDisposed", false)]
-    [InlineData("Preconfigured", "RuntimeCanceled", false)]
-    [InlineData("SpecializationRequired", "RuntimeCanceled", false)]
-    [InlineData("Preconfigured", "WorkerCanceled", false)]
-    [InlineData("SpecializationRequired", "WorkerCanceled", false)]
-    [InlineData("Preconfigured", "WorkerFirst", true)]
-    [InlineData("SpecializationRequired", "WorkerFirst", true)]
-    [InlineData("Preconfigured", "RuntimeDisposed", true)]
-    [InlineData("SpecializationRequired", "RuntimeDisposed", true)]
-    [InlineData("Preconfigured", "RuntimeCanceled", true)]
-    [InlineData("SpecializationRequired", "RuntimeCanceled", true)]
-    [InlineData("Preconfigured", "WorkerProtocolFault", false)]
-    [InlineData("SpecializationRequired", "WorkerProtocolFault", false)]
+    [InlineData("Preconfigured", "RuntimeHalfClose", false, true)]
+    [InlineData("SpecializationRequired", "RuntimeHalfClose", false, true)]
+    [InlineData("Preconfigured", "WorkerFirst", false, true)]
+    [InlineData("SpecializationRequired", "WorkerFirst", false, true)]
+    [InlineData("Preconfigured", "RuntimeDisposed", false, true)]
+    [InlineData("SpecializationRequired", "RuntimeDisposed", false, true)]
+    [InlineData("Preconfigured", "RuntimeCanceled", false, true)]
+    [InlineData("SpecializationRequired", "RuntimeCanceled", false, true)]
+    [InlineData("Preconfigured", "WorkerCanceled", false, true)]
+    [InlineData("SpecializationRequired", "WorkerCanceled", false, true)]
+    [InlineData("Preconfigured", "WorkerFirst", true, true)]
+    [InlineData("SpecializationRequired", "WorkerFirst", true, true)]
+    [InlineData("Preconfigured", "RuntimeDisposed", true, true)]
+    [InlineData("SpecializationRequired", "RuntimeDisposed", true, true)]
+    [InlineData("Preconfigured", "RuntimeCanceled", true, true)]
+    [InlineData("SpecializationRequired", "RuntimeCanceled", true, true)]
+    [InlineData("Preconfigured", "WorkerProtocolFault", false, true)]
+    [InlineData("SpecializationRequired", "WorkerProtocolFault", false, true)]
+    [InlineData("Preconfigured", "RuntimeHalfClose", false, false)]
+    [InlineData("SpecializationRequired", "RuntimeHalfClose", false, false)]
+    [InlineData("Preconfigured", "RuntimeDisposed", false, false)]
+    [InlineData("SpecializationRequired", "RuntimeDisposed", false, false)]
+    [InlineData("Preconfigured", "RuntimeCanceled", false, false)]
+    [InlineData("SpecializationRequired", "RuntimeCanceled", false, false)]
+    [InlineData("Preconfigured", "RuntimeCanceled", true, false)]
+    [InlineData("SpecializationRequired", "RuntimeCanceled", true, false)]
+    [InlineData("Preconfigured", "WorkerFirst", false, false)]
+    [InlineData("SpecializationRequired", "WorkerFirst", false, false)]
+    [InlineData("Preconfigured", "WorkerCanceled", false, false)]
+    [InlineData("SpecializationRequired", "WorkerCanceled", false, false)]
     public async Task RuntimeRetirement_TerminateThenDisconnectOrDisposePreservesHealth(
-        string startupMode, string retirementPath, bool hasAuthenticationError)
+        string startupMode, string retirementPath, bool hasAuthenticationError, bool drainBeforeRetirement)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         using CancellationTokenSource timeout = new(TestTimeout);
@@ -190,23 +202,27 @@ public partial class FunctionRpcRelayTests
         await using var transport = runtime.CreateRuntimeTransport();
         manager.SetAuthenticationConfigurationError(hasAuthenticationError);
         WorkerOriginState running = await ReadManagementStateAsync(management, timeout.Token);
-        Task<HttpResponseMessage> drainPoll = PollManagementStateAsync(management, running, timeout.Token);
-        await WaitForManagementPollAsync(manager, timeout.Token);
-        await transport.Writer.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
-        using HttpResponseMessage drainResponse = await drainPoll;
-        WorkerOriginState draining = await ReadManagementStateAsync(drainResponse, timeout.Token);
-        Assert.Equal(WorkerStatus.Draining, draining.Status);
-        Assert.Equal(hasAuthenticationError, draining.IsUnhealthy);
-
-        StreamingMessage terminate = new()
+        WorkerOriginState beforeRetirement = running;
+        if (drainBeforeRetirement)
         {
-            WorkerTerminate = new()
+            Task<HttpResponseMessage> drainPoll = PollManagementStateAsync(management, running, timeout.Token);
+            await WaitForManagementPollAsync(manager, timeout.Token);
+            await transport.Writer.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+            using HttpResponseMessage drainResponse = await drainPoll;
+            beforeRetirement = await ReadManagementStateAsync(drainResponse, timeout.Token);
+            Assert.Equal(WorkerStatus.Draining, beforeRetirement.Status);
+            Assert.Equal(hasAuthenticationError, beforeRetirement.IsUnhealthy);
+
+            StreamingMessage terminate = new()
             {
-                GracePeriod = Google.Protobuf.WellKnownTypes.Duration.FromTimeSpan(TimeSpan.FromSeconds(5))
-            }
-        };
-        await transport.Writer.WriteAsync(terminate, timeout.Token);
-        Assert.Equal(terminate, await worker.ReadAsync(timeout.Token));
+                WorkerTerminate = new()
+                {
+                    GracePeriod = Google.Protobuf.WellKnownTypes.Duration.FromTimeSpan(TimeSpan.FromSeconds(5))
+                }
+            };
+            await transport.Writer.WriteAsync(terminate, timeout.Token);
+            Assert.Equal(terminate, await worker.ReadAsync(timeout.Token));
+        }
 
         switch (retirementPath)
         {
@@ -240,10 +256,11 @@ public partial class FunctionRpcRelayTests
         await transport.DisposeAsync();
         WorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
-        Assert.Equal(hasAuthenticationError ||
+        bool unexpectedWorkerExit = !drainBeforeRetirement && retirementPath is "WorkerFirst" or "WorkerCanceled";
+        Assert.Equal(hasAuthenticationError || unexpectedWorkerExit ||
             string.Equals(retirementPath, "WorkerProtocolFault", StringComparison.Ordinal), removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
-        Assert.True(removed.RevisionId > draining.RevisionId);
+        Assert.True(removed.RevisionId > beforeRetirement.RevisionId);
         Assert.Equal(running.FunctionGroup, removed.FunctionGroup);
         Assert.Equal(running.ConfigLastModifiedTime, removed.ConfigLastModifiedTime);
         Assert.Equal(running.ContentLastModifiedTime, removed.ContentLastModifiedTime);
@@ -367,7 +384,7 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
         Assert.Equal(assignment.FunctionGroupName, removed.FunctionGroup);
-        Assert.True(removed.IsUnhealthy);
+        Assert.Equal(hasAuthenticationError, removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
         Assert.Null(removed.Link.Runtime);
         Assert.Equal(WorkerStatus.RemovalRequested, (await ReadManagementStateAsync(management, timeout.Token)).Status);

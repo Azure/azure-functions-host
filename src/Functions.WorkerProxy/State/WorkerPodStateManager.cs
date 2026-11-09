@@ -458,6 +458,8 @@ internal sealed class WorkerPodStateManager
             WorkerAssignmentState assignmentState = _assignment is null
                 ? WorkerAssignmentState.Unassigned
                 : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
+            bool unexpectedWorkerExit = workerStreamFailed && establishedWorkerSession && !_applicationStopping &&
+                (!allowExpectedRetirement || !_state.IsDraining);
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -467,8 +469,8 @@ internal sealed class WorkerPodStateManager
                 RuntimeInitialized = false,
                 RemovalRequested = _state.RemovalRequested ||
                     (workerStreamFailed && establishedWorkerSession && !_applicationStopping),
-                IsExpectedRetirement = workerStreamFailed && allowExpectedRetirement &&
-                    _state.IsDraining && !_state.IsUnhealthy && !assignmentFailed,
+                HasWorkerFailure = _state.HasWorkerFailure || unexpectedWorkerExit ||
+                    _state.AssignmentState is WorkerAssignmentState.Failed || assignmentState is WorkerAssignmentState.Failed,
                 // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
                 AssignmentState = assignmentState
             });
@@ -479,8 +481,7 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Publishes sticky removal and clears live worker and assignment identity.
     /// </summary>
-    /// <param name="allowExpectedRetirement">Whether peer closure or cancellation may complete an observed drain.</param>
-    public bool RequestRemoval(bool allowExpectedRetirement = false)
+    public bool RequestRemoval()
     {
         lock (_stateLock)
         {
@@ -506,7 +507,7 @@ internal sealed class WorkerPodStateManager
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
                 RemovalRequested = true,
-                IsExpectedRetirement = allowExpectedRetirement && _state.IsDraining && !_state.IsUnhealthy
+                HasWorkerFailure = _state.HasWorkerFailure || _state.AssignmentState is WorkerAssignmentState.Failed
             });
             return true;
         }

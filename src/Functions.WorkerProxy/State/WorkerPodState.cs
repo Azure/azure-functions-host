@@ -56,9 +56,9 @@ internal sealed record WorkerPodState(
     public bool RemovalRequested { get; init; }
 
     /// <summary>
-    /// Gets a value indicating whether removal follows peer closure or cancellation after draining without a known failure.
+    /// Gets a value indicating whether a Worker failure was recorded, independently of lifecycle cleanup.
     /// </summary>
-    public bool IsExpectedRetirement { get; init; }
+    public bool HasWorkerFailure { get; init; }
 
     /// <summary>
     /// Gets a value indicating whether the Host has started draining this worker.
@@ -85,7 +85,8 @@ internal sealed record WorkerPodState(
 
     public bool HasAuthenticationConfigurationError { get; init; }
 
-    public bool IsUnhealthy => HasAuthenticationConfigurationError || AssignmentState is WorkerAssignmentState.Failed;
+    public bool IsUnhealthy => HasAuthenticationConfigurationError || HasWorkerFailure ||
+        AssignmentState is WorkerAssignmentState.Failed;
 
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.

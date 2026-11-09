@@ -319,6 +319,22 @@ public partial class WorkerPodStateManagerTests
         Assert.Same(failed, manager.State);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RequestRemoval_PreservesKnownWorkerFailureWithoutCreatingOne(bool assignmentFailed)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        manager.Assign(CreateAssignment());
+        manager.OnSessionTerminated(1, assignmentFailed);
+
+        Assert.True(manager.RequestRemoval());
+
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Equal(assignmentFailed, manager.State.IsUnhealthy);
+        Assert.Equal(assignmentFailed, WorkerOriginState.FromState(manager.State).IsUnhealthy);
+    }
+
     [Fact]
     public void UnassignedSession_CanBeReplacedWithoutResettingRevision()
     {
