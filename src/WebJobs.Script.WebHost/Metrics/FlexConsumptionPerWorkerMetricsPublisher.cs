@@ -79,12 +79,15 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
     }
 
     /// <inheritdoc />
-    public void WorkerLinked(string workerId)
+    public void WorkerLinked(string workerId, string functionGroup = null, bool? isAlwaysReady = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         lock (SyncLock)
         {
-            _workers.TryAdd(workerId, new WorkerActivity(Clock.GetUtcNow().UtcDateTime));
+            _workers.TryAdd(workerId, new WorkerActivity(
+                Clock.GetUtcNow().UtcDateTime,
+                functionGroup,
+                isAlwaysReady));
         }
     }
 
@@ -210,19 +213,22 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
                 bool hasActivity = worker.ExecutionCount > 0 || worker.ExecutionTimeMS > 0 ||
                     worker.StartedInvocationCount > 0 || worker.ActiveInvocationCount > 0;
                 bool keepAlive = (now - worker.LastPublishTime).TotalMilliseconds >= PublisherOptions.KeepAliveIntervalMS;
-                if (hasActivity || keepAlive || IsAlwaysReady)
+                bool isAlwaysReady = worker.IsAlwaysReady ?? IsAlwaysReady;
+                if (hasActivity || keepAlive || isAlwaysReady)
                 {
                     snapshots.Add(new Metrics
                     {
                         InstanceId = workerId,
-                        FunctionGroup = MetricsProvider.FunctionGroup,
+                        FunctionGroup = string.IsNullOrEmpty(worker.FunctionGroup)
+                            ? MetricsProvider.FunctionGroup
+                            : worker.FunctionGroup,
                         ExecutionCount = worker.ExecutionCount,
                         ExecutionSuccessCount = worker.ExecutionSuccessCount,
                         ExecutionTimeMS = worker.ExecutionTimeMS,
                         StartedInvocationCount = worker.StartedInvocationCount,
                         ActiveInvocationCount = worker.ActiveInvocationCount,
                         TotalTimeMS = Math.Max(0, (long)(intervalEnd - worker.IntervalStart).TotalMilliseconds),
-                        IsAlwaysReady = IsAlwaysReady
+                        IsAlwaysReady = isAlwaysReady
                     });
                     worker.ExecutionCount = worker.ExecutionSuccessCount = worker.ExecutionTimeMS = worker.StartedInvocationCount = 0;
                     worker.LastPublishTime = now;
@@ -249,8 +255,12 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
         }
     }
 
-    private sealed class WorkerActivity(DateTime linkedAt)
+    private sealed class WorkerActivity(DateTime linkedAt, string functionGroup, bool? isAlwaysReady)
     {
+        public string FunctionGroup { get; } = functionGroup;
+
+        public bool? IsAlwaysReady { get; } = isAlwaysReady;
+
         public DateTime IntervalStart { get; set; } = linkedAt;
 
         public DateTime LastPublishTime { get; set; } = linkedAt;

@@ -1233,7 +1233,7 @@ internal sealed partial class WorkerChannelRegistry :
                 _hostConfigurationSourceSelected = true;
             }
 
-            _invocationTracker?.WorkerLinked(workerId);
+            _invocationTracker?.WorkerLinked(workerId, channel.FunctionGroupName, channel.IsAlwaysReady);
             slot.Channel = channel;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);

@@ -67,6 +67,22 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     }
 
     [Fact]
+    public async Task WorkerMetadata_OverridesRuntimeBillingClassification()
+    {
+        _publisher.IsAlwaysReady = true;
+        _provider.SetupGet(provider => provider.FunctionGroup).Returns("runtime-group");
+        _publisher.WorkerLinked("worker", "function:Queue", false);
+        Dispatch("invocation", "worker");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("invocation", success: true);
+        await PublishAsync();
+
+        var metrics = Assert.Single(ReadMetrics());
+        Assert.Equal("function:Queue", metrics.FunctionGroup);
+        Assert.False(metrics.IsAlwaysReady);
+    }
+
+    [Fact]
     public async Task Dispatch_WaitingForWorkerDoesNotMeterRuntimePreparation()
     {
         _publisher.WorkerLinked("worker");

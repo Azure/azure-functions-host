@@ -46,7 +46,7 @@ public sealed partial class WorkerChannelRegistryTests
     public async Task LinkAndUnlink_TrackWorkerLifetimeExactlyOnce()
     {
         RegistryHarness harness = new();
-        ChannelControl channel = new("worker");
+        ChannelControl channel = new("worker", functionGroupName: "function:Queue", isAlwaysReady: false);
         harness.Enqueue(channel);
         await using WorkerChannelRegistry registry = harness.Registry;
 
@@ -56,7 +56,8 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(await registry.UnlinkAsync("worker"));
         await registry.DisposeAsync();
 
-        harness.InvocationTracker.Verify(tracker => tracker.WorkerLinked("worker"), Times.Once);
+        harness.InvocationTracker.Verify(
+            tracker => tracker.WorkerLinked("worker", "function:Queue", false), Times.Once);
         harness.InvocationTracker.Verify(tracker => tracker.WorkerUnlinked("worker"), Times.Once);
         harness.InvocationTracker.VerifyNoOtherCalls();
     }

@@ -14,7 +14,9 @@ public interface IWorkerInvocationTracker
     /// Starts the metered lifetime of an initialized worker.
     /// </summary>
     /// <param name="workerId">The worker pod name.</param>
-    void WorkerLinked(string workerId);
+    /// <param name="functionGroup">The worker's assigned function group, or null when unavailable.</param>
+    /// <param name="isAlwaysReady">The worker's assigned billing mode, or null when unavailable.</param>
+    void WorkerLinked(string workerId, string functionGroup = null, bool? isAlwaysReady = null);
 
     /// <summary>
     /// Ends a worker's metered lifetime and finalizes its outstanding invocations.
