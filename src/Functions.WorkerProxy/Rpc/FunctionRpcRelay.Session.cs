@@ -802,11 +802,12 @@ internal sealed partial class FunctionRpcRelay
                 bool workerStreamFailed = !shutdownRequested &&
                     terminalState.Side == FunctionRpcRelaySide.Worker &&
                     peerTerminated;
+                bool allowExpectedRetirement = terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                    or FunctionRpcRelayTerminationReason.Canceled;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
                 if (runtimePeerTerminated)
                 {
-                    stateManager.RequestRemoval(
-                        runtimeClosedCleanly: terminalState.Reason == FunctionRpcRelayTerminationReason.PeerClosed);
+                    stateManager.RequestRemoval(allowExpectedRetirement);
                 }
                 else
                 {
@@ -816,7 +817,7 @@ internal sealed partial class FunctionRpcRelay
                         Side: FunctionRpcRelaySide.Worker,
                         Exception: InvalidDataException
                     };
-                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed);
+                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed, allowExpectedRetirement);
                 }
 
                 _terminalState = terminalState;

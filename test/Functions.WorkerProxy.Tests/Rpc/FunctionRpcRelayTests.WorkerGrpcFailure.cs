@@ -116,7 +116,7 @@ public partial class FunctionRpcRelayTests
         WorkerOriginState repeated = await ReadManagementStateAsync(repeatedResponse, timeout.Token);
         Assert.Equal(WorkerStatus.RemovalRequested, repeated.Status);
         Assert.Equal(first.RevisionId, repeated.RevisionId);
-        Assert.True(repeated.IsUnhealthy);
+        Assert.Equal(!drainBeforeDisconnect, repeated.IsUnhealthy);
         Assert.Equal(assignment.ConfigLastModifiedTime, repeated.ConfigLastModifiedTime);
         Assert.Equal(assignment.ContentLastModifiedTime, repeated.ContentLastModifiedTime);
         WorkerPodState removedState = manager.State;

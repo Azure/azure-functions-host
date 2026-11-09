@@ -134,21 +134,35 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData("Preconfigured", false, false)]
-    [InlineData("SpecializationRequired", false, false)]
-    [InlineData("Preconfigured", true, false)]
-    [InlineData("SpecializationRequired", true, false)]
-    [InlineData("Preconfigured", false, true)]
-    [InlineData("SpecializationRequired", false, true)]
-    public async Task RuntimeRetirement_DrainThenDisconnectPreservesHealth(
-        string startupMode, bool hasAuthenticationError, bool cancelRuntime)
+    [InlineData("Preconfigured", "RuntimeHalfClose", false)]
+    [InlineData("SpecializationRequired", "RuntimeHalfClose", false)]
+    [InlineData("Preconfigured", "WorkerFirst", false)]
+    [InlineData("SpecializationRequired", "WorkerFirst", false)]
+    [InlineData("Preconfigured", "RuntimeDisposed", false)]
+    [InlineData("SpecializationRequired", "RuntimeDisposed", false)]
+    [InlineData("Preconfigured", "RuntimeCanceled", false)]
+    [InlineData("SpecializationRequired", "RuntimeCanceled", false)]
+    [InlineData("Preconfigured", "WorkerCanceled", false)]
+    [InlineData("SpecializationRequired", "WorkerCanceled", false)]
+    [InlineData("Preconfigured", "WorkerFirst", true)]
+    [InlineData("SpecializationRequired", "WorkerFirst", true)]
+    [InlineData("Preconfigured", "RuntimeDisposed", true)]
+    [InlineData("SpecializationRequired", "RuntimeDisposed", true)]
+    [InlineData("Preconfigured", "RuntimeCanceled", true)]
+    [InlineData("SpecializationRequired", "RuntimeCanceled", true)]
+    [InlineData("Preconfigured", "WorkerProtocolFault", false)]
+    [InlineData("SpecializationRequired", "WorkerProtocolFault", false)]
+    public async Task RuntimeRetirement_TerminateThenDisconnectOrDisposePreservesHealth(
+        string startupMode, string retirementPath, bool hasAuthenticationError)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource runtimeCancellation =
             CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        using CancellationTokenSource workerCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
         using HttpClient management = factory.CreateWorkerProxyClient();
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, workerCancellation.Token);
         await using RelayClient runtime = CreateClient(
             factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime),
             runtimeCancellation.Token,
@@ -173,36 +187,84 @@ public partial class FunctionRpcRelayTests
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
         }
 
+        await using var transport = runtime.CreateRuntimeTransport();
         manager.SetAuthenticationConfigurationError(hasAuthenticationError);
         WorkerOriginState running = await ReadManagementStateAsync(management, timeout.Token);
         Task<HttpResponseMessage> drainPoll = PollManagementStateAsync(management, running, timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
-        await runtime.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+        await transport.Writer.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
         using HttpResponseMessage drainResponse = await drainPoll;
         WorkerOriginState draining = await ReadManagementStateAsync(drainResponse, timeout.Token);
         Assert.Equal(WorkerStatus.Draining, draining.Status);
         Assert.Equal(hasAuthenticationError, draining.IsUnhealthy);
 
-        if (cancelRuntime)
+        StreamingMessage terminate = new()
         {
-            runtimeCancellation.Cancel();
-        }
-        else
+            WorkerTerminate = new()
+            {
+                GracePeriod = Google.Protobuf.WellKnownTypes.Duration.FromTimeSpan(TimeSpan.FromSeconds(5))
+            }
+        };
+        await transport.Writer.WriteAsync(terminate, timeout.Token);
+        Assert.Equal(terminate, await worker.ReadAsync(timeout.Token));
+
+        switch (retirementPath)
         {
-            await runtime.CompleteRequestAsync(timeout.Token);
+            case "RuntimeHalfClose":
+                transport.Writer.Complete();
+                break;
+            case "WorkerFirst":
+                await worker.CompleteRequestAsync(timeout.Token);
+                break;
+            case "RuntimeDisposed":
+                await transport.DisposeAsync();
+                break;
+            case "RuntimeCanceled":
+                runtimeCancellation.Cancel();
+                await transport.DisposeAsync();
+                break;
+            case "WorkerCanceled":
+                workerCancellation.Cancel();
+                break;
+            case "WorkerProtocolFault":
+                await worker.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+                break;
+            default:
+                throw new InvalidOperationException("Unknown retirement path.");
         }
 
-        await Task.WhenAll(
-            runtime.WaitForTerminationAsync(timeout.Token),
-            worker.WaitForTerminationAsync(timeout.Token));
+        Exception? completionError = await Record.ExceptionAsync(
+            () => transport.Reader.Completion.WaitAsync(timeout.Token));
+        Assert.True(completionError is null or Grpc.Core.RpcException, completionError?.ToString());
+        await worker.WaitForTerminationAsync(timeout.Token);
+        await transport.DisposeAsync();
         WorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
-        Assert.Equal(hasAuthenticationError || cancelRuntime, removed.IsUnhealthy);
+        Assert.Equal(hasAuthenticationError ||
+            string.Equals(retirementPath, "WorkerProtocolFault", StringComparison.Ordinal), removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
         Assert.True(removed.RevisionId > draining.RevisionId);
         Assert.Equal(running.FunctionGroup, removed.FunctionGroup);
         Assert.Equal(running.ConfigLastModifiedTime, removed.ConfigLastModifiedTime);
         Assert.Equal(running.ContentLastModifiedTime, removed.ContentLastModifiedTime);
+        FunctionRpcRelayTerminalState terminal = Assert.IsType<FunctionRpcRelayTerminalState>(
+            factory.Services.GetRequiredService<FunctionRpcRelay>().LastTerminalState);
+        if (retirementPath is "WorkerFirst" or "WorkerCanceled" or "WorkerProtocolFault")
+        {
+            Assert.Equal(FunctionRpcRelaySide.Worker, terminal.Side);
+        }
+
+        if (retirementPath is "RuntimeCanceled" or "WorkerCanceled")
+        {
+            Assert.Equal(FunctionRpcRelayTerminationReason.Canceled, terminal.Reason);
+        }
+
+        if (string.Equals(retirementPath, "WorkerProtocolFault", StringComparison.Ordinal))
+        {
+            Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, terminal.Reason);
+            Assert.IsType<System.IO.InvalidDataException>(terminal.Exception);
+        }
+
         Assert.True(manager.State.RemovalRequested);
         Assert.False(manager.RequestRemoval());
         await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Runtime, timeout.Token);

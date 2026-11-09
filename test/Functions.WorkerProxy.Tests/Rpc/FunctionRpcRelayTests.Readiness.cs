@@ -150,13 +150,15 @@ public partial class FunctionRpcRelayTests
     }
 
     [Theory]
-    [InlineData("worker-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed), true)]
-    [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true)]
-    [InlineData("worker-write-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true)]
-    [InlineData("worker-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled), true)]
-    [InlineData("shutdown", nameof(FunctionRpcRelayTerminationReason.Shutdown), false)]
+    [InlineData("worker-close", nameof(FunctionRpcRelayTerminationReason.PeerClosed), true, false)]
+    [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true, false)]
+    [InlineData("worker-write-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true, false)]
+    [InlineData("worker-cancel", nameof(FunctionRpcRelayTerminationReason.Canceled), true, false)]
+    [InlineData("shutdown", nameof(FunctionRpcRelayTerminationReason.Shutdown), false, false)]
+    [InlineData("worker-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true, true)]
+    [InlineData("worker-write-fault", nameof(FunctionRpcRelayTerminationReason.Faulted), true, true)]
     public async Task Relay_TerminationWithdrawsReadinessBeforeBlockedWriterReleases(
-        string trigger, string expectedReason, bool expectedRemoval)
+        string trigger, string expectedReason, bool expectedRemoval, bool drainBeforeTermination)
     {
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
@@ -175,6 +177,7 @@ public partial class FunctionRpcRelayTests
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), workerWriter, workerCancellation.Token);
         Task stopTask = Task.CompletedTask;
+        long expectedTerminalRevision = 0;
 
         try
         {
@@ -188,7 +191,16 @@ public partial class FunctionRpcRelayTests
                 Assert.NotNull((await workerOutbound.Reader.ReadAsync(timeout.Token)).WorkerInitRequest);
             }
 
+            if (drainBeforeTermination)
+            {
+                Task<WorkerStatePollResult> drainPoll = manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
+                await runtimeInbound.Writer.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+                WorkerPodState draining = Assert.IsType<WorkerPodState>((await drainPoll).State);
+                Assert.True(draining.IsDraining);
+            }
+
             WorkerPodState assigned = manager.State;
+            expectedTerminalRevision = assigned.Revision + 1;
             Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(assigned.Revision, timeout.Token);
 
             switch (trigger)
@@ -225,7 +237,7 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(expectedRemoval, failed.RemovalRequested);
             Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
             Assert.Equal(expectedRemoval, WorkerOriginState.FromState(failed).IsUnhealthy);
-            Assert.Equal(assigned.Revision + 1, failed.Revision);
+            Assert.Equal(expectedTerminalRevision, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
             Assert.True(relay.IsAttached(FunctionRpcRelaySide.Runtime));
@@ -238,7 +250,7 @@ public partial class FunctionRpcRelayTests
         FunctionRpcRelayTerminalState[] terminalStates = await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
         Assert.All(terminalStates, state => Assert.Equal(expectedReason, state.Reason.ToString()));
         await stopTask.WaitAsync(timeout.Token);
-        Assert.Equal(4, manager.State.Revision);
+        Assert.Equal(expectedTerminalRevision, manager.State.Revision);
     }
 
     [Fact]

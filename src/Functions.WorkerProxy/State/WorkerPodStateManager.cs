@@ -406,11 +406,13 @@ internal sealed class WorkerPodStateManager
     /// <param name="sessionId">The terminating relay session identifier.</param>
     /// <param name="assignmentFailed">Whether a worker protocol violation establishes an assignment health failure.</param>
     /// <param name="workerStreamFailed">Whether the worker stream ended unexpectedly.</param>
+    /// <param name="allowExpectedRetirement">Whether peer closure or cancellation may complete an observed drain.</param>
     /// <returns>Whether the current pod snapshot changed.</returns>
     public bool OnSessionTerminated(
         long sessionId,
         bool assignmentFailed = false,
-        bool workerStreamFailed = false)
+        bool workerStreamFailed = false,
+        bool allowExpectedRetirement = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -465,6 +467,8 @@ internal sealed class WorkerPodStateManager
                 RuntimeInitialized = false,
                 RemovalRequested = _state.RemovalRequested ||
                     (workerStreamFailed && establishedWorkerSession && !_applicationStopping),
+                IsExpectedRetirement = workerStreamFailed && allowExpectedRetirement &&
+                    _state.IsDraining && !_state.IsUnhealthy && !assignmentFailed,
                 // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
                 AssignmentState = assignmentState
             });
@@ -475,8 +479,8 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Publishes sticky removal and clears live worker and assignment identity.
     /// </summary>
-    /// <param name="runtimeClosedCleanly">Whether the Runtime stream closed without fault or cancellation.</param>
-    public bool RequestRemoval(bool runtimeClosedCleanly = false)
+    /// <param name="allowExpectedRetirement">Whether peer closure or cancellation may complete an observed drain.</param>
+    public bool RequestRemoval(bool allowExpectedRetirement = false)
     {
         lock (_stateLock)
         {
@@ -502,7 +506,7 @@ internal sealed class WorkerPodStateManager
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
                 RemovalRequested = true,
-                IsExpectedRetirement = runtimeClosedCleanly && _state.IsDraining && !_state.IsUnhealthy
+                IsExpectedRetirement = allowExpectedRetirement && _state.IsDraining && !_state.IsUnhealthy
             });
             return true;
         }
