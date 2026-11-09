@@ -245,7 +245,8 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
             Assert.Equal(expectedRemoval, failed.RemovalRequested);
             bool runtimeTerminated = trigger.StartsWith("runtime-", StringComparison.Ordinal);
-            Assert.Equal(runtimeTerminated ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated, failed.AssignmentState);
+            Assert.Equal(runtimeTerminated ? WorkerAssignmentState.Unassigned :
+                expectedRemoval ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated, failed.AssignmentState);
             Assert.Equal(expectedRemoval && !runtimeTerminated, WorkerOriginState.FromState(failed).IsUnhealthy);
             Assert.Equal(expectedTerminalRevision, failed.Revision);
             Assert.Equal(runtimeTerminated ? WorkerAssignmentResult.WorkerNotReady : WorkerAssignmentResult.WorkerTerminated,

@@ -747,7 +747,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
         Assert.Equal(
-            runtimeCloses ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated,
+            runtimeCloses ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed,
             manager.State.AssignmentState);
         Assert.True(manager.State.RemovalRequested);
         Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);

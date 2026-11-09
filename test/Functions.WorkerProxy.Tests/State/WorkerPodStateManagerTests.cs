@@ -330,7 +330,8 @@ public partial class WorkerPodStateManagerTests
 
         Assert.True(manager.RequestRemoval());
 
-        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Equal(assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Unassigned,
+            manager.State.AssignmentState);
         Assert.Equal(assignmentFailed, manager.State.IsUnhealthy);
         Assert.Equal(assignmentFailed, WorkerOriginState.FromState(manager.State).IsUnhealthy);
     }

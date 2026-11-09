@@ -120,7 +120,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assignment.ConfigLastModifiedTime, repeated.ConfigLastModifiedTime);
         Assert.Equal(assignment.ContentLastModifiedTime, repeated.ContentLastModifiedTime);
         WorkerPodState removedState = manager.State;
-        Assert.Equal(WorkerAssignmentState.Terminated, removedState.AssignmentState);
+        Assert.Equal(drainBeforeDisconnect ? WorkerAssignmentState.Terminated : WorkerAssignmentState.Failed,
+            removedState.AssignmentState);
         Assert.False(removedState.IsWorkerReady);
         Assert.Equal(assignedState.FunctionAppName, removedState.FunctionAppName);
         Assert.Equal(assignedState.FunctionGroupName, removedState.FunctionGroupName);

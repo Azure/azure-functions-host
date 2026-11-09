@@ -455,11 +455,13 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            WorkerAssignmentState assignmentState = _assignment is null
-                ? WorkerAssignmentState.Unassigned
-                : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
             bool unexpectedWorkerExit = workerStreamFailed && establishedWorkerSession && !_applicationStopping &&
                 (!allowExpectedRetirement || !_state.IsDraining);
+            bool workerFailed = unexpectedWorkerExit || _state.AssignmentState is WorkerAssignmentState.Failed ||
+                (assignmentFailed && _assignment is not null);
+            WorkerAssignmentState assignmentState = workerFailed
+                ? WorkerAssignmentState.Failed
+                : _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -469,8 +471,6 @@ internal sealed class WorkerPodStateManager
                 RuntimeInitialized = false,
                 RemovalRequested = _state.RemovalRequested ||
                     (workerStreamFailed && establishedWorkerSession && !_applicationStopping),
-                HasWorkerFailure = _state.HasWorkerFailure || unexpectedWorkerExit ||
-                    _state.AssignmentState is WorkerAssignmentState.Failed || assignmentState is WorkerAssignmentState.Failed,
                 // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
                 AssignmentState = assignmentState
             });
@@ -498,7 +498,9 @@ internal sealed class WorkerPodStateManager
                 SessionId = null,
                 IsWorkerAttached = false,
                 WorkerId = null,
-                AssignmentState = WorkerAssignmentState.Unassigned,
+                AssignmentState = _state.AssignmentState is WorkerAssignmentState.Failed
+                    ? WorkerAssignmentState.Failed
+                    : WorkerAssignmentState.Unassigned,
                 StartupMode = null,
                 FunctionAppName = null,
                 HttpProxyEndpoint = null,
@@ -506,8 +508,7 @@ internal sealed class WorkerPodStateManager
                 IsAlwaysReady = null,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                RemovalRequested = true,
-                HasWorkerFailure = _state.HasWorkerFailure || _state.AssignmentState is WorkerAssignmentState.Failed
+                RemovalRequested = true
             });
             return true;
         }
