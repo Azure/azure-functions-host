@@ -17,6 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 /// <summary>
 /// Publishes independently attributed billing metrics for compute-separated Workers.
 /// </summary>
+/// <remarks>
+/// Billing dimensions come from each Worker's initial assignment, not the shared Runtime's environment.
+/// Workers without a known billing mode remain available for invocation tracking but do not emit billing records.
+/// </remarks>
 public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMetricsPublisherBase, IWorkerInvocationTracker
 {
     private readonly Dictionary<string, WorkerActivity> _workers = new(StringComparer.Ordinal);
@@ -79,12 +83,18 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
     }
 
     /// <inheritdoc />
-    public void WorkerLinked(string workerId)
+    public void WorkerLinked(string workerId, string functionGroup, bool? isAlwaysReady)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
         lock (SyncLock)
         {
-            _workers.TryAdd(workerId, new WorkerActivity(Clock.GetUtcNow().UtcDateTime));
+            if (_workers.TryAdd(workerId, new WorkerActivity(Clock.GetUtcNow().UtcDateTime, functionGroup, isAlwaysReady))
+                && isAlwaysReady is null)
+            {
+                Logger.LogWarning("Worker {WorkerId} in function group {FunctionGroup} has no valid IsAlwaysReady assignment metadata. Invocation tracking remains enabled, but Worker billing records will not be emitted. No Runtime billing fallback will be used.",
+                    workerId, functionGroup);
+            }
         }
     }
 
@@ -210,19 +220,19 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
                 bool hasActivity = worker.ExecutionCount > 0 || worker.ExecutionTimeMS > 0 ||
                     worker.StartedInvocationCount > 0 || worker.ActiveInvocationCount > 0;
                 bool keepAlive = (now - worker.LastPublishTime).TotalMilliseconds >= PublisherOptions.KeepAliveIntervalMS;
-                if (hasActivity || keepAlive || IsAlwaysReady)
+                if (worker.IsAlwaysReady is { } isAlwaysReady && (hasActivity || keepAlive || isAlwaysReady))
                 {
                     snapshots.Add(new Metrics
                     {
                         InstanceId = workerId,
-                        FunctionGroup = MetricsProvider.FunctionGroup,
+                        FunctionGroup = worker.FunctionGroup,
                         ExecutionCount = worker.ExecutionCount,
                         ExecutionSuccessCount = worker.ExecutionSuccessCount,
                         ExecutionTimeMS = worker.ExecutionTimeMS,
                         StartedInvocationCount = worker.StartedInvocationCount,
                         ActiveInvocationCount = worker.ActiveInvocationCount,
                         TotalTimeMS = Math.Max(0, (long)(intervalEnd - worker.IntervalStart).TotalMilliseconds),
-                        IsAlwaysReady = IsAlwaysReady
+                        IsAlwaysReady = isAlwaysReady
                     });
                     worker.ExecutionCount = worker.ExecutionSuccessCount = worker.ExecutionTimeMS = worker.StartedInvocationCount = 0;
                     worker.LastPublishTime = now;
@@ -249,8 +259,12 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
         }
     }
 
-    private sealed class WorkerActivity(DateTime linkedAt)
+    private sealed class WorkerActivity(DateTime linkedAt, string functionGroup, bool? isAlwaysReady)
     {
+        public string FunctionGroup { get; } = functionGroup;
+
+        public bool? IsAlwaysReady { get; } = isAlwaysReady;
+
         public DateTime IntervalStart { get; set; } = linkedAt;
 
         public DateTime LastPublishTime { get; set; } = linkedAt;

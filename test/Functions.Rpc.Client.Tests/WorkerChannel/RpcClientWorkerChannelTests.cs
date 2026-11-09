@@ -546,11 +546,15 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal(10, channel.MaxHttpConcurrency);
     }
 
-    [Fact]
-    public async Task StartAsync_LaterCapabilitiesDoNotChangeCapturedAssignment()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(null)]
+    public async Task StartAsync_LaterCapabilitiesDoNotChangeCapturedAssignment(bool? isAlwaysReady)
     {
         await using ClientWorkerChannelTestHarness harness = await ClientWorkerChannelTestHarness.CreateAsync(
-            WorkerId, functionGroupName: "http", maxHttpConcurrency: "10");
+            WorkerId, functionGroupName: "http", maxHttpConcurrency: "10", isAlwaysReady: isAlwaysReady);
+        Assert.Equal(isAlwaysReady, harness.Channel.IsAlwaysReady);
         Task reload = harness.Channel.SendFunctionEnvironmentReloadRequest();
         await harness.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
         FunctionEnvironmentReloadResponse response = new()
@@ -559,12 +563,14 @@ public sealed class RpcClientWorkerChannelTests
         };
         response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "background");
         response.Capabilities.Add(RpcClientWorkerChannel.MaxHttpConcurrencyCapability, "50");
+        response.Capabilities.Add(RpcClientWorkerChannel.IsAlwaysReadyCapability, isAlwaysReady is true ? bool.FalseString : bool.TrueString);
         await harness.Transport.SendResponseAsync(new() { FunctionEnvironmentReloadResponse = response });
         await reload.WaitAsync(TestTimeout);
 
         Assert.Equal("http", harness.Channel.FunctionGroupName);
         Assert.True(harness.Channel.IsHttpFunctionGroup);
         Assert.Equal(10, harness.Channel.MaxHttpConcurrency);
+        Assert.Equal(isAlwaysReady, harness.Channel.IsAlwaysReady);
     }
 
     [Theory]

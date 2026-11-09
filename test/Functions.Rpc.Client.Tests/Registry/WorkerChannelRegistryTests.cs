@@ -42,11 +42,25 @@ public sealed partial class WorkerChannelRegistryTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
-    [Fact]
-    public async Task LinkAndUnlink_TrackWorkerLifetimeExactlyOnce()
+    [Theory]
+    [InlineData("http", "True", true)]
+    [InlineData("http", "False", false)]
+    [InlineData("http", null, null)]
+    [InlineData("function:QueueProcessor", "True", true)]
+    [InlineData("function:QueueProcessor", "False", false)]
+    [InlineData("function:QueueProcessor", null, null)]
+    [InlineData("function:QueueProcessor", "", null)]
+    [InlineData("function:QueueProcessor", "invalid", null)]
+    public async Task LinkAndUnlink_TrackWorkerLifetimeExactlyOnce(string functionGroup, string suppliedMode, bool? expectedMode)
     {
         RegistryHarness harness = new();
-        ChannelControl channel = new("worker");
+        ChannelControl channel = new("worker", functionGroupName: functionGroup,
+            maxHttpConcurrency: string.Equals(functionGroup, "http", StringComparison.Ordinal) ? 16 : null);
+        if (suppliedMode is not null)
+        {
+            channel.Capabilities.Add(RpcClientWorkerChannel.IsAlwaysReadyCapability, suppliedMode);
+        }
+
         harness.Enqueue(channel);
         await using WorkerChannelRegistry registry = harness.Registry;
 
@@ -56,7 +70,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.False(await registry.UnlinkAsync("worker"));
         await registry.DisposeAsync();
 
-        harness.InvocationTracker.Verify(tracker => tracker.WorkerLinked("worker"), Times.Once);
+        harness.InvocationTracker.Verify(tracker => tracker.WorkerLinked("worker", functionGroup, expectedMode), Times.Once);
         harness.InvocationTracker.Verify(tracker => tracker.WorkerUnlinked("worker"), Times.Once);
         harness.InvocationTracker.VerifyNoOtherCalls();
     }

@@ -13,8 +13,14 @@ public interface IWorkerInvocationTracker
     /// <summary>
     /// Starts the metered lifetime of an initialized worker.
     /// </summary>
+    /// <remarks>
+    /// Assignment metadata comes from the initial worker handshake and is retained across repeated links.
+    /// Missing billing mode does not prevent invocation tracking, but must not produce billing records.
+    /// </remarks>
     /// <param name="workerId">The worker pod name.</param>
-    void WorkerLinked(string workerId);
+    /// <param name="functionGroup">The non-empty function group assigned to the worker.</param>
+    /// <param name="isAlwaysReady">The worker's assigned billing mode, or null when unavailable.</param>
+    void WorkerLinked(string workerId, string functionGroup, bool? isAlwaysReady);
 
     /// <summary>
     /// Ends a worker's metered lifetime and finalizes its outstanding invocations.

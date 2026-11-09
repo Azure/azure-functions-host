@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <inheritdoc />
-        public void WorkerLinked(string workerId)
+        public void WorkerLinked(string workerId, string functionGroup, bool? isAlwaysReady)
         {
         }
 

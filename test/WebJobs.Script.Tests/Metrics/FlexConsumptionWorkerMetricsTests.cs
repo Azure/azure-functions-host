@@ -62,14 +62,152 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
 
         var metrics = Assert.Single(ReadMetrics());
         Assert.Equal("runtime-pod", metrics.InstanceId);
+        Assert.Equal("http", metrics.FunctionGroup);
         Assert.Equal(1, metrics.ExecutionCount);
         Assert.Equal(1000, metrics.ExecutionTimeMS);
+    }
+
+    [Theory]
+    [InlineData(false, "")]
+    [InlineData(true, "")]
+    [InlineData(false, "runtime-group")]
+    [InlineData(true, "runtime-group")]
+    public async Task OnPublishMetrics_UsesEachWorkersAssignmentInsteadOfRuntimeDimensions(bool runtimeAlwaysReady, string runtimeGroup)
+    {
+        _publisher.IsAlwaysReady = runtimeAlwaysReady;
+        _provider.SetupGet(provider => provider.FunctionGroup).Returns(runtimeGroup);
+        _publisher.WorkerLinked("http-ar", "http", true);
+        _publisher.WorkerLinked("http-od", "http", false);
+        _publisher.WorkerLinked("queue-ar", "function:QueueProcessor", true);
+        _publisher.WorkerLinked("queue-od", "function:QueueProcessor", false);
+        foreach (string workerId in new[] { "http-ar", "http-od", "queue-ar", "queue-od" })
+        {
+            Dispatch(workerId, workerId);
+        }
+
+        _now = _now.AddSeconds(1);
+        foreach (string workerId in new[] { "http-ar", "http-od", "queue-ar", "queue-od" })
+        {
+            _publisher.InvocationCompleted(workerId, success: true);
+        }
+
+        await PublishAsync();
+
+        var metrics = ReadMetrics().ToDictionary(record => record.InstanceId);
+        Assert.Equal(4, metrics.Count);
+        Assert.Equal("http", metrics["http-ar"].FunctionGroup);
+        Assert.Equal("http", metrics["http-od"].FunctionGroup);
+        Assert.Equal("function:QueueProcessor", metrics["queue-ar"].FunctionGroup);
+        Assert.Equal("function:QueueProcessor", metrics["queue-od"].FunctionGroup);
+        Assert.True(metrics["http-ar"].IsAlwaysReady);
+        Assert.True(metrics["queue-ar"].IsAlwaysReady);
+        Assert.False(metrics["http-od"].IsAlwaysReady);
+        Assert.False(metrics["queue-od"].IsAlwaysReady);
+        Assert.All(metrics.Values, record =>
+        {
+            Assert.Equal(1, record.ExecutionCount);
+            Assert.Equal(1, record.ExecutionSuccessCount);
+            Assert.Equal(1, record.StartedInvocationCount);
+            Assert.Equal(1000, record.ExecutionTimeMS);
+            Assert.Equal(1000, record.TotalTimeMS);
+        });
+        _provider.VerifyGet(provider => provider.FunctionGroup, Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AlwaysReady_MixedWorkerModesPublishOnlyAssignedIdleBaseline(bool runtimeAlwaysReady)
+    {
+        _publisher.IsAlwaysReady = runtimeAlwaysReady;
+        _publisher.WorkerLinked("ar", "function:QueueProcessor", true);
+        _publisher.WorkerLinked("od", "http", false);
+        _now = _now.AddSeconds(1);
+        await PublishAsync();
+
+        var baseline = Assert.Single(ReadMetrics());
+        Assert.Equal("ar", baseline.InstanceId);
+        Assert.Equal("function:QueueProcessor", baseline.FunctionGroup);
+        Assert.True(baseline.IsAlwaysReady);
+        Assert.Equal(1000, baseline.TotalTimeMS);
+        Assert.Equal(0, baseline.ExecutionTimeMS);
+        Assert.Equal(0, baseline.ExecutionCount);
+
+        _publisher.WorkerUnlinked("ar");
+        _now = _now.AddMilliseconds(_options.KeepAliveIntervalMS);
+        await PublishAsync();
+        _now = _now.AddSeconds(1);
+        await PublishAsync();
+
+        var metrics = ReadMetrics();
+        Assert.Equal(2, metrics.Count(record => string.Equals(record.InstanceId, "ar", StringComparison.Ordinal)));
+        var keepAlive = Assert.Single(metrics.Where(record => string.Equals(record.InstanceId, "od", StringComparison.Ordinal)));
+        Assert.Equal("http", keepAlive.FunctionGroup);
+        Assert.False(keepAlive.IsAlwaysReady);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WorkerLinked_RepeatedLinkPreservesAssignmentAndInterval(bool initialAlwaysReady)
+    {
+        _publisher.WorkerLinked("worker", "function:QueueProcessor", initialAlwaysReady);
+        Dispatch("invocation", "worker");
+        _now = _now.AddSeconds(1);
+        _publisher.WorkerLinked("worker", "http", !initialAlwaysReady);
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("invocation", success: true);
+        await PublishAsync();
+
+        var metrics = Assert.Single(ReadMetrics());
+        Assert.Equal("function:QueueProcessor", metrics.FunctionGroup);
+        Assert.Equal(initialAlwaysReady, metrics.IsAlwaysReady);
+        Assert.Equal(2000, metrics.TotalTimeMS);
+        Assert.Equal(2000, metrics.ExecutionTimeMS);
+        Assert.Equal(1, metrics.ExecutionCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingBillingMode_TracksInvocationsWithoutRuntimeFallbackAndWarnsOnce(bool runtimeAlwaysReady)
+    {
+        _publisher.IsAlwaysReady = runtimeAlwaysReady;
+        _publisher.WorkerLinked("worker", "function:QueueProcessor", null);
+        _publisher.WorkerLinked("worker", "http", true);
+        Dispatch("invocation", "worker");
+        _now = _now.AddSeconds(1);
+        await PublishAsync();
+        _publisher.InvocationCompleted("invocation", success: true);
+        _now = _now.AddMilliseconds(_options.KeepAliveIntervalMS);
+        await PublishAsync();
+        Dispatch("next", "worker");
+        _publisher.WorkerUnlinked("worker");
+        await PublishAsync();
+
+        Assert.Empty(ReadMetrics());
+        var warning = Assert.Single(_logger.GetLogMessages().Where(message => message.Level == LogLevel.Warning));
+        Assert.Contains("worker", warning.FormattedMessage, StringComparison.Ordinal);
+        Assert.Contains("function:QueueProcessor", warning.FormattedMessage, StringComparison.Ordinal);
+        Assert.Contains("No Runtime billing fallback", warning.FormattedMessage, StringComparison.Ordinal);
+        Assert.False(_publisher.TryDispatchInvocation("late", "worker", () => true));
+        _provider.VerifyGet(provider => provider.FunctionGroup, Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WorkerLinked_MissingGroupRejectsAttribution(string functionGroup)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => _publisher.WorkerLinked("worker", functionGroup, false));
+        Assert.False(_publisher.TryDispatchInvocation("invocation", "worker", () => true));
     }
 
     [Fact]
     public async Task Dispatch_WaitingForWorkerDoesNotMeterRuntimePreparation()
     {
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         _publisher.OnFunctionStarted("function", "invocation", _now);
         _now = _now.AddSeconds(10);
         await PublishAsync();
@@ -85,8 +223,8 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task KeepAlive_PublishesEachLinkedIdleWorker()
     {
-        _publisher.WorkerLinked("first");
-        _publisher.WorkerLinked("second");
+        _publisher.WorkerLinked("first", "http", false);
+        _publisher.WorkerLinked("second", "http", false);
         _now = _now.AddMilliseconds(_options.KeepAliveIntervalMS);
         await PublishAsync();
 
@@ -104,7 +242,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task DispatchAccepted_TracksInvocationUntilCompletion()
     {
         await PublishAsync();
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Mock<Func<bool>> dispatch = new();
         dispatch.Setup(post => post()).Returns(true);
 
@@ -124,7 +262,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task Completion_CountsOnceDespiteLateCancellationAndDuplicateCompletion()
     {
         using CancellationTokenSource cancellation = new();
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         _publisher.InvocationCompleted("invocation", success: false);
@@ -143,7 +281,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task OnPublishMetrics_FiveInvocationsUseWorkerIdentity()
     {
         const string workerId = "0--dad293e8-bbb0-46f5-a7a7-75f331e3a55b";
-        _publisher.WorkerLinked(workerId);
+        _publisher.WorkerLinked(workerId, "http", false);
         for (int i = 0; i < 5; i++)
         {
             string invocationId = i.ToString();
@@ -167,8 +305,8 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task OnPublishMetrics_TracksSuccessPerWorkerAndResetsBetweenPublications()
     {
-        _publisher.WorkerLinked("worker-a");
-        _publisher.WorkerLinked("worker-b");
+        _publisher.WorkerLinked("worker-a", "http", false);
+        _publisher.WorkerLinked("worker-b", "http", false);
         Dispatch("success", "worker-a");
         Dispatch("failure", "worker-b");
         _now = _now.AddSeconds(1);
@@ -198,7 +336,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task WorkerUnlinked_DoesNotCountLateSuccess()
     {
         using CancellationTokenSource cancellation = new();
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         _publisher.WorkerUnlinked("worker");
@@ -214,8 +352,8 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task OnPublishMetrics_ConcurrentWorkersProduceIndependentFiles()
     {
-        _publisher.WorkerLinked("worker-a");
-        _publisher.WorkerLinked("worker-b");
+        _publisher.WorkerLinked("worker-a", "http", false);
+        _publisher.WorkerLinked("worker-b", "http", false);
         Dispatch("a1", "worker-a");
         Dispatch("b1", "worker-b");
         _now = _now.AddSeconds(1);
@@ -236,7 +374,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task OnPublishMetrics_OverlappingInvocationsMeterWorkerTimeOnce()
     {
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("first", "worker");
         _now = _now.AddMilliseconds(500);
         Dispatch("second", "worker");
@@ -255,7 +393,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task OnPublishMetrics_ActiveWorkerPublishesEvenInsidePreviouslyRoundedTime()
     {
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("invocation", "worker");
         _now = _now.AddMilliseconds(200);
         await PublishAsync();
@@ -272,7 +410,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task OnPublishMetrics_PreservesRoundingAcrossPublicationBoundaries()
     {
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("first", "worker");
         _now = _now.AddMilliseconds(200);
         await PublishAsync();
@@ -295,7 +433,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [InlineData(true)]
     public async Task DispatchFailure_DoesNotLeaveAttributionOrBilling(bool throws)
     {
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         if (throws)
         {
             Assert.Throws<InvalidOperationException>(() =>
@@ -320,7 +458,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task Cancellation_ContinuesMeteringUntilActualCompletion()
     {
         using CancellationTokenSource cancellation = new();
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         cancellation.Cancel();
@@ -347,7 +485,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task CancellationDuringDispatch_KeepsAcceptedInvocationActiveUntilCompletion()
     {
         using CancellationTokenSource cancellation = new();
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
 
         Assert.True(_publisher.TryDispatchInvocation("invocation", "worker", () =>
         {
@@ -370,7 +508,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task WorkerUnlinked_FinalizesOutstandingActivityAndStopsKeepAlives()
     {
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         _publisher.WorkerUnlinked("worker");
@@ -390,10 +528,9 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task AlwaysReady_PublishesIdleWorkersOnlyForTheirLinkedLifetime()
     {
-        _publisher.IsAlwaysReady = true;
-        _publisher.WorkerLinked("first");
+        _publisher.WorkerLinked("first", "http", true);
         _now = _now.AddSeconds(1);
-        _publisher.WorkerLinked("second");
+        _publisher.WorkerLinked("second", "http", true);
         _now = _now.AddSeconds(1);
         _publisher.WorkerUnlinked("first");
         _now = _now.AddSeconds(1);
@@ -438,7 +575,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
             [Microsoft.Azure.WebJobs.Script.Metrics.HostMetrics.ActiveInvocationCount] = 25,
             [Microsoft.Azure.WebJobs.Script.Metrics.HostMetrics.AppFailureCount] = 3
         });
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", false);
         Dispatch("invocation", "worker");
         _now = _now.AddSeconds(1);
         await PublishAsync();
@@ -458,9 +595,8 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task FileRetention_IsIndependentPerWorker()
     {
-        _publisher.WorkerLinked("worker-a");
-        _publisher.WorkerLinked("worker-b");
-        _publisher.IsAlwaysReady = true;
+        _publisher.WorkerLinked("worker-a", "http", true);
+        _publisher.WorkerLinked("worker-b", "http", true);
         _now = _now.AddSeconds(1);
         await PublishAsync();
         _publisher.WorkerUnlinked("worker-b");
@@ -479,11 +615,10 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [InlineData(true)]
     public async Task FileRetention_ReclaimsRetiredWorkersAndPreservesFreshFinalRecords(bool hasLinkedWorker)
     {
-        _publisher.IsAlwaysReady = true;
         for (int i = 0; i < 100; i++)
         {
             string workerId = $"retired-{i}";
-            _publisher.WorkerLinked(workerId);
+            _publisher.WorkerLinked(workerId, "http", true);
             _now = _now.AddSeconds(1);
             _publisher.WorkerUnlinked(workerId);
             await PublishAsync();
@@ -491,7 +626,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
 
         Assert.Equal(100, ReadMetrics().Count);
         _now += _options.WorkerMetricsFileRetentionPeriod;
-        _publisher.WorkerLinked("fresh-final");
+        _publisher.WorkerLinked("fresh-final", "http", true);
         _now = _now.AddSeconds(1);
         _publisher.WorkerUnlinked("fresh-final");
         await PublishAsync();
@@ -499,7 +634,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
 
         if (hasLinkedWorker)
         {
-            _publisher.WorkerLinked("current");
+            _publisher.WorkerLinked("current", "http", true);
         }
 
         _now = _now.AddMinutes(1);
@@ -513,8 +648,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     public async Task FileRetention_UsesConfiguredPeriodAndPreservesExactBoundary()
     {
         _options.WorkerMetricsFileRetentionPeriod = TimeSpan.FromMinutes(2);
-        _publisher.IsAlwaysReady = true;
-        _publisher.WorkerLinked("retired");
+        _publisher.WorkerLinked("retired", "http", true);
         _now = _now.AddSeconds(1);
         _publisher.WorkerUnlinked("retired");
         await PublishAsync();
@@ -533,8 +667,7 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task FileRetention_NonSeparatedFlexDoesNotExpireWorkerFiles()
     {
-        _publisher.IsAlwaysReady = true;
-        _publisher.WorkerLinked("retired");
+        _publisher.WorkerLinked("retired", "http", true);
         _publisher.WorkerUnlinked("retired");
         await PublishAsync();
         using var publisher = CreateTraditionalPublisher();
@@ -548,10 +681,9 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task AlwaysReady_WorkerLinkedAfterPublicationTimestampDoesNotMoveBoundaryBackwards()
     {
-        _publisher.IsAlwaysReady = true;
         DateTime captured = _now;
         _now = _now.AddSeconds(1);
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", true);
 
         await _publisher.OnPublishMetrics(captured, ValueStopwatch.StartNew());
         Assert.Empty(ReadMetrics());
@@ -564,10 +696,9 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
     [Fact]
     public async Task AlwaysReady_WorkerLinkedAndUnlinkedAfterPublicationTimestampUsesActualLifetime()
     {
-        _publisher.IsAlwaysReady = true;
         DateTime captured = _now;
         _now = _now.AddSeconds(1);
-        _publisher.WorkerLinked("worker");
+        _publisher.WorkerLinked("worker", "http", true);
         _now = _now.AddSeconds(2);
         _publisher.WorkerUnlinked("worker");
 
