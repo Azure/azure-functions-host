@@ -31,6 +31,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(state.StartupMode);
         Assert.Equal(WorkerPodStatus.Starting, state.PodStatus);
         Assert.False(state.IsDraining);
+        Assert.False(state.HasTerminalFailure);
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
         Assert.Null(state.IsAlwaysReady);
@@ -317,23 +318,6 @@ public partial class WorkerPodStateManagerTests
         Assert.False(manager.OnWorkerStartStream(1, "worker"));
         Assert.False(manager.OnSessionTerminated(1));
         Assert.Same(failed, manager.State);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RequestRemoval_PreservesKnownWorkerFailureWithoutCreatingOne(bool assignmentFailed)
-    {
-        WorkerPodStateManager manager = CreateReadyManager();
-        manager.Assign(CreateAssignment());
-        manager.OnSessionTerminated(1, assignmentFailed);
-
-        Assert.True(manager.RequestRemoval());
-
-        Assert.Equal(assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Unassigned,
-            manager.State.AssignmentState);
-        Assert.Equal(assignmentFailed, manager.State.IsUnhealthy);
-        Assert.Equal(assignmentFailed, WorkerOriginState.FromState(manager.State).IsUnhealthy);
     }
 
     [Fact]

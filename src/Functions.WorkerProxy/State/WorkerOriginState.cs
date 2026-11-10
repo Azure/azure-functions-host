@@ -19,7 +19,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="RevisionId">The revision of this checkpoint.</param>
 /// <param name="Status">The platform-visible worker proxy lifecycle status.</param>
 /// <param name="Link">The worker proxy's runtime link state.</param>
-/// <param name="IsUnhealthy">Whether authentication configuration or an explicit Worker failure indicates unhealthy state.</param>
+/// <param name="IsUnhealthy">Whether authentication configuration, Worker failure, or unexpected terminal cleanup indicates unhealthy state.</param>
 internal sealed record WorkerOriginState(
     [property: JsonRequired, JsonPropertyOrder(-1)] string FunctionsContainerType,
     [property: JsonRequired] PodIdentity Self,

@@ -164,7 +164,7 @@ public partial class FunctionRpcRelayTests
     [InlineData("SpecializationRequired", "WorkerFirst", false, false)]
     [InlineData("Preconfigured", "WorkerCanceled", false, false)]
     [InlineData("SpecializationRequired", "WorkerCanceled", false, false)]
-    public async Task RuntimeRetirement_TerminateThenDisconnectOrDisposePreservesHealth(
+    public async Task TerminalStream_DrainAndFailureStateDetermineHealth(
         string startupMode, string retirementPath, bool hasAuthenticationError, bool drainBeforeRetirement)
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -256,16 +256,19 @@ public partial class FunctionRpcRelayTests
         await transport.DisposeAsync();
         WorkerOriginState removed = await WaitForRemovalStateAsync(management, timeout.Token);
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
+        bool unexpectedRuntimeExit = !drainBeforeRetirement &&
+            retirementPath is "RuntimeHalfClose" or "RuntimeDisposed" or "RuntimeCanceled";
         bool unexpectedWorkerExit = !drainBeforeRetirement && retirementPath is "WorkerFirst" or "WorkerCanceled";
-        Assert.Equal(hasAuthenticationError || unexpectedWorkerExit ||
+        Assert.Equal(hasAuthenticationError || unexpectedRuntimeExit || unexpectedWorkerExit ||
             string.Equals(retirementPath, "WorkerProtocolFault", StringComparison.Ordinal), removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
         Assert.True(removed.RevisionId > beforeRetirement.RevisionId);
         Assert.Equal(running.FunctionGroup, removed.FunctionGroup);
         Assert.Equal(running.ConfigLastModifiedTime, removed.ConfigLastModifiedTime);
         Assert.Equal(running.ContentLastModifiedTime, removed.ContentLastModifiedTime);
-        FunctionRpcRelayTerminalState terminal = Assert.IsType<FunctionRpcRelayTerminalState>(
-            factory.Services.GetRequiredService<FunctionRpcRelay>().LastTerminalState);
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        await WaitForReleaseAsync(relay, timeout.Token);
+        FunctionRpcRelayTerminalState terminal = Assert.IsType<FunctionRpcRelayTerminalState>(relay.LastTerminalState);
         if (retirementPath is "WorkerFirst" or "WorkerCanceled" or "WorkerProtocolFault")
         {
             Assert.Equal(FunctionRpcRelaySide.Worker, terminal.Side);
@@ -284,6 +287,8 @@ public partial class FunctionRpcRelayTests
 
         Assert.True(manager.State.RemovalRequested);
         Assert.False(manager.RequestRemoval());
+        manager.SetAuthenticationConfigurationError(false);
+        Assert.Equal(removed.IsUnhealthy, (await ReadManagementStateAsync(management, timeout.Token)).IsUnhealthy);
         await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await AssertLateStreamRejectedAsync(factory, FunctionRpcRelaySide.Worker, timeout.Token);
     }
@@ -384,7 +389,7 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
         Assert.Equal(assignment.FunctionGroupName, removed.FunctionGroup);
-        Assert.Equal(hasAuthenticationError, removed.IsUnhealthy);
+        Assert.True(removed.IsUnhealthy);
         Assert.Equal(WorkerLinkState.Unlinked, removed.Link.State);
         Assert.Null(removed.Link.Runtime);
         Assert.Equal(WorkerStatus.RemovalRequested, (await ReadManagementStateAsync(management, timeout.Token)).Status);

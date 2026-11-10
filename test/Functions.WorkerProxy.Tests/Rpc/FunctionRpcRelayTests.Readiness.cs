@@ -247,7 +247,10 @@ public partial class FunctionRpcRelayTests
             bool runtimeTerminated = trigger.StartsWith("runtime-", StringComparison.Ordinal);
             Assert.Equal(runtimeTerminated ? WorkerAssignmentState.Unassigned :
                 expectedRemoval ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated, failed.AssignmentState);
-            Assert.Equal(expectedRemoval && !runtimeTerminated, WorkerOriginState.FromState(failed).IsUnhealthy);
+            bool expectedRetirement = drainBeforeTermination &&
+                expectedReason is nameof(FunctionRpcRelayTerminationReason.PeerClosed)
+                    or nameof(FunctionRpcRelayTerminationReason.Canceled);
+            Assert.Equal(expectedRemoval && !expectedRetirement, WorkerOriginState.FromState(failed).IsUnhealthy);
             Assert.Equal(expectedTerminalRevision, failed.Revision);
             Assert.Equal(runtimeTerminated ? WorkerAssignmentResult.WorkerNotReady : WorkerAssignmentResult.WorkerTerminated,
                 manager.Assign(assignment));

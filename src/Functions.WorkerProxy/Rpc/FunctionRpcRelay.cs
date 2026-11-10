@@ -205,8 +205,6 @@ internal sealed partial class FunctionRpcRelay(
     /// <returns>A task that completes when the active session has been cleared.</returns>
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _stateManager.OnApplicationStopping();
-
         FunctionRpcRelaySession? session = null;
         bool initiateStop = false;
 
@@ -223,6 +221,7 @@ internal sealed partial class FunctionRpcRelay(
 
         if (initiateStop)
         {
+            _stateManager.OnApplicationStopping();
             _ = CompleteStopAsync(session);
         }
 

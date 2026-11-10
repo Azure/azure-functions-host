@@ -56,6 +56,11 @@ internal sealed record WorkerPodState(
     public bool RemovalRequested { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether terminal cleanup follows an unexpected lifecycle failure.
+    /// </summary>
+    public bool HasTerminalFailure { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether the Host has started draining this worker.
     /// </summary>
     public bool IsDraining { get; init; }
@@ -80,7 +85,9 @@ internal sealed record WorkerPodState(
 
     public bool HasAuthenticationConfigurationError { get; init; }
 
-    public bool IsUnhealthy => HasAuthenticationConfigurationError || AssignmentState is WorkerAssignmentState.Failed;
+    public bool IsUnhealthy => HasAuthenticationConfigurationError ||
+        HasTerminalFailure ||
+        AssignmentState is WorkerAssignmentState.Failed;
 
     /// <summary>
     /// Creates an unassigned pod snapshot at revision zero with no worker attached.

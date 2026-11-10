@@ -289,6 +289,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(FunctionRpcRelaySide.Runtime, runtimeState.Side);
         Assert.True(manager.State.RemovalRequested);
         Assert.False(manager.State.IsWorkerReady);
+        Assert.True(WorkerOriginState.FromState(manager.State).IsUnhealthy);
     }
 
     [Theory]

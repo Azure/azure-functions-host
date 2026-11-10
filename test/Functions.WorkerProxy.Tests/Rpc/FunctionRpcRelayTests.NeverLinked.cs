@@ -129,7 +129,7 @@ public partial class FunctionRpcRelayTests
             removed = await ReadManagementStateAsync(management, timeout.Token);
 
             Assert.Equal(WorkerStatus.RemovalRequested, removed.Status);
-            Assert.False(removed.IsUnhealthy);
+            Assert.True(removed.IsUnhealthy);
             Assert.Equal(initial.RevisionId + 1, removed.RevisionId);
             Assert.Equal(0, manager.State.MaxHttpConcurrency);
             Assert.Null(manager.GetWorkerCapabilitySnapshot(initialState.SessionId!.Value).HttpProxyEndpoint);
@@ -137,6 +137,7 @@ public partial class FunctionRpcRelayTests
             {
                 Revision = initialState.Revision + 1,
                 RemovalRequested = true,
+                HasTerminalFailure = true,
                 HttpProxyEndpoint = null,
                 MaxHttpConcurrency = 0
             }, manager.State);

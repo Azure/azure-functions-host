@@ -462,6 +462,8 @@ internal sealed class WorkerPodStateManager
             WorkerAssignmentState assignmentState = workerFailed
                 ? WorkerAssignmentState.Failed
                 : _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated;
+            bool removalRequested = _state.RemovalRequested ||
+                (workerStreamFailed && establishedWorkerSession && !_applicationStopping);
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -469,8 +471,9 @@ internal sealed class WorkerPodStateManager
                 IsWorkerAttached = false,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                RemovalRequested = _state.RemovalRequested ||
-                    (workerStreamFailed && establishedWorkerSession && !_applicationStopping),
+                RemovalRequested = removalRequested,
+                HasTerminalFailure = _state.HasTerminalFailure ||
+                    (removalRequested && (_state.IsUnhealthy || workerFailed)),
                 // Preserve assignment identity so equivalent retries report termination and different assignments still conflict.
                 AssignmentState = assignmentState
             });
@@ -481,7 +484,8 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Publishes sticky removal and clears live worker and assignment identity.
     /// </summary>
-    public bool RequestRemoval()
+    /// <param name="allowExpectedRetirement">Whether peer closure or cancellation may complete an observed drain.</param>
+    public bool RequestRemoval(bool allowExpectedRetirement = false)
     {
         lock (_stateLock)
         {
@@ -490,6 +494,7 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
+            bool expectedRetirement = allowExpectedRetirement && _state.IsDraining && !_state.IsUnhealthy;
             _assignment = null;
             _assignmentClaimed = 0;
             UpdateStateAndNotifyWaitersLocked(_state with
@@ -508,7 +513,8 @@ internal sealed class WorkerPodStateManager
                 IsAlwaysReady = null,
                 RuntimeIdentity = null,
                 RuntimeInitialized = false,
-                RemovalRequested = true
+                RemovalRequested = true,
+                HasTerminalFailure = _state.HasTerminalFailure || !expectedRetirement
             });
             return true;
         }
@@ -627,6 +633,7 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 RemovalRequested = true,
+                HasTerminalFailure = true,
                 HttpProxyEndpoint = null,
                 MaxHttpConcurrency = 0
             });
