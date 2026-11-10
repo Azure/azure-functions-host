@@ -5,11 +5,21 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Constraints;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -194,6 +204,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             Assert.False(result[1].IsCodeless());
 
             hostMeta.Verify(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadataAsync_ConfiguredRoutes_AllowsQueryRequests()
+        {
+            var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
+            hostMeta.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
+                .ReturnsAsync([]);
+            var provider = CreateProvider(
+                CreateHttpWorkerOptions([new HttpWorkerRoute { Route = "search" }]),
+                hostMeta.Object);
+            var function = Assert.Single(await provider.GetFunctionMetadataAsync());
+            var trigger = function.Bindings.Single(b => (string)b.Raw?["type"] == "httpTrigger");
+            var methods = ((JArray)trigger.Raw["methods"]).Select(m => m.ToString()).ToArray();
+            var handler = new Mock<IWebJobsRouteHandler>(MockBehavior.Strict);
+            handler.Setup(h => h.InvokeAsync(It.IsAny<HttpContext>(), function.Name))
+                .Returns<HttpContext, string>((context, _) => context.Response.WriteAsync("handler invoked"));
+
+            using var host = await new HostBuilder()
+                .ConfigureWebHost(webHost => webHost
+                    .UseTestServer()
+                    .ConfigureServices(services =>
+                    {
+                        services.AddRouting();
+                        services.AddHttpBindingRouting();
+                    })
+                    .Configure(app =>
+                    {
+                        var router = app.ApplicationServices.GetRequiredService<IWebJobsRouter>();
+                        var routes = router.CreateBuilder(handler.Object, routePrefix: "api");
+                        var constraints = new RouteValueDictionary
+                        {
+                            ["httpMethod"] = new HttpMethodRouteConstraint(methods)
+                        };
+                        routes.MapFunctionRoute(function.Name, (string)trigger.Raw["route"], constraints, function.Name);
+                        router.AddFunctionRoutes(routes.Build(), null);
+                        app.UseHttpBindingRouting(null);
+                    }))
+                .StartAsync();
+            using var client = host.GetTestClient();
+            using var getResponse = await client.GetAsync("/api/search");
+            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+            Assert.Equal("handler invoked", await getResponse.Content.ReadAsStringAsync());
+
+            using var request = new HttpRequestMessage(HttpMethod.Query, "/api/search");
+            using var queryResponse = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, queryResponse.StatusCode);
+            Assert.Equal("handler invoked", await queryResponse.Content.ReadAsStringAsync());
+            handler.Verify(h => h.InvokeAsync(It.IsAny<HttpContext>(), function.Name), Times.Exactly(2));
         }
 
         [Fact]
