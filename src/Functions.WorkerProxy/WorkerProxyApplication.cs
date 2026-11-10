@@ -161,26 +161,18 @@ internal static partial class WorkerProxyApplication
         options.IncludeFormattedMessage = true;
         options.IncludeScopes = true;
         options.AddProcessor(services => new SimpleLogRecordExportProcessor(
-            new WorkerProxyLogExporter(services.GetRequiredService<IWorkerSystemEventGenerator>())));
+            new WorkerProxyLogExporter(
+                services.GetRequiredService<IWorkerSystemEventGenerator>(),
+                services.GetRequiredService<WorkerPodStateManager>())));
     }
 
     private static void RegisterLifecycleEvents(WebApplication app)
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
-        WorkerPodStateManager stateManager = app.Services.GetRequiredService<WorkerPodStateManager>();
-        app.Lifetime.ApplicationStarted.Register(() => LogWithAppIdentity(Log.WorkerProxyStarted));
-        app.Lifetime.ApplicationStopping.Register(() => LogWithAppIdentity(Log.WorkerProxyShutdownStarted));
-        app.Lifetime.ApplicationStopped.Register(() => LogWithAppIdentity(Log.WorkerProxyStopped));
-
-        void LogWithAppIdentity(Action<ILogger> log)
-        {
-            using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
-            {
-                FunctionAppName = stateManager.AcceptedFunctionAppName
-            });
-            log(logger);
-        }
+        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
+        app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
+        app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)

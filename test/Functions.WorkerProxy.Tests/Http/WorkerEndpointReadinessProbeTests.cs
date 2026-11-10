@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -145,9 +144,6 @@ public class WorkerEndpointReadinessProbeTests
 
         return new WorkerEndpointReadinessProbe(
             Options.Create(options),
-            NullLogger<WorkerEndpointReadinessProbe>.Instance,
-            new WorkerPodStateManager(
-                Options.Create(new WorkerProxyOptions { PodName = "test-pod" }),
-                TimeProvider.System));
+            NullLogger<WorkerEndpointReadinessProbe>.Instance);
     }
 }

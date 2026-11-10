@@ -8,8 +8,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Logging;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -26,12 +24,10 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// </remarks>
 internal sealed partial class WorkerEndpointReadinessProbe(
     IOptions<WorkerEndpointReadinessProbeOptions> options,
-    ILogger<WorkerEndpointReadinessProbe> logger,
-    WorkerPodStateManager stateManager)
+    ILogger<WorkerEndpointReadinessProbe> logger)
 {
     private readonly ConcurrentDictionary<Uri, byte> _readyDestinations = [];
     private readonly ILogger<WorkerEndpointReadinessProbe> _logger = logger;
-    private readonly WorkerPodStateManager _stateManager = stateManager;
     private readonly TimeSpan _retryDelay = options.Value.RetryDelay;
     private readonly TimeSpan _totalTimeout = options.Value.TotalTimeout;
 
@@ -56,7 +52,6 @@ internal sealed partial class WorkerEndpointReadinessProbe(
 
         if (_readyDestinations.TryRemove(destination, out _))
         {
-            using IDisposable? scope = BeginLogScope();
             Log.DestinationInvalidated(_logger, destination);
         }
     }
@@ -98,7 +93,6 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (SocketException exception)
             {
-                using IDisposable? scope = BeginLogScope();
                 Log.DestinationResolutionFailed(_logger, exception, destination);
                 return WorkerEndpointReadinessResult.NameResolutionFailed;
             }
@@ -108,7 +102,6 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (OperationCanceledException)
             {
-                using IDisposable? scope = BeginLogScope();
                 Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
                 return GetFailureResult(lastError);
             }
@@ -116,7 +109,6 @@ internal sealed partial class WorkerEndpointReadinessProbe(
 
         if (addresses.Length == 0)
         {
-            using IDisposable? scope = BeginLogScope();
             Log.DestinationResolutionFailed(_logger, exception: null, destination);
             return WorkerEndpointReadinessResult.NameResolutionFailed;
         }
@@ -133,7 +125,6 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                     await socket.ConnectAsync(new IPEndPoint(address, destination.Port), deadline.Token);
                     if (_readyDestinations.TryAdd(destination, 0))
                     {
-                        using IDisposable? scope = BeginLogScope();
                         Log.DestinationReady(_logger, destination, stopwatch.Elapsed.TotalMilliseconds, attempts);
                     }
 
@@ -149,7 +140,6 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                 }
                 catch (OperationCanceledException)
                 {
-                    using IDisposable? scope = BeginLogScope();
                     Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
                     return GetFailureResult(lastError);
                 }
@@ -165,23 +155,16 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             }
             catch (OperationCanceledException)
             {
-                using IDisposable? scope = BeginLogScope();
                 Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
                 return GetFailureResult(lastError);
             }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        using IDisposable? finalScope = BeginLogScope();
         Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
 
         return GetFailureResult(lastError);
     }
-
-    private IDisposable? BeginLogScope() => _logger.BeginScope(new WorkerSystemLogContext
-    {
-        FunctionAppName = _stateManager.AcceptedFunctionAppName
-    });
 
     private static WorkerEndpointReadinessResult GetFailureResult(Exception? lastError)
     {

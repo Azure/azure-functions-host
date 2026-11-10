@@ -224,8 +224,7 @@ public partial class FunctionRpcRelayTests
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
         WorkerEndpointReadinessProbe readinessProbe = new(
             Options.Create(new WorkerEndpointReadinessProbeOptions { TotalTimeout = TestTimeout }),
-            NullLogger<WorkerEndpointReadinessProbe>.Instance,
-            manager);
+            NullLogger<WorkerEndpointReadinessProbe>.Instance);
         Mock<IHttpForwarder> httpForwarder = new();
         httpForwarder.Setup(forwarder => forwarder.SendAsync(
             It.IsAny<HttpContext>(),

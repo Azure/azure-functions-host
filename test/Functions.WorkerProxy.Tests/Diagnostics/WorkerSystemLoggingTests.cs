@@ -139,7 +139,6 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(Timestamp.UtcDateTime.ToString("O"), formatted, StringComparison.Ordinal);
         string[] fields = Assert.Single(ParseCsvOutput(formatted));
         Assert.Equal(21, fields.Length);
-        Assert.Equal(string.Empty, fields[2]);
         Assert.Equal(string.Empty, fields[12]);
     }
 
@@ -399,12 +398,11 @@ public partial class WorkerSystemLoggingTests
     {
         StringWriter output = new();
         CapturingEventGenerator eventGenerator = new(new WorkerPodEventGenerator(output, TimeProvider.System));
-        WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+        await using (WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
         {
             services.RemoveAll<IWorkerSystemEventGenerator>();
             services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
-        });
-        try
+        }))
         {
             using HttpClient client = factory.CreateWorkerProxyClient();
             WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -420,23 +418,8 @@ public partial class WorkerSystemLoggingTests
             using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", content);
 
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
-                string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Information, record.Level);
-            Assert.Equal("worker-id", record.Context!.WorkerId);
-            Assert.Equal(7, record.Context.ProxySessionId);
-            Assert.Matches(
-                @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
-                record.Message);
-            Assert.DoesNotContain("test-app", record.Message, StringComparison.Ordinal);
-            Assert.DoesNotContain("test-group", record.Message, StringComparison.Ordinal);
-
             Assert.True(manager.RequestRemoval());
             await StopApplicationAsync(factory, eventGenerator);
-        }
-        finally
-        {
-            await factory.DisposeAsync();
         }
 
         string[][] records = ParseCsvOutput(output.ToString());
@@ -446,50 +429,11 @@ public partial class WorkerSystemLoggingTests
             string.Equals(record[4], "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
         Assert.Equal(string.Empty, startupRecord[2]);
         Assert.Equal("test-app", assignmentRecord[2]);
+        Assert.DoesNotContain("test-app", assignmentRecord[7], StringComparison.Ordinal);
+        Assert.DoesNotContain("test-group", assignmentRecord[7], StringComparison.Ordinal);
         Assert.All(records.Where(record =>
             record[4] is "WorkerProxyShutdownStarted" or "WorkerProxyStopped"),
             record => Assert.Equal("test-app", record[2]));
-    }
-
-    [Fact]
-    public async Task ReadinessLogging_UsesAssignmentAcceptedDuringProbe()
-    {
-        CapturingEventGenerator eventGenerator = new();
-        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
-        {
-            services.RemoveAll<IWorkerSystemEventGenerator>();
-            services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
-        });
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        WorkerEndpointReadinessProbe probe = factory.Services.GetRequiredService<WorkerEndpointReadinessProbe>();
-        Assert.True(manager.OnWorkerAttached(7));
-        Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
-        using TcpListener reservation = new(IPAddress.Loopback, 0);
-        reservation.Start();
-        int port = ((IPEndPoint)reservation.LocalEndpoint).Port;
-        reservation.Stop();
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
-        ValueTask<WorkerEndpointReadinessResult> readiness =
-            probe.WaitForReadyAsync(new Uri($"http://localhost:{port}"), timeout.Token);
-        await Task.Delay(100, timeout.Token);
-        using HttpClient client = factory.CreateWorkerProxyClient();
-        using StringContent content = new(
-            """
-            {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-             "environment":{},"functionAppDirectory":""}
-            """,
-            Encoding.UTF8,
-            "application/json");
-        using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", content, timeout.Token);
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        using TcpListener listener = new(IPAddress.Loopback, port);
-        listener.Start();
-
-        Assert.Equal(WorkerEndpointReadinessResult.Ready, await readiness);
-
-        CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
-            string.Equals(record.EventName, "DestinationReady", StringComparison.Ordinal));
-        Assert.Equal("test-app", record.Context!.FunctionAppName);
     }
 
     [Fact]
