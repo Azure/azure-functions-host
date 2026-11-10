@@ -36,16 +36,14 @@ public class AppServerHostStateClientTests : IDisposable
     }
 
     [Theory]
-    [InlineData(36L, 3, false, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3,"stopping":false}""")]
-    [InlineData(4294967296L, 268435457, false, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457,"stopping":false}""")]
-    [InlineData(long.MaxValue, int.MaxValue, true, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":9223372036854775807,"linkedWorkerCount":2147483647,"stopping":true}""")]
-    public async Task PublishAsync_SendsCreatedTimeCapacityLinkedWorkerCountAndStopping(
-        long httpCapacity, int workerCount, bool stopping, string expectedBody)
+    [InlineData(36L, 3, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""")]
+    [InlineData(4294967296L, 268435457, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457}""")]
+    [InlineData(long.MaxValue, int.MaxValue, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":9223372036854775807,"linkedWorkerCount":2147483647}""")]
+    public async Task PublishAsync_SendsCreatedTimeCapacityAndLinkedWorkerCount(long httpCapacity, int workerCount, string expectedBody)
     {
         AppServerHostStateClient client = CreateClient();
 
-        HttpStatusCode statusCode = await client.PublishAsync(
-            new(CreatedTime, httpCapacity, workerCount, stopping), CancellationToken.None);
+        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, httpCapacity, workerCount), CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.Equal(HttpMethod.Put, _handler.Method);
@@ -66,9 +64,7 @@ public class AppServerHostStateClientTests : IDisposable
         _handler.StatusCode = HttpStatusCode.OK;
         Assert.Equal(HttpStatusCode.OK, await client.PublishAsync(state, CancellationToken.None));
 
-        Assert.Equal(
-            """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3,"stopping":false}""",
-            firstBody);
+        Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""", firstBody);
         Assert.Equal(firstBody, _handler.Body);
     }
 
@@ -182,9 +178,7 @@ public class AppServerHostStateClientTests : IDisposable
         Assert.Equal("runtime-before-specialization", _handler.InstanceIdentity);
         Assert.Equal(firstUri, _handler.RequestUri);
         Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);
-        Assert.Equal(
-            """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3,"stopping":false}""",
-            firstBody);
+        Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":36,"linkedWorkerCount":3}""", firstBody);
         Assert.Equal(firstBody, _handler.Body);
     }
 

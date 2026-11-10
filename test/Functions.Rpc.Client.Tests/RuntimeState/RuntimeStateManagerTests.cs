@@ -51,32 +51,11 @@ public sealed class RuntimeStateManagerTests
 
         harness.RootStopping.Cancel();
         Assert.Equal(0, harness.Manager.Current.HttpCapacity);
-        Assert.True(harness.Manager.Current.IsStopping);
         harness.Publish([first.Channel, second.Channel], [first.Channel, second.Channel]);
         RuntimeState state = await WaitForStateAsync(harness.Manager, state => state.WorkerCount == 2);
 
         Assert.Equal(0, state.HttpCapacity);
         Assert.Equal(2, state.WorkerCount);
-        Assert.True(state.IsStopping);
-        harness.Publish([], []);
-        RuntimeState terminal = await WaitForStateAsync(harness.Manager, state => state.WorkerCount == 0);
-        Assert.True(terminal.IsStopping);
-    }
-
-    [Fact]
-    public async Task RootStopping_CreatesSnapshotWhenCapacityAndWorkerCountAreAlreadyZero()
-    {
-        await using RuntimeHarness harness = new();
-        await harness.Manager.StartAsync(CancellationToken.None);
-        Task changed = harness.Manager.GetChangeTask();
-        RuntimeState initial = harness.Manager.Current;
-
-        harness.RootStopping.Cancel();
-        await changed.WaitAsync(TestTimeout);
-
-        Assert.False(initial.IsStopping);
-        Assert.True(harness.Manager.Current.IsStopping);
-        Assert.NotSame(initial, harness.Manager.Current);
     }
 
     [Fact]

@@ -41,8 +41,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
         using HttpRequestMessage request = new(HttpMethod.Put, _hostStateUri ??= GetHostStateUri())
         {
             Content = JsonContent.Create(
-                new HostStateRequest(
-                    state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount, Stopping: state.IsStopping),
+                new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
                 AppServerJsonSerializerContext.Default.HostStateRequest),
         };
         // Only status is consumed; do not buffer an unused response body.
@@ -67,8 +66,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
         return new Uri($"{endpoint.TrimEnd('/')}/{HostStatePath}", UriKind.Absolute);
     }
 
-    internal sealed record HostStateRequest(
-        DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount, bool Stopping);
+    internal sealed record HostStateRequest(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

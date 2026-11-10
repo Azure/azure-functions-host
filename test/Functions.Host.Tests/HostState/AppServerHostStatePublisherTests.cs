@@ -723,7 +723,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     }
 
     [Theory]
-    [InlineData("zero")]
+    [InlineData("terminal")]
     [InlineData("count")]
     [InlineData("equal")]
     public async Task StopAsync_PublishesDistinctFinalSnapshotOnce(string change)
@@ -734,7 +734,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         await WaitUntilIdleAsync(initial);
         RuntimeState final = change switch
         {
-            "zero" => initial with { CreatedTime = CreatedTime.AddSeconds(-1), HttpCapacity = 0 },
+            "terminal" => initial with { CreatedTime = CreatedTime.AddSeconds(-1), HttpCapacity = 0, WorkerCount = 0 },
             "count" => initial with { WorkerCount = 2 },
             _ => initial with { },
         };
@@ -747,19 +747,19 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     }
 
     [Fact]
-    public async Task StopAsync_PublishesStoppingStateThenWaitsForTerminalWorkerState()
+    public async Task StopAsync_PublishesWithdrawnStateThenWaitsForZeroWorkerState()
     {
         SetState(new(CreatedTime, 4, 1));
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         RuntimeState initial = await TakePublishedAsync();
         await WaitUntilIdleAsync(initial);
-        RuntimeState stopping = new(CreatedTime.AddSeconds(1), 0, 1, IsStopping: true);
-        SetState(stopping, notify: false);
+        RuntimeState withdrawn = new(CreatedTime.AddSeconds(1), 0, 1);
+        SetState(withdrawn, notify: false);
 
         Task stop = publisher.StopAsync(CancellationToken.None);
-        Assert.Same(stopping, await TakePublishedAsync());
+        Assert.Same(withdrawn, await TakePublishedAsync());
         await Assert.ThrowsAsync<TimeoutException>(() => stop.WaitAsync(TimeSpan.FromMilliseconds(100)));
-        RuntimeState terminal = new(CreatedTime.AddSeconds(2), 0, 0, IsStopping: true);
+        RuntimeState terminal = new(CreatedTime.AddSeconds(2), 0, 0);
         SetState(terminal);
 
         await stop.WaitAsync(TestTimeout);
@@ -815,7 +815,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         await TakePublishedAsync();
         CancellationToken regularToken = await regularRequest.Task.WaitAsync(TestTimeout);
-        RuntimeState final = new(CreatedTime, 0, 1);
+        RuntimeState final = new(CreatedTime, 0, 0);
         SetState(final, notify: false);
 
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);

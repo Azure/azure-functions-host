@@ -27,7 +27,7 @@ namespace Azure.Functions.Host.HostState;
 /// Authentication rejections are not retried until a different runtime snapshot exists.
 /// Snapshot identity, not timestamp ordering, drives local deduplication.
 /// After specialization, normal root Host shutdown publishes the latest snapshot and waits within the same bound for
-/// an authoritative zero-worker stopping snapshot.
+/// an authoritative zero-worker snapshot after capacity withdrawal.
 /// Unexpected publisher failures stop publication without another attempt or changing the borrowed state.
 /// Fatal exceptions are not handled as recoverable publication failures.
 /// </remarks>
@@ -200,7 +200,7 @@ internal sealed partial class AppServerHostStatePublisher(
     {
         RuntimeState current = _stateManager.Current;
         if (ReferenceEquals(_lastCompletedSnapshot, current) &&
-            (!current.IsStopping || current.WorkerCount == 0))
+            (current.HttpCapacity != 0 || current.WorkerCount == 0))
         {
             return;
         }
@@ -218,7 +218,11 @@ internal sealed partial class AppServerHostStatePublisher(
                     state = _stateManager.Current;
                     if (!ReferenceEquals(_lastCompletedSnapshot, state))
                     {
-                        await TryPublishAsync(state, timeout.Token);
+                        PublicationOutcome outcome = await TryPublishAsync(state, timeout.Token);
+                        if (outcome is not PublicationOutcome.Published)
+                        {
+                            return;
+                        }
                     }
                 }
                 finally
@@ -226,7 +230,7 @@ internal sealed partial class AppServerHostStatePublisher(
                     _publicationGate.Release();
                 }
 
-                if (!state.IsStopping || state.WorkerCount == 0)
+                if (state.HttpCapacity != 0 || state.WorkerCount == 0)
                 {
                     return;
                 }
