@@ -35,12 +35,20 @@ internal sealed class RpcClientFactory : IRpcClientFactory
     /// <summary>
     /// Gets the idle interval before an HTTP/2 keepalive ping is sent.
     /// </summary>
-    private static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
+    /// <remarks>
+    /// After this idle delay, a ping is sent. If it is not acknowledged within <see cref="DefaultKeepAlivePingTimeout"/>,
+    /// the connection is closed.
+    /// </remarks>
+    private static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Gets the time allowed for a keepalive ping acknowledgement.
     /// </summary>
-    private static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
+    /// <remarks>
+    /// The acknowledgement depends on managed processing on both peers, so shorter timeouts risk disconnecting a live worker
+    /// during a garbage collection pause or thread-pool starvation.
+    /// </remarks>
+    private static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(5);
 
     private readonly Dictionary<Uri, GrpcChannel> _channels = [];
     private readonly Func<GrpcChannel, CancellationToken, Task> _connectAsync;

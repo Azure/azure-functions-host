@@ -193,8 +193,8 @@ public class RpcClientFactoryTests
         using SocketsHttpHandler handler = RpcClientFactory.CreateHttpHandler();
 
         Assert.Equal(TimeSpan.FromSeconds(5), handler.ConnectTimeout);
-        Assert.Equal(TimeSpan.FromSeconds(30), handler.KeepAlivePingDelay);
-        Assert.Equal(TimeSpan.FromSeconds(10), handler.KeepAlivePingTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(5), handler.KeepAlivePingDelay);
+        Assert.Equal(TimeSpan.FromSeconds(5), handler.KeepAlivePingTimeout);
         Assert.Equal(HttpKeepAlivePingPolicy.Always, handler.KeepAlivePingPolicy);
         Assert.True(handler.UseProxy);
         Assert.Null(handler.Proxy);
