@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Identity;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -191,6 +192,10 @@ internal sealed partial class FunctionRpcRelay(
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
+            using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
+            {
+                FunctionAppName = stateManager.AcceptedFunctionAppName
+            });
             Log.AttachmentRejected(logger, side, exception.Failure);
             throw;
         }

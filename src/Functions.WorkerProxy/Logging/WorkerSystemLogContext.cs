@@ -9,9 +9,12 @@ internal sealed record WorkerSystemLogContext
 
     public long? ProxySessionId { get; init; }
 
+    public string? FunctionAppName { get; init; }
+
     internal WorkerSystemLogContext Merge(WorkerSystemLogContext inner) => new()
     {
         WorkerId = inner.WorkerId ?? WorkerId,
-        ProxySessionId = inner.ProxySessionId ?? ProxySessionId
+        ProxySessionId = inner.ProxySessionId ?? ProxySessionId,
+        FunctionAppName = inner.FunctionAppName ?? FunctionAppName
     };
 }

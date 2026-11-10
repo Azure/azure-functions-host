@@ -152,6 +152,7 @@ public partial class FunctionRpcRelayTests
             {
                 Assert.Equal("telemetry-worker", record.Context!.WorkerId);
                 Assert.Equal(preLink.Context.ProxySessionId, record.Context.ProxySessionId);
+                Assert.Equal("test-app", record.Context.FunctionAppName);
             });
             foreach (string stage in new[] { "RequestForwarded", "RequestReceived", "ResponseForwarded", "ResponseReceived" })
             {
@@ -205,7 +206,8 @@ public partial class FunctionRpcRelayTests
         Assert.Contains(generator.ProxyRecords, record =>
             string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal)
             && string.Equals(record.Context?.WorkerId, "telemetry-worker", StringComparison.Ordinal)
-            && record.Context?.ProxySessionId == preLink.Context.ProxySessionId);
+            && record.Context?.ProxySessionId == preLink.Context.ProxySessionId
+            && string.Equals(record.Context?.FunctionAppName, "test-app", StringComparison.Ordinal));
         Assert.Equal(8, generator.ProxyRecords.Count(record =>
             string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)));
         Assert.DoesNotContain(generator.ProxyRecords, record =>

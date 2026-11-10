@@ -57,7 +57,8 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             FormatSummary(summary, context),
             timestamp ?? _timeProvider.GetUtcNow(),
             exceptionType,
-            exceptionMessage)));
+            exceptionMessage,
+            context?.FunctionAppName ?? string.Empty)));
     }
 
     private static string FormatSummary(string summary, WorkerSystemLogContext? context)
@@ -102,9 +103,9 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
 
     internal string Format(WorkerSystemLogRecord record)
     {
-        // Preserve the Host trace layout, leaving Host-only identity columns empty.
+        // Preserve the Host trace layout while leaving unavailable Host-only identity columns empty.
         return string.Create(CultureInfo.InvariantCulture,
-            $"{EventStreamName} {record.Level},,,,{NormalizeColumn(record.EventName, 128)},{NormalizeColumn(record.Source, 256)},{NormalizeString(record.Details, 1_024)},{NormalizeString(record.Summary, 1_024)},,{record.Timestamp.UtcDateTime:O},{NormalizeColumn(record.ExceptionType, 256)},{NormalizeString(record.ExceptionMessage, 1_024)},,,,,,,,,");
+            $"{EventStreamName} {record.Level},,{NormalizeColumn(record.AppName, 128)},,{NormalizeColumn(record.EventName, 128)},{NormalizeColumn(record.Source, 256)},{NormalizeString(record.Details, 1_024)},{NormalizeString(record.Summary, 1_024)},,{record.Timestamp.UtcDateTime:O},{NormalizeColumn(record.ExceptionType, 256)},{NormalizeString(record.ExceptionMessage, 1_024)},,,,,,,,,");
     }
 
     private static string NormalizeColumn(string value, int limit)
@@ -167,5 +168,6 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         string Summary,
         DateTimeOffset Timestamp,
         string ExceptionType,
-        string ExceptionMessage);
+        string ExceptionMessage,
+        string AppName = "");
 }

@@ -150,8 +150,12 @@ public partial class FunctionRpcRelayTests
             string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal));
         Assert.Equal(assignedState.WorkerId, terminated.Context!.WorkerId);
         Assert.Equal(assignedState.SessionId, terminated.Context.ProxySessionId);
+        Assert.Equal("test-app", terminated.Context.FunctionAppName);
         await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
             string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal)) == 2, timeout.Token);
+        Assert.All(generator.ProxyRecords.Where(record =>
+            string.Equals(record.EventName, "AttachmentRejected", StringComparison.Ordinal)),
+            record => Assert.Equal("test-app", record.Context!.FunctionAppName));
         Assert.Same(removedState, manager.State);
     }
 
