@@ -330,7 +330,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(WorkerStatus.RemovalRequested, checkpoint.Status);
         Assert.Equal(WorkerLinkState.Unlinked, checkpoint.Link.State);
         Assert.Null(checkpoint.Link.Runtime);
-        Assert.True(checkpoint.IsUnhealthy);
+        Assert.False(checkpoint.IsUnhealthy);
 
         await using RelayClient replacement = CreateClient(
             factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime), timeout.Token, CreateRuntimeIdentityHeaders("valid"));
@@ -747,12 +747,12 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(assigned.StartupTime, terminated.StartupTime);
         Assert.Equal(assigned.RevisionId + 1, terminated.RevisionId);
         Assert.Equal(
-            runtimeCloses ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated,
+            runtimeCloses ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed,
             manager.State.AssignmentState);
         Assert.True(manager.State.RemovalRequested);
         Assert.Equal(WorkerStatus.RemovalRequested, terminated.Status);
         Assert.Equal(new WorkerLink(WorkerLinkState.Unlinked), terminated.Link);
-        Assert.True(terminated.IsUnhealthy);
+        Assert.Equal(!runtimeCloses, terminated.IsUnhealthy);
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(

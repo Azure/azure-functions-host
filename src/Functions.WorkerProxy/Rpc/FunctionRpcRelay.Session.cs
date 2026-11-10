@@ -409,8 +409,14 @@ internal sealed partial class FunctionRpcRelay
             }
 
             LogProtocolMessage(message, forwarded: false);
-            if (message.WorkerInitResponse is not null)
+            if (message.WorkerInitResponse is { } initialization)
             {
+                if (initialization.Result is not
+                    { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+                {
+                    throw new InvalidDataException("The worker initialization response must have a known result status.");
+                }
+
                 StreamingMessage sanitized = message.Clone();
                 RuntimeWorkerAuthentication.RemoveAppProof(sanitized.WorkerInitResponse.Capabilities);
 
@@ -615,7 +621,7 @@ internal sealed partial class FunctionRpcRelay
                     if (runtimeWrites is not null)
                     {
                         runtimeWrites.Written(message);
-                        PublishRuntimeInitialization(message);
+                        PublishRuntimeInitializationResult(message);
                     }
 
                     LogProtocolMessage(message, forwarded: true);
@@ -645,20 +651,28 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
-        private void PublishRuntimeInitialization(StreamingMessage message)
+        private void PublishRuntimeInitializationResult(StreamingMessage message)
         {
-            if (message.WorkerInitResponse is not { Result.Status: StatusResult.Types.Status.Success })
+            StatusResult.Types.Status? status = message.WorkerInitResponse?.Result?.Status;
+            if (status is not (StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure))
             {
                 return;
             }
 
             lock (_stateLock)
             {
-                if (_terminalState is null && _initializationRequestId is not null &&
+                if (_initializationRequestId is not null &&
                     string.Equals(_initializationRequestId, message.RequestId ?? string.Empty, StringComparison.Ordinal))
                 {
                     _initializationRequestId = null;
-                    stateManager.OnRuntimeInitialized(id);
+                    if (status == StatusResult.Types.Status.Success && _terminalState is null)
+                    {
+                        stateManager.OnRuntimeInitialized(id);
+                    }
+                    else if (status == StatusResult.Types.Status.Failure)
+                    {
+                        stateManager.OnWorkerInitializationFailed(id);
+                    }
                 }
             }
         }
@@ -815,7 +829,9 @@ internal sealed partial class FunctionRpcRelay
                         Side: FunctionRpcRelaySide.Worker,
                         Exception: InvalidDataException
                     };
-                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed);
+                    bool allowExpectedRetirement = terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled;
+                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed, allowExpectedRetirement);
                 }
 
                 _terminalState = terminalState;

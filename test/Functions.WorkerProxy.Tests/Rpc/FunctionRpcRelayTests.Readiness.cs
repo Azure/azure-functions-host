@@ -223,7 +223,9 @@ public partial class FunctionRpcRelayTests
             Assert.False(failed.IsWorkerAttached);
             Assert.Equal(WorkerPodStatus.RemovalRequested, failed.PodStatus);
             Assert.Equal(expectedRemoval, failed.RemovalRequested);
-            Assert.Equal(WorkerAssignmentState.Terminated, failed.AssignmentState);
+            Assert.Equal(
+                expectedRemoval ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated,
+                failed.AssignmentState);
             Assert.Equal(expectedRemoval, WorkerOriginState.FromState(failed).IsUnhealthy);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));

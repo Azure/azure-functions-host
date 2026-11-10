@@ -323,7 +323,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(FunctionRpcRelayTerminationReason.PeerClosed, relay.LastTerminalState?.Reason);
         Assert.Equal(FunctionRpcRelaySide.Worker, relay.LastTerminalState?.Side);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.True(WorkerOriginState.FromState(manager.State).IsUnhealthy);
         Assert.True(manager.State.RemovalRequested);
         Assert.Equal(attached.StartupTime, manager.State.StartupTime);
         Assert.Null(relay.WorkerHttpDestination);
@@ -542,7 +543,7 @@ public partial class FunctionRpcRelayTests
         await WaitForReleaseAsync(relay, timeout.Token);
         Assert.Null(relay.WorkerHttpDestination);
         WorkerPodState terminated = manager.State;
-        Assert.Equal(WorkerAssignmentState.Terminated, terminated.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Failed, terminated.AssignmentState);
         Assert.True(terminated.RemovalRequested);
         Assert.True(WorkerOriginState.FromState(terminated).IsUnhealthy);
         await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
