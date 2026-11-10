@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 HttpMethods.Patch,
                 HttpMethods.Head,
                 HttpMethods.Options,
+                HttpMethods.Query,
                 HttpMethods.Trace,
                 HttpMethods.Connect);
         }
