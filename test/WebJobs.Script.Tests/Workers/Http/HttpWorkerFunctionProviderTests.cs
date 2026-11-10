@@ -186,6 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
             var methods = (JArray)trigger1.Raw["methods"];
             Assert.Contains("get", methods.Select(m => m.ToString()), StringComparer.OrdinalIgnoreCase);
+            Assert.Contains("query", methods.Select(m => m.ToString()), StringComparer.OrdinalIgnoreCase);
 
             Assert.True(result[0].IsCodelessSet());
             Assert.False(result[0].IsCodeless());
