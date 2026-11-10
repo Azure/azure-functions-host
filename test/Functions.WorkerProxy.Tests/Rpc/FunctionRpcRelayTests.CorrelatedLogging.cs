@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -9,9 +10,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -215,6 +219,63 @@ public partial class FunctionRpcRelayTests
         Assert.DoesNotContain(generator.ProxyRecords, record =>
             record.Message.Contains(sentinel, StringComparison.Ordinal)
             || (record.Context?.ToString().Contains(sentinel, StringComparison.Ordinal) ?? false));
+    }
+
+    [Fact]
+    public async Task Relay_LatePreAssignmentFailureDoesNotAcquireReplacementAppIdentity()
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        await using FunctionRpcRelay relay = new(factory.Services.GetRequiredService<ILogger<FunctionRpcRelay>>(),
+            CreateCapabilityProvider(), manager, Mock.Of<IHostApplicationLifetime>());
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using CancellationTokenSource oldCall = new();
+        TaskCompletionSource<bool> delayedRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IAsyncStreamReader<StreamingMessage>> oldReader = new();
+        oldReader.Setup(reader => reader.MoveNext(It.IsAny<CancellationToken>())).Returns(delayedRead.Task);
+        Task<FunctionRpcRelayTerminalState> oldWorker = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+            oldReader.Object, new TestServerStreamWriter(), oldCall.Token);
+        try
+        {
+            long oldSession = Assert.IsType<long>(manager.State.SessionId);
+            oldCall.Cancel();
+            await oldWorker.WaitAsync(timeout.Token);
+            Assert.Null(manager.AcceptedFunctionAppName);
+            Assert.False(manager.State.RemovalRequested);
+
+            StreamingMessage newStart = CreateStartStream();
+            newStart.StartStream.WorkerId = "new-worker";
+            Task<FunctionRpcRelayTerminalState> replacement = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+                new SingleMessageThenBlockStreamReader(newStart), new TestServerStreamWriter(), timeout.Token);
+            await WaitForLogAsync(() => string.Equals(manager.State.WorkerId, "new-worker", StringComparison.Ordinal), timeout.Token);
+            long newSession = Assert.IsType<long>(manager.State.SessionId);
+            Assert.NotEqual(oldSession, newSession);
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment("new-group")));
+
+            delayedRead.TrySetException(new IOException("late-error"));
+            await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+                string.Equals(record.EventName, "SecondaryStreamFailure", StringComparison.Ordinal)), timeout.Token);
+            CapturedProxyLog late = Assert.Single(generator.ProxyRecords, record =>
+                string.Equals(record.EventName, "SecondaryStreamFailure", StringComparison.Ordinal));
+            Assert.Equal(oldSession, late.Context!.ProxySessionId);
+            Assert.Null(late.Context.WorkerId);
+            Assert.Null(late.Context.FunctionAppName);
+            Assert.Equal("test-app", manager.AcceptedFunctionAppName);
+
+            await relay.StopAsync(timeout.Token);
+            await replacement.WaitAsync(timeout.Token);
+            CapturedProxyLog terminated = Assert.Single(generator.ProxyRecords, record =>
+                string.Equals(record.EventName, "SessionTerminated", StringComparison.Ordinal)
+                && record.Context?.ProxySessionId == newSession);
+            Assert.Equal("new-worker", terminated.Context!.WorkerId);
+            Assert.Equal("test-app", terminated.Context.FunctionAppName);
+        }
+        finally
+        {
+            delayedRead.TrySetResult(false);
+            await relay.StopAsync(timeout.Token);
+        }
     }
 
     private static async Task WaitForLogAsync(Func<bool> predicate, CancellationToken cancellationToken)

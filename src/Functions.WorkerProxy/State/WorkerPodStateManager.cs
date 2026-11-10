@@ -71,7 +71,7 @@ internal sealed class WorkerPodStateManager
     /// Gets the function app name from the accepted assignment for this process.
     /// </summary>
     public string? AcceptedFunctionAppName =>
-        _assigned.Task.IsCompletedSuccessfully ? _assigned.Task.Result.FunctionAppName : null;
+        _assigned.Task.IsCompletedSuccessfully ? _assigned.Task.GetAwaiter().GetResult().FunctionAppName : null;
 
     /// <summary>
     /// Gets the current immutable state without incrementing its revision.
