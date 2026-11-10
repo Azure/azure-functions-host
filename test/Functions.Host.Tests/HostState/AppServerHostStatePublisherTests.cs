@@ -896,6 +896,34 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     }
 
     [Fact]
+    public async Task StopAsync_BoundsZeroWorkerWaitToTwoSeconds()
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactory(logger);
+        SetState(new(CreatedTime, 4, 1));
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory);
+        RuntimeState initial = await TakePublishedAsync();
+        await WaitUntilIdleAsync(initial);
+        RuntimeState withdrawn = new(CreatedTime.AddSeconds(1), 0, 1);
+        SetState(withdrawn, notify: false);
+
+        Task stopping = publisher.StopAsync(CancellationToken.None);
+        Assert.Same(withdrawn, await TakePublishedAsync());
+        ScheduledTimer timeout = await TakeTimerAsync();
+        Assert.Equal(TimeSpan.FromSeconds(2), timeout.DueTime);
+        Assert.False(stopping.IsCompleted);
+        timeout.Fire();
+        await stopping.WaitAsync(TestTimeout);
+
+        Assert.True(publisher.ExecuteTask!.IsCompletedSuccessfully);
+        logger.Verify(value => value.Log(
+            LogLevel.Warning, It.Is<EventId>(value => value.Id == 1004 && value.Name == "FinalStateTimedOut"),
+            It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
+        AssertNoMorePublications();
+    }
+
+    [Fact]
     public async Task StopAsync_InStandbyMode_DoesNotPublish()
     {
         _standby = new() { InStandbyMode = true };

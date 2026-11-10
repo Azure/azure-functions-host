@@ -240,7 +240,7 @@ internal sealed partial class AppServerHostStatePublisher(
         }
         catch (OperationCanceledException exception) when (timeout.IsCancellationRequested && !Utility.IsFatal(exception))
         {
-            Log.FinalPublishTimedOut(_logger, state.CreatedTime);
+            Log.FinalStateTimedOut(_logger, state.CreatedTime);
         }
     }
 
@@ -264,8 +264,8 @@ internal sealed partial class AppServerHostStatePublisher(
         public static partial void PublishRejected(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
         [LoggerMessage(1004, LogLevel.Warning,
-            "Timed out publishing the final Host state snapshot created at {CreatedTime} to AppServer.")]
-        public static partial void FinalPublishTimedOut(ILogger logger, DateTimeOffset createdTime);
+            "Timed out completing the final Host state during shutdown after snapshot created at {CreatedTime}.")]
+        public static partial void FinalStateTimedOut(ILogger logger, DateTimeOffset createdTime);
 
         [LoggerMessage(1005, LogLevel.Error, "Host state publication to AppServer stopped unexpectedly.")]
         public static partial void PublisherFailed(ILogger logger, Exception exception);
