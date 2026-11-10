@@ -409,8 +409,14 @@ internal sealed partial class FunctionRpcRelay
             }
 
             LogProtocolMessage(message, forwarded: false);
-            if (message.WorkerInitResponse is not null)
+            if (message.WorkerInitResponse is { } initialization)
             {
+                if (initialization.Result is not
+                    { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
+                {
+                    throw new InvalidDataException("The worker initialization response must have a known result status.");
+                }
+
                 StreamingMessage sanitized = message.Clone();
                 RuntimeWorkerAuthentication.RemoveAppProof(sanitized.WorkerInitResponse.Capabilities);
 

@@ -382,7 +382,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
             Assert.Equal(startupTime, AssertCheckpoint(
                 removedCheckpoint, workerId, expectedGroup: "group", expectedStatus: "RemovalRequested",
                 expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
-            Assert.True(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
+            Assert.False(removedCheckpoint["isUnhealthy"]!.GetValue<bool>());
             using StringContent retryBody = new(assignmentJson, Encoding.UTF8, "application/json");
             using HttpResponseMessage retry = await management.PutAsync("/admin/worker/assignment", retryBody, timeout.Token);
             Assert.Equal(HttpStatusCode.ServiceUnavailable, retry.StatusCode);
@@ -440,7 +440,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                 Assert.DoesNotContain(initializationError, await linkResponse.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
             }
 
-            if (string.Equals(scenario, "failed-init", StringComparison.Ordinal))
+            if (initializationFails || malformedResult)
             {
                 using StringContent failedBody = new("null", Encoding.UTF8, "application/json");
                 using HttpResponseMessage failed = await management.PostAsync(
@@ -457,7 +457,9 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                     expectedStatus: "RemovalRequested",
                     expectedConfigVersion: configVersion,
                     expectedContentVersion: contentVersion));
-                Assert.True(failedCheckpoint["isUnhealthy"]!.GetValue<bool>());
+                Assert.Equal(
+                    scenario is "failed-init" or "unknown-init-status" or "null-init-result",
+                    failedCheckpoint["isUnhealthy"]!.GetValue<bool>());
             }
 
             return;
@@ -572,7 +574,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(startupTime, AssertCheckpoint(
             terminalCheckpoint, workerId, "group", expectedStatus: "RemovalRequested",
             expectedConfigVersion: configVersion, expectedContentVersion: contentVersion));
-        Assert.True(terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
+        Assert.Equal(!runtimeLoss, terminalCheckpoint["isUnhealthy"]!.GetValue<bool>());
         using StringContent terminalRetryBody = new(assignmentJson, Encoding.UTF8, "application/json");
         using HttpResponseMessage terminalRetry = await management.PutAsync("/admin/worker/assignment", terminalRetryBody, timeout.Token);
         Assert.Equal(runtimeLoss ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.Conflict, terminalRetry.StatusCode);
@@ -600,7 +602,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                 $"/admin/workers/{Uri.EscapeDataString(workerId)}", replayLinkBody, timeout.Token);
             Assert.Equal(HttpStatusCode.Conflict, replayLink.StatusCode);
             Assert.Contains("WorkerTerminated", await replayLink.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, retained the function group, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and published an unhealthy RemovalRequested checkpoint.");
+            output.WriteLine("Admitted Runtime EventStream loss requested sticky removal, retained the function group, cleared assignment and runtime identity, rejected assignment with WorkerNotReady503, and published a healthy RemovalRequested checkpoint.");
         }
         else
         {

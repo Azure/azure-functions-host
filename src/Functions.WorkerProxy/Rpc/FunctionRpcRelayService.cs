@@ -167,12 +167,6 @@ internal sealed class FunctionRpcRelayService(
                 return message;
             }
 
-            if (message.WorkerInitResponse.Result is not
-                { Status: StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled })
-            {
-                throw new InvalidDataException("The worker initialization response must have a known result status.");
-            }
-
             // Keep the authentication proof outside the relay's ordinary capability snapshots.
             StreamingMessage transport = message.Clone();
             RuntimeWorkerAuthentication.RemoveAppProof(transport.WorkerInitResponse.Capabilities);
