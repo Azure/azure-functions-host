@@ -615,7 +615,7 @@ internal sealed partial class FunctionRpcRelay
                     if (runtimeWrites is not null)
                     {
                         runtimeWrites.Written(message);
-                        PublishRuntimeInitialization(message);
+                        PublishRuntimeInitializationResult(message);
                     }
 
                     LogProtocolMessage(message, forwarded: true);
@@ -645,20 +645,28 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
-        private void PublishRuntimeInitialization(StreamingMessage message)
+        private void PublishRuntimeInitializationResult(StreamingMessage message)
         {
-            if (message.WorkerInitResponse is not { Result.Status: StatusResult.Types.Status.Success })
+            StatusResult.Types.Status? status = message.WorkerInitResponse?.Result?.Status;
+            if (status is not (StatusResult.Types.Status.Success or StatusResult.Types.Status.Failure))
             {
                 return;
             }
 
             lock (_stateLock)
             {
-                if (_terminalState is null && _initializationRequestId is not null &&
+                if (_initializationRequestId is not null &&
                     string.Equals(_initializationRequestId, message.RequestId ?? string.Empty, StringComparison.Ordinal))
                 {
                     _initializationRequestId = null;
-                    stateManager.OnRuntimeInitialized(id);
+                    if (status == StatusResult.Types.Status.Success && _terminalState is null)
+                    {
+                        stateManager.OnRuntimeInitialized(id);
+                    }
+                    else if (status == StatusResult.Types.Status.Failure)
+                    {
+                        stateManager.OnWorkerInitializationFailed(id);
+                    }
                 }
             }
         }

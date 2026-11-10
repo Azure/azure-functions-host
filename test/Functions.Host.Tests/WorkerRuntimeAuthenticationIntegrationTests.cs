@@ -440,6 +440,26 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
                 Assert.DoesNotContain(initializationError, await linkResponse.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
             }
 
+            if (string.Equals(scenario, "failed-init", StringComparison.Ordinal))
+            {
+                using StringContent failedBody = new("null", Encoding.UTF8, "application/json");
+                using HttpResponseMessage failed = await management.PostAsync(
+                    "/admin/infra/instanceState",
+                    failedBody,
+                    timeout.Token);
+                Assert.Equal(HttpStatusCode.OK, failed.StatusCode);
+                JsonObject failedCheckpoint = JsonNode.Parse(
+                    await failed.Content.ReadAsStringAsync(timeout.Token))!.AsObject();
+                Assert.Equal(startupTime, AssertCheckpoint(
+                    failedCheckpoint,
+                    workerId,
+                    expectedGroup: "group",
+                    expectedStatus: "RemovalRequested",
+                    expectedConfigVersion: configVersion,
+                    expectedContentVersion: contentVersion));
+                Assert.True(failedCheckpoint["isUnhealthy"]!.GetValue<bool>());
+            }
+
             return;
         }
 

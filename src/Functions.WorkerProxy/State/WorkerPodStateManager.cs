@@ -401,6 +401,39 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Records that the assigned worker explicitly reported failed initialization.
+    /// </summary>
+    /// <param name="sessionId">The relay session that received the initialization response.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnWorkerInitializationFailed(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            bool activeInitialization = _state.SessionId == sessionId &&
+                _assignment is not null &&
+                _state.IsWorkerReady &&
+                !_state.RemovalRequested;
+            bool removedInitialization = _state.RemovalRequested && _state.SessionId is null;
+            if (_lastSessionId != sessionId ||
+                _state.AssignmentState is WorkerAssignmentState.Failed or WorkerAssignmentState.Terminated ||
+                _state.RuntimeInitialized ||
+                (!activeInitialization && !removedInitialization))
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                AssignmentState = WorkerAssignmentState.Failed
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Withdraws readiness on relay termination or worker detachment. Old notifications have no effect.
     /// </summary>
     /// <param name="sessionId">The terminating relay session identifier.</param>
