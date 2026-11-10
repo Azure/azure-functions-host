@@ -406,11 +406,13 @@ internal sealed class WorkerPodStateManager
     /// <param name="sessionId">The terminating relay session identifier.</param>
     /// <param name="assignmentFailed">Whether a worker protocol violation establishes an assignment health failure.</param>
     /// <param name="workerStreamFailed">Whether the worker stream ended unexpectedly.</param>
+    /// <param name="allowExpectedRetirement">Whether peer closure or cancellation may complete an observed drain.</param>
     /// <returns>Whether the current pod snapshot changed.</returns>
     public bool OnSessionTerminated(
         long sessionId,
         bool assignmentFailed = false,
-        bool workerStreamFailed = false)
+        bool workerStreamFailed = false,
+        bool allowExpectedRetirement = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
 
@@ -453,9 +455,13 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            WorkerAssignmentState assignmentState = _assignment is null
-                ? WorkerAssignmentState.Unassigned
-                : assignmentFailed ? WorkerAssignmentState.Failed : WorkerAssignmentState.Terminated;
+            bool unexpectedWorkerExit = workerStreamFailed && establishedWorkerSession && !_applicationStopping &&
+                (!allowExpectedRetirement || !_state.IsDraining);
+            bool workerFailed = unexpectedWorkerExit || _state.AssignmentState is WorkerAssignmentState.Failed ||
+                (assignmentFailed && _assignment is not null);
+            WorkerAssignmentState assignmentState = workerFailed
+                ? WorkerAssignmentState.Failed
+                : _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Terminated;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
@@ -492,7 +498,9 @@ internal sealed class WorkerPodStateManager
                 SessionId = null,
                 IsWorkerAttached = false,
                 WorkerId = null,
-                AssignmentState = WorkerAssignmentState.Unassigned,
+                AssignmentState = _state.AssignmentState is WorkerAssignmentState.Failed
+                    ? WorkerAssignmentState.Failed
+                    : WorkerAssignmentState.Unassigned,
                 StartupMode = null,
                 FunctionAppName = null,
                 HttpProxyEndpoint = null,

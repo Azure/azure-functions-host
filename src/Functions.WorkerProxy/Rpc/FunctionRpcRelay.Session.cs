@@ -815,7 +815,9 @@ internal sealed partial class FunctionRpcRelay
                         Side: FunctionRpcRelaySide.Worker,
                         Exception: InvalidDataException
                     };
-                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed);
+                    bool allowExpectedRetirement = terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled;
+                    stateManager.OnSessionTerminated(id, assignmentFailed, workerStreamFailed, allowExpectedRetirement);
                 }
 
                 _terminalState = terminalState;

@@ -402,7 +402,8 @@ public partial class FunctionRpcRelayTests
                 workerMessages.Writer.Complete();
             }
 
-            Assert.Equal(WorkerAssignmentState.Terminated, (await terminationPoll).State?.AssignmentState);
+            Assert.Equal(shutdown ? WorkerAssignmentState.Terminated : WorkerAssignmentState.Failed,
+                (await terminationPoll).State?.AssignmentState);
         }
         finally
         {

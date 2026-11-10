@@ -35,6 +35,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" />
+    <!-- Exercise Runtime disposal against WorkerProxy's generated RPC contract without a second protocol assembly. -->
+    <Compile Include="..\..\src\Functions.Rpc.Client\DuplexChannel\GrpcDuplexChannel.cs" Link="RuntimeTransport\GrpcDuplexChannel.cs" />
+    <Compile Include="..\..\src\Functions.Rpc.Client\Extensions\DisposableExtensions.cs" Link="RuntimeTransport\DisposableExtensions.cs" />
+    <Compile Include="..\..\src\Functions.Rpc.Client\Extensions\ExceptionExtensions.cs" Link="RuntimeTransport\ExceptionExtensions.cs" />
+    <Compile Include="..\..\src\WebJobs.Script.Grpc\Channel\DuplexChannel.cs" Link="RuntimeTransport\DuplexChannel.cs" />
   </ItemGroup>
 
 </Project>
