@@ -7,8 +7,8 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using AwesomeAssertions;
 using Azure.Core;
-using FluentAssertions;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.StorageProvider

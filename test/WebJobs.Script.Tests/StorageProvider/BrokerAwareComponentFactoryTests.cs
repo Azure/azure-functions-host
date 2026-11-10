@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 using System;
+using AwesomeAssertions;
 using Azure.Core;
-using FluentAssertions;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Moq;
