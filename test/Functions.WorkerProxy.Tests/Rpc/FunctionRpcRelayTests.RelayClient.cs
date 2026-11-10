@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
-using Azure.Functions.Rpc.Client;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -71,8 +70,6 @@ public partial class FunctionRpcRelayTests
         {
             await _call.RequestStream.CompleteAsync().WaitAsync(cancellationToken);
         }
-
-        public GrpcDuplexChannel<StreamingMessage> CreateRuntimeTransport() => new(_call);
 
         public async Task<StatusCode> WaitForTerminationAsync(CancellationToken cancellationToken)
         {
