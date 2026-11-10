@@ -747,6 +747,28 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     }
 
     [Fact]
+    public async Task StopAsync_PublishesStoppingStateThenWaitsForTerminalWorkerState()
+    {
+        SetState(new(CreatedTime, 4, 1));
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        RuntimeState initial = await TakePublishedAsync();
+        await WaitUntilIdleAsync(initial);
+        RuntimeState stopping = new(CreatedTime.AddSeconds(1), 0, 1, IsStopping: true);
+        SetState(stopping, notify: false);
+
+        Task stop = publisher.StopAsync(CancellationToken.None);
+        Assert.Same(stopping, await TakePublishedAsync());
+        await Assert.ThrowsAsync<TimeoutException>(() => stop.WaitAsync(TimeSpan.FromMilliseconds(100)));
+        RuntimeState terminal = new(CreatedTime.AddSeconds(2), 0, 0, IsStopping: true);
+        SetState(terminal);
+
+        await stop.WaitAsync(TestTimeout);
+
+        Assert.Same(terminal, await TakePublishedAsync());
+        AssertNoMorePublications();
+    }
+
+    [Fact]
     public async Task StopAsync_DoesNotRepublishAcceptedSnapshotOrWithdrawBorrowedState()
     {
         SetState(new(CreatedTime, 4, 1));

@@ -26,7 +26,8 @@ namespace Azure.Functions.Host.HostState;
 /// resent; a successful HTTP response does not establish restart recovery or an exact applied-state acknowledgement.
 /// Authentication rejections are not retried until a different runtime snapshot exists.
 /// Snapshot identity, not timestamp ordering, drives local deduplication.
-/// After specialization, normal root Host shutdown permits one bounded final attempt using the current snapshot.
+/// After specialization, normal root Host shutdown publishes the latest snapshot and waits within the same bound for
+/// an authoritative zero-worker stopping snapshot.
 /// Unexpected publisher failures stop publication without another attempt or changing the borrowed state.
 /// Fatal exceptions are not handled as recoverable publication failures.
 /// </remarks>
@@ -83,7 +84,7 @@ internal sealed partial class AppServerHostStatePublisher(
             // Only normal shutdown permits a final attempt, never an unexpected publication-loop failure.
             if (specialized)
             {
-                await PublishFinalSnapshotAsync();
+                await PublishFinalSnapshotsAsync();
             }
         }
         catch (Exception exception) when (!Utility.IsFatal(exception))
@@ -195,10 +196,11 @@ internal sealed partial class AppServerHostStatePublisher(
         }
     }
 
-    private async Task PublishFinalSnapshotAsync()
+    private async Task PublishFinalSnapshotsAsync()
     {
         RuntimeState current = _stateManager.Current;
-        if (ReferenceEquals(_lastCompletedSnapshot, current))
+        if (ReferenceEquals(_lastCompletedSnapshot, current) &&
+            (!current.IsStopping || current.WorkerCount == 0))
         {
             return;
         }
@@ -207,18 +209,29 @@ internal sealed partial class AppServerHostStatePublisher(
         RuntimeState state = current;
         try
         {
-            await _publicationGate.WaitAsync(timeout.Token);
-            try
+            while (true)
             {
-                state = _stateManager.Current;
-                if (!ReferenceEquals(_lastCompletedSnapshot, state))
+                Task changed = _stateManager.GetChangeTask();
+                await _publicationGate.WaitAsync(timeout.Token);
+                try
                 {
-                    await TryPublishAsync(state, timeout.Token);
+                    state = _stateManager.Current;
+                    if (!ReferenceEquals(_lastCompletedSnapshot, state))
+                    {
+                        await TryPublishAsync(state, timeout.Token);
+                    }
                 }
-            }
-            finally
-            {
-                _publicationGate.Release();
+                finally
+                {
+                    _publicationGate.Release();
+                }
+
+                if (!state.IsStopping || state.WorkerCount == 0)
+                {
+                    return;
+                }
+
+                await changed.WaitAsync(timeout.Token);
             }
         }
         catch (OperationCanceledException exception) when (timeout.IsCancellationRequested && !Utility.IsFatal(exception))

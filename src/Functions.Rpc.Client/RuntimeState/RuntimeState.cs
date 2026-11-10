@@ -15,4 +15,5 @@ namespace Azure.Functions.Rpc.Client;
 /// Capacity is zero once the root Host begins stopping; it does not indicate ScriptHost availability.
 /// </param>
 /// <param name="WorkerCount">The number of initialized, linked workers, independently of invocation readiness.</param>
-public sealed record RuntimeState(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount);
+/// <param name="IsStopping">Whether the root Host has permanently started shutdown.</param>
+public sealed record RuntimeState(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount, bool IsStopping = false);
