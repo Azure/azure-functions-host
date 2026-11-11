@@ -5,7 +5,7 @@ and runs as a worker alongside a separate Functions Host and WorkerProxy.
 
 ## Run
 
-Prepare the matching local worker packages using the [ComputeSeparation run instructions](../README.md), select the `project` or `container`
+Restore the published staging worker packages using the [ComputeSeparation run instructions](../README.md), select the `project` or `container`
 launch profile, and press F5. Every profile starts an Azurite container, so Docker is required in project mode too.
 
 This project does not start its own Functions Host. The Aspire tool starts the Host and WorkerProxy and links the worker automatically in both modes. For manual linking of two workers, select `project-placeholder-manual-multiple-workers` and follow `compute-separation.http`.

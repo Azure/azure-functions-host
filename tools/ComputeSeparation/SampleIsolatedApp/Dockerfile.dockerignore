@@ -3,10 +3,6 @@
 !tools/ComputeSeparation/
 !tools/ComputeSeparation/SampleIsolatedApp/
 !tools/ComputeSeparation/SampleIsolatedApp/**
-!out/
-!out/extension-payload/
-!out/extension-payload/packages/
-!out/extension-payload/packages/*.nupkg
 **/bin/
 **/obj/
 **/local.settings.json

@@ -10,8 +10,8 @@
     <!-- Keep package versions explicit so the app also builds outside the Host repository. -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
     <WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
-    <FunctionsWorkerPackageVersion Condition="'$(FunctionsWorkerPackageVersion)' == ''">2.52.0-extension-payload-local.4</FunctionsWorkerPackageVersion>
-    <FunctionsWorkerSdkPackageVersion Condition="'$(FunctionsWorkerSdkPackageVersion)' == ''">2.1.0-extension-payload-local.2</FunctionsWorkerSdkPackageVersion>
+    <FunctionsWorkerPackageVersion Condition="'$(FunctionsWorkerPackageVersion)' == ''">2.53.0-preview.1</FunctionsWorkerPackageVersion>
+    <FunctionsWorkerSdkPackageVersion Condition="'$(FunctionsWorkerSdkPackageVersion)' == ''">2.1.0</FunctionsWorkerSdkPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +19,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="$(FunctionsWorkerPackageVersion)" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.1.1" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.3" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="$(FunctionsWorkerSdkPackageVersion)" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="$(FunctionsWorkerSdkPackageVersion)" PrivateAssets="all" />
     <PackageReference Include="Azure.Identity" Version="1.17.1" />
   </ItemGroup>
 
@@ -34,14 +34,5 @@
   <Target Name="_FunctionsComputeRunArguments" />
   <Target Name="_FunctionsCheckForCoreTools" />
   <Target Name="_FunctionsComputeRunArgumentsWhenFuncNotExists" />
-
-  <!-- Local SDK analyzer packages can omit their generator; use the identical SDK-bundled generator for this sample. -->
-  <Target Name="IncludeLocalSampleMetadataGenerator" BeforeTargets="CoreCompile">
-    <ItemGroup>
-      <_SampleMetadataGenerator Include="@(Analyzer)" Condition="'%(Filename)' == 'Microsoft.Azure.Functions.Worker.Sdk.Generators'" />
-      <Analyzer Include="$(PkgMicrosoft_Azure_Functions_Worker_Sdk)\tools\netstandard2.0\Microsoft.Azure.Functions.Worker.Sdk.Generators.dll"
-        Condition="'@(_SampleMetadataGenerator)' == ''" />
-    </ItemGroup>
-  </Target>
 
 </Project>

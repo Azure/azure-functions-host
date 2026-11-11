@@ -13,34 +13,48 @@ The first build downloads the matching Aspire toolchain into the worktree's buil
 
 Run the commands below from the repository root.
 
-## Prepare matching worker packages
+## Restore staged worker packages
 
-This feature uses matching local worker/Core/gRPC packages until the payload capability is released. Both project and container profiles
-run the same `SampleIsolatedApp`, including its HTTP and queue functions. Build the local feed before the first launch:
+The sample uses Worker/Core/gRPC `2.53.0-preview.1` from the public Azure DevOps `pre-release` feed and the released Worker SDK `2.1.0`.
+Both project and container profiles run the same `SampleIsolatedApp`, including its HTTP and queue functions.
+No worker checkout or locally packed packages are required. The Docker build restores directly from the published feeds.
+
+The Host repository's NuGet source mapping does not include the staging feed. Before the first project build, restore the sample
+with a temporary configuration scoped to this command; this does not change repository or user NuGet configuration:
 
 ```powershell
-$hostRepo = (Get-Location).Path
-$workerRepo = 'Q:\git\copilot-worktrees\azure-functions-dotnet-worker\YOUR-WORKTREE'
-$feed = Join-Path $hostRepo 'out\extension-payload\packages'
-$workerVersion = '2.52.0-extension-payload-local.4'
-$sdkVersion = '2.1.0-extension-payload-local.2'
-Push-Location $workerRepo
-foreach ($project in @('DotNetWorker.Core', 'DotNetWorker.Grpc', 'DotNetWorker')) {
-    dotnet pack "src\$project\$project.csproj" -c Release "-p:Version=$workerVersion" -o $feed
+$config = [IO.Path]::GetTempFileName()
+try {
+    @'
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="pre-release" value="https://pkgs.dev.azure.com/azfunc/public/_packaging/pre-release/nuget/v3/index.json" />
+    <add key="upstream-public" value="https://pkgs.dev.azure.com/azfunc/public/_packaging/upstream-public/nuget/v3/index.json" />
+  </packageSources>
+  <packageSourceMapping>
+    <clear />
+    <packageSource key="pre-release">
+      <package pattern="Microsoft.Azure.Functions.Worker" />
+      <package pattern="Microsoft.Azure.Functions.Worker.Core" />
+      <package pattern="Microsoft.Azure.Functions.Worker.Grpc" />
+    </packageSource>
+    <packageSource key="upstream-public">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
+</configuration>
+'@ | Set-Content $config
+    dotnet restore tools\ComputeSeparation\SampleIsolatedApp\SampleIsolatedApp.csproj --configfile $config
+    if ($LASTEXITCODE -ne 0) { throw 'Sample restore failed.' }
 }
-dotnet pack build\Sdk.slnf -c Release "-p:Version=$sdkVersion" -o $feed
-Pop-Location
-
-$config = Join-Path $workerRepo 'NuGet.config'
-dotnet restore tools\ComputeSeparation\SampleIsolatedApp\SampleIsolatedApp.csproj `
-    --configfile $config "-p:RestoreAdditionalProjectSources=$feed"
+finally {
+    Remove-Item $config
+}
 ```
 
-The sample's default package-version properties match these labels. Choose fresh labels when changing package contents and update those
-defaults to match so project builds and the Docker source build use identical versions. The existing worker NuGet configuration is supplied
-only to the local restore command because the Host repository's package-source mapping does not include this private feed. No configuration
-files are edited and no packages are uploaded. The worker Docker build copies that feed and restores from it plus the repository's existing
-public upstream, outside the Host repository's package-source-mapping configuration.
+This populates the normal NuGet cache so subsequent project builds can use the repository's unchanged configuration.
+The sample keeps explicit worker and SDK version properties so project and Docker builds consume the same versions.
 
 ## Run with F5
 
@@ -163,6 +177,7 @@ The same sample always includes `QueueEcho`. AppHost supplies the Azurite connec
 `sample-input` / `sample-output` queues for normal runs. Connect Azure Storage Explorer using the Aspire `queues` resource's connection
 details in project mode, or the runtime's published storage endpoints in container mode as described above. Create
 `sample-input` if needed and enqueue a Base64-encoded message; `sample-output` receives the returned text.
+Queue invocations require a worker assigned and linked to `function:QueueEcho`; the automatically linked `http` worker does not serve this group.
 
 ## Streamed-extension QueueTrigger acceptance
 
@@ -201,7 +216,12 @@ default application-layout provider; the startup locator itself has no payload-s
 The transferred manifest is expected to contain correct assembly hints; the locator's existing assembly lookup is unchanged.
 Durable trigger sync keeps its existing bundle and legacy-version logic, using the provider only when an alternate extension source is selected.
 
-After preparing the local packages above, run:
+The current container profile automatically provisions and links only an `http` worker. Completing this acceptance scenario
+also requires a separate worker/WorkerProxy pod assigned and linked to `function:QueueEcho`, using the same sample image,
+storage connection, and generated queue names. The harness does not yet provision that second pod automatically; the command
+below starts the verifier but cannot pass with only its default HTTP worker.
+
+After restoring the staged packages above, start the verifier:
 
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj `
@@ -210,7 +230,6 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 
 Verification only selects unique queues and runs the checks; it does not switch sample projects, worker build contexts or deployment layout.
 The sample treats package-version fallback as an error and uses the unchanged SDK's default bootstrap output.
-Its local SDK-bundled metadata generator is used if a development analyzer package omitted that analyzer.
 
 The verifier creates unique input/output queues, enqueues a correlation token, checks the returned output and successful Host invocation,
 and captures the Host's existing load-context/extension-startup diagnostics. Proxy logs are saved for diagnostics without per-invocation
