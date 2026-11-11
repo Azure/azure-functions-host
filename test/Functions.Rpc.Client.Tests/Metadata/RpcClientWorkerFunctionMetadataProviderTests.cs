@@ -86,11 +86,12 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
         ]);
         FunctionMetadataResult result = await request.WaitAsync(TestTimeout);
 
-        Assert.Equal(["http", "durable", "blob", "function:QueueProcessor", "function:LegacyBlob"],
+        Assert.Equal(["http", "durable", "blob", "function:QueueProcessor"],
             result.Functions.Select(function => function.GetFunctionGroup()));
         Assert.Equal("http", result.Functions[3].Properties["FunctionGroupName"]);
+        Assert.Contains("LegacyBlob", provider.FunctionErrors.Keys);
         Assert.Same(result, await provider.GetFunctionMetadataAsync([]));
-        Assert.Equal(["http", "durable", "blob", "function:QueueProcessor", "function:LegacyBlob"],
+        Assert.Equal(["http", "durable", "blob", "function:QueueProcessor"],
             (await provider.GetFunctionMetadataAsync([])).Functions.Select(function => function.GetFunctionGroup()));
     }
 
@@ -269,6 +270,31 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
             result.Functions.Select(function => function.Name).OrderBy(name => name, StringComparer.Ordinal));
         Assert.Contains("Invalid", provider.FunctionErrors.Keys);
         Assert.DoesNotContain("WorkerError", provider.FunctionErrors.Keys);
+    }
+
+    [Fact]
+    public async Task GetFunctionMetadataAsync_RejectsPollingBlobTriggers()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        await worker.SendFunctionMetadataResponseAsync(
+        [
+            CreateMetadata("Polling", "polling", """{"type":"blobTrigger","name":"blob","direction":"in","path":"c/{name}"}"""),
+            CreateMetadata("LogsAndContainerScan", "scan",
+                """{"type":"blobTrigger","name":"blob","direction":"in","path":"c/{name}","source":"LogsAndContainerScan"}"""),
+            CreateMetadata("EventGrid", "eventgrid",
+                """{"type":"blobTrigger","name":"blob","direction":"in","path":"c/{name}","source":"EventGrid"}"""),
+        ]);
+        FunctionMetadataResult result = await getMetadata.WaitAsync(TestTimeout);
+
+        FunctionMetadata function = Assert.Single(result.Functions);
+        Assert.Equal("EventGrid", function.Name);
+        Assert.Equal(["LogsAndContainerScan", "Polling"], provider.FunctionErrors.Keys.Order(StringComparer.Ordinal));
+        Assert.Contains("https://aka.ms/blob-trigger-eg", Assert.Single(provider.FunctionErrors["Polling"]), StringComparison.Ordinal);
     }
 
     [Fact]

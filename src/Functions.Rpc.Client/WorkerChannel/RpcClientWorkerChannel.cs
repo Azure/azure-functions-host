@@ -216,6 +216,15 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    /// <summary>
+    /// Requires a ready serving channel with the same assigned group, using case-insensitive platform identity.
+    /// Validation workers are excluded; listener-specific exceptions such as HTTP/blob sharing do not apply here.
+    /// </summary>
+    internal bool CanServeFunctionGroup(string functionGroup)
+        => IsReadyForInvocations
+            && !string.Equals(FunctionGroupName, FunctionGroups.ValidationWorker, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(FunctionGroupName, functionGroup, StringComparison.OrdinalIgnoreCase);
+
     internal bool TryStartFunctionMetadataRequest(out Task<List<RawFunctionMetadata>> metadataTask)
     {
         lock (_lifecycleLock)

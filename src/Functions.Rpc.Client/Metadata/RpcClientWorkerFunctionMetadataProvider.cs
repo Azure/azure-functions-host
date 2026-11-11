@@ -38,6 +38,7 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly WorkerFunctionMetadataValidator _validator;
     private FunctionMetadataResult _cachedResult;
+    private ImmutableDictionary<string, ImmutableArray<string>> _functionErrors = ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
     public RpcClientWorkerFunctionMetadataProvider(
         IWorkerChannelRegistry channelRegistry,
@@ -68,7 +69,7 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
         _channelWaitTimeout = channelWaitTimeout;
     }
 
-    public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _validator.FunctionErrors;
+    public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _functionErrors;
 
     public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(
         IEnumerable<RpcWorkerConfig> workerConfigs,
@@ -115,9 +116,43 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
         // or feed it into a Host-wide runtime cache.
         bool preserveWorkerLanguage = _metadataOptions.Value.UseWorkerRuntimeFromMetadata;
         ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions, preserveWorkerLanguage);
+        functions = RejectUnsupportedFunctions(functions, out _functionErrors);
         Log.FunctionsReturned(_logger, functions.Length, MetadataProviderName);
         _cachedResult = new(useDefaultMetadataIndexing: false, functions);
         return _cachedResult;
+    }
+
+    /// <summary>
+    /// Removes functions whose triggers cannot be scaled for client-backed workers and reports them with validation errors.
+    /// </summary>
+    /// <remarks>
+    /// Polling Blob triggers have no target-based scaler, so the platform cannot assign workers for them.
+    /// </remarks>
+    private ImmutableArray<FunctionMetadata> RejectUnsupportedFunctions(
+        ImmutableArray<FunctionMetadata> functions, out ImmutableDictionary<string, ImmutableArray<string>> functionErrors)
+    {
+        functionErrors = _validator.FunctionErrors;
+        if (!functions.Any(function => function.IsLegacyBlobTriggerFunction()))
+        {
+            return functions;
+        }
+
+        ImmutableArray<FunctionMetadata>.Builder supported = ImmutableArray.CreateBuilder<FunctionMetadata>(functions.Length);
+        foreach (FunctionMetadata function in functions)
+        {
+            if (!function.IsLegacyBlobTriggerFunction())
+            {
+                supported.Add(function);
+                continue;
+            }
+
+            string error = "Client-backed workers only support EventGrid as the source for BlobTrigger functions. Please update function "
+                + $"'{function.Name}' to use EventGrid. For more information see https://aka.ms/blob-trigger-eg.";
+            functionErrors = functionErrors.SetItem(function.Name,
+                functionErrors.TryGetValue(function.Name, out ImmutableArray<string> existing) ? existing.Add(error) : [error]);
+        }
+
+        return supported.ToImmutable();
     }
 
     private async Task<(RpcClientWorkerChannel Channel, Task<List<RawFunctionMetadata>> MetadataTask)>
