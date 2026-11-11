@@ -4,6 +4,7 @@
 - My change description (#PR)
 -->
 
+- Update Node.js Worker Version to [3.17.3](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.17.3) (#PR)
 - Update PS 7.4 worker to [v4.0.5575](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5575) (#12110)
 - Update PS 7.6 worker to [v4.0.5576](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5576) (#12110)
 - `Executing HTTP request` no longer logs the user agent or request URI, `Executed HTTP request` now logs matched function and MVC route templates, `Sanitizer` redacts email addresses, host status startup errors are sanitized, and trace context attribute values are no longer logged. (#12039)
