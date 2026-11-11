@@ -319,6 +319,7 @@ internal sealed partial class FunctionRpcRelay
                         }
                     }
 
+                    LogProtocolMessage(current, forwarded: false);
                     stateManager.OnWorkerDraining(id);
                     continue;
                 }
@@ -733,6 +734,7 @@ internal sealed partial class FunctionRpcRelay
                 StreamingMessage.ContentOneofCase.FunctionLoadRequest => ("FunctionLoad", false, null),
                 StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, message.FunctionLoadResponse.Result),
                 StreamingMessage.ContentOneofCase.WorkerTerminate => ("WorkerTerminate", false, null),
+                StreamingMessage.ContentOneofCase.WorkerDraining => ("WorkerDraining", false, null),
                 _ => null
             };
             if (operation is not { } value)
