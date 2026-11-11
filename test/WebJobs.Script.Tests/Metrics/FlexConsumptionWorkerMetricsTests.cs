@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using System.Threading;
@@ -49,6 +50,10 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         };
         _publisher = new(new TestEnvironment(), standby.Object, Options.Create(_options), _logger,
             _fileSystem, _provider.Object, time.Object);
+
+        // MockFileSystem assigns every file the same creation time, so provide advancing times.
+        DateTime creationTime = _now;
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => creationTime = creationTime.AddTicks(1);
     }
 
     [Fact]
@@ -330,6 +335,218 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         Assert.Equal(2, workerMetrics.Length);
         Assert.Equal(2, workerMetrics.Sum(record => record.ExecutionCount));
         Assert.Equal(1, workerMetrics.Sum(record => record.ExecutionSuccessCount));
+    }
+
+    [Fact]
+    public async Task OnPublishMetrics_DeferredSnapshotPreservesActivityAndUnlinkedWorker()
+    {
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => _now;
+        _publisher.MetricsFileManager.DelayAsync = _ => Task.CompletedTask;
+        _publisher.MetricsFileManager.MaxWorkerFileAttempts = 2;
+        _publisher.WorkerLinked("worker-a", "http", false);
+        _publisher.WorkerLinked("worker-b", "http", false);
+        Dispatch("a1", "worker-a");
+        Dispatch("b1", "worker-b");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("a1", success: true);
+        _publisher.InvocationCompleted("b1", success: true);
+
+        await PublishAsync();
+        Assert.Equal("worker-a", Assert.Single(ReadMetrics()).InstanceId);
+
+        Dispatch("b2", "worker-b");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("b2", success: false);
+        _publisher.WorkerUnlinked("worker-b");
+        DateTime creationTime = _now;
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => creationTime = creationTime.AddTicks(1);
+
+        await PublishAsync();
+        await PublishAsync();
+
+        var records = ReadMetrics();
+        var workerBRecords = records.Where(record => string.Equals(record.InstanceId, "worker-b", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(3, records.Count);
+        Assert.Equal(2, workerBRecords.Length);
+        Assert.Equal(3, records.Sum(record => record.ExecutionCount));
+        Assert.Equal(2, records.Sum(record => record.ExecutionSuccessCount));
+        Assert.Equal(3, records.Sum(record => record.StartedInvocationCount));
+        Assert.Equal(3000, records.Sum(record => record.ExecutionTimeMS));
+        Assert.Equal(2000, workerBRecords.Sum(record => record.TotalTimeMS));
+        Assert.False(_publisher.TryDispatchInvocation("late", "worker-b", () => true));
+    }
+
+    [Fact]
+    public async Task OnPublishMetrics_WorkerIdReusedWhileDeferredPreservesBothAssignments()
+    {
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => _now;
+        _publisher.MetricsFileManager.MaxWorkerFileAttempts = 1;
+        _publisher.WorkerLinked("first", "http", false);
+        _publisher.WorkerLinked("shared", "http", false);
+        Dispatch("first", "first");
+        Dispatch("old", "shared");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("first", success: true);
+        _publisher.InvocationCompleted("old", success: true);
+        await PublishAsync();
+        Assert.Single(ReadMetrics());
+
+        _publisher.WorkerUnlinked("shared");
+        _publisher.WorkerLinked("shared", "function:New", true);
+        Dispatch("new", "shared");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("new", success: true);
+        DateTime creationTime = _now;
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => creationTime = creationTime.AddTicks(1);
+        await PublishAsync();
+
+        var records = ReadMetrics().Where(record => string.Equals(record.InstanceId, "shared", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(2, records.Length);
+        Assert.Contains(records, record => string.Equals(record.FunctionGroup, "http", StringComparison.Ordinal) &&
+            !record.IsAlwaysReady && record.ExecutionCount == 1);
+        Assert.Contains(records, record => string.Equals(record.FunctionGroup, "function:New", StringComparison.Ordinal) &&
+            record.IsAlwaysReady && record.ExecutionCount == 1);
+        Assert.Equal(2000, records.Sum(record => record.ExecutionTimeMS));
+        Assert.Equal(2000, records.Sum(record => record.TotalTimeMS));
+    }
+
+    [Fact]
+    public async Task OnPublishMetrics_WriteFailureRetainsSnapshotUntilRetry()
+    {
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => throw new IOException("Creation time unavailable.");
+        _publisher.WorkerLinked("worker", "http", false);
+        Dispatch("invocation", "worker");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("invocation", success: true);
+
+        await PublishAsync();
+        Assert.Empty(ReadMetrics());
+        Assert.Contains(_logger.GetLogMessages(), message =>
+            message.Level == LogLevel.Error && message.Exception is IOException);
+
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => _now;
+        await PublishAsync();
+        await PublishAsync();
+
+        var record = Assert.Single(ReadMetrics());
+        Assert.Equal(1, record.ExecutionCount);
+        Assert.Equal(1, record.ExecutionSuccessCount);
+        Assert.Equal(1, record.StartedInvocationCount);
+        Assert.Equal(1000, record.ExecutionTimeMS);
+    }
+
+    [Fact]
+    public async Task OnPublishMetrics_HostMetricsFailureRetainsCapturedSnapshot()
+    {
+        _provider.SetupSequence(provider => provider.GetHostMetricsOrNull())
+            .Throws(new InvalidOperationException("Host metrics unavailable."))
+            .Returns((IReadOnlyDictionary<string, long>)null);
+        _publisher.WorkerLinked("worker", "http", false);
+        Dispatch("invocation", "worker");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("invocation", success: true);
+
+        await PublishAsync();
+        Assert.Empty(ReadMetrics());
+        await PublishAsync();
+
+        var record = Assert.Single(ReadMetrics());
+        Assert.Equal(1, record.ExecutionCount);
+        Assert.Equal(1, record.ExecutionSuccessCount);
+        Assert.Equal(1000, record.ExecutionTimeMS);
+        Assert.Contains(_logger.GetLogMessages(), message =>
+            message.Level == LogLevel.Error && message.Exception is InvalidOperationException);
+    }
+
+    [Fact]
+    public async Task OnPublishMetrics_RefreshesCaptureTimeAfterDrainingPendingSnapshots()
+    {
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => _now;
+        _publisher.MetricsFileManager.DelayAsync = _ => Task.CompletedTask;
+        _publisher.MetricsFileManager.MaxWorkerFileAttempts = 2;
+        _publisher.WorkerLinked("worker-a", "http", false);
+        _publisher.WorkerLinked("worker-b", "http", false);
+        Dispatch("a1", "worker-a");
+        Dispatch("b1", "worker-b");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("a1", success: true);
+        _publisher.InvocationCompleted("b1", success: true);
+        await PublishAsync();
+
+        TaskCompletionSource delayStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource resume = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _publisher.MetricsFileManager.DelayAsync = _ =>
+        {
+            delayStarted.TrySetResult();
+            return resume.Task;
+        };
+        Task publishing = _publisher.OnPublishMetrics(_now, ValueStopwatch.StartNew());
+        try
+        {
+            await delayStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Dispatch("a2", "worker-a");
+            _now = _now.AddSeconds(1);
+            _publisher.InvocationCompleted("a2", success: true);
+            DateTime creationTime = _now;
+            _publisher.MetricsFileManager.GetCreationTimeUtc = _ => creationTime = creationTime.AddTicks(1);
+        }
+        finally
+        {
+            resume.TrySetResult();
+        }
+
+        await publishing;
+        var workerARecords = ReadMetrics().Where(record => string.Equals(record.InstanceId, "worker-a", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(2, workerARecords.Length);
+        Assert.Equal(2, workerARecords.Sum(record => record.ExecutionCount));
+        Assert.Equal(2000, workerARecords.Sum(record => record.ExecutionTimeMS));
+        Assert.Equal(2000, workerARecords.Sum(record => record.TotalTimeMS));
+    }
+
+    [Fact]
+    public async Task OnPublishMetrics_RefreshesCaptureTimeAfterWaitingForAnotherPublication()
+    {
+        _options.WorkerMetricsFileRetentionPeriod = TimeSpan.FromDays(365 * 30);
+        _publisher.MetricsFileManager.GetCreationTimeUtc = _ => _now;
+        _publisher.MetricsFileManager.MaxWorkerFileAttempts = 2;
+        TaskCompletionSource delayStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource resume = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _publisher.MetricsFileManager.DelayAsync = _ =>
+        {
+            delayStarted.TrySetResult();
+            return resume.Task;
+        };
+        _publisher.WorkerLinked("worker-a", "http", false);
+        _publisher.WorkerLinked("worker-b", "http", false);
+        Dispatch("a1", "worker-a");
+        Dispatch("b1", "worker-b");
+        _now = _now.AddSeconds(1);
+        _publisher.InvocationCompleted("a1", success: true);
+        _publisher.InvocationCompleted("b1", success: true);
+
+        Task first = _publisher.OnPublishMetrics(_now, ValueStopwatch.StartNew());
+        Task second = Task.CompletedTask;
+        try
+        {
+            await delayStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            second = _publisher.OnPublishMetrics(_now, ValueStopwatch.StartNew());
+            Dispatch("a2", "worker-a");
+            _now = _now.AddSeconds(1);
+            _publisher.InvocationCompleted("a2", success: true);
+            DateTime creationTime = _now;
+            _publisher.MetricsFileManager.GetCreationTimeUtc = _ => creationTime = creationTime.AddTicks(1);
+        }
+        finally
+        {
+            resume.TrySetResult();
+        }
+
+        await Task.WhenAll(first, second);
+        var workerARecords = ReadMetrics().Where(record => string.Equals(record.InstanceId, "worker-a", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(2, workerARecords.Length);
+        Assert.Equal(2, workerARecords.Sum(record => record.ExecutionCount));
+        Assert.Equal(2000, workerARecords.Sum(record => record.ExecutionTimeMS));
+        Assert.Equal(2000, workerARecords.Sum(record => record.TotalTimeMS));
     }
 
     [Fact]

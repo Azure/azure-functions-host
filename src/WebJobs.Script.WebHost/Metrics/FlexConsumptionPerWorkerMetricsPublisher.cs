@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
@@ -25,6 +26,9 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
 {
     private readonly Dictionary<string, WorkerActivity> _workers = new(StringComparer.Ordinal);
     private readonly Dictionary<string, WorkerActivity> _workerInvocations = new(StringComparer.Ordinal);
+    private readonly List<(string WorkerId, WorkerActivity Worker)> _retiredWorkers = [];
+    private readonly Queue<Metrics> _pendingMetrics = new();
+    private readonly SemaphoreSlim _publishLock = new(1, 1);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FlexConsumptionPerWorkerMetricsPublisher"/> class.
@@ -55,6 +59,7 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
         {
             _workerInvocations.Clear();
             _workers.Clear();
+            _retiredWorkers.Clear();
         }
     }
 
@@ -89,6 +94,12 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroup);
         lock (SyncLock)
         {
+            if (_workers.TryGetValue(workerId, out WorkerActivity previousWorker) && previousWorker.UnlinkedAt is not null)
+            {
+                _retiredWorkers.Add((workerId, previousWorker));
+                _workers.Remove(workerId);
+            }
+
             if (_workers.TryAdd(workerId, new WorkerActivity(Clock.GetUtcNow().UtcDateTime, functionGroup, isAlwaysReady))
                 && isAlwaysReady is null)
             {
@@ -198,48 +209,61 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
 
     private protected override async Task PublishMetricsAsync(DateTime now, ValueStopwatch stopwatch)
     {
-        FileManager.DeleteExpiredWorkerMetrics(now, PublisherOptions.WorkerMetricsFileRetentionPeriod);
+        bool refreshCaptureTime = !_publishLock.Wait(0);
+        if (refreshCaptureTime)
+        {
+            await _publishLock.WaitAsync();
+        }
 
-        List<Metrics> snapshots = [];
+        try
+        {
+            FileManager.DeleteExpiredWorkerMetrics(now, PublisherOptions.WorkerMetricsFileRetentionPeriod);
+            refreshCaptureTime |= _pendingMetrics.Count > 0;
+            if (!await PublishPendingMetricsAsync())
+            {
+                return;
+            }
+
+            CaptureMetrics(now, refreshCaptureTime);
+            await PublishPendingMetricsAsync();
+        }
+        finally
+        {
+            _publishLock.Release();
+        }
+    }
+
+    private void CaptureMetrics(DateTime now, bool refreshCaptureTime)
+    {
         lock (SyncLock)
         {
+            if (refreshCaptureTime)
+            {
+                // Pending writes or another publication may have delayed this snapshot.
+                DateTime currentTime = Clock.GetUtcNow().UtcDateTime;
+                if (currentTime > now)
+                {
+                    now = currentTime;
+                }
+            }
+
+            int retiredIndex = 0;
+            while (retiredIndex < _retiredWorkers.Count)
+            {
+                (string workerId, WorkerActivity worker) = _retiredWorkers[retiredIndex];
+                if (CaptureWorkerMetrics(workerId, worker, now))
+                {
+                    _retiredWorkers.RemoveAt(retiredIndex);
+                }
+                else
+                {
+                    retiredIndex++;
+                }
+            }
+
             foreach ((string workerId, WorkerActivity worker) in _workers.ToArray())
             {
-                DateTime intervalEnd = worker.UnlinkedAt ?? now;
-                if (intervalEnd < worker.IntervalStart)
-                {
-                    // This Worker linked after the publication timestamp was captured.
-                    continue;
-                }
-
-                if (worker.ActiveInvocationCount > 0)
-                {
-                    MeterWorkerActivity(worker, intervalEnd);
-                }
-
-                bool hasActivity = worker.ExecutionCount > 0 || worker.ExecutionTimeMS > 0 ||
-                    worker.StartedInvocationCount > 0 || worker.ActiveInvocationCount > 0;
-                bool keepAlive = (now - worker.LastPublishTime).TotalMilliseconds >= PublisherOptions.KeepAliveIntervalMS;
-                if (worker.IsAlwaysReady is { } isAlwaysReady && (hasActivity || keepAlive || isAlwaysReady))
-                {
-                    snapshots.Add(new Metrics
-                    {
-                        InstanceId = workerId,
-                        FunctionGroup = worker.FunctionGroup,
-                        ExecutionCount = worker.ExecutionCount,
-                        ExecutionSuccessCount = worker.ExecutionSuccessCount,
-                        ExecutionTimeMS = worker.ExecutionTimeMS,
-                        StartedInvocationCount = worker.StartedInvocationCount,
-                        ActiveInvocationCount = worker.ActiveInvocationCount,
-                        TotalTimeMS = Math.Max(0, (long)(intervalEnd - worker.IntervalStart).TotalMilliseconds),
-                        IsAlwaysReady = isAlwaysReady
-                    });
-                    worker.ExecutionCount = worker.ExecutionSuccessCount = worker.ExecutionTimeMS = worker.StartedInvocationCount = 0;
-                    worker.LastPublishTime = now;
-                }
-
-                worker.IntervalStart = intervalEnd;
-                if (worker.UnlinkedAt is not null)
+                if (CaptureWorkerMetrics(workerId, worker, now) && worker.UnlinkedAt is not null)
                 {
                     _workers.Remove(workerId);
                 }
@@ -252,11 +276,60 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
                 Logger.LogWarning("Not attributing {AppFailureCount} Runtime app failures to a Worker.", failures);
             }
         }
+    }
 
-        foreach (Metrics metrics in snapshots)
+    private bool CaptureWorkerMetrics(string workerId, WorkerActivity worker, DateTime now)
+    {
+        DateTime intervalEnd = worker.UnlinkedAt ?? now;
+        if (intervalEnd < worker.IntervalStart)
         {
-            await FileManager.PublishMetricsAsync(metrics, metrics.InstanceId);
+            // This Worker linked after the publication timestamp was captured.
+            return false;
         }
+
+        if (worker.ActiveInvocationCount > 0)
+        {
+            MeterWorkerActivity(worker, intervalEnd);
+        }
+
+        bool hasActivity = worker.ExecutionCount > 0 || worker.ExecutionTimeMS > 0 ||
+            worker.StartedInvocationCount > 0 || worker.ActiveInvocationCount > 0;
+        bool keepAlive = (now - worker.LastPublishTime).TotalMilliseconds >= PublisherOptions.KeepAliveIntervalMS;
+        if (worker.IsAlwaysReady is { } isAlwaysReady && (hasActivity || keepAlive || isAlwaysReady))
+        {
+            _pendingMetrics.Enqueue(new Metrics
+            {
+                InstanceId = workerId,
+                FunctionGroup = worker.FunctionGroup,
+                ExecutionCount = worker.ExecutionCount,
+                ExecutionSuccessCount = worker.ExecutionSuccessCount,
+                ExecutionTimeMS = worker.ExecutionTimeMS,
+                StartedInvocationCount = worker.StartedInvocationCount,
+                ActiveInvocationCount = worker.ActiveInvocationCount,
+                TotalTimeMS = Math.Max(0, (long)(intervalEnd - worker.IntervalStart).TotalMilliseconds),
+                IsAlwaysReady = isAlwaysReady
+            });
+            worker.ExecutionCount = worker.ExecutionSuccessCount = worker.ExecutionTimeMS = worker.StartedInvocationCount = 0;
+            worker.LastPublishTime = now;
+        }
+
+        worker.IntervalStart = intervalEnd;
+        return true;
+    }
+
+    private async Task<bool> PublishPendingMetricsAsync()
+    {
+        while (_pendingMetrics.TryPeek(out Metrics metrics))
+        {
+            if (!await FileManager.PublishWorkerMetricsAsync(metrics, metrics.InstanceId))
+            {
+                return false;
+            }
+
+            _pendingMetrics.Dequeue();
+        }
+
+        return true;
     }
 
     private sealed class WorkerActivity(DateTime linkedAt, string functionGroup, bool? isAlwaysReady)

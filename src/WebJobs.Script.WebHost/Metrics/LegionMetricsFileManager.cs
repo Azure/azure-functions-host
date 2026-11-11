@@ -7,6 +7,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
@@ -16,10 +17,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
     internal sealed class LegionMetricsFileManager
     {
+        internal const string StagingDirectoryName = ".staging";
+        private static readonly TimeSpan StagedFileRetentionPeriod = TimeSpan.FromMinutes(1);
+
         private readonly IFileSystem _fileSystem;
         private readonly int _maxFileCount;
         private readonly ILogger _logger;
         private readonly JsonSerializerSettings _serializerSettings;
+        private readonly SemaphoreSlim _workerPublishLock = new(1, 1);
+        private DateTime _lastWorkerFileCreationTimeUtc = DateTime.MinValue;
+        private bool _workerFilePublicationBlocked;
 
         public LegionMetricsFileManager(string metricsFilePath, IFileSystem fileSystem, ILogger logger, int maxFileCount)
         {
@@ -27,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             MetricsFilePath = metricsFilePath;
             _maxFileCount = maxFileCount;
+            GetCreationTimeUtc = path => _fileSystem.File.GetCreationTimeUtc(path);
 
             _serializerSettings = new JsonSerializerSettings
             {
@@ -36,6 +44,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         // Internal access for testing only
         internal string MetricsFilePath { get; set;  }
+
+        // Test seams for the Worker metrics creation-time ordering.
+        internal Func<string, DateTime> GetCreationTimeUtc { get; set; }
+
+        internal Func<TimeSpan, Task> DelayAsync { get; set; } = Task.Delay;
+
+        internal int MaxWorkerFileAttempts { get; set; } = 25;
+
+        internal TimeSpan WorkerFileRetryDelay { get; set; } = TimeSpan.FromMilliseconds(50);
 
         internal void DeleteExpiredWorkerMetrics(DateTime utcNow, TimeSpan retentionPeriod)
         {
@@ -78,10 +95,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     _logger.LogDebug("Deleted {FileCount} expired Worker metrics file(s). Retention period: {RetentionPeriod}.",
                         deletedCount, retentionPeriod);
                 }
+
+                if (_workerPublishLock.Wait(0))
+                {
+                    try
+                    {
+                        DeleteStaleStagedFiles(utcNow);
+                    }
+                    finally
+                    {
+                        _workerPublishLock.Release();
+                    }
+                }
             }
             catch (Exception ex) when (!ex.IsFatal())
             {
                 _logger.LogError(ex, "Error cleaning expired Worker metrics files in '{MetricsFilePath}'.", MetricsFilePath);
+            }
+        }
+
+        // Staged files are normally moved or deleted immediately; this removes leftovers from an interrupted publish.
+        private void DeleteStaleStagedFiles(DateTime utcNow)
+        {
+            string stagingPath = Path.Combine(MetricsFilePath, StagingDirectoryName);
+            if (!_fileSystem.Directory.Exists(stagingPath))
+            {
+                return;
+            }
+
+            foreach (var file in _fileSystem.DirectoryInfo.FromDirectoryName(stagingPath).GetFiles("*.tmp"))
+            {
+                try
+                {
+                    if (utcNow - file.LastWriteTimeUtc > StagedFileRetentionPeriod)
+                    {
+                        file.Delete();
+                    }
+                }
+                catch (Exception ex) when (!ex.IsFatal())
+                {
+                    _logger.LogError(ex, "Error deleting stale staged Worker metrics file '{FilePath}'.", file.FullName);
+                }
             }
         }
 
@@ -180,6 +234,124 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             {
                 // TODO: consider using a retry strategy here
                 _logger.LogError(ex, $"Error writing metrics file '{fileName}'.");
+            }
+        }
+
+        /// <summary>
+        /// Stages a per-Worker metrics file and publishes it only when its observed creation time is later than the
+        /// staged creation time of the last Worker file successfully moved by this manager. Publication is deferred
+        /// if the timestamp does not advance within the bounded retries. This does not guarantee the timestamp seen
+        /// by Legion after the move or across Runtime processes.
+        /// </summary>
+        /// <returns>True when the file is published or file publication is disabled; otherwise, false.</returns>
+        internal async Task<bool> PublishWorkerMetricsAsync(object metrics, string instanceId)
+        {
+            ArgumentNullException.ThrowIfNull(instanceId);
+
+            string fileName = string.Empty;
+            string stagedFilePath = null;
+            bool lockTaken = false;
+            bool moveStarted = false;
+
+            try
+            {
+                await _workerPublishLock.WaitAsync();
+                lockTaken = true;
+
+                if (_workerFilePublicationBlocked)
+                {
+                    return false;
+                }
+
+                string metricsContent = JsonConvert.SerializeObject(metrics, _serializerSettings);
+                if (string.IsNullOrEmpty(MetricsFilePath))
+                {
+                    _logger.PublishingMetrics(metricsContent);
+                    return true;
+                }
+
+                string filePrefix = $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(instanceId)))}-";
+                string stagingPath = Path.Combine(MetricsFilePath, StagingDirectoryName);
+                _fileSystem.Directory.CreateDirectory(stagingPath);
+
+                DateTime creationTimeUtc = DateTime.MinValue;
+                int maxAttempts = Math.Max(1, MaxWorkerFileAttempts);
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    stagedFilePath = Path.Combine(stagingPath, $"{Guid.NewGuid().ToString().ToLowerInvariant()}.tmp");
+                    using (var streamWriter = _fileSystem.File.CreateText(stagedFilePath))
+                    {
+                        await streamWriter.WriteAsync(metricsContent);
+                    }
+
+                    creationTimeUtc = GetCreationTimeUtc(stagedFilePath);
+                    if (creationTimeUtc > _lastWorkerFileCreationTimeUtc)
+                    {
+                        if (!PrepareDirectoryForFile(filePrefix))
+                        {
+                            _logger.LogWarning("Deferring Worker metrics publication because the file limit could not be enforced for '{FilePrefix}'.", filePrefix);
+                            return false;
+                        }
+
+                        _logger.PublishingMetrics(metricsContent);
+                        fileName = $"{filePrefix}{Guid.NewGuid().ToString().ToLowerInvariant()}.json";
+                        moveStarted = true;
+                        _fileSystem.File.Move(stagedFilePath, Path.Combine(MetricsFilePath, fileName));
+                        stagedFilePath = null;
+                        _lastWorkerFileCreationTimeUtc = creationTimeUtc;
+                        return true;
+                    }
+
+                    if (attempt < maxAttempts)
+                    {
+                        _fileSystem.File.Delete(stagedFilePath);
+                        stagedFilePath = null;
+                        await DelayAsync(WorkerFileRetryDelay);
+                    }
+                }
+
+                _logger.LogWarning("Deferring Worker metrics publication because creation time {CreationTimeUtc:O} is not later than the previous Worker metrics file ({PreviousCreationTimeUtc:O}) after {AttemptCount} attempt(s).",
+                    creationTimeUtc, _lastWorkerFileCreationTimeUtc, maxAttempts);
+                return false;
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                if (moveStarted)
+                {
+                    _workerFilePublicationBlocked = true;
+                    _logger.LogError(ex, "Unable to determine whether Worker metrics file '{FileName}' was published. Pausing Worker metrics publication to avoid a duplicate; pending metrics are retained only in memory and will be lost on process exit. Investigate before restarting.", fileName);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error writing Worker metrics file '{FileName}'; publication will be retried.", fileName);
+                }
+
+                return false;
+            }
+            finally
+            {
+                TryDeleteStagedFile(stagedFilePath);
+                if (lockTaken)
+                {
+                    _workerPublishLock.Release();
+                }
+            }
+        }
+
+        private void TryDeleteStagedFile(string stagedFilePath)
+        {
+            if (stagedFilePath is null)
+            {
+                return;
+            }
+
+            try
+            {
+                _fileSystem.File.Delete(stagedFilePath);
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                _logger.LogError(ex, "Error deleting staged Worker metrics file '{FilePath}'.", stagedFilePath);
             }
         }
     }
