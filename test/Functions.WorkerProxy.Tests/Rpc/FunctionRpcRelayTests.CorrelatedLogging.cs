@@ -222,6 +222,66 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
+    public async Task Relay_LogsWorkerTerminateReceiptAndForwarding()
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        StreamingMessage startStream = CreateStartStream();
+        startStream.StartStream.WorkerId = "terminate-worker";
+        await worker.WriteAsync(startStream, timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+
+        StreamingMessage terminate = new()
+        {
+            WorkerTerminate = new() { GracePeriod = Google.Protobuf.WellKnownTypes.Duration.FromTimeSpan(TimeSpan.FromSeconds(5)) }
+        };
+        await runtime.WriteAsync(terminate, timeout.Token);
+        Assert.Equal(terminate, await worker.ReadAsync(timeout.Token));
+        await WaitForLogAsync(() => generator.ProxyRecords.Count(record =>
+            string.Equals(record.EventName, "ProtocolMessageObserved", StringComparison.Ordinal)
+            && record.Message.StartsWith("FunctionRpc WorkerTerminate reached ", StringComparison.Ordinal)) == 2, timeout.Token);
+
+        foreach (string stage in new[] { "RequestReceived", "RequestForwarded" })
+        {
+            CapturedProxyLog record = Assert.Single(generator.ProxyRecords, record =>
+                string.Equals(record.Message, $"FunctionRpc WorkerTerminate reached {stage} with RPC status (null).", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Information, record.Level);
+            Assert.Equal("terminate-worker", record.Context!.WorkerId);
+        }
+    }
+
+    [Fact]
+    public async Task Relay_LogsWorkerDrainingReceiptWithoutForwarding()
+    {
+        CapturingEventGenerator generator = new();
+        await using WorkerProxyWebApplicationFactory factory = CreateSystemLoggingFactory(generator);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        StreamingMessage startStream = CreateStartStream();
+        startStream.StartStream.WorkerId = "draining-worker";
+        await worker.WriteAsync(startStream, timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+
+        await runtime.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
+        StreamingMessage marker = CreateMessage("after-draining");
+        await runtime.WriteAsync(marker, timeout.Token);
+        Assert.Equal(marker, await worker.ReadAsync(timeout.Token));
+        await WaitForLogAsync(() => generator.ProxyRecords.Any(record =>
+            record.Message.StartsWith("FunctionRpc WorkerDraining reached ", StringComparison.Ordinal)), timeout.Token);
+
+        CapturedProxyLog record = Assert.Single(generator.ProxyRecords, record =>
+            record.Message.StartsWith("FunctionRpc WorkerDraining reached ", StringComparison.Ordinal));
+        Assert.Equal("ProtocolMessageObserved", record.EventName);
+        Assert.Equal("FunctionRpc WorkerDraining reached RequestReceived with RPC status (null).", record.Message);
+        Assert.Equal(LogLevel.Information, record.Level);
+        Assert.Equal("draining-worker", record.Context!.WorkerId);
+    }
+
+    [Fact]
     public async Task Relay_LatePreAssignmentFailureDoesNotAcquireReplacementAppIdentity()
     {
         CapturingEventGenerator generator = new();
