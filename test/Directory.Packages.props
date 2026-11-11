@@ -24,6 +24,7 @@
   <!-- Supporting Packages -->
   <ItemGroup>
     <PackageVersion Update="Azure.Core" Version="1.53.0" />
+    <PackageVersion Update="Azure.Identity" Version="1.21.0" />
     <PackageVersion Update="Azure.Storage.Blobs" Version="12.26.0" />
     <PackageVersion Update="Microsoft.Extensions.Azure" Version="1.14.0" />
     <PackageVersion Update="Microsoft.Extensions.Configuration" Version="10.0.3" />
