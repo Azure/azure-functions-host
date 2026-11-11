@@ -76,6 +76,44 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task ExtensionPayload_AuthenticatedLinkPublishesAndConfiguresOnlyAfterPreparation()
+    {
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
+        RegistryHarness harness = new(null, payloads);
+        ChannelControl worker = new("worker")
+        {
+            ExtensionPayloadCapability = "1",
+            HostConfiguration = CreateHostConfiguration("worker"),
+        };
+        harness.Enqueue(worker);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await registry.ActivateAsync([], new(), functionTimeout: null);
+        Task<WorkerChannel> initialized = registry.WaitForFirstInitializedAsync();
+        Task<IReadOnlyList<WorkerChannel>> ready = registry.GetReadyChannelsAsync().AsTask();
+
+        WorkerLinkResult link = await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
+        StreamingMessage request = await worker.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        WorkerLinkResult replay = await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
+        Task changed = registry.GetChangeTask();
+        Assert.True(link.IsNewLink);
+        Assert.False(replay.IsNewLink);
+        Assert.Same(link.Channel, replay.Channel);
+        Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.False(initialized.IsCompleted);
+        Assert.False(ready.IsCompleted);
+        Assert.False(changed.IsCompleted);
+
+        await SendPayloadAsync(worker, request, "assembly");
+        await changed.WaitAsync(TestTimeout);
+        Assert.Same(worker.Channel, await initialized.WaitAsync(TestTimeout));
+        Assert.Equal("worker", ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
+        Assert.Same(worker.Channel, Assert.Single(registry.GetInitializedChannels()));
+        Assert.Same(worker.Channel, Assert.Single(await ready.WaitAsync(TestTimeout)));
+        harness.InvocationTracker.Verify(tracker => tracker.WorkerLinked(worker.Id, "function:TestFunction", null), Times.Once);
+    }
+
+    [Fact]
     public async Task LinkAsync_PassesConnectedTransportToChannelFactory()
     {
         RegistryHarness harness = new();
@@ -2357,13 +2395,19 @@ public sealed partial class WorkerChannelRegistryTests
         {
         }
 
+        public RegistryHarness(TimeSpan? linkTimeout, WorkerExtensionPayloadManager extensionPayloads)
+            : this(linkTimeout, configuration: null, extensionPayloads: extensionPayloads)
+        {
+        }
+
         public RegistryHarness(
             TimeSpan? linkTimeout,
             IConfiguration configuration = null,
             IWorkerHostConfigurationParser workerHostConfigurationParser = null,
             bool registryOwnedAttempt = false,
             TimeProvider timeProvider = null,
-            TimeSpan? runtimeDrainGracePeriod = null)
+            TimeSpan? runtimeDrainGracePeriod = null,
+            WorkerExtensionPayloadManager extensionPayloads = null)
         {
             Logger.Setup(logger => logger.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             Logger.Setup(logger => logger.Log(
@@ -2429,10 +2473,10 @@ public sealed partial class WorkerChannelRegistryTests
                 ? new(DuplexFactory.Object, ChannelFactory.Object, Logger.Object,
                     timeProvider ?? TimeProvider.System, linkTimeout.Value,
                     workerHostConfigurationParser, registryOwnedAttempt,
-                    InvocationTracker.Object, runtimeDrainGracePeriod)
+                    InvocationTracker.Object, runtimeDrainGracePeriod, extensionPayloads)
                 : new(DuplexFactory.Object, ChannelFactory.Object, Logger.Object,
                     timeProvider ?? TimeProvider.System, workerHostConfigurationParser,
-                    invocationTracker: InvocationTracker.Object);
+                    invocationTracker: InvocationTracker.Object, extensionPayloads: extensionPayloads);
         }
 
         internal Mock<ILogger<WorkerChannelRegistry>> Logger { get; } = new();
@@ -2545,6 +2589,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal Task DisposeStarted => Transport.DisposeStarted;
 
         internal string Id { get; }
+
+        internal string ExtensionPayloadCapability { get; set; }
 
         internal Mock<IMetricsLogger> MetricsLogger { get; } = new();
 
@@ -2686,6 +2732,11 @@ public sealed partial class WorkerChannelRegistryTests
                 if (HttpUri is not null)
                 {
                     response.Capabilities.Add(RpcWorkerConstants.HttpUri, HttpUri);
+                }
+
+                if (ExtensionPayloadCapability is not null)
+                {
+                    response.Capabilities.Add(WorkerExtensionPayloadManager.CapabilityName, ExtensionPayloadCapability);
                 }
 
                 await Transport.SendResponseAsync(new() { WorkerInitResponse = RuntimeWorkerTestData.Authenticate(response, Id, timeProvider) });

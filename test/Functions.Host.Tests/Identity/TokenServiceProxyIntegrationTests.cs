@@ -693,6 +693,7 @@ public sealed class TokenServiceProxyIntegrationTests
             }, cancellationToken);
             WorkerLinkResult initialized = await _link!.WaitAsync(cancellationToken);
             Assert.Equal(WorkerPodName, initialized.Channel.Id);
+            await Registry.WaitForFirstInitializedAsync(cancellationToken);
             Assert.Single(Registry.GetInitializedChannels());
         }
 

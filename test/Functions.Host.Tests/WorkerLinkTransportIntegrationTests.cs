@@ -128,6 +128,7 @@ public sealed class WorkerLinkTransportIntegrationTests
         using HttpResponseMessage linked = await link;
         Assert.Equal(HttpStatusCode.Created, linked.StatusCode);
         Assert.Empty(await linked.Content.ReadAsStringAsync(token));
+        await registry.WaitForFirstInitializedAsync(token);
         Assert.Single(registry.GetInitializedChannels());
 
         using HttpResponseMessage checkpoint = await HttpClientJsonExtensions.PostAsJsonAsync<object?>(management, "/admin/infra/instanceState", null, token);

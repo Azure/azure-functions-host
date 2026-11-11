@@ -1,0 +1,4 @@
+.git
+out
+**/bin
+**/obj

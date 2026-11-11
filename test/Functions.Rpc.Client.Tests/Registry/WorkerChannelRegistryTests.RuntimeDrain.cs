@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -109,6 +110,52 @@ public sealed partial class WorkerChannelRegistryTests
             admissionClosed.Reason);
         await WaitUntilAsync(() => pending.DisposeCount == 1);
         Assert.Empty(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task RuntimeDrain_DoesNotPublishAWorkerWhosePayloadCompletesAfterAdmissionCloses()
+    {
+        await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
+        RegistryHarness harness = new(null, payloads);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using CancellationTokenSource cancellation = new();
+        await registry.ActivateAsync([], new(), functionTimeout: null);
+        Task<WorkerChannel> initialized = registry.WaitForFirstInitializedAsync(cancellation.Token);
+        ChannelControl worker = new("worker", functionGroupName: FunctionGroups.Http, isAlwaysReady: false, maxHttpConcurrency: 5)
+        {
+            ExtensionPayloadCapability = "1",
+            HostConfiguration = CreateHostConfiguration("worker"),
+        };
+        harness.Enqueue(worker);
+        await LinkAsync(registry, worker.Id);
+        StreamingMessage request = await worker.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+
+        IRuntimeDrainWorkerManager workers = registry;
+        RuntimeDrainStart snapshot = workers.CloseAdmission();
+        Assert.Empty(snapshot.NonHttpWorkerIds);
+        Assert.Equal([worker.Id], snapshot.HttpWorkerIds);
+        await SendPayloadAsync(worker, request, "assembly");
+        await WaitUntilAsync(() =>
+        {
+            try
+            {
+                return registry.GetConfigurationSource() is not null;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        });
+
+        Assert.False(initialized.IsCompleted);
+        Assert.False(registry.TryGetInitializedChannel(worker.Id, out _));
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.False(registry.GetReadyChannelsAsync().IsCompletedSuccessfully);
+
+        workers.SelectWorkers(snapshot.HttpWorkerIds);
+        await worker.DisposeStarted.WaitAsync(TestTimeout);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => initialized.WaitAsync(TestTimeout));
     }
 
     [Fact]

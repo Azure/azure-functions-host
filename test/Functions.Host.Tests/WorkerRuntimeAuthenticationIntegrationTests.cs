@@ -111,6 +111,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
         Assert.Equal(success ? HttpStatusCode.Created : HttpStatusCode.ServiceUnavailable, response.StatusCode);
         if (success)
         {
+            await registry.WaitForFirstInitializedAsync(timeout.Token);
             Assert.Single(registry.GetInitializedChannels());
         }
         else
@@ -467,6 +468,7 @@ public class WorkerRuntimeAuthenticationIntegrationTests(ITestOutputHelper outpu
 
         Assert.Equal(HttpStatusCode.Created, linkResponse.StatusCode);
         Assert.Empty(await linkResponse.Content.ReadAsStringAsync(timeout.Token));
+        await registry.WaitForFirstInitializedAsync(timeout.Token);
         Assert.True(registry.TryGetInitializedChannel(workerId, out WorkerChannel channel));
 
         FunctionMetadata function = new() { Name = "Http", Language = "external" };

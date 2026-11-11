@@ -7,11 +7,54 @@ The tool supplies no Host-side `host.json` and sets the Host's existing read-onl
 ## Prerequisites
 
 - The repository's .NET SDK.
-- For container deployment only, a running Linux x64 Docker engine with Docker Compose.
+- A running Linux x64 Docker engine for Azurite in every launch profile; container mode also requires Docker Compose.
 
 The first build downloads the matching Aspire toolchain into the worktree's build output. A global Aspire installation and Azure Functions Core Tools are not required.
 
 Run the commands below from the repository root.
+
+## Restore staged worker packages
+
+The sample uses Worker/Core/gRPC `2.53.0-preview.1` from the public Azure DevOps `pre-release` feed and the released Worker SDK `2.1.0`.
+Both project and container profiles run the same `SampleIsolatedApp`, including its HTTP and queue functions.
+No worker checkout or locally packed packages are required. The Docker build restores directly from the published feeds.
+
+The Host repository's NuGet source mapping does not include the staging feed. Before the first project build, restore the sample
+with a temporary configuration scoped to this command; this does not change repository or user NuGet configuration:
+
+```powershell
+$config = [IO.Path]::GetTempFileName()
+try {
+    @'
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="pre-release" value="https://pkgs.dev.azure.com/azfunc/public/_packaging/pre-release/nuget/v3/index.json" />
+    <add key="upstream-public" value="https://pkgs.dev.azure.com/azfunc/public/_packaging/upstream-public/nuget/v3/index.json" />
+  </packageSources>
+  <packageSourceMapping>
+    <clear />
+    <packageSource key="pre-release">
+      <package pattern="Microsoft.Azure.Functions.Worker" />
+      <package pattern="Microsoft.Azure.Functions.Worker.Core" />
+      <package pattern="Microsoft.Azure.Functions.Worker.Grpc" />
+    </packageSource>
+    <packageSource key="upstream-public">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
+</configuration>
+'@ | Set-Content $config
+    dotnet restore tools\ComputeSeparation\SampleIsolatedApp\SampleIsolatedApp.csproj --configfile $config
+    if ($LASTEXITCODE -ne 0) { throw 'Sample restore failed.' }
+}
+finally {
+    Remove-Item $config
+}
+```
+
+This populates the normal NuGet cache so subsequent project builds can use the repository's unchanged configuration.
+The sample keeps explicit worker and SDK version properties so project and Docker builds consume the same versions.
 
 ## Run with F5
 
@@ -19,11 +62,11 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 
 | Profile | Runs locally |
 | --- | --- |
-| `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
+| `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging, plus an Azurite container. |
 | `project-identity` | The real Host, WorkerProxy, and worker plus a separate mock HTTP Token Service. Authenticated assignment precedes Link; the worker acquires a token before opening its worker connection. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `project-placeholder-manual-multiple-workers` | One placeholder Host, two WorkerProxies, two sample workers, and one fake platform. Assign and link each worker by name to test adding capacity after Host startup. |
-| `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
+| `container` | A ReadyToRun Host, Native AOT WorkerProxy, ReadyToRun sample worker, and Azurite in Linux containers. |
 
 `project`, `project-identity`, and `container` link the worker automatically. AppHost authenticates and records assignment before linking; neither assignment nor identity bootstrap requires the customer worker to connect first. The identity profile can therefore acquire its startup token over the pending Link without a circular startup wait. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
@@ -38,6 +81,19 @@ dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.c
 ```
 
 Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
+
+### Storage networking
+
+Every profile starts one Azurite emulator. Project profiles use Aspire's storage resource and pass its loopback endpoints
+to the Host and workers. Container mode starts Azurite inside the runtime Compose group, on the same private `compute`
+network as the Host and WorkerProxy. The worker shares the Proxy's network namespace. These containers use
+`azurite:10000` for blobs and `azurite:10001` for queues, without `host.docker.internal` or host-gateway mappings.
+
+The runtime resource exposes `blob` and `queue` endpoints in the Aspire dashboard. Their dynamically allocated host
+ports are published on loopback only; local tools and the acceptance verifier use these endpoints with the
+`/devstoreaccount1` path and [Azurite's public development account](https://learn.microsoft.com/azure/storage/common/storage-use-azurite#well-known-storage-account-and-key).
+Both address forms reach the same emulator. Functions Host starts after the emulator is healthy. Emulator data is
+temporary, and the worker pod is removed before the runtime group and its network.
 
 Container cleanup reuses the run's actual container keys, pod/worker/request identities, network/alias and PEM paths when
 invoking `docker compose stop` or `down`; Compose requires all interpolated settings even for cleanup. Cleanup-only port
@@ -116,6 +172,73 @@ Per-request HTTP and per-invocation RPC platform logs are not emitted. Existing 
 Fields are bounded and encoded without splitting valid UTF-16 surrogate pairs; unsafe identities are fingerprinted rather than truncated.
 Proxy diagnostic text is not sanitized. Payloads, assignment configuration and worker-authored logs
 are excluded.
+
+The same sample always includes `QueueEcho`. AppHost supplies the Azurite connection to the Host and every worker and selects
+`sample-input` / `sample-output` queues for normal runs. Connect Azure Storage Explorer using the Aspire `queues` resource's connection
+details in project mode, or the runtime's published storage endpoints in container mode as described above. Create
+`sample-input` if needed and enqueue a Base64-encoded message; `sample-output` receives the returned text.
+Queue invocations require a worker assigned and linked to `function:QueueEcho`; the automatically linked `http` worker does not serve this group.
+
+## Streamed-extension QueueTrigger acceptance
+
+This local-only scenario uses the same `SampleIsolatedApp` and Compose-managed Azurite as normal container launches.
+The Host and Proxy containers have no customer deployment mount. The worker advertises its extension ZIP;
+the Host requests it over EventStream, extracts it, and loads the queue extension before starting listeners.
+`WaitForFirstInitializedAsync` covers the worker handshake and extension-source preparation: advertised assemblies must be
+received and extracted to disk before metadata acquisition or ScriptHost construction proceeds. The link HTTP response still
+returns after the handshake, without waiting for the transfer. Initialization does not mean extension startups or listeners
+have finished; those run during ScriptHost startup.
+An actual input-queue message travels through Host -> WorkerProxy -> worker, and the Host writes the returned token
+through the queue output binding. The verifier also calls `/api/hello` on that same deployment. An HTTP smoke test alone is not a substitute.
+
+The worker produces a ZIP without an archive comment or ZIP64 end records. The Host uses the standard ZIP reader,
+checks extraction stays within its staging directory, and retains basic limits: 256 MiB compressed, 1 GiB expanded,
+1 MiB for `extensions.json`, 10,000 filesystem entries including implicit parents, and 32 path segments.
+It does not add custom ZIP-directory/CRC validation or parse manifest types/hints during extraction; the existing
+extension loader interprets the manifest. Additional archive hardening is deferred.
+The .NET worker removes its SDK-owned metadata bootstrap startup and DLL/PDB only from the transferred ZIP;
+the deployed manifest and files stay unchanged. The Host loads the resulting manifest without SDK-specific filtering.
+The capability advertises worker support only. The Host explicitly requests the first accepted extension source,
+serializing concurrent candidates and trying another after failure. Later links reuse that source without transferring
+or comparing another archive. An advertising candidate has five minutes to receive and extract its source, starting
+after it acquires the preparation gate; queued candidates do not spend their deadline while waiting. Expiration cancels
+and drains receipt, removes partial files, and rejects the supplying link so another candidate can proceed. It does not
+silently select Host-local extensions. Closing the link or shutting down also cancels any in-flight transfer; there is no
+separate payload-cancellation message.
+Payload request/response coordination lives in `RpcClientWorkerChannel.cs`, with ordered writes and draining handled by
+`ExtensionPayloadReceiver`. The root-owned payload manager retains the extracted source after the supplying worker disconnects.
+The source is stored in a private, uniquely created temporary directory. Shutdown attempts to delete it; if loaded
+assemblies or filesystem permissions prevent deletion, the Host logs a warning with the directory path instead of failing
+shutdown. The remaining files require temporary-directory cleanup after the Host process exits; the Host does not sweep
+other instances' directories.
+Extension consumers resolve metadata/probing paths through `IExtensionPathProvider`. Client composition replaces the
+default application-layout provider; the startup locator itself has no payload-specific path selection.
+The transferred manifest is expected to contain correct assembly hints; the locator's existing assembly lookup is unchanged.
+Durable trigger sync keeps its existing bundle and legacy-version logic, using the provider only when an alternate extension source is selected.
+
+The current container profile automatically provisions and links only an `http` worker. Completing this acceptance scenario
+also requires a separate worker/WorkerProxy pod assigned and linked to `function:QueueEcho`, using the same sample image,
+storage connection, and generated queue names. The harness does not yet provision that second pod automatically; the command
+below starts the verifier but cannot pass with only its default HTTP worker.
+
+After restoring the staged packages above, start the verifier:
+
+```powershell
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj `
+    --launch-profile container -- --ComputeSeparation:VerifyQueueTrigger=true
+```
+
+Verification only selects unique queues and runs the checks; it does not switch sample projects, worker build contexts or deployment layout.
+The sample treats package-version fallback as an error and uses the unchanged SDK's default bootstrap output.
+
+The verifier creates unique input/output queues, enqueues a correlation token, checks the returned output and successful Host invocation,
+and captures the Host's existing load-context/extension-startup diagnostics. Proxy logs are saved for diagnostics without per-invocation
+forwarding logs. The existing WorkerProxy relay is unchanged, including its unbounded queues. The verifier also checks that the
+deployment is worker-only, its original bootstrap remains present, and the transferred manifest/DLL/PDB exclude that bootstrap.
+A successful run writes `result.json`, both original/filtered manifests, container logs and mount evidence beneath
+`out\extension-payload\evidence\<input-queue>`, prints
+`QueueTrigger acceptance succeeded`, and stops its resources. Missing tools, transfer/validation/startup failures, or an
+early stop do not satisfy acceptance. Only this run's resources are cleaned up; nothing is deployed remotely.
 
 ## Fake platform
 

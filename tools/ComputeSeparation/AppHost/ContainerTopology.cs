@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Azure.Functions.ComputeSeparation.AppHost;
 
 /// <summary>
-/// Owns the runtime and its default worker pod, removing the pod before the runtime's network.
+/// Owns the runtime, emulator, and default worker pod, removing the pod before the runtime's network.
 /// </summary>
 internal sealed class ContainerTopology : IAsyncDisposable
 {
@@ -41,7 +41,9 @@ internal sealed class ContainerTopology : IAsyncDisposable
             ["COMPUTE_APP_AUTH_KEY"] = appAuthKey,
             ["COMPUTE_RUNTIME_CONTAINER_KEY"] = runtimeContainerKey,
             ["COMPUTE_RUNTIME_POD_NAME"] = runtimePodName,
-            ["COMPUTE_HOST_PORT"] = "0"
+            ["COMPUTE_HOST_PORT"] = "0",
+            ["AZURITE_BLOB_PORT"] = "0",
+            ["AZURITE_QUEUE_PORT"] = "0"
         }, runCommand: runCommand);
         WorkerPod = new(repositoryRoot, "worker-pod.compose.yaml", $"{prefix}-worker-1", new Dictionary<string, string>
         {
