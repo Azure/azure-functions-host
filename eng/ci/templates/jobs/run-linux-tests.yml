@@ -31,7 +31,13 @@ jobs:
       # Build the product test graphs without bootstrapping the manual Aspire tool.
       projects: test/Functions.*.Tests/*.csproj
 
-  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
+  - script: |
+      set -euo pipefail
+      sudo sed -i \
+        -e 's|://archive\.ubuntu\.com/ubuntu|://azure.archive.ubuntu.com/ubuntu|g' \
+        -e 's|://security\.ubuntu\.com/ubuntu|://azure.archive.ubuntu.com/ubuntu|g' \
+        /etc/apt/sources.list.d/ubuntu.sources
+      sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
     displayName: Install Native AOT prerequisites
 
   - task: DotNetCoreCLI@2
