@@ -5,13 +5,16 @@ using System;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 
 namespace Azure.Functions.WorkerProxy.Logging;
 
-internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGenerator)
+internal sealed class WorkerProxyLogExporter(
+    IWorkerSystemEventGenerator eventGenerator,
+    WorkerPodStateManager? stateManager = null)
     : BaseExporter<LogRecord>
 {
     internal static readonly string ApplicationCategory =
@@ -28,6 +31,8 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
 
     private readonly IWorkerSystemEventGenerator _eventGenerator =
         eventGenerator ?? throw new ArgumentNullException(nameof(eventGenerator));
+
+    private readonly WorkerPodStateManager? _stateManager = stateManager;
 
     public override ExportResult Export(in Batch<LogRecord> batch)
     {
@@ -66,6 +71,12 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                 },
                 scopeState);
 
+            WorkerSystemLogContext? context = scopeState.Context;
+            if (context is null && _stateManager?.AcceptedFunctionAppName is { } functionAppName)
+            {
+                context = new WorkerSystemLogContext { FunctionAppName = functionAppName };
+            }
+
             _eventGenerator.LogEvent(
                 record.LogLevel,
                 record.EventId.Name ?? string.Empty,
@@ -74,7 +85,7 @@ internal sealed class WorkerProxyLogExporter(IWorkerSystemEventGenerator eventGe
                 message,
                 exceptionType,
                 exceptionMessage,
-                scopeState.Context,
+                context,
                 record.Timestamp);
         }
 

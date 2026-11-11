@@ -161,7 +161,9 @@ internal static partial class WorkerProxyApplication
         options.IncludeFormattedMessage = true;
         options.IncludeScopes = true;
         options.AddProcessor(services => new SimpleLogRecordExportProcessor(
-            new WorkerProxyLogExporter(services.GetRequiredService<IWorkerSystemEventGenerator>())));
+            new WorkerProxyLogExporter(
+                services.GetRequiredService<IWorkerSystemEventGenerator>(),
+                services.GetRequiredService<WorkerPodStateManager>())));
     }
 
     private static void RegisterLifecycleEvents(WebApplication app)

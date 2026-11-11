@@ -56,6 +56,7 @@ internal sealed partial class FunctionRpcRelay
         private string? _initializationRequestId;
         private int _shutdownRequested;
         private volatile string? _workerId;
+        private volatile WorkerSystemLogContext? _terminalLogContext;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -132,10 +133,11 @@ internal sealed partial class FunctionRpcRelay
 
         public WorkerSystemLogContext GetLogContext()
         {
-            return new()
+            return _terminalLogContext ?? new()
             {
                 WorkerId = _workerId,
-                ProxySessionId = id
+                ProxySessionId = id,
+                FunctionAppName = stateManager.AcceptedFunctionAppName
             };
         }
 
@@ -805,6 +807,7 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
+                _terminalLogContext = GetLogContext();
                 bool peerTerminated = terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
                     or FunctionRpcRelayTerminationReason.Canceled
                     or FunctionRpcRelayTerminationReason.Faulted;

@@ -55,7 +55,8 @@ internal sealed partial class WorkerAssignmentLoggingMiddleware(
         using IDisposable? scope = logger.BeginScope(new WorkerSystemLogContext
         {
             WorkerId = state.WorkerId,
-            ProxySessionId = state.SessionId
+            ProxySessionId = state.SessionId,
+            FunctionAppName = stateManager.AcceptedFunctionAppName
         });
         if (requestCanceled)
         {

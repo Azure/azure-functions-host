@@ -9,12 +9,14 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Logging;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Http;
@@ -394,37 +396,106 @@ public partial class WorkerSystemLoggingTests
     }
 
     [Fact]
-    public async Task LogExporter_LogsSuccessfulAssignmentDetailsWithWorkerIdentity()
+    public async Task LogExporter_LogsSuccessfulAssignmentWithAssignedAppIdentity()
     {
-        CapturingEventGenerator eventGenerator = new();
-        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+        StringWriter output = new();
+        CapturingEventGenerator eventGenerator = new(new WorkerPodEventGenerator(output, TimeProvider.System));
+        await using (WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
         {
             services.RemoveAll<IWorkerSystemEventGenerator>();
             services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
+        }))
+        {
+            using HttpClient client = factory.CreateWorkerProxyClient();
+            WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+            Assert.True(manager.OnWorkerAttached(7));
+            Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
+            using StringContent content = new(
+                """
+                {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
+                 "environment":{},"functionAppDirectory":""}
+                """,
+                Encoding.UTF8, "application/json");
+
+            using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", content);
+
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            Assert.True(manager.RequestRemoval());
+            await StopApplicationAsync(factory, eventGenerator);
+        }
+
+        string[][] records = ParseCsvOutput(output.ToString());
+        string[] startupRecord = Assert.Single(records, record =>
+            string.Equals(record[4], "WorkerProxyStarted", StringComparison.Ordinal));
+        string[] assignmentRecord = Assert.Single(records, record =>
+            string.Equals(record[4], "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
+        Assert.Equal(string.Empty, startupRecord[2]);
+        Assert.Equal("test-app", assignmentRecord[2]);
+        Assert.DoesNotContain("test-app", assignmentRecord[7], StringComparison.Ordinal);
+        Assert.DoesNotContain("test-group", assignmentRecord[7], StringComparison.Ordinal);
+        Assert.All(records.Where(record =>
+            record[4] is "WorkerProxyShutdownStarted" or "WorkerProxyStopped"),
+            record => Assert.Equal("test-app", record[2]));
+    }
+
+    [Fact]
+    public async Task LogExporter_RejectedAssignmentsPreserveAcceptedAppIdentityAfterRemoval()
+    {
+        StringWriter output = new();
+        CapturingEventGenerator eventGenerator = new(new WorkerPodEventGenerator(output, TimeProvider.System));
+        await using (WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+        {
+            services.RemoveAll<IWorkerSystemEventGenerator>();
+            services.AddSingleton<IWorkerSystemEventGenerator>(eventGenerator);
+        }))
+        {
+            using HttpClient client = factory.CreateWorkerProxyClient();
+            WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+            Assert.Null(manager.AcceptedFunctionAppName);
+            using (HttpResponseMessage accepted = await AssignAsync("accepted-app"))
+            {
+                Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+            }
+
+            using (HttpResponseMessage conflict = await AssignAsync("rejected-app"))
+            {
+                Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+            }
+
+            Assert.True(manager.RequestRemoval());
+            Assert.Null(manager.State.FunctionAppName);
+            foreach (string appName in new[] { "accepted-app", "rejected-app" })
+            {
+                using HttpResponseMessage rejected = await AssignAsync(appName);
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, rejected.StatusCode);
+            }
+
+            Assert.Equal("accepted-app", manager.AcceptedFunctionAppName);
+            await StopApplicationAsync(factory, eventGenerator);
+
+            Task<HttpResponseMessage> AssignAsync(string appName) => client.PutAsJsonAsync(
+                "/admin/worker/assignment",
+                new WorkerAssignRequest
+                {
+                    StartupMode = nameof(WorkerStartupMode.Preconfigured),
+                    FunctionAppName = appName,
+                    FunctionGroupName = "test-group",
+                    IsAlwaysReady = false,
+                    Environment = [],
+                    FunctionAppDirectory = string.Empty
+                },
+                WorkerProxyJsonContext.Default.WorkerAssignRequest);
+        }
+
+        string[][] assignments = ParseCsvOutput(output.ToString()).Where(record =>
+            record[4] is "WorkerAssignmentRequestCompleted" or "WorkerAssignmentRequestRejected" or "WorkerAssignmentRequestFailed").ToArray();
+        Assert.Equal(4, assignments.Length);
+        Assert.All(assignments, record =>
+        {
+            Assert.Equal(21, record.Length);
+            Assert.Equal("accepted-app", record[2]);
         });
-        using HttpClient client = factory.CreateWorkerProxyClient();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        Assert.True(manager.OnWorkerAttached(7));
-        Assert.True(manager.OnWorkerStartStream(7, "worker-id"));
-        using StringContent content = new(
-            """
-            {"startupMode":"Preconfigured","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-             "environment":{},"functionAppDirectory":""}
-            """,
-            Encoding.UTF8, "application/json");
-
-        using HttpResponseMessage response = await client.PutAsync("/admin/worker/assignment", content);
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        CapturedProxyLog record = Assert.Single(eventGenerator.ProxyRecords, record =>
-            string.Equals(record.EventName, "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
-        Assert.Equal(LogLevel.Information, record.Level);
-        Assert.Equal(new WorkerSystemLogContext { WorkerId = "worker-id", ProxySessionId = 7 }, record.Context);
-        Assert.Matches(
-            @"^Worker assignment request completed with HTTP status 201 in \d+(?:\.\d+)? ms\. Assignment state: Ready\. Worker attached and identified: True\.$",
-            record.Message);
-        Assert.DoesNotContain("test-app", record.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("test-group", record.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("rejected-app", output.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
