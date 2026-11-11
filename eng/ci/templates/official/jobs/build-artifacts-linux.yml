@@ -47,7 +47,13 @@ jobs:
       publishArguments: '$(build_args) --self-contained false --no-build -p:PublishWorkers=false'
       createWorkersDirectory: true
 
-  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
+  - script: |
+      set -euo pipefail
+      sudo sed -i \
+        -e 's|://archive\.ubuntu\.com/ubuntu|://azure.archive.ubuntu.com/ubuntu|g' \
+        -e 's|://security\.ubuntu\.com/ubuntu|://azure.archive.ubuntu.com/ubuntu|g' \
+        /etc/apt/sources.list.d/ubuntu.sources
+      sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
     displayName: Install Native AOT prerequisites
 
   - template: /eng/ci/templates/steps/publish-linux-artifact.yml@self
