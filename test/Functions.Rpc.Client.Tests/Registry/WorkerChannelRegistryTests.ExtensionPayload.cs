@@ -95,6 +95,67 @@ public sealed partial class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task ExtensionPayload_LockedAttemptDoesNotRejectSelectedSource()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Mock<ILogger<WorkerExtensionPayloadManager>> logger = new();
+        logger.Setup(value => value.IsEnabled(LogLevel.Information)).Returns(true);
+        logger.Setup(value => value.IsEnabled(LogLevel.Warning)).Returns(true);
+        await using WorkerExtensionPayloadManager payloads = new(logger.Object);
+        RegistryHarness harness = new(null, payloads);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        ChannelControl worker = new("worker") { ExtensionPayloadCapability = "1" };
+        harness.Enqueue(worker);
+        string root = null;
+        string attempt = null;
+        FileStream locked = null;
+        // The success log runs after source selection but before attempt cleanup.
+        logger.Setup(value => value.Log(
+            LogLevel.Information,
+            It.Is<EventId>(eventId => eventId.Id == 0),
+            It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(new InvocationAction(_ =>
+            {
+                root = Path.GetDirectoryName(payloads.DirectoryPath);
+                attempt = Assert.Single(Directory.GetDirectories(root),
+                    path => !string.Equals(path, payloads.DirectoryPath, StringComparison.OrdinalIgnoreCase));
+                locked = new(Path.Combine(attempt, "payload.zip"), FileMode.Open, FileAccess.Read, FileShare.Read);
+            }));
+
+        try
+        {
+            await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
+            await SupplyPayloadAsync(worker, "assembly");
+
+            Assert.Same(worker.Channel, await registry.WaitForFirstInitializedAsync().WaitAsync(TestTimeout));
+            Assert.True(registry.TryGetInitializedChannel(worker.Id, out _));
+            Assert.Equal("assembly", await File.ReadAllTextAsync(Path.Combine(payloads.DirectoryPath, ".azurefunctions", "binding.dll")));
+            Assert.NotNull(locked);
+            Assert.True(Directory.Exists(attempt));
+            logger.Verify(value => value.Log(
+                LogLevel.Warning,
+                It.Is<EventId>(eventId => eventId.Id == 2),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+        finally
+        {
+            locked?.Dispose();
+        }
+
+        await registry.DisposeAsync();
+        await payloads.DisposeAsync();
+        Assert.False(Directory.Exists(root));
+    }
+
+    [Fact]
     public async Task ExtensionPayload_LinkReturnsBeforeTransferAndAnotherValidWorkerCanUnblockStartup()
     {
         await using WorkerExtensionPayloadManager payloads = new(NullLogger<WorkerExtensionPayloadManager>.Instance);
@@ -429,7 +490,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(worker);
         await registry.LinkAsync(worker.Id, CreateEndpoint(worker.Id)).WaitAsync(TestTimeout);
         StreamingMessage request = await worker.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
-        Assert.Equal(StreamingMessage.ContentOneofCase.GetExtensionPayloadRequest, request.ContentCase);
+        Assert.Equal(StreamingMessage.ContentOneofCase.ExtensionPayloadRequest, request.ContentCase);
 
         Assert.True(await registry.UnlinkAsync(worker.Id).WaitAsync(TestTimeout));
         await registry.DisposeAsync().AsTask().WaitAsync(TestTimeout);
@@ -451,7 +512,7 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(second);
         await registry.LinkAsync(first.Id, CreateEndpoint(first.Id)).WaitAsync(TestTimeout);
         StreamingMessage request = await first.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
-        Assert.Equal(StreamingMessage.ContentOneofCase.GetExtensionPayloadRequest, request.ContentCase);
+        Assert.Equal(StreamingMessage.ContentOneofCase.ExtensionPayloadRequest, request.ContentCase);
         await registry.LinkAsync(second.Id, CreateEndpoint(second.Id)).WaitAsync(TestTimeout);
 
         await registry.DisposeAsync().AsTask().WaitAsync(TestTimeout);
@@ -478,7 +539,7 @@ public sealed partial class WorkerChannelRegistryTests
         RpcClientWorkerChannel channel = Assert.IsType<RpcClientWorkerChannel>(worker.Channel);
         Task transfer = channel.ReceiveExtensionPayloadAsync(destination, cancellation.Token);
         StreamingMessage request = await worker.Transport.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
-        Assert.Equal(StreamingMessage.ContentOneofCase.GetExtensionPayloadRequest, request.ContentCase);
+        Assert.Equal(StreamingMessage.ContentOneofCase.ExtensionPayloadRequest, request.ContentCase);
 
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => transfer.WaitAsync(TestTimeout));
@@ -644,7 +705,7 @@ public sealed partial class WorkerChannelRegistryTests
 
     private static async Task SendPayloadAsync(ChannelControl control, StreamingMessage request, string assembly)
     {
-        Assert.Equal(StreamingMessage.ContentOneofCase.GetExtensionPayloadRequest, request.ContentCase);
+        Assert.Equal(StreamingMessage.ContentOneofCase.ExtensionPayloadRequest, request.ContentCase);
         byte[] payload = CreatePayload(assembly);
         await control.Transport.SendResponseAsync(new()
         {

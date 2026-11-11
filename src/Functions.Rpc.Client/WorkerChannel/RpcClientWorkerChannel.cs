@@ -699,7 +699,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
             await SendStreamingMessageAsync(new()
             {
                 RequestId = receiver.RequestId,
-                GetExtensionPayloadRequest = new(),
+                ExtensionPayloadRequest = new(),
             });
             Task completed = await Task.WhenAny(receiver.Completion, Completion).WaitAsync(operation.Token);
             if (!ReferenceEquals(completed, receiver.Completion))

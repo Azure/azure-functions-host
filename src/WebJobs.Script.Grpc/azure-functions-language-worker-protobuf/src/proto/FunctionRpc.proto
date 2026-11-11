@@ -101,7 +101,7 @@ message StreamingMessage {
     WorkerDraining worker_draining = 36;
 
     // Host explicitly requests a ZIP from a worker advertising ExtensionPayload="1".
-    GetExtensionPayloadRequest get_extension_payload_request = 37;
+    ExtensionPayloadRequest extension_payload_request = 37;
     // Worker sends ordered ZIP chunks followed by one terminal result while connected.
     ExtensionPayloadResponse extension_payload_response = 38;
   }
@@ -112,7 +112,7 @@ message StreamingMessage {
 // The capability advertises support, not an instruction to send. The host acquires
 // its first accepted source and reuses it for later worker links without requesting
 // or comparing another payload. Workers send no ZIP without an explicit request.
-message GetExtensionPayloadRequest {
+message ExtensionPayloadRequest {
 }
 
 // The ZIP contains worker-filtered root extensions.json and .azurefunctions assets.

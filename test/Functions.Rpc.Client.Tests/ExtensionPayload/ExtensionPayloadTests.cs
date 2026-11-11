@@ -22,7 +22,7 @@ public sealed class ExtensionPayloadTests
     [Fact]
     public void StreamingMessage_UsesNonConflictingExtensionPayloadFieldNumbers()
     {
-        Assert.Equal(37, StreamingMessage.GetExtensionPayloadRequestFieldNumber);
+        Assert.Equal(37, StreamingMessage.ExtensionPayloadRequestFieldNumber);
         Assert.Equal(38, StreamingMessage.ExtensionPayloadResponseFieldNumber);
     }
 

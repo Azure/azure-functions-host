@@ -121,7 +121,14 @@ internal sealed partial class WorkerExtensionPayloadManager(
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            failure = AggregateException.Combine(failure, exception);
+            if (failure is null)
+            {
+                Log.PayloadAttemptCleanupFailed(_logger, exception, attempt);
+            }
+            else
+            {
+                failure = AggregateException.Combine(failure, exception);
+            }
         }
 
         if (failure is not null)
@@ -272,5 +279,8 @@ internal sealed partial class WorkerExtensionPayloadManager(
 
         [LoggerMessage(1, LogLevel.Warning, "Could not remove extension payload directory {DirectoryPath} during shutdown.")]
         public static partial void PayloadCleanupFailed(ILogger logger, Exception exception, string directoryPath);
+
+        [LoggerMessage(2, LogLevel.Warning, "Could not remove temporary extension payload directory {DirectoryPath}.")]
+        public static partial void PayloadAttemptCleanupFailed(ILogger logger, Exception exception, string directoryPath);
     }
 }
