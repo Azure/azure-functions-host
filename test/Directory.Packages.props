@@ -23,9 +23,13 @@
 
   <!-- Supporting Packages -->
   <ItemGroup>
-    <PackageVersion Update="Azure.Core" Version="1.53.0" Condition="'$(MSBuildProjectName)' == 'Functions.Rpc.Client.Tests'" />
-    <PackageVersion Update="Azure.Storage.Blobs" Version="12.26.0" Condition="'$(MSBuildProjectName)' == 'Functions.Rpc.Client.Tests'" />
-    <PackageVersion Update="Microsoft.Extensions.Azure" Version="1.14.0" Condition="'$(MSBuildProjectName)' == 'Functions.Rpc.Client.Tests'" />
+    <PackageVersion Update="Azure.Core" Version="1.53.0" />
+    <PackageVersion Update="Azure.Storage.Blobs" Version="12.26.0" />
+    <PackageVersion Update="Microsoft.Extensions.Azure" Version="1.14.0" />
+    <PackageVersion Update="Microsoft.Extensions.Configuration" Version="10.0.3" />
+    <PackageVersion Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.3" />
+    <PackageVersion Update="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
+    <PackageVersion Update="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageVersion Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.54.0" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.CosmosDB" Version="4.11.0" />
