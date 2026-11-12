@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using System.Threading;
@@ -369,6 +371,66 @@ public sealed class FlexConsumptionWorkerMetricsTests : IDisposable
         Assert.Equal(2000, metrics["worker-b"].ExecutionTimeMS);
         Assert.All(metrics.Values, record => Assert.Equal(1, record.ExecutionCount));
         Assert.DoesNotContain("runtime-pod", metrics.Keys);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(19)]
+    [InlineData(30)]
+    [InlineData(40)]
+    public async Task OnPublishMetrics_WorkerFilesUseStrictlyIncreasingCreationTimes(int workerCount)
+    {
+        string metricsPath = Path.Combine(Path.GetTempPath(), $"worker-metrics-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(metricsPath);
+        try
+        {
+            Mock<TimeProvider> time = new();
+            time.Setup(provider => provider.GetUtcNow()).Returns(() => new DateTimeOffset(_now));
+            Mock<IOptionsMonitor<StandbyOptions>> standby = new();
+            standby.SetupGet(options => options.CurrentValue).Returns(new StandbyOptions());
+            FlexConsumptionMetricsPublisherOptions options = new()
+            {
+                UseWorkerAttribution = true,
+                MetricsFilePath = metricsPath,
+                MaxFileCount = 2,
+                InitialPublishDelayMS = (int)TimeSpan.FromDays(1).TotalMilliseconds,
+                MetricsPublishIntervalMS = (int)TimeSpan.FromDays(1).TotalMilliseconds
+            };
+            using var publisher = new FlexConsumptionPerWorkerMetricsPublisher(
+                new TestEnvironment(),
+                standby.Object,
+                Options.Create(options),
+                new TestLogger<FlexConsumptionPerWorkerMetricsPublisher>(),
+                new FileSystem(),
+                _provider.Object,
+                time.Object);
+
+            for (int i = 0; i < workerCount; i++)
+            {
+                publisher.WorkerLinked($"worker-{i}", "http", true);
+            }
+
+            await publisher.OnPublishMetrics(_now, ValueStopwatch.StartNew());
+
+            var files = new DirectoryInfo(metricsPath)
+                .GetFiles("*.json")
+                .OrderBy(file => file.CreationTimeUtc)
+                .ToArray();
+
+            Assert.Equal(workerCount, files.Length);
+            Assert.All(
+                files.Zip(files.Skip(1)),
+                pair => Assert.True(pair.Second.CreationTimeUtc - pair.First.CreationTimeUtc >= TimeSpan.FromMilliseconds(10)));
+
+            var records = files
+                .Select(file => JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisherBase.Metrics>(File.ReadAllText(file.FullName)))
+                .ToArray();
+            Assert.Equal(workerCount, records.Select(record => record.InstanceId).Distinct().Count());
+        }
+        finally
+        {
+            Directory.Delete(metricsPath, recursive: true);
+        }
     }
 
     [Fact]
