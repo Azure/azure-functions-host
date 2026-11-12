@@ -222,6 +222,8 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Empty(registry.GetInitializedChannels());
         Assert.False(second.Transport.Requests.TryRead(out _));
+        Assert.DoesNotContain(harness.ConfigurationTelemetry, entry =>
+            string.Equals(entry.EventName, "HostConfigurationSourceEvaluated", StringComparison.Ordinal));
 
         if (firstOutcome != 0)
         {
@@ -249,6 +251,10 @@ public sealed partial class WorkerChannelRegistryTests
 
         await WaitUntilAsync(() => registry.TryGetInitializedChannel(second.Id, out _));
         string winner = firstOutcome == 0 ? "first" : "second";
+        var selected = Assert.Single(harness.ConfigurationTelemetry, entry =>
+            string.Equals(entry.EventName, "HostConfigurationSourceEvaluated", StringComparison.Ordinal)
+            && string.Equals((string)entry.Fields["Outcome"], "Selected", StringComparison.Ordinal));
+        Assert.Equal(winner, selected.Fields["WorkerId"]);
         Assert.Equal(winner, ReadHostConfiguration(registry)["AzureFunctionsJobHost:marker"]);
         Assert.Equal(winner, await File.ReadAllTextAsync(Path.Combine(payloads.DirectoryPath, ".azurefunctions", "binding.dll")));
         Assert.False(second.Transport.Requests.TryRead(out _));
