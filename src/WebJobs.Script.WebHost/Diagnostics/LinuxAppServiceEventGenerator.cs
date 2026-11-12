@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
         {
             var formattedEventTimestamp = eventTimestamp.ToString(EventTimestampFormat);
-            var hostVersion = ScriptHost.Version;
+            var hostVersion = ScriptHost.VersionForLogging;
             var hostName = _hostNameProvider.Value;
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average,
             long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
-            var hostVersion = ScriptHost.Version;
+            var hostVersion = ScriptHost.VersionForLogging;
             WriteEvent(_functionsMetricsCategoryLogger, $"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{data}");
         }
 

@@ -27,6 +27,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic.FileIO;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests.Diagnostics;
@@ -35,6 +36,41 @@ public partial class WorkerSystemLoggingTests
 {
     private static readonly DateTimeOffset Timestamp =
         new(2026, 10, 26, 12, 34, 56, TimeSpan.Zero);
+
+    [Theory]
+    [InlineData("1.2.3.4", "", "1.2.3.4")]
+    [InlineData("1.2.3.4", "1.2.3", "1.2.3.4")]
+    [InlineData("1.2.3.4", "1.2.3+source-revision", "1.2.3.4")]
+    [InlineData("1.2.3.4", "1.2.3-preview", "1.2.3.4-preview")]
+    [InlineData("1.2.3.4", "1.2.3-preview.byoc.1+source-revision", "1.2.3.4-preview.byoc.1")]
+    [InlineData("1.2.3.4", "1.2.3-preview-build.1+source-revision", "1.2.3.4-preview-build.1")]
+    [InlineData("42.42.42.4242", "1.2.3-dev+source-revision", "42.42.42.4242-dev")]
+    public void GetVersionForLogging_AppendsOnlyPrereleaseSuffix(string fileVersion, string informationalVersion, string expected)
+    {
+        string version = WorkerProxyApplication.GetVersionForLogging(fileVersion, informationalVersion);
+
+        Assert.Equal(expected, version);
+    }
+
+    [Fact]
+    public void Resource_UsesLoggingVersionAndAvailableRevision()
+    {
+        Dictionary<string, object> attributes = WorkerProxyApplication.CreateResourceBuilder("worker-pod")
+            .Build().Attributes.ToDictionary();
+
+        Assert.Equal("Azure.Functions.WorkerProxy", attributes["service.name"]);
+        Assert.Equal(WorkerProxyApplication.VersionForLogging, attributes["service.version"]);
+        Assert.Equal("worker-pod", attributes["service.instance.id"]);
+        string? revision = WorkerProxyApplication.InformationalVersion.Split('+', 2).ElementAtOrDefault(1);
+        if (!string.IsNullOrEmpty(revision))
+        {
+            Assert.Equal(revision, attributes["vcs.ref.head.revision"]);
+        }
+        else
+        {
+            Assert.False(attributes.ContainsKey("vcs.ref.head.revision"));
+        }
+    }
 
     [Fact]
     public void LogExporter_PreservesProxyExceptionContent()
@@ -51,6 +87,29 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(exception.ToString(), record.Details);
         Assert.Equal(value, record.ExceptionMessage);
         Assert.Equal(typeof(InvalidOperationException).FullName, record.ExceptionType);
+    }
+
+    [Theory]
+    [InlineData("resource-configured-version", "resource-configured-version")]
+    [InlineData(null, "unavailable")]
+    public async Task LogExporter_UsesServiceVersionFromResource(string? configuredVersion, string expectedVersion)
+    {
+        StringWriter output = new();
+        using WorkerPodEventGenerator eventGenerator = new(output, TimeProvider.System);
+        ResourceBuilder resourceBuilder = ResourceBuilder.CreateEmpty();
+        if (configuredVersion is not null)
+        {
+            resourceBuilder = resourceBuilder.AddService("test-worker", serviceVersion: configuredVersion);
+        }
+
+        using ILoggerFactory factory = CreateLoggerFactory(
+            eventGenerator,
+            resourceBuilder);
+        factory.CreateLogger("test").LogInformation("Resource version.");
+        await eventGenerator.CompleteAsync();
+
+        string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
+        Assert.Equal(expectedVersion, fields[8]);
     }
 
     [Fact]
@@ -123,6 +182,7 @@ public partial class WorkerSystemLoggingTests
             WorkerProxyLogExporter.ApplicationCategory,
             string.Empty,
             "WorkerProxy started.",
+            WorkerProxyApplication.VersionForLogging,
             Timestamp,
             string.Empty,
             string.Empty);
@@ -141,6 +201,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Contains(Timestamp.UtcDateTime.ToString("O"), formatted, StringComparison.Ordinal);
         string[] fields = Assert.Single(ParseCsvOutput(formatted));
         Assert.Equal(21, fields.Length);
+        Assert.Equal(WorkerProxyApplication.VersionForLogging, fields[8]);
         Assert.Equal(string.Empty, fields[12]);
     }
 
@@ -156,6 +217,7 @@ public partial class WorkerSystemLoggingTests
                 WorkerProxyLogExporter.ApplicationCategory,
                 string.Empty,
                 "first \"value\"\r\nsecond value",
+                WorkerProxyApplication.VersionForLogging,
                 Timestamp,
                 string.Empty,
                 string.Empty));
@@ -176,20 +238,21 @@ public partial class WorkerSystemLoggingTests
             using WorkerPodEventGenerator generator = CreateEventGenerator();
             WorkerPodEventGenerator.WorkerSystemLogRecord record = new(
                 3, "Event,name", "Proxy,category", "first\r\nsecond", "Summary \"quoted\", value",
+                WorkerProxyApplication.VersionForLogging,
                 new DateTimeOffset(2026, 11, 2, 8, 30, 0, TimeSpan.FromHours(-7)),
                 "Example.Exception", "failure,\nmessage");
 
             string formatted = generator.Format(record);
 
             Assert.Equal(
-                """MS_FUNCTIONS_WORKER_POD_LOGS 3,,,,"Event,name","Proxy,category","first second","Summary 'quoted', value",,2026-11-02T15:30:00.0000000Z,Example.Exception,"failure, message",,,,,,,,,""",
+                $"""MS_FUNCTIONS_WORKER_POD_LOGS 3,,,,"Event,name","Proxy,category","first second","Summary 'quoted', value",{WorkerProxyApplication.VersionForLogging},2026-11-02T15:30:00.0000000Z,Example.Exception,"failure, message",,,,,,,,,""",
                 formatted);
             Assert.Equal(
                 new[]
                 {
                     "3", string.Empty, string.Empty, string.Empty,
                     "Event,name", "Proxy,category", "first second", "Summary 'quoted', value",
-                    string.Empty, "2026-11-02T15:30:00.0000000Z", "Example.Exception", "failure, message",
+                    WorkerProxyApplication.VersionForLogging, "2026-11-02T15:30:00.0000000Z", "Example.Exception", "failure, message",
                     string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
                     string.Empty, string.Empty, string.Empty, string.Empty
                 },
@@ -213,6 +276,7 @@ public partial class WorkerSystemLoggingTests
             value,
             value,
             value,
+            WorkerProxyApplication.VersionForLogging,
             Timestamp,
             value,
             value);
@@ -241,7 +305,8 @@ public partial class WorkerSystemLoggingTests
                 ? new string('x', limit - 2) + "\uD83D\uDE80"
                 : new string('x', limit + Math.Min(offset, 0));
             WorkerPodEventGenerator.WorkerSystemLogRecord record = new(
-                3, Value(128), Value(256), Value(1_024), Value(1_024), Timestamp, Value(256), Value(1_024));
+                3, Value(128), Value(256), Value(1_024), Value(1_024),
+                WorkerProxyApplication.VersionForLogging, Timestamp, Value(256), Value(1_024));
 
             string formatted = generator.Format(record);
 
@@ -257,14 +322,20 @@ public partial class WorkerSystemLoggingTests
         }
     }
 
-    [Fact]
-    public async Task PositionalLogging_PreservesDiagnosticTextAndEncodesColumns()
+    [Theory]
+    [InlineData(LogLevel.Trace)]
+    [InlineData(LogLevel.Debug)]
+    [InlineData(LogLevel.Information)]
+    [InlineData(LogLevel.Warning)]
+    [InlineData(LogLevel.Error)]
+    [InlineData(LogLevel.Critical)]
+    public async Task PositionalLogging_PreservesDiagnosticTextAndEncodesColumns(LogLevel level)
     {
         StringWriter output = new();
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         using ILoggerFactory factory = CreateLoggerFactory(generator);
         ILogger logger = factory.CreateLogger("Proxy,category");
-        logger.LogWarning(new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" key=worker-ready");
+        logger.Log(level, new EventId(1, "Event,name"), "first\nsecond\rthird \"quoted\" key=worker-ready");
         await generator.CompleteAsync();
 
         string[] fields = Assert.Single(ParseCsvOutput(output.ToString()));
@@ -272,6 +343,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal("Event,name", fields[4]);
         Assert.Equal("Proxy,category", fields[5]);
         Assert.Equal("first second third 'quoted' key=worker-ready", fields[7]);
+        Assert.Equal(WorkerProxyApplication.VersionForLogging, fields[8]);
         Assert.Single(output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
     }
 
@@ -287,6 +359,7 @@ public partial class WorkerSystemLoggingTests
         Assert.Equal(21, fields.Length);
         Assert.Equal("WorkerProxyStartupFailed", fields[4]);
         Assert.Equal($"WorkerProxy failed to start ({typeof(InvalidOperationException).FullName}).", fields[7]);
+        Assert.Equal(WorkerProxyApplication.VersionForLogging, fields[8]);
     }
 
     [Fact]
@@ -425,11 +498,13 @@ public partial class WorkerSystemLoggingTests
         }
 
         string[][] records = ParseCsvOutput(output.ToString());
+        Assert.All(records, record => Assert.Equal(WorkerProxyApplication.VersionForLogging, record[8]));
         string[] startupRecord = Assert.Single(records, record =>
             string.Equals(record[4], "WorkerProxyStarted", StringComparison.Ordinal));
         string[] assignmentRecord = Assert.Single(records, record =>
             string.Equals(record[4], "WorkerAssignmentRequestCompleted", StringComparison.Ordinal));
         Assert.Equal(string.Empty, startupRecord[2]);
+        Assert.Contains($"WorkerProxy started: {WorkerProxyApplication.InformationalVersion}", startupRecord[7], StringComparison.Ordinal);
         Assert.Equal("test-app", assignmentRecord[2]);
         Assert.DoesNotContain("test-app", assignmentRecord[7], StringComparison.Ordinal);
         Assert.DoesNotContain("test-group", assignmentRecord[7], StringComparison.Ordinal);
@@ -608,7 +683,9 @@ public partial class WorkerSystemLoggingTests
         return new(new StringWriter(), TimeProvider.System);
     }
 
-    private static ILoggerFactory CreateLoggerFactory(IWorkerSystemEventGenerator generator)
+    private static ILoggerFactory CreateLoggerFactory(
+        IWorkerSystemEventGenerator generator,
+        ResourceBuilder? resourceBuilder = null)
     {
         return LoggerFactory.Create(builder =>
         {
@@ -617,6 +694,8 @@ public partial class WorkerSystemLoggingTests
             {
                 options.IncludeFormattedMessage = true;
                 options.IncludeScopes = true;
+                options.SetResourceBuilder(resourceBuilder
+                    ?? WorkerProxyApplication.CreateResourceBuilder("test-worker"));
                 options.AddProcessor(new SimpleLogRecordExportProcessor(new WorkerProxyLogExporter(generator)));
             });
         });
@@ -645,6 +724,7 @@ public partial class WorkerSystemLoggingTests
             string summary,
             string exceptionType,
             string exceptionMessage,
+            string version,
             WorkerSystemLogContext? context = null,
             DateTimeOffset? timestamp = null)
         {
@@ -657,7 +737,7 @@ public partial class WorkerSystemLoggingTests
                 exceptionType,
                 exceptionMessage,
                 context));
-            inner?.LogEvent(level, eventName, source, details, summary, exceptionType, exceptionMessage, context, timestamp);
+            inner?.LogEvent(level, eventName, source, details, summary, exceptionType, exceptionMessage, version, context, timestamp);
             if (string.Equals(eventName, "WorkerProxyStopped", StringComparison.Ordinal))
             {
                 _stopped.TrySetResult();

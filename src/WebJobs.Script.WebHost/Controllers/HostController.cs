@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 State = scriptHostManager.State.ToString(),
                 Version = ScriptHost.Version,
-                VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
+                VersionDetails = ScriptHost.InformationalVersion,
                 PlatformVersion = _environment.GetAntaresVersion(),
                 InstanceId = _environment.GetInstanceId(),
                 ComputerName = _environment.GetAntaresComputerName(),

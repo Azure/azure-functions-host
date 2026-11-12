@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private static int _processId = Process.GetCurrentProcess().Id;
 
-        private readonly string _hostVersion = ScriptHost.Version;
+        private readonly string _hostVersion = ScriptHost.VersionForLogging;
         private readonly string _regionName;
         private readonly string _category;
         private readonly string _hostInstanceId;

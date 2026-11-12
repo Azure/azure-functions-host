@@ -272,6 +272,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(fileVersionAttribute.Version, version);
         }
 
+        [Theory]
+        [InlineData("1.2.3.4", "", "1.2.3.4")]
+        [InlineData("1.2.3.4", "1.2.3", "1.2.3.4")]
+        [InlineData("1.2.3.4", "1.2.3+source-revision", "1.2.3.4")]
+        [InlineData("1.2.3.4", "1.2.3-preview", "1.2.3.4-preview")]
+        [InlineData("1.2.3.4", "1.2.3-preview.1+source-revision", "1.2.3.4-preview.1")]
+        [InlineData("1.2.3.4", "1.2.3-preview-build.1+source-revision", "1.2.3.4-preview-build.1")]
+        [InlineData("1.2.3.4", "1.2.3-preview.byoc.1+source-revision", "1.2.3.4-preview.byoc.1")]
+        [InlineData("42.42.42.4242", "1.2.3-dev+source-revision", "42.42.42.4242-dev")]
+        public void GetVersionForLogging_AppendsOnlyPrereleaseSuffix(string fileVersion, string informationalVersion, string expected)
+        {
+            string version = ScriptHost.GetVersionForLogging(fileVersion, informationalVersion);
+
+            Assert.Equal(expected, version);
+        }
+
         [Fact]
         public void GetAssemblyFileVersion_Unknown()
         {

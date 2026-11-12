@@ -388,6 +388,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 OriginalFunctionWorkerRuntimeVersion = originalFunctionWorkerRuntimeVersion,
                 FunctionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion,
                 FunctionsExtensionVesion = functionExtensionVersion,
+                HostInformationalVersion = ScriptHost.InformationalVersion,
                 HostDirectory = hostDirectory,
                 InStandbyMode = inStandbyMode,
                 HasBeenSpecialized = hasBeenSpecialized,

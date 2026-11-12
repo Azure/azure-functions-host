@@ -291,9 +291,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return delay;
         }
 
-        public static string GetInformationalVersion(Type type)
-            => type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? string.Empty;
-
         public static bool IsValidUserType(Type type)
         {
             return !type.IsInterface && !type.IsPrimitive && !(type.Namespace == "System");

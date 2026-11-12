@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
                 roleInstance = _roleInstance,
                 message,
                 category = _category,
-                hostVersion = ScriptHost.Version,
+                hostVersion = ScriptHost.VersionForLogging,
                 functionInvocationId,
                 functionName = _functionName,
                 hostInstanceId = _hostInstanceId,
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
                 message,
                 category = _category,
                 hostInstanceId = _hostInstanceId,
-                hostVersion = ScriptHost.Version,
+                hostVersion = ScriptHost.VersionForLogging,
                 level = level.ToString(),
                 levelId = (int)level,
                 processId = _processId
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
                 functionInvocationId,
                 functionName = _functionName,
                 hostInstanceId = _hostInstanceId,
-                hostVersion = ScriptHost.Version,
+                hostVersion = ScriptHost.VersionForLogging,
                 level = level.ToString(),
                 levelId = (int)level,
                 message = sanitizedString,
@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", false, false, true)]
         [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", true, false, false)]
         [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", true, true, true)]
-        public void Log_IsEnabled(string envVariableName, string envVariableVale, bool isConsumptionOnLegion, bool isAzureMonitorEnabled,  bool isDisabled)
+        public void Log_IsEnabled(string envVariableName, string envVariableVale, bool isConsumptionOnLegion, bool isAzureMonitorEnabled, bool isDisabled)
         {
             string functionInvocationId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
