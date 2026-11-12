@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Authentication;
@@ -34,6 +35,8 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal static partial class WorkerProxyApplication
 {
+    private static readonly string ProxyInstanceId = Guid.NewGuid().ToString("N");
+
     /// <summary>
     /// Runs the proxy, recording startup failures before releasing its logging resources.
     /// </summary>
@@ -140,8 +143,8 @@ internal static partial class WorkerProxyApplication
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
-        _ = app.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>();
         RegisterLifecycleEvents(app);
+        _ = app.Services.GetRequiredService<IRuntimeAuthenticationKeyProvider>();
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out FunctionRpcRelaySide side)
@@ -170,9 +173,19 @@ internal static partial class WorkerProxyApplication
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
+        LogBuildInformation(logger, typeof(WorkerProxyApplication).Assembly);
         app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
         app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
         app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
+    }
+
+    internal static void LogBuildInformation(ILogger logger, Assembly assembly)
+    {
+        string? informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        string? fileVersion = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+        Log.WorkerProxyBuildInformation(logger, "WorkerProxy",
+            string.IsNullOrWhiteSpace(informationalVersion) ? "unavailable" : informationalVersion,
+            string.IsNullOrWhiteSpace(fileVersion) ? "unavailable" : fileVersion, ProxyInstanceId, Environment.ProcessId);
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
@@ -274,5 +287,11 @@ internal static partial class WorkerProxyApplication
 
         [LoggerMessage(2, LogLevel.Information, "WorkerProxy stopped.", EventName = "WorkerProxyStopped")]
         public static partial void WorkerProxyStopped(ILogger logger);
+
+        [LoggerMessage(3, LogLevel.Information,
+            "Component={Component}; AssemblyInformationalVersion={AssemblyInformationalVersion}; AssemblyFileVersion={AssemblyFileVersion}; ProxyInstanceId={ProxyInstanceId}; ProcessId={ProcessId}",
+            EventName = "WorkerProxyBuildInformation")]
+        public static partial void WorkerProxyBuildInformation(ILogger logger, string component,
+            string assemblyInformationalVersion, string assemblyFileVersion, string proxyInstanceId, int processId);
     }
 }

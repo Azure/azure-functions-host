@@ -114,6 +114,29 @@ jobs:
         --header "x-ms-site-token: $siteToken" "http://127.0.0.1:$managementPort/admin/instance/ready")"
       test "$removedReadyStatus" = 404
       echo "WorkerProxy authenticated state availability succeeded; anonymous polling and removed readiness route rejected."
+
+      # Verify the Native AOT image reports the build information embedded from this checkout.
+      expectedSha="$(git -C "$(Build.SourcesDirectory)" rev-parse HEAD)"
+      buildInformationMarker=',WorkerProxyBuildInformation,Azure.Functions.WorkerProxy.WorkerProxyApplication,'
+      for _ in $(seq 1 30); do
+        containerLogs="$(docker logs "$containerId" 2>&1)"
+        if grep -qF "$buildInformationMarker" <<< "$containerLogs"; then
+          break
+        fi
+        sleep 1
+      done
+      test "$(grep -cF "$buildInformationMarker" <<< "$containerLogs" || true)" -eq 1
+      buildInformation="$(grep -F "$buildInformationMarker" <<< "$containerLogs")"
+      echo "WorkerProxy build information: $buildInformation"
+      grep -qF 'Component=WorkerProxy;' <<< "$buildInformation"
+      grep -qE "AssemblyInformationalVersion=[0-9][^;\"]*\\+$expectedSha;" <<< "$buildInformation"
+      grep -qE 'AssemblyFileVersion=[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+;' <<< "$buildInformation"
+      grep -qE 'ProxyInstanceId=[0-9a-f]{32};' <<< "$buildInformation"
+      buildInformationLine="$(grep -nF "$buildInformationMarker" <<< "$containerLogs" | cut -d: -f1)"
+      startedLine="$(grep -nF ',WorkerProxyStarted,' <<< "$containerLogs" | head -n 1 | cut -d: -f1)"
+      test -n "$startedLine"
+      test "$buildInformationLine" -lt "$startedLine"
+      echo "WorkerProxy build information matches commit $expectedSha."
       echo "WorkerProxy container logs:"
       docker logs "$containerId"
     displayName: Smoke WorkerProxy container

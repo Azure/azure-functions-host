@@ -11,6 +11,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic.FileIO;
+using Moq;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using Xunit;
@@ -554,6 +556,61 @@ public partial class WorkerSystemLoggingTests
         Assert.DoesNotContain(
             eventGenerator.ProxyRecords,
             record => record.EventName is "GrpcWarning" or "HttpError");
+    }
+
+    [Theory]
+    [InlineData("1.2.3+0123456789abcdef0123456789abcdef01234567", "1.2.3.4")]
+    [InlineData("1.2.3+custom-build-metadata", "1.2.3.4")]
+    [InlineData(null, null)]
+    [InlineData("", "")]
+    [InlineData(" ", " ")]
+    public async Task BuildInformation_LogsVersionsOrReportsUnavailable(string? informationalVersion, string? fileVersion)
+    {
+        Mock<Assembly> assembly = new(MockBehavior.Strict);
+        AssemblyInformationalVersionAttribute[] informational = informationalVersion is null ? [] : [new(informationalVersion)];
+        AssemblyFileVersionAttribute[] file = fileVersion is null ? [] : [new(fileVersion)];
+        assembly.Setup(value => value.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), It.IsAny<bool>())).Returns(informational);
+        assembly.Setup(value => value.GetCustomAttributes(typeof(AssemblyFileVersionAttribute), It.IsAny<bool>())).Returns(file);
+        StringWriter output = new();
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        using ILoggerFactory factory = CreateLoggerFactory(generator);
+
+        WorkerProxyApplication.LogBuildInformation(factory.CreateLogger(WorkerProxyLogExporter.ApplicationCategory), assembly.Object);
+        await generator.CompleteAsync();
+
+        string[] record = Assert.Single(ParseCsvOutput(output.ToString()));
+        Assert.Equal(21, record.Length);
+        Assert.Equal("WorkerProxyBuildInformation", record[4]);
+        Assert.Equal(WorkerProxyLogExporter.ApplicationCategory, record[5]);
+        Assert.Equal(string.Empty, record[2]);
+        Assert.StartsWith("Component=WorkerProxy;", record[7], StringComparison.Ordinal);
+        Assert.Contains($"AssemblyInformationalVersion={(string.IsNullOrWhiteSpace(informationalVersion) ? "unavailable" : informationalVersion)};", record[7], StringComparison.Ordinal);
+        Assert.Contains($"AssemblyFileVersion={(string.IsNullOrWhiteSpace(fileVersion) ? "unavailable" : fileVersion)};", record[7], StringComparison.Ordinal);
+        Assert.Matches(@"; ProxyInstanceId=[0-9a-f]{32}; ProcessId=" + Environment.ProcessId + "$", record[7]);
+    }
+
+    [Fact]
+    public async Task BuildInformation_EmittedBeforeStartedWithoutAssignmentOrHostConnection()
+    {
+        StringWriter output = new();
+        CapturingEventGenerator generator = new(new WorkerPodEventGenerator(output, TimeProvider.System));
+        await using (WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+        {
+            services.RemoveAll<IWorkerSystemEventGenerator>();
+            services.AddSingleton<IWorkerSystemEventGenerator>(_ => generator);
+        }))
+        {
+            _ = factory.Services;
+            await StopApplicationAsync(factory, generator);
+        }
+
+        string[][] records = ParseCsvOutput(output.ToString());
+        string[] buildInformation = Assert.Single(records, record => string.Equals(record[4], "WorkerProxyBuildInformation", StringComparison.Ordinal));
+        int startedIndex = Array.FindIndex(records, record => string.Equals(record[4], "WorkerProxyStarted", StringComparison.Ordinal));
+        Assert.InRange(Array.IndexOf(records, buildInformation), 0, startedIndex - 1);
+        string? version = typeof(WorkerProxyApplication).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        Assert.Contains($"AssemblyInformationalVersion={version};", buildInformation[7], StringComparison.Ordinal);
+        Assert.Equal(string.Empty, buildInformation[2]);
     }
 
     [Fact]
