@@ -612,18 +612,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.CodeAnalysis.CSharp.Scripting",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.CodeAnalysis.Razor",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.CodeAnalysis.Scripting",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.CSharp",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -940,27 +928,11 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "NuGet.DependencyResolver.Core",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "NuGet.Frameworks",
       "resolutionPolicy": "private"
     },
     {
-      "name": "NuGet.LibraryModel",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "NuGet.Packaging",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "NuGet.ProjectModel",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "NuGet.Protocol",
       "resolutionPolicy": "private"
     },
     {

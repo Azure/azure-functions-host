@@ -1,0 +1,8 @@
+{
+  "scriptFile": "../hostApi.js",
+  "entryPoint": "functionAuth",
+  "bindings": [
+    { "type": "httpTrigger", "name": "req", "direction": "in", "authLevel": "function", "methods": [ "get" ] },
+    { "type": "http", "name": "$return", "direction": "out" }
+  ]
+}

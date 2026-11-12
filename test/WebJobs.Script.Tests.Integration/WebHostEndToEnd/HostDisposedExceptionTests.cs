@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Azure.WebJobs.Script.Tests.EndToEnd;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -21,12 +23,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json.Linq;
 using Xunit;
+using ParameterDescriptor = Microsoft.Azure.WebJobs.Host.Protocols.ParameterDescriptor;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, nameof(CSharpEndToEndTests))]
+    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
     public class HostDisposedExceptionTests
     {
         [Fact]
@@ -61,7 +65,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
         // HostDisposedException is observed, or a diagnostic string for the known best-effort miss.
         private static async Task<string> TryAssertDisposedScriptLoggerFactoryAsync()
         {
-            var host = new TestFunctionHost(@"TestScripts\CSharp",
+            var host = new TestFunctionHost(@"TestScripts\NoFunction",
+                configureWebHostServices: s =>
+                {
+                    s.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                    [
+                        HostInfrastructureTestFunctions.Create("CustomTrigger", nameof(HostInfrastructureTestFunctions.CustomTrigger),
+                            new JObject { ["type"] = "customTrigger", ["direction"] = "in", ["name"] = "input" })
+                    ], null));
+                },
                 configureScriptHostServices: s =>
                 {
                     s.AddSingleton<IExtensionConfigProvider, CustomTriggerExtensionConfigProvider>();
@@ -175,7 +187,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
         //[Fact]
         //public async Task DisposedResolver_UsesFullStackTrace()
         //{
-        //    var host = new TestFunctionHost(@"TestScripts\CSharp",
+        //    var host = new TestFunctionHost(@"TestScripts\NoFunction",
+        //        configureWebHostServices: s => s.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+        //        [
+        //            HostInfrastructureTestFunctions.Create("CustomTrigger", nameof(HostInfrastructureTestFunctions.CustomTrigger),
+        //                new JObject { ["type"] = "customTrigger", ["direction"] = "in", ["name"] = "input" })
+        //        ], null)),
         //        configureScriptHostServices: s =>
         //        {
         //            s.AddSingleton<IExtensionConfigProvider, CustomTriggerExtensionConfigProvider>();

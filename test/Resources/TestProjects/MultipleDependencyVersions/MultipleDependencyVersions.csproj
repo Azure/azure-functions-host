@@ -20,4 +20,5 @@
     <None Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
+  <Import Project="..\TestExtension.targets" />
 </Project>

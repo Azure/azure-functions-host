@@ -1,0 +1,22 @@
+<Project>
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\src\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestExtensionFunctionProvider.cs" Link="TestExtensionFunctionProvider.cs" />
+  </ItemGroup>
+
+  <!-- These projects expose extension-owned functions through their registered provider,
+       not through customer deployment metadata. Keep extensions.json and all dependency assets. -->
+  <Target Name="RemoveTestExtensionCustomerMetadataAfterBuild" AfterTargets="_GenerateFunctionsExtensionsMetadataPostBuild">
+    <ItemGroup>
+      <_TestExtensionBuildMetadata Include="$(TargetDir)*\function.json" />
+    </ItemGroup>
+    <Delete Files="@(_TestExtensionBuildMetadata)" />
+  </Target>
+
+  <Target Name="RemoveTestExtensionCustomerMetadataAfterPublish" AfterTargets="_GenerateFunctionsExtensionsMetadataPostPublish">
+    <ItemGroup>
+      <_TestExtensionPublishMetadata Include="$(PublishDir)*\function.json" />
+    </ItemGroup>
+    <Delete Files="@(_TestExtensionPublishMetadata)" />
+  </Target>
+</Project>

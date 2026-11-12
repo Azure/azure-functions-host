@@ -6,10 +6,10 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1055.100-dev": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1056.100-dev": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
-          "Azure.Functions.Rpc.Server": "4.1055.100-dev",
+          "Azure.Functions.Rpc.Server": "4.1056.100-dev",
           "Azure.Security.KeyVault.Secrets": "4.6.0",
           "Azure.Storage.Files.Shares": "12.24.0",
           "Microsoft.AspNet.WebApi.Client": "5.2.9",
@@ -18,13 +18,13 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.12",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
-          "Microsoft.Azure.WebJobs.Script": "4.1055.100-dev",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1055.100-dev",
+          "Microsoft.Azure.WebJobs.Script": "4.1056.100-dev",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1056.100-dev",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities.Core": "1.21.0",
-          "Azure.Functions.Rpc.Server.Reference": "4.1055.0.0",
-          "Microsoft.Azure.WebJobs.Script.Reference": "4.1055.0.0",
-          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1055.0.0"
+          "Azure.Functions.Rpc.Server.Reference": "4.1056.0.0",
+          "Microsoft.Azure.WebJobs.Script.Reference": "4.1056.0.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1056.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -728,112 +728,6 @@
           }
         }
       },
-      "Microsoft.CodeAnalysis.CSharp.Scripting/3.3.1": {
-        "dependencies": {
-          "Microsoft.CodeAnalysis.CSharp": "3.3.1",
-          "Microsoft.CodeAnalysis.Common": "3.3.1",
-          "Microsoft.CodeAnalysis.Scripting.Common": "3.3.1"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.CodeAnalysis.CSharp.Scripting.dll": {
-            "assemblyVersion": "3.3.0.0",
-            "fileVersion": "3.300.119.46211"
-          }
-        },
-        "resources": {
-          "lib/netstandard2.0/cs/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "cs"
-          },
-          "lib/netstandard2.0/de/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "de"
-          },
-          "lib/netstandard2.0/es/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "es"
-          },
-          "lib/netstandard2.0/fr/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "fr"
-          },
-          "lib/netstandard2.0/it/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "it"
-          },
-          "lib/netstandard2.0/ja/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "ja"
-          },
-          "lib/netstandard2.0/ko/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "ko"
-          },
-          "lib/netstandard2.0/pl/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "pl"
-          },
-          "lib/netstandard2.0/pt-BR/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "pt-BR"
-          },
-          "lib/netstandard2.0/ru/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "ru"
-          },
-          "lib/netstandard2.0/tr/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "tr"
-          },
-          "lib/netstandard2.0/zh-Hans/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "zh-Hans"
-          },
-          "lib/netstandard2.0/zh-Hant/Microsoft.CodeAnalysis.CSharp.Scripting.resources.dll": {
-            "locale": "zh-Hant"
-          }
-        }
-      },
-      "Microsoft.CodeAnalysis.Scripting.Common/3.3.1": {
-        "dependencies": {
-          "Microsoft.CodeAnalysis.Common": "3.3.1"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.CodeAnalysis.Scripting.dll": {
-            "assemblyVersion": "3.3.0.0",
-            "fileVersion": "3.300.119.46211"
-          }
-        },
-        "resources": {
-          "lib/netstandard2.0/cs/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "cs"
-          },
-          "lib/netstandard2.0/de/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "de"
-          },
-          "lib/netstandard2.0/es/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "es"
-          },
-          "lib/netstandard2.0/fr/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "fr"
-          },
-          "lib/netstandard2.0/it/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "it"
-          },
-          "lib/netstandard2.0/ja/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "ja"
-          },
-          "lib/netstandard2.0/ko/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "ko"
-          },
-          "lib/netstandard2.0/pl/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "pl"
-          },
-          "lib/netstandard2.0/pt-BR/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "pt-BR"
-          },
-          "lib/netstandard2.0/ru/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "ru"
-          },
-          "lib/netstandard2.0/tr/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "tr"
-          },
-          "lib/netstandard2.0/zh-Hans/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "zh-Hans"
-          },
-          "lib/netstandard2.0/zh-Hant/Microsoft.CodeAnalysis.Scripting.resources.dll": {
-            "locale": "zh-Hant"
-          }
-        }
-      },
       "Microsoft.Extensions.Azure/1.13.1": {
         "dependencies": {
           "Azure.Core": "1.50.0",
@@ -1173,33 +1067,9 @@
           }
         }
       },
-      "NuGet.DependencyResolver.Core/5.11.7": {
-        "dependencies": {
-          "NuGet.LibraryModel": "5.11.7",
-          "NuGet.Protocol": "5.11.7"
-        },
-        "runtime": {
-          "lib/net5.0/NuGet.DependencyResolver.Core.dll": {
-            "assemblyVersion": "5.11.7.1",
-            "fileVersion": "5.11.7.1"
-          }
-        }
-      },
       "NuGet.Frameworks/5.11.7": {
         "runtime": {
           "lib/netstandard2.0/NuGet.Frameworks.dll": {
-            "assemblyVersion": "5.11.7.1",
-            "fileVersion": "5.11.7.1"
-          }
-        }
-      },
-      "NuGet.LibraryModel/5.11.7": {
-        "dependencies": {
-          "NuGet.Common": "5.11.7",
-          "NuGet.Versioning": "5.11.7"
-        },
-        "runtime": {
-          "lib/netstandard2.0/NuGet.LibraryModel.dll": {
             "assemblyVersion": "5.11.7.1",
             "fileVersion": "5.11.7.1"
           }
@@ -1213,28 +1083,6 @@
         },
         "runtime": {
           "lib/net5.0/NuGet.Packaging.dll": {
-            "assemblyVersion": "5.11.7.1",
-            "fileVersion": "5.11.7.1"
-          }
-        }
-      },
-      "NuGet.ProjectModel/5.11.7": {
-        "dependencies": {
-          "NuGet.DependencyResolver.Core": "5.11.7"
-        },
-        "runtime": {
-          "lib/net5.0/NuGet.ProjectModel.dll": {
-            "assemblyVersion": "5.11.7.1",
-            "fileVersion": "5.11.7.1"
-          }
-        }
-      },
-      "NuGet.Protocol/5.11.7": {
-        "dependencies": {
-          "NuGet.Packaging": "5.11.7"
-        },
-        "runtime": {
-          "lib/net5.0/NuGet.Protocol.dll": {
             "assemblyVersion": "5.11.7.1",
             "fileVersion": "5.11.7.1"
           }
@@ -1566,12 +1414,12 @@
           }
         }
       },
-      "Azure.Functions.Rpc.Server/4.1055.100-dev": {
+      "Azure.Functions.Rpc.Server/4.1056.100-dev": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script": "4.1055.100-dev",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1055.100-dev",
+          "Microsoft.Azure.WebJobs.Script": "4.1056.100-dev",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1056.100-dev",
           "Mono.Posix.NETStandard": "1.0.0"
         },
         "runtime": {
@@ -1580,7 +1428,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1055.100-dev": {
+      "Microsoft.Azure.WebJobs.Script/4.1056.100-dev": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Monitor.OpenTelemetry.Exporter": "1.5.0",
@@ -1594,12 +1442,13 @@
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.2",
           "Microsoft.Azure.WebJobs.Logging.ApplicationInsights": "3.0.45",
           "Microsoft.Azure.WebJobs.Script.Abstractions": "1.1.0",
-          "Microsoft.CodeAnalysis.CSharp.Scripting": "3.3.1",
+          "Microsoft.CodeAnalysis.CSharp": "3.3.1",
           "Microsoft.Extensions.Azure": "1.13.1",
           "Microsoft.Extensions.DependencyModel": "10.0.0",
           "Microsoft.Extensions.Http.Polly": "10.0.0",
           "Microsoft.Extensions.Telemetry.Abstractions": "9.8.0",
-          "NuGet.ProjectModel": "5.11.7",
+          "NuGet.Packaging": "5.11.7",
+          "NuGet.Versioning": "5.11.7",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.15.3",
           "OpenTelemetry.Instrumentation.AspNetCore": "1.15.2",
           "OpenTelemetry.Instrumentation.Http": "1.15.1",
@@ -1616,11 +1465,11 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1055.100-dev": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1056.100-dev": {
         "dependencies": {
           "Google.Protobuf": "3.23.1",
           "Grpc.Core.Api": "2.55.0",
-          "Microsoft.Azure.WebJobs.Script": "4.1055.100-dev"
+          "Microsoft.Azure.WebJobs.Script": "4.1056.100-dev"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
@@ -1628,26 +1477,26 @@
           }
         }
       },
-      "Azure.Functions.Rpc.Server.Reference/4.1055.0.0": {
+      "Azure.Functions.Rpc.Server.Reference/4.1056.0.0": {
         "runtime": {
           "Azure.Functions.Rpc.Server.dll": {
-            "assemblyVersion": "4.1055.0.0",
+            "assemblyVersion": "4.1056.0.0",
             "fileVersion": "42.42.42.4242"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Reference/4.1055.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Reference/4.1056.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.1055.0.0",
+            "assemblyVersion": "4.1056.0.0",
             "fileVersion": "42.42.42.4242"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1055.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1056.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.1055.0.0",
+            "assemblyVersion": "4.1056.0.0",
             "fileVersion": "42.42.42.4242"
           }
         }
@@ -1655,7 +1504,7 @@
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1055.100-dev": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1056.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -2038,20 +1887,6 @@
       "path": "microsoft.codeanalysis.csharp/3.3.1",
       "hashPath": "microsoft.codeanalysis.csharp.3.3.1.nupkg.sha512"
     },
-    "Microsoft.CodeAnalysis.CSharp.Scripting/3.3.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-HOAS6J9NyVdmS1S7/vl5NduiY+dAu/fgE/SGzL4Aph97ycZ0FZ6O9Uo51pjcyubb5ODQPaiYJ+Qcibz9qKmF/w==",
-      "path": "microsoft.codeanalysis.csharp.scripting/3.3.1",
-      "hashPath": "microsoft.codeanalysis.csharp.scripting.3.3.1.nupkg.sha512"
-    },
-    "Microsoft.CodeAnalysis.Scripting.Common/3.3.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-eUEodU4ys3ovqv/N5+phb2jfLZENSWTs521SmfbgNmQzUQEuX1Dmf6VNrUY7KB+6QaxI3bvZLpyhKXRnVnezUA==",
-      "path": "microsoft.codeanalysis.scripting.common/3.3.1",
-      "hashPath": "microsoft.codeanalysis.scripting.common.3.3.1.nupkg.sha512"
-    },
     "Microsoft.Extensions.Azure/1.13.1": {
       "type": "package",
       "serviceable": true,
@@ -2213,13 +2048,6 @@
       "path": "nuget.configuration/5.11.7",
       "hashPath": "nuget.configuration.5.11.7.nupkg.sha512"
     },
-    "NuGet.DependencyResolver.Core/5.11.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-M5SUk3u7KR/ZDXVDsx42qYfmqZ/aHpqoxmSnu4HpulIcAzJ/8gRkSjhndJ96vjX1zFr+AYdozw0cjKz3yufTlQ==",
-      "path": "nuget.dependencyresolver.core/5.11.7",
-      "hashPath": "nuget.dependencyresolver.core.5.11.7.nupkg.sha512"
-    },
     "NuGet.Frameworks/5.11.7": {
       "type": "package",
       "serviceable": true,
@@ -2227,33 +2055,12 @@
       "path": "nuget.frameworks/5.11.7",
       "hashPath": "nuget.frameworks.5.11.7.nupkg.sha512"
     },
-    "NuGet.LibraryModel/5.11.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-1Scqld5kNITKvLTbyAvHiOamE0QaouVTrtIi36uIDTFTtVtzMn9XXpTcuwee7EK6jxBYZggxCARnhNgmTIqCgQ==",
-      "path": "nuget.librarymodel/5.11.7",
-      "hashPath": "nuget.librarymodel.5.11.7.nupkg.sha512"
-    },
     "NuGet.Packaging/5.11.7": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-T4GQRKg5D0z3ZQR7s5tvRCG1ObvhPOJUheCTvbph3+YlbDBGOVr9ksjCgGgms2YOk8s3IFXA61pgcWANoqjE4g==",
       "path": "nuget.packaging/5.11.7",
       "hashPath": "nuget.packaging.5.11.7.nupkg.sha512"
-    },
-    "NuGet.ProjectModel/5.11.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-9TwFWafiiLbaj0pJUPVJq8RV81dSqQ/Jm2lnnpEzDciBTXy/EvHvoQZdcE/scSq8sGEKiGmdFBlIw34lAMU1cw==",
-      "path": "nuget.projectmodel/5.11.7",
-      "hashPath": "nuget.projectmodel.5.11.7.nupkg.sha512"
-    },
-    "NuGet.Protocol/5.11.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-r8Ii/43q/EgoxfyuiLKXbo9dBD5crweTHvPA7zvEsosDqDNHMl/JBWjtC3Qyl9sF4rx668ITB5Rl8+KwDr+7ow==",
-      "path": "nuget.protocol/5.11.7",
-      "hashPath": "nuget.protocol.5.11.7.nupkg.sha512"
     },
     "NuGet.Versioning/5.11.7": {
       "type": "package",
@@ -2465,32 +2272,32 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Azure.Functions.Rpc.Server/4.1055.100-dev": {
+    "Azure.Functions.Rpc.Server/4.1056.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script/4.1055.100-dev": {
+    "Microsoft.Azure.WebJobs.Script/4.1056.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1055.100-dev": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1056.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Azure.Functions.Rpc.Server.Reference/4.1055.0.0": {
+    "Azure.Functions.Rpc.Server.Reference/4.1056.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Reference/4.1055.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Reference/4.1056.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1055.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1056.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -137,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.AddSingleton<IScriptApplicationLifetime, ScriptApplicationLifetime>();
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, WarmupFunctionProvider>());
             services.TryAddSingleton<IServiceCollection>(services);
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
             services.AddSingleton<IWorkerRuntimeResolver, WebHostWorkerRuntimeResolverAdapter>();

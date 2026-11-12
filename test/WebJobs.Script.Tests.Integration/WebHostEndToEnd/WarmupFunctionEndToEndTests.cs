@@ -103,14 +103,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private readonly string _testHome;
             private readonly IHost _host;
+            private readonly TestScopedEnvironmentVariable _workerRuntime;
 
             public TestFixture()
             {
                 ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
+                _workerRuntime = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
                 // copy test files to temp directory, since accessing the metadata APIs will result
                 // in file creations (for test data files)
                 var scriptSource = Path.Combine(Environment.CurrentDirectory, "TestScripts", "WarmupFunction");
-                _testHome = Path.Combine(Path.GetTempPath(), @"WarmupFunction");
+                _testHome = Path.Combine(Path.GetTempPath(), "WarmupFunction", Guid.NewGuid().ToString("N"));
                 var scriptRoot = Path.Combine(_testHome, "site", "wwwroot");
                 FileUtility.CopyDirectory(scriptSource, scriptRoot);
 
@@ -148,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         services.PostConfigure<ScriptApplicationHostOptions>(o =>
                         {
                             o.IsSelfHost = true;
-                            o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
+                            o.ScriptPath = scriptRoot;
                             o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions", "WarmupFunctionTests");
                             o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
                             o.HasParentScope = true;
@@ -199,6 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 TestHelpers.ClearHostLogs();
                 FileUtility.DeleteDirectoryAsync(_testHome, recursive: true);
+                _workerRuntime.Dispose();
             }
         }
     }

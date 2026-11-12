@@ -44,6 +44,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             _testRootScriptPath = Path.GetTempPath();
         }
 
+        [Fact]
+        public void IsExtensionFunction_MetadataPropertiesDoNotGrantOwnership()
+        {
+            var metadata = new FunctionMetadata { Language = DotNetScriptTypes.DotNetAssembly };
+            metadata.SetIsCodeless(true);
+            metadata.Properties["IsExtensionFunction"] = true;
+
+            Assert.False(metadata.IsExtensionFunction());
+
+            metadata.SetIsExtensionFunction(true);
+            Assert.True(metadata.IsExtensionFunction());
+
+            var copy = new FunctionMetadata { Language = metadata.Language };
+            foreach (var property in metadata.Properties)
+            {
+                copy.Properties[property.Key] = property.Value;
+            }
+
+            Assert.False(copy.IsExtensionFunction());
+            metadata.SetIsExtensionFunction(false);
+            Assert.False(metadata.IsExtensionFunction());
+        }
+
         [Theory]
         [InlineData("invalid")]
         [InlineData("{ bindings: [ {} ] }")]

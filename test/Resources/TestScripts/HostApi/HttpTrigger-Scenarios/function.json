@@ -1,0 +1,8 @@
+{
+  "scriptFile": "../hostApi.js",
+  "entryPoint": "scenarios",
+  "bindings": [
+    { "type": "httpTrigger", "name": "req", "direction": "in", "authLevel": "anonymous", "methods": [ "get", "post" ] },
+    { "type": "http", "name": "$return", "direction": "out" }
+  ]
+}

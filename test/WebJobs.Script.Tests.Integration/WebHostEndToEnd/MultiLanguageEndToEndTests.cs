@@ -10,6 +10,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -170,6 +171,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                     Assert.Equal("Hello Azure", await javascriptHttpTriggerResponse.Content.ReadAsStringAsync());
                 }
             }
+        }
+
+        [Fact]
+        public async Task CodelessFunction_RejectsProviderScripts()
+        {
+            var environment = new TestEnvironment(new Dictionary<string, string>
+            {
+                [EnvironmentSettingNames.AppKind] = "workflowApp",
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.DotNetLanguageWorkerName
+            });
+            var metadata = CodelessEndToEndTests_Data.GetCSharpSampleMetadata("InlineCSharp");
+            metadata.Language = DotNetScriptTypes.CSharp;
+            metadata.ScriptFile = "action.csx";
+            var provider = new TestCodelessFunctionProvider([metadata], null);
+            using var directory = new TempDirectory();
+            await using var host = StartLocalHost(directory.Path, Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction"),
+                [metadata.Name], [provider], environment);
+
+            var manager = host.WebHostServices.GetRequiredService<IScriptHostManager>();
+            await TestHelpers.Await(() => manager.State == ScriptHostState.Error);
+
+            var exception = Assert.IsType<HostInitializationException>(manager.LastError);
+            Assert.Contains(metadata.Name, exception.Message, StringComparison.Ordinal);
+            Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message, StringComparison.Ordinal);
         }
 
         /// <summary>

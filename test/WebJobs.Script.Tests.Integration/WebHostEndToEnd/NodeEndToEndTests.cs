@@ -210,6 +210,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify the console log
             Assert.Equal("console log", consoleLog);
 
+            await TestHelpers.Await(() => Fixture.Host.GetScriptHostLogMessages(LogCategories.Aggregator).Any());
+            Assert.Single(Fixture.Host.GetScriptHostLogMessages(LogCategories.Aggregator));
+
             // Make sure that no user logs made it to the EventGenerator (which the SystemLogger writes to)
             IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
             Assert.False(allLogs.Any(l => l.Summary.Contains("loglevel")));
@@ -903,6 +906,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 base.ConfigureScriptHost(webJobsBuilder);
 
                 webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues().AddTables();
+                webJobsBuilder.Services.Configure<FunctionResultAggregatorOptions>(o => o.BatchSize = 1);
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions =

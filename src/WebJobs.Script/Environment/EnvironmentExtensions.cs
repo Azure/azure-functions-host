@@ -121,12 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
-        public static bool IsDotNetInProcSupported(this IEnvironment environment)
-        {
-            return !IsFlexConsumptionSku(environment)
-                   && !string.Equals(environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsDisableInProc), "1", StringComparison.OrdinalIgnoreCase);
-        }
-
         public static string GetAzureWebsiteHomePath(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AzureWebsiteHomePath);
@@ -718,7 +712,8 @@ namespace Microsoft.Azure.WebJobs.Script
             var placeholderRuntimeSet = new HashSet<string>(placeholderList.Trim().Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()));
             string workerRuntime = environment.GetEnvironmentVariable(FunctionWorkerRuntime);
 
-            if (!environment.IsInProc(workerRuntime))
+            if (!string.IsNullOrEmpty(workerRuntime)
+                && !string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 placeholderRuntimeSet.Add(workerRuntime);
             }

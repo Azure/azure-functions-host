@@ -51,8 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
 
-        internal RuntimeAssembliesInfo RuntimeAssemblies => _runtimeAssembliesInfo;
-
         internal static void ResetSharedContext(string baseProbingPath = null)
         {
             baseProbingPath ??= ResolveFunctionBaseProbingPath();
@@ -419,25 +417,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return LoadFromAssemblyPath(assemblyPath);
-        }
-
-        internal (bool Succeeded, Assembly Assembly, bool IsRuntimeAssembly) TryLoadAssembly(AssemblyName assemblyName)
-        {
-            bool isRuntimeAssembly = IsRuntimeAssembly(assemblyName);
-
-            Assembly assembly = null;
-            if (!isRuntimeAssembly)
-            {
-                assembly = Load(assemblyName);
-            }
-
-            return (assembly != null, assembly, isRuntimeAssembly);
-        }
-
-        protected virtual Assembly OnResolvingAssembly(AssemblyLoadContext arg1, AssemblyName assemblyName)
-        {
-            // Log/handle failure
-            return null;
         }
 
         protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)

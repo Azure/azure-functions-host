@@ -21,6 +21,10 @@ namespace AssemblyLoadContextRace
 
                 // First, force Newtonsoft to load on many threads, which induces the race
                 var context = AssemblyLoadContext.GetLoadContext(typeof(Function1).Assembly);
+                if (!string.Equals(context.GetType().Name, "FunctionAssemblyLoadContext", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("The regression extension was not loaded through FunctionAssemblyLoadContext.");
+                }
 
                 void LoadType()
                 {

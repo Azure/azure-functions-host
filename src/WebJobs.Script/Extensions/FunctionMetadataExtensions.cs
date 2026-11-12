@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Newtonsoft.Json.Linq;
@@ -21,6 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string BlobTriggerType = "blobTrigger";
         private const string BlobSourceKey = "source";
         private const string BlobEventGridSourceValue = "EventGrid";
+
+        // Ownership must not be supplied through the worker's serializable metadata properties.
+        private static readonly ConditionalWeakTable<FunctionMetadata, object> ExtensionFunctions = new();
 
         public static bool IsHttpInAndOutFunction(this FunctionMetadata metadata)
         {
@@ -113,6 +117,21 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static void SetFunctionId(this FunctionMetadata metadata, string functionId)
         {
             metadata.Properties[FunctionIdKey] = functionId;
+        }
+
+        internal static bool IsExtensionFunction(this FunctionMetadata metadata) =>
+            ExtensionFunctions.TryGetValue(metadata, out _);
+
+        internal static void SetIsExtensionFunction(this FunctionMetadata metadata, bool value)
+        {
+            if (value)
+            {
+                ExtensionFunctions.GetValue(metadata, static _ => new object());
+            }
+            else
+            {
+                ExtensionFunctions.Remove(metadata);
+            }
         }
 
         public static bool IsProxy(this FunctionMetadata metadata) =>

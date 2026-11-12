@@ -272,10 +272,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _workerRuntime ??= Utility.GetWorkerRuntime(functions, _environment);
 
+            InProcessFunctionValidator.ValidateRuntime(_workerRuntime, isPlaceholder: false,
+                isMultiLanguage: _environment.IsMultiLanguageRuntimeEnvironment());
+
             // In case of multi language runtime, _workerRuntime has no significance, thus skipping this check for multi language runtime environment
-            if ((string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase)) && !_environment.IsMultiLanguageRuntimeEnvironment())
+            if (string.IsNullOrEmpty(_workerRuntime) && !_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                // Shutdown any placeholder channels for empty function apps or dotnet function apps.
+                // Shutdown any placeholder channels for empty function apps.
                 // This is needed as specialization does not kill standby placeholder channels if worker runtime is not set.
                 // Debounce to ensure this does not effect cold start
                 _shutdownStandbyWorkerChannels();

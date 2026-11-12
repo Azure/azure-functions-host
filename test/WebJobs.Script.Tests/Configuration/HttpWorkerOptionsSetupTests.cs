@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             _testLoggerFactory.AddProvider(_testLoggerProvider);
             _scriptJobHostOptions = new ScriptJobHostOptions()
             {
-                RootScriptPath = $@"TestScripts\CSharp",
+                RootScriptPath = @"TestScripts\Node",
                 FileLoggingMode = FileLoggingMode.Always,
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
@@ -412,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             'description': {
                                 'langauge': 'testExe',
                                 'defaultExecutablePath': 'dotnet',
-                                'defaultWorkerPath':'ManualTrigger/run.csx',
+                                'defaultWorkerPath':'ManualTrigger/index.js',
                                 'arguments': ['--xTest1 --xTest2'],
                                 'workerArguments': ['--xTest3 --xTest4']
                             }
@@ -421,7 +421,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             try
             {
                 File.WriteAllText(_hostJsonFile, hostJsonContent);
-                Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", "OneSecondTimer/run.csx");
+                Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", "HttpTrigger/index.js");
                 Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:arguments", "[\"--xTest5\", \"--xTest6\", \"--xTest7\"]");
                 IConfiguration configuration = BuildHostJsonConfiguration();
                 HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
@@ -429,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 setup.Configure(options);
                 Assert.Equal("dotnet", options.Description.DefaultExecutablePath);
                 // Verify options are overridden
-                Assert.Contains("OneSecondTimer/run.csx", options.Description.DefaultWorkerPath);
+                Assert.Contains("HttpTrigger/index.js", options.Description.DefaultWorkerPath);
                 Assert.Equal(3, options.Description.Arguments.Count);
                 Assert.Contains("--xTest5", options.Description.Arguments);
                 Assert.Contains("--xTest6", options.Description.Arguments);

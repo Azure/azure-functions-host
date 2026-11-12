@@ -117,9 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="DotNetFunctionEntryPointRulesMessage" xml:space="preserve">
-    <value>Your function must contain a single public method, a public method named 'Run', or a public method matching the name specified in the 'entryPoint' metadata property.</value>
-  </data>
   <data name="ExtensionBundleConfigMissingId" xml:space="preserve">
     <value>The value of id property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information</value>
   </data>
