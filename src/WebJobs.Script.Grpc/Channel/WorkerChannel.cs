@@ -618,6 +618,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             initRequest.Capabilities.Add(RpcWorkerConstants.MultiStream, "10"); // TODO: make this configurable
 
             OnWorkerInitRequest(initRequest);
+            if (_workerChannelLogger.IsEnabled(LogLevel.Debug))
+            {
+                Logger.HostCapabilities(_workerChannelLogger, string.Join(", ", initRequest.Capabilities));
+            }
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -2479,6 +2483,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             [LoggerMessage(822, LogLevel.Warning, "Failed to register app capabilities from worker '{workerId}'")]
             internal static partial void FailedToRegisterAppCapabilities(ILogger logger, Exception ex, string workerId);
+
+            [LoggerMessage(823, LogLevel.Debug, "Host capabilities: {capabilities}")]
+            internal static partial void HostCapabilities(ILogger logger, string capabilities);
         }
     }
 }

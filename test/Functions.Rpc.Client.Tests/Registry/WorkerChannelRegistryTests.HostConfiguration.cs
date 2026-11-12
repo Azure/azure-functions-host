@@ -55,6 +55,13 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, rejected.DisposeCount);
+        var validation = Assert.Single(harness.ConfigurationTelemetry);
+        Assert.Equal("HostConfigurationValidated", validation.EventName);
+        Assert.Equal("worker", validation.Fields["WorkerId"]);
+        Assert.Equal((int)delivery.Status, validation.Fields["DeliveryStatus"]);
+        Assert.Equal(delivery.Content.Length, validation.Fields["SizeBytes"]);
+        Assert.Equal("Rejected", validation.Fields["Outcome"]);
+        Assert.DoesNotContain("customer-secret", string.Join(" ", validation.Fields.Values), StringComparison.Ordinal);
         await registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
         Assert.Same(replacement.Channel, await waiter.WaitAsync(TestTimeout));
         Assert.False(replacement.Channel.IsChannelReadyForInvocations());
@@ -79,6 +86,53 @@ public sealed partial class WorkerChannelRegistryTests
                 Assert.Equal("{OriginalFormat}", format.Key);
                 Assert.Equal("Host configuration was rejected. {Reason}", format.Value);
             });
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(null, true)]
+    [InlineData(HostConfiguration.Types.Status.Available, false)]
+    [InlineData(HostConfiguration.Types.Status.Available, true)]
+    [InlineData(HostConfiguration.Types.Status.Missing, false)]
+    [InlineData(HostConfiguration.Types.Status.Missing, true)]
+    public async Task LinkAsync_ConfigurationTelemetryDistinguishesDeliveryAndSourceSelection(
+        HostConfiguration.Types.Status? firstStatus, bool laterSuppliesConfiguration)
+    {
+        RegistryHarness harness = new();
+        HostConfiguration firstDelivery = firstStatus is { } status ? new() { Status = status } : null;
+        if (firstDelivery is { Status: HostConfiguration.Types.Status.Available })
+        {
+            firstDelivery.Content = ByteString.CopyFromUtf8("{\"marker\":\"customer-secret-\u00e9\"}");
+        }
+
+        ChannelControl first = new("first") { HostConfiguration = firstDelivery };
+        ChannelControl later = new("later") { HostConfiguration = laterSuppliesConfiguration ? CreateHostConfiguration("later") : null };
+        harness.Enqueue(first);
+        harness.Enqueue(later);
+        await using WorkerChannelRegistry registry = harness.Registry;
+
+        await registry.LinkAsync("first", CreateEndpoint("first")).WaitAsync(TestTimeout);
+        IConfigurationSource selectedSource = registry.GetConfigurationSource();
+        await registry.LinkAsync("later", CreateEndpoint("later")).WaitAsync(TestTimeout);
+
+        Assert.Same(selectedSource, registry.GetConfigurationSource());
+        var events = harness.ConfigurationTelemetry.ToArray();
+        Assert.Equal(4, events.Length);
+        Assert.Equal("HostConfigurationValidated", events[0].EventName);
+        Assert.Equal((int?)firstStatus, events[0].Fields["DeliveryStatus"]);
+        Assert.Equal(firstDelivery?.Content.Length ?? 0, events[0].Fields["SizeBytes"]);
+        Assert.Equal(firstStatus is null ? "Absent" : "Valid", events[0].Fields["Outcome"]);
+        Assert.Equal("HostConfigurationSourceEvaluated", events[1].EventName);
+        Assert.Equal("first", events[1].Fields["WorkerId"]);
+        Assert.Equal("Selected", events[1].Fields["Outcome"]);
+        Assert.Equal(firstStatus is null ? "File" : "Delivered", events[1].Fields["CandidateSource"]);
+        Assert.Equal("HostConfigurationValidated", events[2].EventName);
+        Assert.Equal("HostConfigurationSourceEvaluated", events[3].EventName);
+        Assert.Equal("later", events[3].Fields["WorkerId"]);
+        Assert.Equal("RetainedExisting", events[3].Fields["Outcome"]);
+        Assert.Equal(laterSuppliesConfiguration ? "Delivered" : "File", events[3].Fields["CandidateSource"]);
+        Assert.Equal(firstStatus is null ? "File" : "Delivered", events[3].Fields["ActiveSource"]);
+        Assert.All(events, entry => Assert.DoesNotContain("customer-secret", string.Join(" ", entry.Fields.Values), StringComparison.Ordinal));
     }
 
     [Fact]
@@ -164,6 +218,8 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, worker.DisposeCount);
+        var validation = Assert.Single(harness.ConfigurationTelemetry);
+        Assert.Equal("Rejected", validation.Fields["Outcome"]);
         parser.Verify(value => value.Parse(worker.HostConfiguration), Times.Once);
         parser.VerifyNoOtherCalls();
     }
@@ -187,6 +243,9 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Throws<InvalidOperationException>(() => registry.GetConfigurationSource());
         Assert.Equal(1, worker.DisposeCount);
+        var validation = Assert.Single(harness.ConfigurationTelemetry);
+        Assert.Equal("Failed", validation.Fields["Outcome"]);
+        Assert.DoesNotContain(failure.Message, string.Join(" ", validation.Fields.Values), StringComparison.Ordinal);
         parser.Verify(value => value.Parse(worker.HostConfiguration), Times.Once);
         parser.VerifyNoOtherCalls();
     }

@@ -427,6 +427,10 @@ public sealed class RpcClientWorkerChannelTests
         await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = response });
         await start.WaitAsync(TestTimeout);
 
+        string capabilitiesLog = Assert.Single(_logs, log => log.StartsWith("Host capabilities:", StringComparison.Ordinal));
+        Assert.Equal($"Host capabilities: {string.Join(", ", request.WorkerInitRequest.Capabilities)}", capabilitiesLog);
+        string workerCapabilitiesLog = Assert.Single(_logs, log => log.StartsWith("Worker capabilities:", StringComparison.Ordinal));
+        Assert.Equal($"Worker capabilities: {string.Join(", ", response.Capabilities)}", workerCapabilitiesLog);
         Assert.Equal("1", request.WorkerInitRequest.Capabilities["HostConfiguration"]);
         Assert.Equal("10", request.WorkerInitRequest.Capabilities[RpcWorkerConstants.MultiStream]);
         Assert.Equal(v2CompatibilityMode, request.WorkerInitRequest.Capabilities.ContainsKey(RpcWorkerConstants.V2Compatable));

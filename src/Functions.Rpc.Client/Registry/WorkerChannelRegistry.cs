@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
@@ -633,13 +632,21 @@ internal sealed partial class WorkerChannelRegistry :
                     operationSource.Token.ThrowIfCancellationRequested();
                     stage = LinkStage.ValidatingHostConfiguration;
                     IConfigurationSource configurationSource;
+                    string validationOutcome = "Failed";
                     try
                     {
                         configurationSource = _workerHostConfigurationParser.Parse(candidate.HostConfiguration);
+                        validationOutcome = configurationSource is null ? "Absent" : "Valid";
                     }
                     catch (HostConfigurationException exception)
                     {
+                        validationOutcome = "Rejected";
                         throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable, exception.Message);
+                    }
+                    finally
+                    {
+                        Log.HostConfigurationValidated(_logger, workerId, (int?)candidate.HostConfiguration?.Status,
+                            candidate.HostConfiguration?.Content.Length ?? 0, validationOutcome);
                     }
 
                     stage = LinkStage.RegisteringChannel;
@@ -1259,7 +1266,7 @@ internal sealed partial class WorkerChannelRegistry :
             _monitorTasks.Add(monitorTask);
             if (slot.Initialized)
             {
-                SelectHostConfigurationSourceLocked(configurationSource);
+                SelectHostConfigurationSourceLocked(channel, configurationSource);
                 _initializedChannelAvailable.TrySetResult();
                 PublishInitializedChannelsLocked();
             }
@@ -1364,7 +1371,7 @@ internal sealed partial class WorkerChannelRegistry :
             }
 
             // A successful source remains selected even if its channel disconnected before publication.
-            SelectHostConfigurationSourceLocked(configurationSource);
+            SelectHostConfigurationSourceLocked(channel, configurationSource);
             // A registered link remains in the drain snapshot but cannot become available after admission closes.
             if (_drainStart is not null || !ReferenceEquals(slot.Channel, channel) || channel.IsTerminated)
             {
@@ -1378,13 +1385,17 @@ internal sealed partial class WorkerChannelRegistry :
         }
     }
 
-    private void SelectHostConfigurationSourceLocked(IConfigurationSource configurationSource)
+    private void SelectHostConfigurationSourceLocked(RpcClientWorkerChannel channel, IConfigurationSource configurationSource)
     {
+        bool selected = !_hostConfigurationSourceSelected;
         if (!_hostConfigurationSourceSelected)
         {
             _hostConfigurationSource = configurationSource;
             _hostConfigurationSourceSelected = true;
         }
+
+        Log.HostConfigurationSourceEvaluated(_logger, channel.Id, selected ? "Selected" : "RetainedExisting",
+            configurationSource is null ? "File" : "Delivered", _hostConfigurationSource is null ? "File" : "Delivered");
     }
 
     private async Task ConfigureSlotInBackgroundAsync(WorkerSlot slot)
@@ -1637,16 +1648,6 @@ internal sealed partial class WorkerChannelRegistry :
         [LoggerMessage(5, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for the active ScriptHost.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
 
-        [LoggerMessage(9, LogLevel.Information, "Worker {WorkerId} completed drain and closed its Runtime link.")]
-        public static partial void DrainCompleted(ILogger logger, string workerId);
-
-        [LoggerMessage(10, LogLevel.Error, "Worker {WorkerId} failed while completing drain.")]
-        public static partial void DrainFailed(ILogger logger, Exception exception, string workerId);
-
-        [LoggerMessage(11, LogLevel.Information,
-            "Worker {WorkerId} completed drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
-        public static partial void DrainAlreadyDetached(ILogger logger, string workerId);
-
         [LoggerMessage(6, LogLevel.Information, "FunctionRpc link for worker {WorkerId} started.")]
         public static partial void LinkStarted(ILogger logger, string workerId);
 
@@ -1664,7 +1665,27 @@ internal sealed partial class WorkerChannelRegistry :
             string reason,
             string exceptionType);
 
+        [LoggerMessage(9, LogLevel.Information, "Worker {WorkerId} completed drain and closed its Runtime link.")]
+        public static partial void DrainCompleted(ILogger logger, string workerId);
+
+        [LoggerMessage(10, LogLevel.Error, "Worker {WorkerId} failed while completing drain.")]
+        public static partial void DrainFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(11, LogLevel.Information,
+            "Worker {WorkerId} completed drain, but its Runtime link was already detached or shutdown prevented a new unlink.")]
+        public static partial void DrainAlreadyDetached(ILogger logger, string workerId);
+
         [LoggerMessage(12, LogLevel.Warning, "The extension payload for worker {WorkerId} was rejected; its link will be removed.")]
         public static partial void ExtensionPayloadRejected(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(13, LogLevel.Information,
+            "Host configuration validated for worker {WorkerId}. Delivery status: {DeliveryStatus}. Content bytes: {SizeBytes}. Outcome: {Outcome}.")]
+        public static partial void HostConfigurationValidated(
+            ILogger logger, string workerId, int? deliveryStatus, int sizeBytes, string outcome);
+
+        [LoggerMessage(14, LogLevel.Information,
+            "Host configuration source evaluated for worker {WorkerId}. Outcome: {Outcome}. Candidate source: {CandidateSource}. Active source: {ActiveSource}.")]
+        public static partial void HostConfigurationSourceEvaluated(
+            ILogger logger, string workerId, string outcome, string candidateSource, string activeSource);
     }
 }

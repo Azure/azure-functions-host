@@ -2415,6 +2415,12 @@ public sealed partial class WorkerChannelRegistryTests
                 It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
                 .Callback(new InvocationAction(call =>
                 {
+                    if (call.Arguments[1] is EventId { Id: 13 or 14 } telemetryEvent)
+                    {
+                        var fields = (IEnumerable<KeyValuePair<string, object>>)call.Arguments[2];
+                        ConfigurationTelemetry.Enqueue((telemetryEvent.Name, fields.ToDictionary(pair => pair.Key, pair => pair.Value)));
+                    }
+
                     if (call.Arguments[1] is EventId { Id: 8 })
                     {
                         var fields = (IEnumerable<KeyValuePair<string, object>>)call.Arguments[2];
@@ -2482,6 +2488,8 @@ public sealed partial class WorkerChannelRegistryTests
         internal Mock<ILogger<WorkerChannelRegistry>> Logger { get; } = new();
 
         internal ConcurrentQueue<(LogLevel Level, Dictionary<string, object> Fields, Exception Exception, string Message)> LinkFailures { get; } = [];
+
+        internal ConcurrentQueue<(string EventName, Dictionary<string, object> Fields)> ConfigurationTelemetry { get; } = [];
 
         internal Action OnLinkFailure { get; set; }
 
