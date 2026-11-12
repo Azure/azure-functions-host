@@ -220,7 +220,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             var traces = _loggerProvider.GetAllLogMessages();
             Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
-            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"ExtensionStartupType AzureStorageBlobsWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage.Blobs, Version=5.3.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8' does not meet the required minimum version of 5.4.0.")));
+            Assert.True(traces.Any(m => m.FormattedMessage.Contains(
+                $"ExtensionStartupType AzureStorageBlobsWebJobsStartup from assembly '{typeof(AzureStorageBlobsWebJobsStartup).Assembly.FullName}' " +
+                "does not meet the required minimum version of 5.4.0.")));
         }
 
         [Fact]
