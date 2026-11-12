@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using Azure.Functions.Authentication;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -155,6 +156,9 @@ public static class RpcClientServiceCollectionExtensions
         services.AddRpcScriptHostCoreServices();
         services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
         services.UseGroupNeutralFunctionListeners();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<WorkerGatedListenerManager>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IListenerDecorator, WorkerGatedListenerDecorator>());
 
         return services;
     }

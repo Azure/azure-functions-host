@@ -2,6 +2,10 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Packages.props, $(MSBuildThisFileDirectory)..))" />
 
+  <PropertyGroup>
+    <BlobExtensionVersion Condition="'$(BlobExtensionVersion)' == ''">5.3.10</BlobExtensionVersion>
+  </PropertyGroup>
+
   <!-- Testing Packages -->
   <ItemGroup>
     <PackageVersion Include="AwesomeAssertions" Version="9.1.0" />
@@ -19,9 +23,20 @@
 
   <!-- Supporting Packages -->
   <ItemGroup>
+    <PackageVersion Update="Azure.Core" Version="1.53.0" />
+    <PackageVersion Update="Azure.Identity" Version="1.21.0" />
+    <PackageVersion Update="Azure.Storage.Blobs" Version="12.26.0" />
+    <PackageVersion Update="Microsoft.Extensions.Azure" Version="1.14.0" />
+    <PackageVersion Update="Microsoft.Extensions.Configuration" Version="10.0.3" />
+    <PackageVersion Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.3" />
+    <PackageVersion Update="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
+    <PackageVersion Update="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageVersion Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.54.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.CosmosDB" Version="4.11.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.EventHubs" Version="6.5.5" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="5.3.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Storage.Blobs" Version="$(BlobExtensionVersion)" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Tables" Version="1.4.0" />
   </ItemGroup>
 

@@ -476,14 +476,8 @@ internal sealed partial class RpcClientInvocationScheduler(
     private WorkerChannelUnavailableException MissingWorkerTimeout(ScriptInvocationContext context, string functionGroup)
         => new($"No worker channel available for function '{context.FunctionMetadata.Name}' in group '{functionGroup}' within {_channelWaitTimeout}.");
 
-    /// <summary>
-    /// Requires a ready serving channel with the same assigned group, using case-insensitive platform identity.
-    /// Validation workers are excluded; listener-specific exceptions such as HTTP/blob sharing do not apply to invocation routing.
-    /// </summary>
     private static bool IsEligible(WorkerChannel channel, string functionGroup)
-        => channel is RpcClientWorkerChannel { IsReadyForInvocations: true } client
-            && !string.Equals(client.FunctionGroupName, FunctionGroups.ValidationWorker, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(client.FunctionGroupName, functionGroup, StringComparison.OrdinalIgnoreCase);
+        => channel is RpcClientWorkerChannel client && client.CanServeFunctionGroup(functionGroup);
 
     private sealed class GroupSelectionState
     {

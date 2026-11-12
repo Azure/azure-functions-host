@@ -42,7 +42,7 @@ using RpcHostConfiguration = Microsoft.Azure.WebJobs.Script.Grpc.Messages.HostCo
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public class RpcClientScriptHostStartupIntegrationTests
+public partial class RpcClientScriptHostStartupIntegrationTests
 {
     private const string HostConfiguration = """{"version":"2.0","isDefaultHostConfig":true}""";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
@@ -236,6 +236,7 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.DoesNotContain(testHost.Logs, log =>
                 string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
 
+            thirdWorker.Service.ExpectDisconnect();
             Assert.True(await registry.UnlinkAsync("third", timeout.Token));
             RuntimeState unlinked = await WaitForRuntimeStateAsync(runtimeState, state => state.WorkerCount == 2, timeout.Token);
             Assert.Equal(20, unlinked.HttpCapacity);
@@ -249,6 +250,8 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.True(registry.TryGetInitializedChannel("first", out WorkerChannel retainedChannel));
             Assert.Same(firstChannel, retainedChannel);
 
+            firstWorker.Service.ExpectDisconnect();
+            secondWorker.Service.ExpectDisconnect();
             await testHost.Host.StopAsync(timeout.Token);
 
             Assert.Equal(0, runtimeState.Current.HttpCapacity);
@@ -541,6 +544,52 @@ public class RpcClientScriptHostStartupIntegrationTests
             string.Equals(log.EventId.Name, "HostConfigurationRejected", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TestWorkerService_RequestStreamIOException_RequiresExpectedDisconnect(bool expectedDisconnect)
+    {
+        IOException error = new("Request stream failed.");
+        Mock<IAsyncStreamReader<StreamingMessage>> requests = new();
+        requests.Setup(reader => reader.MoveNext(It.IsAny<CancellationToken>())).ThrowsAsync(error);
+        Mock<IServerStreamWriter<StreamingMessage>> responses = new();
+        responses.Setup(writer => writer.WriteAsync(It.IsAny<StreamingMessage>())).Returns(Task.CompletedTask);
+        TestWorkerService worker = new("worker", "dotnet-isolated");
+        if (expectedDisconnect)
+        {
+            worker.ExpectDisconnect();
+        }
+
+        Task stream = worker.EventStream(requests.Object, responses.Object, Mock.Of<ServerCallContext>());
+        if (expectedDisconnect)
+        {
+            await stream;
+            await worker.Disconnected.Task;
+        }
+        else
+        {
+            Assert.Same(error, await Assert.ThrowsAsync<IOException>(() => stream));
+            Assert.Same(error, await Assert.ThrowsAsync<IOException>(() => worker.Disconnected.Task));
+        }
+    }
+
+    [Fact]
+    public async Task TestWorkerService_ExpectedDisconnect_DoesNotHideInvocationIOException()
+    {
+        IOException error = new("Invocation failed.");
+        TestWorkerService worker = new("worker", "dotnet-isolated", onInvocation: (_, _) => Task.FromException(error));
+        worker.ExpectDisconnect();
+        Mock<IAsyncStreamReader<StreamingMessage>> requests = new();
+        requests.Setup(reader => reader.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        requests.SetupGet(reader => reader.Current).Returns(new StreamingMessage { InvocationRequest = new() });
+        Mock<IServerStreamWriter<StreamingMessage>> responses = new();
+        responses.Setup(writer => writer.WriteAsync(It.IsAny<StreamingMessage>())).Returns(Task.CompletedTask);
+
+        Task stream = worker.EventStream(requests.Object, responses.Object, Mock.Of<ServerCallContext>());
+        Assert.Same(error, await Assert.ThrowsAsync<IOException>(() => stream));
+        Assert.Same(error, await Assert.ThrowsAsync<IOException>(() => worker.Disconnected.Task));
+    }
+
     private static RpcHostConfiguration CreateHostConfiguration(string content) => new()
     {
         Status = RpcHostConfiguration.Types.Status.Available,
@@ -591,13 +640,14 @@ public class RpcClientScriptHostStartupIntegrationTests
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"ClientHost-{Guid.NewGuid():N}");
 
-        public ClientTestHost(Action<IServiceCollection>? configureServices = null, bool emptyHostRoot = false)
+        public ClientTestHost(Action<IServiceCollection>? configureServices = null, bool emptyHostRoot = false,
+            string hostConfiguration = HostConfiguration)
         {
             ScriptPath = Path.Combine(_directory, "app");
             Directory.CreateDirectory(ScriptPath);
             if (!emptyHostRoot)
             {
-                File.WriteAllText(Path.Combine(ScriptPath, "host.json"), HostConfiguration);
+                File.WriteAllText(Path.Combine(ScriptPath, "host.json"), hostConfiguration);
             }
 
             Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -691,12 +741,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public static async Task<TestWorker> StartAsync(
             string workerId, string language = "dotnet-isolated", RpcHostConfiguration? hostConfiguration = null,
-            int maxHttpConcurrency = 10, string functionGroupName = "http")
+            int maxHttpConcurrency = 10, string functionGroupName = "http", IReadOnlyList<RpcFunctionMetadata>? metadata = null,
+            Func<InvocationRequest, CancellationToken, Task>? onInvocation = null)
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             RuntimeWorkerTestData.ConfigureTlsListener(builder);
-            TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency, functionGroupName);
+            TestWorkerService service = new(workerId, language, hostConfiguration, maxHttpConcurrency, functionGroupName, metadata, onInvocation);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -716,12 +767,14 @@ public class RpcClientScriptHostStartupIntegrationTests
     }
 
     public sealed class TestWorkerService(
-        string workerId, string language, RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10, string functionGroupName = "http")
+        string workerId, string language, RpcHostConfiguration? hostConfiguration = null, int maxHttpConcurrency = 10, string functionGroupName = "http",
+        IReadOnlyList<RpcFunctionMetadata>? metadata = null, Func<InvocationRequest, CancellationToken, Task>? onInvocation = null)
         : FunctionRpc.FunctionRpcBase
     {
         private int _functionLoadRequests;
         private int _metadataRequests;
         private int _invocations;
+        private int _expectedDisconnect;
 
         public int FunctionLoadRequests => Interlocked.CompareExchange(ref _functionLoadRequests, 0, 0);
 
@@ -735,14 +788,33 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TaskCompletionSource Disconnected { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public void ExpectDisconnect() => Interlocked.Exchange(ref _expectedDisconnect, 1);
+
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
             IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             try
             {
                 await responseStream.WriteAsync(new() { StartStream = new() { WorkerId = workerId } });
-                while (await requestStream.MoveNext(context.CancellationToken))
+                while (true)
                 {
+                    bool hasRequest;
+                    try
+                    {
+                        hasRequest = await requestStream.MoveNext(context.CancellationToken);
+                    }
+                    catch (IOException) when (context.CancellationToken.IsCancellationRequested ||
+                        Interlocked.CompareExchange(ref _expectedDisconnect, 0, 0) != 0)
+                    {
+                        // Disposing the client call can reset Kestrel's request stream before cancellation is signaled.
+                        break;
+                    }
+
+                    if (!hasRequest)
+                    {
+                        break;
+                    }
+
                     StreamingMessage request = requestStream.Current;
                     StreamingMessage response = new() { RequestId = request.RequestId };
                     switch (request.ContentCase)
@@ -752,26 +824,38 @@ public class RpcClientScriptHostStartupIntegrationTests
                             response.WorkerInitResponse = RuntimeWorkerTestData.Authenticate(
                                 new() { Result = Success(), HostConfiguration = hostConfiguration }, workerId);
                             response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
+                            if (metadata is not null)
+                            {
+                                response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.IsAlwaysReadyCapability, bool.FalseString);
+                            }
+
                             response.WorkerInitResponse.Capabilities.Add(
                                 RpcClientWorkerChannel.MaxHttpConcurrencyCapability, maxHttpConcurrency.ToString(CultureInfo.InvariantCulture));
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionsMetadataRequest:
                             Interlocked.Increment(ref _metadataRequests);
                             response.FunctionMetadataResponse = new() { Result = Success() };
-                            response.FunctionMetadataResponse.FunctionMetadataResults.Add(new RpcFunctionMetadata
+                            if (metadata is not null)
                             {
-                                FunctionId = "http",
-                                Name = "Http",
-                                Language = language,
-                                ScriptFile = "Sample.dll",
-                                EntryPoint = "Sample.Http.Run",
-                                Status = Success(),
-                                RawBindings =
+                                response.FunctionMetadataResponse.FunctionMetadataResults.AddRange(metadata);
+                            }
+                            else
+                            {
+                                response.FunctionMetadataResponse.FunctionMetadataResults.Add(new RpcFunctionMetadata
                                 {
-                                    """{"name":"req","type":"httpTrigger","direction":"in","authLevel":"anonymous","methods":["get"]}""",
-                                    """{"name":"$return","type":"http","direction":"out"}""",
-                                },
-                            });
+                                    FunctionId = "http",
+                                    Name = "Http",
+                                    Language = language,
+                                    ScriptFile = "Sample.dll",
+                                    EntryPoint = "Sample.Http.Run",
+                                    Status = Success(),
+                                    RawBindings =
+                                    {
+                                        """{"name":"req","type":"httpTrigger","direction":"in","authLevel":"anonymous","methods":["get"]}""",
+                                        """{"name":"$return","type":"http","direction":"out"}""",
+                                    },
+                                });
+                            }
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionLoadRequest:
                             Interlocked.Increment(ref _functionLoadRequests);
@@ -779,23 +863,32 @@ public class RpcClientScriptHostStartupIntegrationTests
                             break;
                         case StreamingMessage.ContentOneofCase.InvocationRequest:
                             Interlocked.Increment(ref _invocations);
+                            if (onInvocation is not null)
+                            {
+                                await onInvocation(request.InvocationRequest, context.CancellationToken);
+                            }
+
                             response.InvocationResponse = new()
                             {
                                 InvocationId = request.InvocationRequest.InvocationId,
                                 Result = Success(),
-                                ReturnValue = new()
+                                ReturnValue = metadata is null ? new()
                                 {
                                     Http = new()
                                     {
                                         StatusCode = "200",
                                         Body = new() { String = workerId },
                                     },
-                                },
+                                }
+                                : null,
                             };
                             break;
                         case StreamingMessage.ContentOneofCase.WorkerStatusRequest:
                             response.WorkerStatusResponse = new();
                             break;
+                        case StreamingMessage.ContentOneofCase.WorkerDraining:
+                            // Drain notifications are one-way control messages; the Host expects no response.
+                            continue;
                         default:
                             throw new InvalidOperationException($"Unexpected worker request: {request.ContentCase}.");
                     }
@@ -809,6 +902,12 @@ public class RpcClientScriptHostStartupIntegrationTests
             }
             catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
             {
+            }
+            catch (Exception exception)
+            {
+                // Surface handler failures to tests awaiting disconnect instead of reporting them as a graceful close.
+                Disconnected.TrySetException(exception);
+                throw;
             }
             finally
             {
