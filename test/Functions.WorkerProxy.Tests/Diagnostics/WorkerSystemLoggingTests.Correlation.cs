@@ -88,7 +88,7 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         string oversized = new('\u2603', 10_000);
         generator.LogEvent(LogLevel.Warning, "Failure", "Proxy", string.Empty, oversized,
-            string.Empty, string.Empty, new()
+            string.Empty, string.Empty, WorkerProxyApplication.VersionForLogging, new()
             {
                 WorkerId = workerId,
                 ProxySessionId = 7
@@ -114,7 +114,8 @@ public partial class WorkerSystemLoggingTests
         string workerId = new('w', 128);
         string summary = $"Diagnostic message. {new string('x', 1_024)}";
         generator.LogEvent(LogLevel.Warning, "Failure", "Proxy", string.Empty, summary,
-            string.Empty, string.Empty, new() { WorkerId = workerId, ProxySessionId = long.MaxValue });
+            string.Empty, string.Empty, WorkerProxyApplication.VersionForLogging,
+            new() { WorkerId = workerId, ProxySessionId = long.MaxValue });
         await generator.CompleteAsync();
 
         string[] record = Assert.Single(ParseCsvOutput(output.ToString()));
@@ -132,6 +133,7 @@ public partial class WorkerSystemLoggingTests
         string retainedSummary = new('x', 1_024 - prefix.Length - 1);
         generator.LogEvent(LogLevel.Warning, "Failure", "Proxy", string.Empty,
             retainedSummary + "\uD83D\uDE80tail", string.Empty, string.Empty,
+            WorkerProxyApplication.VersionForLogging,
             new() { WorkerId = "worker", ProxySessionId = 7 });
         await generator.CompleteAsync();
 
@@ -224,7 +226,8 @@ public partial class WorkerSystemLoggingTests
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         await Task.WhenAll(Enumerable.Range(0, 100).Select(index => Task.Run(() =>
             generator.LogEvent(LogLevel.Information, "Concurrent", "Proxy", string.Empty,
-                index.ToString(CultureInfo.InvariantCulture), string.Empty, string.Empty))));
+                index.ToString(CultureInfo.InvariantCulture), string.Empty, string.Empty,
+                WorkerProxyApplication.VersionForLogging))));
         await generator.CompleteAsync();
 
         string[][] records = ParseCsvOutput(output.ToString());

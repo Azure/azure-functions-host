@@ -78,6 +78,17 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly int _processId = Process.GetCurrentProcess().Id;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
+        /// <summary>
+        /// The host assembly's informational version, including any prerelease suffix and source revision, or an empty string.
+        /// </summary>
+        public static readonly string InformationalVersion =
+            typeof(ScriptHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? string.Empty;
+
+        /// <summary>
+        /// The host file version including any informational prerelease suffix, for diagnostic logging only.
+        /// </summary>
+        public static readonly string VersionForLogging = GetVersionForLogging(Version, InformationalVersion);
+
         private ValueStopwatch _stopwatch;
         private ScriptSettingsManager _settingsManager;
 
@@ -369,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
-            _logger.StartingHost(hostId, InstanceId, Version, _processId, AppDomain.CurrentDomain.Id, InDebugMode, InDiagnosticMode, extensionVersion);
+            _logger.StartingHost(hostId, InstanceId, VersionForLogging, _processId, AppDomain.CurrentDomain.Id, InDebugMode, InDiagnosticMode, extensionVersion);
         }
 
         private void LogHostFunctionErrors()
@@ -1065,6 +1076,22 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             return fileVersionAttr?.Version ?? "Unknown";
+        }
+
+        internal static string GetVersionForLogging(string fileVersion, string informationalVersion)
+        {
+            // For "1.2.3.4" and "1.2.3-preview.byoc.1+sha", log "1.2.3.4-preview.byoc.1".
+            // Strip build metadata first so a hyphen in it cannot be mistaken for a prerelease suffix.
+            int metadataIndex = informationalVersion.IndexOf('+');
+            if (metadataIndex >= 0)
+            {
+                informationalVersion = informationalVersion[..metadataIndex];
+            }
+
+            int suffixIndex = informationalVersion.IndexOf('-');
+
+            // Preserve the file version's numeric components, including the fixed version used by local builds.
+            return suffixIndex >= 0 ? fileVersion + informationalVersion[suffixIndex..] : fileVersion;
         }
 
         protected override void OnHostInitialized()

@@ -663,6 +663,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(originalFunctionWorkerRuntimeVersion, result.GetProperty("OriginalFunctionWorkerRuntimeVersion").GetString());
             Assert.Equal(functionsWorkerRuntimeVersion, result.GetProperty("FunctionsWorkerRuntimeVersion").GetString());
             Assert.Equal(functionExtensionVersion, result.GetProperty("FunctionsExtensionVesion").GetString());
+            Assert.Equal(ScriptHost.InformationalVersion, result.GetProperty("HostInformationalVersion").GetString());
             Assert.NotNull(result.GetProperty("HostDirectory").GetString());
             Assert.False(result.GetProperty("InStandbyMode").GetBoolean());
             Assert.True(result.GetProperty("HasBeenSpecialized").GetBoolean());

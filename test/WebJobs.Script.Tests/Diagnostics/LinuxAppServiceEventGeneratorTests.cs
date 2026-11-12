@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(source, p),
                 p => Assert.Equal(details, LinuxContainerEventGeneratorTests.UnNormalize(p)),
                 p => Assert.Equal(summary, LinuxContainerEventGeneratorTests.UnNormalize(p)),
-                p => Assert.Equal(ScriptHost.Version, p),
+                p => Assert.Equal(ScriptHost.VersionForLogging, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(exceptionType, p),
                 p => Assert.Equal(exceptionMessage, LinuxContainerEventGeneratorTests.UnNormalize(p)),
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(minimum, long.Parse(p)),
                 p => Assert.Equal(maximum, long.Parse(p)),
                 p => Assert.Equal(count, long.Parse(p)),
-                p => Assert.Equal(ScriptHost.Version, p),
+                p => Assert.Equal(ScriptHost.VersionForLogging, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(data, p));
         }

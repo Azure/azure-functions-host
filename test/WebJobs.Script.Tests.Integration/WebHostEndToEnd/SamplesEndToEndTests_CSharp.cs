@@ -780,7 +780,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(((string)jsonContent["id"]).Length > 0);
             string expectedVersion = fileVersionAttr.Version;
             Assert.Equal(expectedVersion, (string)jsonContent["version"]);
-            string expectedVersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost));
+            string expectedVersionDetails = ScriptHost.InformationalVersion;
             Assert.Equal(expectedVersionDetails, (string)jsonContent["versionDetails"]);
             var state = (string)jsonContent["state"];
             Assert.True(state == "Running" || state == "Created" || state == "Initialized");

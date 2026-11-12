@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionSuffix>preview.byoc.1</VersionSuffix>
+  </PropertyGroup>
+</Project>

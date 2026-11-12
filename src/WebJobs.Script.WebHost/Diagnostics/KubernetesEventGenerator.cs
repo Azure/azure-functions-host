@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 traceLog.Add("Source", source);
                 traceLog.Add("Details", NormalizeString(details, addEnclosingQuotes: false));
                 traceLog.Add("Summary", NormalizeString(summary, addEnclosingQuotes: false));
-                traceLog.Add("HostVersion", ScriptHost.Version);
+                traceLog.Add("HostVersion", ScriptHost.VersionForLogging);
                 traceLog.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
                 traceLog.Add("ExceptionType", exceptionType);
                 traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage, addEnclosingQuotes: false));
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             metricEvent.Add("Minimum", minimum);
             metricEvent.Add("Maximum", maximum);
             metricEvent.Add("Count", count);
-            metricEvent.Add("HostVersion", ScriptHost.Version);
+            metricEvent.Add("HostVersion", ScriptHost.VersionForLogging);
             metricEvent.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
             metricEvent.Add("Data", NormalizeString(data));
             metricEvent.Add("RuntimeSiteName", runtimeSiteName);

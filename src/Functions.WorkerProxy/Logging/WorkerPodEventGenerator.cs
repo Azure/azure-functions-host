@@ -46,6 +46,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         string summary,
         string exceptionType,
         string exceptionMessage,
+        string version,
         WorkerSystemLogContext? context = null,
         DateTimeOffset? timestamp = null)
     {
@@ -55,6 +56,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
             source,
             details,
             FormatSummary(summary, context),
+            version,
             timestamp ?? _timeProvider.GetUtcNow(),
             exceptionType,
             exceptionMessage,
@@ -105,7 +107,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
     {
         // Preserve the Host trace layout while leaving unavailable Host-only identity columns empty.
         return string.Create(CultureInfo.InvariantCulture,
-            $"{EventStreamName} {record.Level},,{NormalizeColumn(record.AppName, 128)},,{NormalizeColumn(record.EventName, 128)},{NormalizeColumn(record.Source, 256)},{NormalizeString(record.Details, 1_024)},{NormalizeString(record.Summary, 1_024)},,{record.Timestamp.UtcDateTime:O},{NormalizeColumn(record.ExceptionType, 256)},{NormalizeString(record.ExceptionMessage, 1_024)},,,,,,,,,");
+            $"{EventStreamName} {record.Level},,{NormalizeColumn(record.AppName, 128)},,{NormalizeColumn(record.EventName, 128)},{NormalizeColumn(record.Source, 256)},{NormalizeString(record.Details, 1_024)},{NormalizeString(record.Summary, 1_024)},{NormalizeColumn(record.Version, 128)},{record.Timestamp.UtcDateTime:O},{NormalizeColumn(record.ExceptionType, 256)},{NormalizeString(record.ExceptionMessage, 1_024)},,,,,,,,,");
     }
 
     private static string NormalizeColumn(string value, int limit)
@@ -166,6 +168,7 @@ internal sealed class WorkerPodEventGenerator : IWorkerSystemEventGenerator, IDi
         string Source,
         string Details,
         string Summary,
+        string Version,
         DateTimeOffset Timestamp,
         string ExceptionType,
         string ExceptionMessage,

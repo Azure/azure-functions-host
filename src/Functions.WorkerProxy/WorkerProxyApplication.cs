@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Authentication;
@@ -26,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 
 namespace Azure.Functions.WorkerProxy;
 
@@ -34,6 +37,14 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal static partial class WorkerProxyApplication
 {
+    internal static readonly string Version =
+        typeof(WorkerProxyApplication).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "Unknown";
+
+    internal static readonly string InformationalVersion =
+        typeof(WorkerProxyApplication).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? string.Empty;
+
+    internal static readonly string VersionForLogging = GetVersionForLogging(Version, InformationalVersion);
+
     /// <summary>
     /// Runs the proxy, recording startup failures before releasing its logging resources.
     /// </summary>
@@ -72,7 +83,7 @@ internal static partial class WorkerProxyApplication
         using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
         generator.LogEvent(LogLevel.Critical, "WorkerProxyStartupFailed", WorkerProxyLogExporter.ApplicationCategory,
             details: string.Empty, summary: $"WorkerProxy failed to start ({exception.GetType().FullName}).",
-            exceptionType: string.Empty, exceptionMessage: string.Empty);
+            exceptionType: string.Empty, exceptionMessage: string.Empty, version: VersionForLogging);
     }
 
     /// <summary>
@@ -98,6 +109,9 @@ internal static partial class WorkerProxyApplication
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<IWorkerSystemEventGenerator, WorkerPodEventGenerator>();
         builder.Logging.AddOpenTelemetry(ConfigureOpenTelemetry);
+        builder.Services.AddOptions<OpenTelemetryLoggerOptions>()
+            .Configure<IOptions<WorkerProxyOptions>>(static (options, proxyOptions) =>
+                options.SetResourceBuilder(CreateResourceBuilder(proxyOptions.Value.PodName)));
         builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(null, LogLevel.None);
         builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
             WorkerProxyLogExporter.ReadinessProbeCategory,
@@ -166,11 +180,44 @@ internal static partial class WorkerProxyApplication
                 services.GetRequiredService<WorkerPodStateManager>())));
     }
 
+    internal static ResourceBuilder CreateResourceBuilder(string podName)
+    {
+        ResourceBuilder builder = ResourceBuilder.CreateDefault()
+            .AddService("Azure.Functions.WorkerProxy", serviceVersion: VersionForLogging, serviceInstanceId: podName);
+
+        // Our SDK build sets no other build metadata, so "1.0.0-preview.byoc.1+<sha>" contains the full revision after '+'.
+        int revisionIndex = InformationalVersion.IndexOf('+');
+        if (revisionIndex >= 0 && revisionIndex < InformationalVersion.Length - 1)
+        {
+            builder.AddAttributes(new Dictionary<string, object>
+            {
+                ["vcs.ref.head.revision"] = InformationalVersion[(revisionIndex + 1)..]
+            });
+        }
+
+        return builder;
+    }
+
+    internal static string GetVersionForLogging(string fileVersion, string informationalVersion)
+    {
+        // For "1.2.3.4" and "1.2.3-preview.byoc.1+sha", log "1.2.3.4-preview.byoc.1".
+        // Strip build metadata first so a hyphen in it cannot be mistaken for a prerelease suffix.
+        int metadataIndex = informationalVersion.IndexOf('+');
+        if (metadataIndex >= 0)
+        {
+            informationalVersion = informationalVersion[..metadataIndex];
+        }
+
+        int suffixIndex = informationalVersion.IndexOf('-');
+
+        return suffixIndex >= 0 ? fileVersion + informationalVersion[suffixIndex..] : fileVersion;
+    }
+
     private static void RegisterLifecycleEvents(WebApplication app)
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
-        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
+        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger, InformationalVersion));
         app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
         app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
     }
@@ -266,8 +313,8 @@ internal static partial class WorkerProxyApplication
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Information, "WorkerProxy started.", EventName = "WorkerProxyStarted")]
-        public static partial void WorkerProxyStarted(ILogger logger);
+        [LoggerMessage(0, LogLevel.Information, "WorkerProxy started: {InformationalVersion}", EventName = "WorkerProxyStarted")]
+        public static partial void WorkerProxyStarted(ILogger logger, string informationalVersion);
 
         [LoggerMessage(1, LogLevel.Information, "WorkerProxy shutdown started.", EventName = "WorkerProxyShutdownStarted")]
         public static partial void WorkerProxyShutdownStarted(ILogger logger);

@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
+using System.Threading;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -34,8 +36,11 @@ internal sealed class WorkerProxyLogExporter(
 
     private readonly WorkerPodStateManager? _stateManager = stateManager;
 
+    private string? _serviceVersion;
+
     public override ExportResult Export(in Batch<LogRecord> batch)
     {
+        string serviceVersion = GetServiceVersion();
         foreach (LogRecord record in batch)
         {
             if (record.LogLevel is LogLevel.None)
@@ -85,11 +90,36 @@ internal sealed class WorkerProxyLogExporter(
                 message,
                 exceptionType,
                 exceptionMessage,
+                serviceVersion,
                 context,
                 record.Timestamp);
         }
 
         return ExportResult.Success;
+    }
+
+    private string GetServiceVersion()
+    {
+        string? serviceVersion = _serviceVersion;
+        if (serviceVersion is not null)
+        {
+            return serviceVersion;
+        }
+
+        if (ParentProvider is not { } parentProvider)
+        {
+            return "unavailable";
+        }
+
+        serviceVersion = parentProvider.GetResource().Attributes
+            .FirstOrDefault(static attribute => string.Equals(attribute.Key, "service.version", StringComparison.Ordinal))
+            .Value as string;
+        if (string.IsNullOrEmpty(serviceVersion))
+        {
+            serviceVersion = "unavailable";
+        }
+
+        return Interlocked.CompareExchange(ref _serviceVersion, serviceVersion, null) ?? serviceVersion;
     }
 
     // The shared writer drains on generator disposal; it has no non-destructive flush operation.

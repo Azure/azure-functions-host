@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
-    <VersionPrefix>4.1056.100</VersionPrefix>
+    <VersionPrefix>4.1057.100</VersionPrefix>
+    <VersionSuffix>preview.byoc.1</VersionSuffix>
     <UpdateBuildNumber>true</UpdateBuildNumber>
   </PropertyGroup>
 </Project>

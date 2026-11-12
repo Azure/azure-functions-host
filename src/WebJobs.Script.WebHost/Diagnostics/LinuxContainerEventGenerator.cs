@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
         {
             string formattedEventTimeStamp = eventTimestamp.ToString(EventTimestampFormat);
-            string hostVersion = ScriptHost.Version;
+            string hostVersion = ScriptHost.VersionForLogging;
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
                 details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
-            string hostVersion = ScriptHost.Version;
+            string hostVersion = ScriptHost.VersionForLogging;
 
             _writeEvent($"{ScriptConstants.LinuxMetricEventStreamName} {subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{NormalizeString(data)},{_containerName},{StampName},{TenantId},{runtimeSiteName},{slotName},{_pid}");
         }

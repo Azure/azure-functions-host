@@ -31,17 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     case LogLevel.Trace:
                     case LogLevel.Debug:
-                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, formattedEventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
+                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.VersionForLogging, formattedEventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
                         break;
                     case LogLevel.Information:
-                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, formattedEventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
+                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.VersionForLogging, formattedEventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
                         break;
                     case LogLevel.Warning:
-                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, formattedEventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
+                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.VersionForLogging, formattedEventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
                         break;
                     case LogLevel.Error:
                     case LogLevel.Critical:
-                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, formattedEventTimestamp, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
+                        FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.VersionForLogging, formattedEventTimestamp, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, runtimeSiteName, slotName);
                         break;
                 }
             }
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
-            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestampFormat), data, runtimeSiteName, slotName);
+            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.VersionForLogging, eventTimestamp.ToString(EventTimestampFormat), data, runtimeSiteName, slotName);
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
