@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Azure.Functions.Authentication;
 using Azure.Functions.WorkerProxy.Authentication;
@@ -217,9 +218,24 @@ internal static partial class WorkerProxyApplication
     {
         ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(WorkerProxyApplication).FullName!);
-        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger, InformationalVersion));
+        PosixSignalRegistration? sigtermRegistration = null;
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            Log.WorkerProxyStarted(logger, InformationalVersion);
+            // os check for local testing
+            if (OperatingSystem.IsLinux())
+            {
+                sigtermRegistration = PosixSignalRegistration.Create(
+                    PosixSignal.SIGTERM,
+                    _ => Log.PlatformTerminationSignalReceived(logger));
+            }
+        });
         app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
-        app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
+        app.Lifetime.ApplicationStopped.Register(() =>
+        {
+            sigtermRegistration?.Dispose();
+            Log.WorkerProxyStopped(logger);
+        });
     }
 
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
@@ -321,5 +337,8 @@ internal static partial class WorkerProxyApplication
 
         [LoggerMessage(2, LogLevel.Information, "WorkerProxy stopped.", EventName = "WorkerProxyStopped")]
         public static partial void WorkerProxyStopped(ILogger logger);
+
+        [LoggerMessage(3, LogLevel.Information, "Platform termination signal SIGTERM received.", EventName = "PlatformTerminationSignalReceived")]
+        public static partial void PlatformTerminationSignalReceived(ILogger logger);
     }
 }
