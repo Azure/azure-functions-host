@@ -181,6 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList.ToList())
             {
+                InProcessFunctionValidator.ValidateMetadata(functionMetadata);
                 if (!IsScriptFileDetermined(functionMetadata))
                 {
                     // Exclude invalid functions
@@ -281,6 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             metadata.SetIsCodeless(true);
                         }
 
+                        metadata.SetIsExtensionFunction(true);
                         distinctFunctionNames.Add(metadata.Name);
                         functionMetadataList.Add(metadata);
                     }

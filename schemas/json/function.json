@@ -12,8 +12,8 @@
       "description": "Optional named entry point."
     },
     "configurationSource": {
-      "enum": [ "attributes", "config" ],
-      "description": "For C# precompiled functions only. If set to 'attributes', use WebJobs attributes to specify bindings. Otherwise, use the 'bindings' property of this function.json."
+      "enum": [ "config" ],
+      "description": "Bindings are specified by the 'bindings' property. Customer .NET in-process functions and attribute-based direct indexing are no longer supported; use the .NET isolated worker model."
     },
     "bindings": {
       "type": "array",

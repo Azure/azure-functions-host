@@ -61,15 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Your function must contain a single public method, a public method named &apos;Run&apos;, or a public method matching the name specified in the &apos;entryPoint&apos; metadata property..
-        /// </summary>
-        internal static string DotNetFunctionEntryPointRulesMessage {
-            get {
-                return ResourceManager.GetString("DotNetFunctionEntryPointRulesMessage", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Cannot delete an extension. Persistent file system not available in the current hosting environment.
         /// </summary>
         internal static string ErrorDeletingExtension {

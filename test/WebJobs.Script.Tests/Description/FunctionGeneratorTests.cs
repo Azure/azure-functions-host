@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var userRetType = userFunc.ReturnType;
             ParameterDescriptor returnParameter;
-            if (DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new FunctionBinding[0], out returnParameter))
+            if (CodelessFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new FunctionBinding[0], out returnParameter))
             {
                 parameters.Add(returnParameter);
             }
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         // An IFunctionInvoker that invokes the methodInfo.
-        // This simulates how DotNetInvoker wraps a user's C# method.
+        // This simulates how the codeless invoker wraps an extension's method.
         public class RealInvoker : IFunctionInvoker
         {
             private readonly MethodInfo _innerMethod;

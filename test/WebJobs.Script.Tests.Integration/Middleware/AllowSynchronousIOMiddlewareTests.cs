@@ -6,6 +6,8 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
@@ -74,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
 
         private static TestFunctionHost GetHost(Action<IDictionary<string, string>> addEnvironmentVariables = null)
         {
-            string scriptPath = @"TestScripts\DirectLoad\";
+            string scriptPath = @"TestScripts\NoFunction";
             string logPath = Path.Combine(Path.GetTempPath(), "Functions", "AllowSynchronousIOMiddlewareTests");
 
             var host = new TestFunctionHost(scriptPath, logPath,
@@ -83,6 +85,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
                     IDictionary<string, string> dict = new Dictionary<string, string>();
                     addEnvironmentVariables?.Invoke(dict);
                     s.AddSingleton<IEnvironment>(_ => new TestEnvironment(dict));
+                    s.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                    [
+                        HostInfrastructureTestFunctions.Http("Function1", nameof(HostInfrastructureTestFunctions.Invoke), "function")
+                    ], null));
                 });
 
             return host;

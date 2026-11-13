@@ -3,7 +3,6 @@
 
 using System;
 using Microsoft.Extensions.Logging;
-using static System.Environment;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 {
@@ -60,21 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             LoggerMessage.Define<string>(LogLevel.Error,
                 new EventId(309, nameof(ScriptStartUpUnableParseMetadata)),
                 "Unable to parse extensions metadata file '{metadataFilePath}'");
-
-        private static readonly Action<ILogger, Exception> _packageManagerStartingPackagesRestore =
-            LoggerMessage.Define(LogLevel.Information,
-                new EventId(310, nameof(PackageManagerStartingPackagesRestore)),
-                "Starting packages restore");
-
-        private static readonly Action<ILogger, string, Exception> _packageManagerRestoreFailed =
-            LoggerMessage.Define<string>(LogLevel.Error,
-                new EventId(311, nameof(PackageManagerRestoreFailed)),
-                "{message}");
-
-        private static readonly Action<ILogger, string, Exception> _packageManagerProcessDataReceived =
-            LoggerMessage.Define<string>(LogLevel.Information,
-                new EventId(312, nameof(PackageManagerProcessDataReceived)),
-                "{message}");
 
         private static readonly Action<ILogger, Exception> _debugManagerUnableToUpdateSentinelFile =
             LoggerMessage.Define(LogLevel.Error,
@@ -284,28 +268,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptStartUpUnableParseMetadata(this ILogger logger, Exception ex, string metadataFilePath)
         {
             _scriptStartUpUnableParseMetadata(logger, metadataFilePath, null);
-        }
-
-        public static void PackageManagerStartingPackagesRestore(this ILogger logger)
-        {
-            _packageManagerStartingPackagesRestore(logger, null);
-        }
-
-        public static void PackageManagerRestoreFailed(this ILogger logger, Exception ex, string functionDirectory, string projectPath, string nugetHome, string nugetFilePath, string currentLockFileHash)
-        {
-            string message = $@"Package restore failed with message: '{ex.Message}'
-Function directory: {functionDirectory}
-Project path: {projectPath}
-Packages path: {nugetHome}
-Nuget client path: {nugetFilePath}
-Lock file hash: {currentLockFileHash}";
-
-            _packageManagerRestoreFailed(logger, message, null);
-        }
-
-        public static void PackageManagerProcessDataReceived(this ILogger logger, string message)
-        {
-            _packageManagerProcessDataReceived(logger, message, null);
         }
 
         public static void DebugManagerUnableToUpdateSentinelFile(this ILogger logger, Exception ex)

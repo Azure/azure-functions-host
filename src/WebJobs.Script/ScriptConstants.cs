@@ -149,7 +149,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
-        public const string HostingConfigDotNetInProcDisabled = "DotNetInProcDisabled";
         public const string HostingConfigArmWebhookOptInEnforcement = "ArmWebhookOptInEnforcement";
         public const string DefaultArmWebhookOptInExemptExtensions = "workflow";
 

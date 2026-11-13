@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task FunctionDispatcherState_Default_DotNetFunctions()
+        public async Task InitializeAsync_RejectsDotNetInProcessFunctions()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: RpcWorkerConstants.DotNetLanguageWorkerName);
             Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
@@ -296,13 +296,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 func1
             };
-            await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
-
-            await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
-
-            await functionDispatcher.InitializeAsync(functions);
+            var exception = await Assert.ThrowsAsync<HostInitializationException>(() => functionDispatcher.InitializeAsync(functions));
+            Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message);
             Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
         }
 
@@ -362,7 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task ShutdownChannels_DotNetFunctions()
+        public async Task InitializeAsync_RejectsDotNetBeforeStartingChannels()
         {
             FunctionMetadata func1 = new FunctionMetadata()
             {
@@ -376,10 +371,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockLanguageWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager, runtime: RpcWorkerConstants.DotNetLanguageWorkerName);
             Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
-            await functionDispatcher.InitializeAsync(functions);
-            // Wait longer than debouce action.
-            await Task.Delay(6000);
-            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
+            await Assert.ThrowsAsync<HostInitializationException>(() => functionDispatcher.InitializeAsync(functions));
+            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Never);
         }
 
         [Fact]

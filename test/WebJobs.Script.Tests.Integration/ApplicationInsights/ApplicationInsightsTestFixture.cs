@@ -10,6 +10,7 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
     {
         public const string ApplicationInsightsKey = "some_key";
 
-        public ApplicationInsightsTestFixture(string scriptRoot, string testId, bool ignoreAppInsightsFromWorker = false)
+        public ApplicationInsightsTestFixture(string scriptRoot, string testId, bool ignoreAppInsightsFromWorker = false,
+            IFunctionProvider functionProvider = null)
         {
             string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
@@ -67,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 },
                 configureWebHostServices: s =>
                 {
+                    if (functionProvider is not null)
+                    {
+                        s.AddSingleton(functionProvider);
+                    }
+
                     if (ignoreAppInsightsFromWorker)
                     {
                         s.AddSingleton<IRpcWorkerChannelFactory, TestGrpcWorkerChannelFactory>();

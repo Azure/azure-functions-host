@@ -15,9 +15,10 @@
     <None Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
-  <Target Name="DeleteRuntimesFolder" AfterTargets="Build">
+  <Target Name="DeleteRuntimesFolder" AfterTargets="_GenerateFunctionsExtensionsMetadataPostBuild">
     <!--Simulate what it looks like when we build against a runtime-->
     <RemoveDir Directories="$(OutDir)\bin\runtimes" />
   </Target>
 
+  <Import Project="..\TestExtension.targets" />
 </Project>

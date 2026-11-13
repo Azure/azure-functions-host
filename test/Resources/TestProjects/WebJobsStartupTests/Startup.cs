@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TestExtensions;
 using WebJobsStartupTests;
 
 [assembly: WebJobsStartup(typeof(Startup))]
@@ -21,6 +23,10 @@ namespace WebJobsStartupTests
         {
             ValidateContext(context);
 
+            builder.Services.AddSingleton<IFunctionProvider>(new TestExtensionFunctionProvider(
+                TestExtensionFunctionProvider.Http(typeof(Function1), nameof(Function1), nameof(Function1.Run), "get", "post"),
+                TestExtensionFunctionProvider.Http(typeof(Function1), nameof(Function1.Echo), nameof(Function1.Echo), "get"),
+                TestExtensionFunctionProvider.Timer(typeof(Function1), "Timer", nameof(Function1.TimerRun), "%Cron%")));
             builder.Services.AddSingleton<IMyService, MyService>();
             builder.Services.AddOptions<MyOptions>()
                 .Configure<IConfiguration>((options, config) =>

@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem,
                         workerConfigs, _workerRuntimeResolver.GetWorkerRuntime());
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not HostInitializationException)
                 {
                     // log any unhandled exceptions and continue
                     Utility.AddFunctionError(_functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
@@ -128,6 +128,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 Name = functionName,
                 FunctionDirectory = scriptDirectory
             };
+
+            if (string.Equals(configMetadata.GetValue("configurationSource", StringComparison.OrdinalIgnoreCase)?.ToString(),
+                "attributes", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new HostInitializationException($"Function '{functionName}': {InProcessFunctionValidator.ErrorMessage}");
+            }
+
+            functionMetadata.ScriptFile = DeterminePrimaryScriptFile((string)configMetadata["scriptFile"], scriptDirectory, fileSystem);
+            if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
+            {
+                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionsWorkerRuntime);
+            }
+
+            InProcessFunctionValidator.ValidateMetadata(functionMetadata);
 
             JArray bindingArray = (JArray)configMetadata["bindings"];
             if (bindingArray == null || bindingArray.Count == 0)
@@ -149,19 +163,10 @@ namespace Microsoft.Azure.WebJobs.Script
             if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out JToken configurationSourceJson))
             {
                 var configurationSourceValue = configurationSourceJson.ToString();
-                if (string.Equals(configurationSourceValue, "attributes", StringComparison.OrdinalIgnoreCase))
-                {
-                    functionMetadata.SetIsDirect(true);
-                }
-                else if (!string.Equals(configurationSourceValue, "config", StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(configurationSourceValue, "config", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new FormatException($"Illegal value '{configurationSourceValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
                 }
-            }
-            functionMetadata.ScriptFile = DeterminePrimaryScriptFile((string)configMetadata["scriptFile"], scriptDirectory, fileSystem);
-            if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
-            {
-                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionsWorkerRuntime);
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 
@@ -180,16 +185,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 return null;
             }
 
+            if (string.Equals(functionsWorkerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                return RpcWorkerConstants.CustomHandlerLanguageWorkerName;
+            }
+
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
 
-            // In the special case of a null `functionsWorkerRuntime` and an extension of "dll",
-            // we want to short-circuit the worker config check (to prevent the dotnet-isolated worker from
-            // being chosen) and allow in-proc handling to be used.
-            // Other notes:
-            // - when dotnet-isolated, the `functionsWorkerRuntime` is required to be set to "dotnet-isolated"
-            // - when `functionsWorkerRuntime` is set to "dotnet", workerConfigs is empty so this correctly falls
-            //   through to choose DotNetAssembly with a "dll" extension
+            // An unclaimed DLL without a runtime is not evidence of an isolated worker app.
+            // Preserve its original model classification so startup reports the retirement.
             if (functionsWorkerRuntime is null && string.Equals(extension, "dll", StringComparison.OrdinalIgnoreCase))
             {
                 return DotNetScriptTypes.DotNetAssembly;
@@ -201,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 return workerConfig.Description.Language;
             }
 
-            // If no worker claimed these extensions, use in-proc.
+            // Retain retired model labels for actionable rejection, never as an execution fallback.
             switch (extension)
             {
                 case "csx":

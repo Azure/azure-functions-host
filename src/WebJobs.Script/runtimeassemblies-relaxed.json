@@ -408,10 +408,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.CodeAnalysis.Razor",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.CSharp",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -652,15 +648,7 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "NuGet.DependencyResolver.Core",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "NuGet.Frameworks",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "NuGet.LibraryModel",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -669,14 +657,6 @@
     },
     {
       "name": "NuGet.Packaging.Core",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "NuGet.ProjectModel",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "NuGet.Protocol",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

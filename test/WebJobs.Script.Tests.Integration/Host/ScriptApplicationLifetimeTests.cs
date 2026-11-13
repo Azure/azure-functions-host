@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
     [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class ScriptApplicationLifetimeTests
     {
-        private readonly string _testScriptPath = @"TestScripts\CSharp";
+        private readonly string _testScriptPath = @"TestScripts\NoFunction";
         private readonly string _testLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         [Fact]

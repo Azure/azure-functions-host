@@ -33,12 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
 
+            InProcessFunctionValidator.ValidateRuntime(workerRuntime, _environment.IsPlaceholderModeEnabled(),
+                isMultiLanguage: _environment.IsMultiLanguageRuntimeEnvironment());
+
             // Parsing worker.config.json should always be done in case of multi language worker
             if (!string.IsNullOrEmpty(workerRuntime) &&
                 workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase) &&
                 !_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                // Skip parsing worker.config.json files for dotnet in-proc apps
+                // Placeholder warmup is Host-owned, not a dotnet worker.
                 options.WorkerConfigs = new List<RpcWorkerConfig>();
                 return;
             }

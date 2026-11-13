@@ -17,8 +17,7 @@ This will present a prompt with all benchmarks discovered - something like this:
 ```text
 Available Benchmarks:
   #0 AuthUtilityBenchmarks
-  #1 CSharpCompilationBenchmarks
-  #2 ScriptLoggingBuilderExtensionsBenchmarks
+  #1 ScriptLoggingBuilderExtensionsBenchmarks
 
 You should select the target benchmark(s). Please, print a number of a benchmark (e.g. `0`) or a contained benchmark caption (e.g. `AuthUtilityBenchmarks`).
 If you want to select few, please separate them with space ` ` (e.g. `1 2 3`).
