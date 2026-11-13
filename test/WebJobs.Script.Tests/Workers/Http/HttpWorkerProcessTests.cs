@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
@@ -68,6 +69,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName], _testWorkerId);
                 childProcess.Dispose();
             }
+        }
+
+        [Theory]
+        [InlineData("node")]
+        [InlineData("python")]
+        [InlineData("java")]
+        public void CreateWorkerProcess_WebFunction_PassesAssignedEndpoint(string runtime)
+        {
+            WebFunctionLanguage language = WebFunctionWorkerDescriptionResolver.GetConfiguredLanguage(runtime);
+            _httpWorkerOptions.IsWebFunction = true;
+            _httpWorkerOptions.WebFunctionLanguage = language;
+
+            HttpWorkerProcess worker = new(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment(), new TestMetricsLogger(), _serviceProviderMock.Object, _scriptApplicationHostOptions, new LoggerFactory());
+            using Process process = worker.CreateWorkerProcess();
+
+            Assert.Equal("127.0.0.1:8090", process.StartInfo.EnvironmentVariables[HttpWorkerConstants.WebFunctionEndpointEnvVarName]);
+            Assert.Equal("8090", process.StartInfo.EnvironmentVariables["PORT"]);
+            if (language is WebFunctionLanguage.Java)
+            {
+                Assert.Equal("8090", process.StartInfo.EnvironmentVariables["SERVER_PORT"]);
+                Assert.Equal("127.0.0.1", process.StartInfo.EnvironmentVariables["SERVER_ADDRESS"]);
+            }
+        }
+
+        [Fact]
+        public void CreateWorkerProcess_CustomHandler_PreservesExistingPortEnvironment()
+        {
+            using TestScopedSettings settings = new(_settingsManager, "PORT", "1234");
+            HttpWorkerProcess worker = new(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment(), new TestMetricsLogger(), _serviceProviderMock.Object, _scriptApplicationHostOptions, new LoggerFactory());
+
+            using Process process = worker.CreateWorkerProcess();
+
+            Assert.Equal("1234", process.StartInfo.EnvironmentVariables["PORT"]);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("existing-python-path")]
+        public void CreateWorkerProcess_PythonWebFunction_PreservesPythonPath(string existingPythonPath)
+        {
+            using TempDirectory app = new();
+            string packagesPath = Path.Combine(app.Path, ".python_packages", "lib", "site-packages");
+            Directory.CreateDirectory(packagesPath);
+            using TestScopedSettings settings = new(_settingsManager, "PYTHONPATH", existingPythonPath);
+            _httpWorkerOptions.IsWebFunction = true;
+            _httpWorkerOptions.WebFunctionLanguage = WebFunctionLanguage.Python;
+            _httpWorkerOptions.Description.WorkingDirectory = app.Path;
+
+            HttpWorkerProcess worker = new(_testWorkerId, app.Path, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment(), new TestMetricsLogger(), _serviceProviderMock.Object, _scriptApplicationHostOptions, new LoggerFactory());
+            using Process process = worker.CreateWorkerProcess();
+
+            string expected = existingPythonPath is null
+                ? packagesPath
+                : $"{packagesPath}{Path.PathSeparator}{existingPythonPath}";
+            Assert.Equal(expected, process.StartInfo.EnvironmentVariables["PYTHONPATH"]);
         }
 
         [Fact]

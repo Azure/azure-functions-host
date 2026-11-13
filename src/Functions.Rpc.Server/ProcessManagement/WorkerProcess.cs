@@ -61,6 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         protected bool Disposing { get; private set; }
 
+        protected virtual bool KillProcessTreeOnDispose => false;
+
         public int Id => Process.Id;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
@@ -156,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (!Process.HasExited)
                     {
-                        Process.Kill();
+                        Process.Kill(KillProcessTreeOnDispose);
                         if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
                         {
                             _workerProcessLogger.LogWarning("Worker process {processId} has not exited despite waiting for {processExitTimeoutInMilliseconds} ms", Process?.Id, processExitTimeoutInMilliseconds);

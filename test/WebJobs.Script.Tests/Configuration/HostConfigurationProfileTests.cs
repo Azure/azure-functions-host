@@ -51,6 +51,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .WhoseValue.Should().Be("custom");
         }
 
+        [Theory]
+        [InlineData("web-function")]
+        [InlineData("WEB-FUNCTION")]
+        public void Get_WebFunction_ReturnsAnonymousProxyProfile(string name)
+        {
+            HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
+            Dictionary<string, string> config = new(profile.Configuration);
+
+            profile.Name.Should().Be("web-function");
+            config.Should().HaveCount(7);
+            config["customHandler:isWebFunction"].Should().Be("true");
+            config["customHandler:http:defaultAuthorizationLevel"].Should().Be("anonymous");
+            config["customHandler:enableProxyingHttpRequest"].Should().Be("true");
+            config["customHandler:http:routes:0:route"].Should().Be("{*route}");
+            config["extensions:http:routePrefix"].Should().BeEmpty();
+            config["ProfileWorkerRuntime"].Should().Be("custom");
+        }
+
         [Fact]
         public void Get_Null_Throws()
         {
@@ -65,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             action.Should()
                 .ThrowExactly<NotSupportedException>()
-                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-custom-handler', 'web-app-custom-handler'.");
+                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-custom-handler', 'web-app-custom-handler', 'web-function'.");
         }
     }
 }

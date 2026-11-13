@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Diagnostics.JitTrace;
@@ -15,6 +16,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     [Trait(TestTraits.Group, TestTraits.ReleaseTests)]
     public class JitPreparesTest
     {
+        [Theory]
+        [InlineData(WarmUpConstants.JitTraceFileName)]
+        [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
+        public void ColdStart_FunctionMetadataProviderEntries_PrepareSuccessfully(string fileName)
+        {
+            string path = Path.Combine(
+                Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath),
+                WarmUpConstants.PreJitFolderName,
+                fileName);
+            string[] entries = File.ReadLines(path)
+                .Where(line => line.Contains("Microsoft.Azure.WebJobs.Script.WebHost.FunctionMetadataProvider+<GetFunctionMetadataAsync>", StringComparison.Ordinal))
+                .ToArray();
+
+            Assert.NotEmpty(entries);
+            JitTraceRuntime.Prepare(string.Join(Environment.NewLine, entries), out int successfulPrepares, out int failedPrepares);
+
+            Assert.Equal(0, failedPrepares);
+            Assert.True(successfulPrepares >= entries.Length);
+        }
+
         [Theory(Skip = "Currently disabled in v4")]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]

@@ -68,6 +68,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             VerifySanitizedHostConfigLog(logs, ScriptConstants.DefaultExtensionBundleId, ScriptConstants.DefaultExtensionBundleVersion);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void MissingHostJson_WebFunction_UsesDefaultsWithoutWritingFileOrBundle(bool readOnly)
+        {
+            _options.IsFileSystemReadOnly = readOnly;
+            TestEnvironment environment = new()
+            {
+                ["AzureFunctionsJobHost__configurationProfile"] = "web-function"
+            };
+
+            IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), environment);
+
+            Assert.False(File.Exists(_hostJsonFile));
+            Assert.Equal("2.0", config["AzureFunctionsJobHost:version"]);
+            Assert.Equal("web-function", config["AzureFunctionsJobHost:configurationProfile"]);
+            Assert.Equal("true", config["AzureFunctionsJobHost:customHandler:isWebFunction"]);
+            Assert.Null(config["AzureFunctionsJobHost:extensionBundle:id"]);
+        }
+
+        [Fact]
+        public void EmptyHostJson_WebFunction_DoesNotRewriteFile()
+        {
+            File.WriteAllText(_hostJsonFile, "{}");
+            TestEnvironment environment = new()
+            {
+                ["AzureFunctionsJobHost__configurationProfile"] = "web-function"
+            };
+
+            IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), environment);
+
+            Assert.Equal("{}", File.ReadAllText(_hostJsonFile));
+            Assert.Equal("2.0", config["AzureFunctionsJobHost:version"]);
+            Assert.Equal("web-function", config["AzureFunctionsJobHost:configurationProfile"]);
+        }
+
+        [Fact]
+        public void WebFunctionProfile_InStandby_UsesPlaceholderHostDefaults()
+        {
+            _options.IsStandbyConfiguration = true;
+            File.WriteAllText(_hostJsonFile, """{"version":"2.0"}""");
+            TestEnvironment environment = new()
+            {
+                ["AzureFunctionsJobHost__configurationProfile"] = "web-function"
+            };
+
+            IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), environment);
+
+            Assert.Equal("default", config["AzureFunctionsJobHost:configurationProfile"]);
+            Assert.Null(config["AzureFunctionsJobHost:customHandler:isWebFunction"]);
+            Assert.Null(config["AzureFunctionsJobHost:extensions:http:routePrefix"]);
+        }
+
         [Fact]
         public void MissingHostJson_WorkflowApp_GeneratesExpectedDefaultConfigFile()
         {

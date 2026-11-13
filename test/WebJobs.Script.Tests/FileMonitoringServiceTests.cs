@@ -472,8 +472,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
-        public static async Task OnFileChanged_DirectoryDeleted_DoesNotThrow_AndTriggersRestart()
+        [Theory]
+        [InlineData("")]
+        [InlineData("web-function")]
+        public static async Task OnFileChanged_DirectoryDeleted_DoesNotThrow_AndTriggersRestart(string profile)
         {
             using (var directory = new TempDirectory())
             using (var logDirectory = new TempDirectory())
@@ -489,7 +491,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     RootLogPath = logDirectory.Path,
                     RootScriptPath = tempDir,
-                    FileWatchingEnabled = true
+                    FileWatchingEnabled = true,
+                    ConfigurationProfile = profile
                 };
 
                 var loggerProvider = new TestLoggerProvider();
@@ -529,6 +532,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
                 Assert.Contains(loggerProvider.GetAllLogMessages(), m => m.FormattedMessage is not null && m.FormattedMessage.Contains("was not found while processing file change event"));
             }
+        }
+
+        [Fact]
+        public static async Task WebFunction_IgnoresApplicationDirectoriesButWatchesHostConfiguration()
+        {
+            using TempDirectory app = new();
+            using TempDirectory logs = new();
+            ScriptJobHostOptions options = new()
+            {
+                RootLogPath = logs.Path,
+                RootScriptPath = app.Path,
+                FileWatchingEnabled = true,
+                ConfigurationProfile = "web-function",
+                WatchFiles = { "host.json" }
+            };
+            Mock<IScriptApplicationLifetime> lifetime = new();
+            Mock<IScriptHostManager> hostManager = new();
+            TaskCompletionSource restart = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            hostManager.Setup(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Callback<string, CancellationToken>((_, _) => restart.TrySetResult())
+                .Returns(Task.CompletedTask);
+            ScriptEventManager eventManager = new();
+            using FileMonitoringService service = new(Options.Create(options), new LoggerFactory(), eventManager,
+                lifetime.Object, hostManager.Object, new TestEnvironment());
+            await service.StartAsync(CancellationToken.None);
+
+            Directory.CreateDirectory(Path.Combine(app.Path, "__pycache__"));
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            hostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            eventManager.Publish(new FileEvent(EventSources.ScriptFiles,
+                new FileSystemEventArgs(WatcherChangeTypes.Changed, app.Path, "host.json")));
+            await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            hostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         public FileMonitoringService GetFileMonitoringService(string tempDir, string rootScriptPath)

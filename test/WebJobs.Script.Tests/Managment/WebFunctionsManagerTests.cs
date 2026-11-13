@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), workerRuntimeResolverMock.Object);
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance, new ConfigurationBuilder().Build(), Mock.Of<IScriptHostManager>());
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, null, loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);

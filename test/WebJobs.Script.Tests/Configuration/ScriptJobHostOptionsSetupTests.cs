@@ -76,6 +76,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Contains("mySecondFile.ext", options.WatchFiles);
         }
 
+        [Fact]
+        public void Configure_WebFunction_DoesNotWatchNodeModulesUnlessConfigured()
+        {
+            Dictionary<string, string> settings = new()
+            {
+                [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "configurationProfile")] = "web-function"
+            };
+            ScriptJobHostOptions options = new();
+
+            CreateSetupWithConfiguration(settings).Configure(options);
+
+            Assert.Empty(options.WatchDirectories);
+            Assert.Contains("host.json", options.WatchFiles);
+
+            settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "watchDirectories", "0")] = "node_modules";
+            options = new();
+            CreateSetupWithConfiguration(settings).Configure(options);
+            Assert.Equal("node_modules", Assert.Single(options.WatchDirectories));
+        }
+
         [Theory]
         [InlineData(ScriptConstants.DynamicSku, false)]
         [InlineData(ScriptConstants.DynamicSku, true)]

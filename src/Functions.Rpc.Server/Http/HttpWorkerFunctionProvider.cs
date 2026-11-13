@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     continue;
                 }
 
-                metadataBuilder.Add(CreateHttpFunctionMetadata(route, functionName));
+                metadataBuilder.Add(CreateHttpFunctionMetadata(route, functionName, _httpWorkerOptions.IsWebFunction));
 
                 _logger.LogInformation(
                     "Created function {FunctionName} for route {RouteTemplate} (authLevel={AuthLevel}).",
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
-        private static FunctionMetadata CreateHttpFunctionMetadata(HttpWorkerRoute route, string functionName)
+        private static FunctionMetadata CreateHttpFunctionMetadata(HttpWorkerRoute route, string functionName, bool isWebFunction)
         {
             var trigger = new JObject
             {
@@ -151,9 +151,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 ["authLevel"] = route.AuthorizationLevel.ToString(),
                 ["direction"] = "in",
                 ["name"] = "req",
-                ["methods"] = AllHttpMethods,
                 ["route"] = route.Route
             };
+
+            if (!isWebFunction)
+            {
+                trigger["methods"] = AllHttpMethods;
+            }
 
             var output = new JObject
             {

@@ -196,6 +196,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         }
 
         [Fact]
+        public async Task GetFunctionMetadataAsync_WebFunction_AllowsAnyHttpMethod()
+        {
+            Mock<IHostFunctionMetadataProvider> hostMeta = new(MockBehavior.Strict);
+            hostMeta.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
+                .ReturnsAsync([]);
+            IOptions<HttpWorkerOptions> options = CreateHttpWorkerOptions(
+                [new HttpWorkerRoute { Route = "{*route}", AuthorizationLevel = AuthorizationLevel.Anonymous }]);
+            options.Value.IsWebFunction = true;
+            HttpWorkerFunctionProvider provider = CreateProvider(options, hostMeta.Object);
+
+            ImmutableArray<FunctionMetadata> result = await provider.GetFunctionMetadataAsync();
+
+            BindingMetadata trigger = Assert.Single(Assert.Single(result).Bindings, b => string.Equals((string)b.Raw?["type"], "httpTrigger", StringComparison.Ordinal));
+            Assert.Null(trigger.Raw["methods"]);
+        }
+
+        [Fact]
         public async Task GetFunctionMetadataAsync_InvalidRoutes_SkippedAndErrorsCollected()
         {
             var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
