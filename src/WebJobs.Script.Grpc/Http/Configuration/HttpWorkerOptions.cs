@@ -62,6 +62,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// </summary>
         public bool EnableProxyingHttpRequest { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the HTTP worker runs a web application.
+        /// </summary>
+        public bool IsWebFunction { get; set; }
+
+        internal WebFunctionLanguage WebFunctionLanguage { get; set; }
+
         public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>

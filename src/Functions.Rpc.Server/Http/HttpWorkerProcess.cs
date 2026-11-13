@@ -3,6 +3,8 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
@@ -45,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _workerProcessArguments = _httpWorkerOptions.Arguments;
         }
 
+        protected override bool KillProcessTreeOnDispose => _httpWorkerOptions.IsWebFunction;
+
         internal override Process CreateWorkerProcess()
         {
             var workerContext = new HttpWorkerContext()
@@ -61,7 +65,33 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName, _workerId);
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.FunctionAppRootVarName, _scriptRootPath);
 
-            return _processFactory.CreateWorkerProcess(workerContext);
+            if (_httpWorkerOptions.IsWebFunction)
+            {
+                string port = _httpWorkerOptions.Port.ToString(CultureInfo.InvariantCulture);
+                workerContext.EnvironmentVariables[HttpWorkerConstants.WebFunctionEndpointEnvVarName] = $"{WorkerConstants.HostName}:{port}";
+                workerContext.EnvironmentVariables["PORT"] = port;
+
+                if (_httpWorkerOptions.WebFunctionLanguage is WebFunctionLanguage.Java)
+                {
+                    workerContext.EnvironmentVariables["SERVER_PORT"] = port;
+                    workerContext.EnvironmentVariables["SERVER_ADDRESS"] = WorkerConstants.HostName;
+                }
+            }
+
+            Process process = _processFactory.CreateWorkerProcess(workerContext);
+            if (_httpWorkerOptions.IsWebFunction && _httpWorkerOptions.WebFunctionLanguage is WebFunctionLanguage.Python)
+            {
+                string packagesPath = Path.Combine(_scriptRootPath, ".python_packages", "lib", "site-packages");
+                if (Directory.Exists(packagesPath))
+                {
+                    process.StartInfo.Environment.TryGetValue("PYTHONPATH", out string pythonPath);
+                    process.StartInfo.Environment["PYTHONPATH"] = string.IsNullOrEmpty(pythonPath)
+                        ? packagesPath
+                        : $"{packagesPath}{Path.PathSeparator}{pythonPath}";
+                }
+            }
+
+            return process;
         }
 
         internal override void HandleWorkerProcessExitError(WorkerProcessExitException httpWorkerProcessExitException)

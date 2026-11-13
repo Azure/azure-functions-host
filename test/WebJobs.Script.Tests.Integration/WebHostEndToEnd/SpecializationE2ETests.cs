@@ -41,6 +41,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using WebJobs.Script.Tests;
 using Xunit;
 using Xunit.Abstractions;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
@@ -94,6 +95,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // allow each test to override this
             _customizeScriptHostServices = null;
+        }
+
+        [Fact]
+        public async Task WebFunction_StandbyWarmupThenSpecialization_ProxiesRequests()
+        {
+            using TempDirectory app = new();
+            string sample = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory, "..", "..", "..", "..", "sample", "WebFunction", "index.js"));
+            File.Copy(sample, Path.Combine(app.Path, "index.js"));
+            using TestScopedEnvironmentVariable profile = new("AzureFunctionsJobHost__configurationProfile", "web-function");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            IHostBuilder builder = CreateStandbyHostBuilder(_loggerProvider, "http-handler1")
+                .ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    [_scriptRootConfigPath] = app.Path
+                }));
+
+            await using var stoppable = new StoppableHost(builder.Build());
+            IHost host = stoppable.Inner;
+            await host.StartAsync();
+            HttpClient client = host.GetTestClient();
+            await TestHelpers.Await(
+                () => host.Services.GetRequiredService<IScriptHostManager>().State == ScriptHostState.Running,
+                timeout: 30000,
+                userMessageCallback: _loggerProvider.GetLog);
+
+            using HttpResponseMessage warmup = await client.GetAsync("api/warmup");
+            Assert.Equal(HttpStatusCode.OK, warmup.StatusCode);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            using HttpResponseMessage response = await client.GetAsync("/hello?name=Azure");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("\"path\":\"/hello?name=Azure\"", await response.Content.ReadAsStringAsync());
+            Assert.False(File.Exists(Path.Combine(app.Path, "host.json")));
         }
 
         [Fact]

@@ -57,7 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 if (options.Type == CustomHandlerType.None)
                 {
                     // CustomHandlerType.None is only for maintaining backward compatibility with httpWorker section.
-                    _logger.LogWarning($"CustomHandlerType {CustomHandlerType.None} is not supported. Defaulting to {CustomHandlerType.Http}.");
+                    if (!options.IsWebFunction)
+                    {
+                        _logger.LogWarning($"CustomHandlerType {CustomHandlerType.None} is not supported. Defaulting to {CustomHandlerType.Http}.");
+                    }
+
                     options.Type = CustomHandlerType.Http;
                 }
                 return;
@@ -77,8 +81,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             workerSection.Bind(options);
 
+            if (options.IsWebFunction && _scriptJobHostOptions.IsStandbyConfiguration)
+            {
+                // The placeholder host indexes its own warmup function before an app is assigned.
+                options.Description = null;
+                options.Http = null;
+                return;
+            }
+
             var workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
-            if (string.Equals(workerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            if (options.IsWebFunction ||
+                string.Equals(workerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 options.CustomRoutesEnabled = true;
             }
@@ -93,7 +106,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             HttpWorkerDescription httpWorkerDescription = options.Description;
 
-            if (httpWorkerDescription == null)
+            if (options.IsWebFunction)
+            {
+                options.WebFunctionLanguage = WebFunctionWorkerDescriptionResolver.GetConfiguredLanguage(
+                    _configuration[EnvironmentSettingNames.FunctionWorkerRuntime]);
+
+                if (httpWorkerDescription is null)
+                {
+                    httpWorkerDescription = WebFunctionWorkerDescriptionResolver.Resolve(
+                        _scriptJobHostOptions.RootScriptPath, _configuration, options.Port, out WebFunctionLanguage language);
+                    options.Description = httpWorkerDescription;
+                    options.WebFunctionLanguage = language;
+                }
+            }
+
+            if (httpWorkerDescription is null)
             {
                 throw new HostConfigurationException($"Missing worker Description.");
             }
@@ -154,6 +181,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public ValidateOptionsResult Validate(string name, HttpWorkerOptions options)
         {
+            if (options.IsWebFunction && _scriptJobHostOptions.IsStandbyConfiguration)
+            {
+                return ValidateOptionsResult.Success;
+            }
+
             if (options.IsPortManuallySet)
             {
                 var port = options.Port;

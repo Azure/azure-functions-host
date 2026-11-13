@@ -1,0 +1,13 @@
+{
+  "name": "web-function-express-sample",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An unchanged Express app hosted by the Azure Functions host in the web-function profile.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}

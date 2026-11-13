@@ -30,8 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public void Configure(ScriptJobHostOptions options)
         {
-            // Add the standard built in watched directories set to any the user may have specified
-            options.WatchDirectories.Add("node_modules");
+            IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
+
+            // Web frameworks may write runtime caches under node_modules.
+            if (!string.Equals(jobHostSection["configurationProfile"], HostConfigurationProfile.WebFunctionProfile, StringComparison.OrdinalIgnoreCase))
+            {
+                options.WatchDirectories.Add("node_modules");
+            }
 
             // Add the default files we need to watch
             options.WatchFiles.Add(ScriptConstants.HostMetadataFileName);
@@ -42,8 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.FileLoggingMode = FileLoggingMode.DebugOnly;
 
             // Bind to all configuration properties
-            IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
-
             if (jobHostSection != null)
             {
                 jobHostSection.Bind(options);

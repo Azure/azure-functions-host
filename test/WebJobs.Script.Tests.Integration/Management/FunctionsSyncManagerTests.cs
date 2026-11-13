@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -164,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             workerRuntimeResolverMock.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns((string)null);
 
             var functionMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), workerRuntimeResolverMock.Object);
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, functionMetadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), _mockEnvironment.Object);
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, functionMetadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), _mockEnvironment.Object, new ConfigurationBuilder().Build(), Mock.Of<IScriptHostManager>());
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), defaultProvider, null, loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
 
             _scriptHostManager = new TestScriptHostService(configuration);

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Express on Azure Functions</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+        li.done span { text-decoration: line-through; color: #888; }
+        li button { margin-left: .5rem; }
+        pre { background: #f4f4f4; padding: .75rem; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Express todo app</h1>
+    <p>This page, its script, and the API are served by an unchanged Express app behind the Functions host.</p>
+
+    <form id="add">
+        <input id="title" placeholder="What needs doing?" required>
+        <button>Add</button>
+    </form>
+    <ul id="todos"></ul>
+
+    <h2>Server info</h2>
+    <pre id="info">Loading…</pre>
+
+    <script>
+        const list = document.getElementById('todos');
+
+        async function api(path, options = {}) {
+            const response = await fetch(path, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+
+            return response.status === 204 ? null : response.json();
+        }
+
+        async function render() {
+            const todos = await api('/api/todos');
+            list.replaceChildren(...todos.map(todo => {
+                const item = document.createElement('li');
+                item.className = todo.done ? 'done' : '';
+
+                const text = document.createElement('span');
+                text.textContent = todo.title;
+
+                const toggle = document.createElement('button');
+                toggle.textContent = todo.done ? 'Undo' : 'Done';
+                toggle.onclick = async () => {
+                    await api(`/api/todos/${todo.id}`, { method: 'PATCH', body: JSON.stringify({ done: !todo.done }) });
+                    render();
+                };
+
+                const remove = document.createElement('button');
+                remove.textContent = 'Delete';
+                remove.onclick = async () => {
+                    await api(`/api/todos/${todo.id}`, { method: 'DELETE' });
+                    render();
+                };
+
+                item.append(text, toggle, remove);
+                return item;
+            }));
+        }
+
+        document.getElementById('add').onsubmit = async event => {
+            event.preventDefault();
+            const input = document.getElementById('title');
+            await api('/api/todos', { method: 'POST', body: JSON.stringify({ title: input.value }) });
+            input.value = '';
+            render();
+        };
+
+        api('/api/info').then(info => {
+            document.getElementById('info').textContent = JSON.stringify(info, null, 2);
+        });
+        render();
+    </script>
+</body>
+</html>

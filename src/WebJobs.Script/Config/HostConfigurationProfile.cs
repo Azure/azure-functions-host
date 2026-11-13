@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private const string DefaultProfile = "default";
 
         // Make sure to update this as new profiles are added.
-        private const string SupportedValues = $"'', '{DefaultProfile}', '{McpCustomHandlerProfile}', '{WebAppCustomHandlerProfile}'";
+        private const string SupportedValues = $"'', '{DefaultProfile}', '{McpCustomHandlerProfile}', '{WebAppCustomHandlerProfile}', '{WebFunctionProfile}'";
 
         private static readonly Dictionary<string, string> CommonHttpCustomHandlerConfiguration = new()
         {
@@ -26,15 +26,25 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             [nameof(ScriptJobHostOptions.ProfileWorkerRuntime)] = Workers.Rpc.RpcWorkerConstants.CustomHandlerLanguageWorkerName,
         };
 
+        private static readonly Dictionary<string, string> WebFunctionConfiguration = new(CommonHttpCustomHandlerConfiguration)
+        {
+            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "isWebFunction")] = "true",
+            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "defaultAuthorizationLevel")] = "anonymous",
+        };
+
         internal const string McpCustomHandlerProfile = "mcp-custom-handler";
 
         internal const string WebAppCustomHandlerProfile = "web-app-custom-handler";
+
+        internal const string WebFunctionProfile = "web-function";
 
         public static readonly HostConfigurationProfile Default = new(DefaultProfile, []);
 
         public static readonly HostConfigurationProfile McpCustomHandler = new(McpCustomHandlerProfile, CommonHttpCustomHandlerConfiguration);
 
         public static readonly HostConfigurationProfile WebAppCustomHandler = new(WebAppCustomHandlerProfile, CommonHttpCustomHandlerConfiguration);
+
+        private static readonly HostConfigurationProfile WebFunction = new(WebFunctionProfile, WebFunctionConfiguration);
 
         private HostConfigurationProfile(
             string name,
@@ -56,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 McpCustomHandlerProfile => McpCustomHandler,
                 WebAppCustomHandlerProfile => WebAppCustomHandler,
+                WebFunctionProfile => WebFunction,
                 "" or DefaultProfile => Default,
                 _ => throw new NotSupportedException(
                         $"Configuration profile '{name}' is not supported. Supported values: {SupportedValues}."),

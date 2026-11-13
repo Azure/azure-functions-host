@@ -11,6 +11,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.IO;
@@ -308,7 +309,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 changeDescription = "File";
             }
-            else if (e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
+            else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath)) &&
+                (!string.Equals(_scriptOptions.ConfigurationProfile, HostConfigurationProfile.WebFunctionProfile, StringComparison.OrdinalIgnoreCase) ||
+                    !Directory.Exists(_scriptOptions.RootScriptPath)))
             {
                 // Check directory snapshot only if "Deleted" change or if directory changed
                 try

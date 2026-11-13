@@ -67,6 +67,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private HostJsonFileConfigurationOptions Options => _configurationSource.Options;
 
+            private bool IsWebFunctionProfile =>
+                string.Equals(Options.ConfigProfile, HostConfigurationProfile.WebFunctionProfile, StringComparison.OrdinalIgnoreCase);
+
             public override void Load()
             {
                 JObject hostJson = LoadHostConfigurationFile();
@@ -122,7 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         _logger.HostConfigEmpty();
 
                         hostConfigObject = GetDefaultHostConfigObject();
-                        TryWriteHostJson(hostJsonPath, hostConfigObject);
+                        if (!IsWebFunctionProfile)
+                        {
+                            TryWriteHostJson(hostJsonPath, hostConfigObject);
+                        }
                     }
 
                     string version = hostConfigObject["version"]?.Value<string>();
@@ -173,13 +179,20 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
                     {
                         // if no file exists we default the config
-                        _logger.HostConfigNotFound();
+                        if (IsWebFunctionProfile)
+                        {
+                            _logger.LogInformation("No host configuration file found. Using the web-function profile defaults.");
+                        }
+                        else
+                        {
+                            _logger.HostConfigNotFound();
+                        }
 
                         // There isn't a clean way to create a new function app resource with host.json as initial payload.
                         // So a newly created function app from the portal would have no host.json. In that case we need to
                         // create a new function app with host.json that includes a matching extension bundle based on the app kind.
                         hostConfigObject = GetDefaultHostConfigObject();
-                        if (!Options.Host.IsFileSystemReadOnly)
+                        if (!IsWebFunctionProfile && !Options.Host.IsFileSystemReadOnly)
                         {
                             string bundleId = Options.IsLogicApp ? ScriptConstants.WorkFlowExtensionBundleId : ScriptConstants.DefaultExtensionBundleId;
                             string bundleVersion = Options.IsLogicApp ? ScriptConstants.LogicAppDefaultExtensionBundleVersion : ScriptConstants.DefaultExtensionBundleVersion;
@@ -189,7 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         }
 
                         // Add bundle configuration if no file exists and file system is not read only
-                        TryWriteHostJson(configFilePath, hostConfigObject);
+                        if (!IsWebFunctionProfile)
+                        {
+                            TryWriteHostJson(configFilePath, hostConfigObject);
+                        }
                     }
 
                     return hostConfigObject;
@@ -218,7 +234,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
                 try
                 {
-                    return Options.GetConfigProfile(hostFile);
+                    HostConfigurationProfile profile = Options.GetConfigProfile(hostFile);
+                    if (Options.Host.IsStandbyConfiguration &&
+                        string.Equals(profile.Name, HostConfigurationProfile.WebFunctionProfile, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return HostConfigurationProfile.Default;
+                    }
+
+                    return profile;
                 }
                 catch (NotSupportedException exception)
                 {

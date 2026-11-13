@@ -16,5 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string FunctionAppRootVarName = "FUNCTIONS_APP_ROOT_PATH";
         public const string CustomHandlerPortEnvVarName = "FUNCTIONS_CUSTOMHANDLER_PORT";
         public const string CustomHandlerWorkerIdEnvVarName = "FUNCTIONS_CUSTOMHANDLER_WORKER_ID";
+        public const string WebFunctionEndpointEnvVarName = "FUNCTIONS_HTTP_ENDPOINT";
     }
 }
