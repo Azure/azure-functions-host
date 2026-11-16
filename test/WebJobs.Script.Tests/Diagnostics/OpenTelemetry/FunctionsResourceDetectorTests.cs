@@ -236,6 +236,28 @@ public class FunctionsResourceDetectorTests
         Assert.False(attributes.ContainsKey(ResourceSemanticConventions.DeploymentEnvironmentName));
     }
 
+    [Theory]
+    [InlineData("deployment.environment.name=testing", false)]
+    [InlineData("other=value, deployment.environment.name=testing", false)]
+    [InlineData("Deployment.Environment.Name=testing", true)]
+    [InlineData("other=value", true)]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    public void Detect_HandlesDeploymentEnvironmentName(string resourceAttributes, bool shouldIncludeSlotName)
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
+        {
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.AzureWebsiteSlotName, "Production" },
+            { ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributes }
+        });
+
+        var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.Equal(shouldIncludeSlotName, attributes.ContainsKey(ResourceSemanticConventions.DeploymentEnvironmentName));
+    }
+
     [Fact]
     public void Detect_IncludesAppDeploymentId_WhenFunctionAppVersionIsSet()
     {
