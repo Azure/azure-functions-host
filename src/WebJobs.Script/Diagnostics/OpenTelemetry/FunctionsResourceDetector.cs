@@ -61,7 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                         attributes.Add(new(ResourceSemanticConventions.CloudResourceId, uri));
                     }
 
-                    if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName) is { Length: > 0 } slot)
+                    // Priority: OTEL_RESOURCE_ATTRIBUTES[deployment.environment.name] > AzureWebsiteSlotName
+                    if (!IsResourceAttributeConfigured(ResourceSemanticConventions.DeploymentEnvironmentName, resourceAttributes)
+                        && Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName) is { Length: > 0 } slot)
                     {
                         attributes.Add(new(ResourceSemanticConventions.DeploymentEnvironmentName, slot));
                     }
