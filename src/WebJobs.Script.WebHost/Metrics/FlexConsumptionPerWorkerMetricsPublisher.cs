@@ -23,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 /// </remarks>
 public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMetricsPublisherBase, IWorkerInvocationTracker
 {
+    private static readonly TimeSpan WorkerMetricsFileCreationInterval = TimeSpan.FromMilliseconds(15);
+
     private readonly Dictionary<string, WorkerActivity> _workers = new(StringComparer.Ordinal);
     private readonly Dictionary<string, WorkerActivity> _workerInvocations = new(StringComparer.Ordinal);
 
@@ -253,8 +255,15 @@ public sealed class FlexConsumptionPerWorkerMetricsPublisher : FlexConsumptionMe
             }
         }
 
-        foreach (Metrics metrics in snapshots)
+        for (int i = 0; i < snapshots.Count; i++)
         {
+            if (i > 0)
+            {
+                // Mitigate Legion's strict creation-time cursor by spacing files from this publisher batch.
+                await Task.Delay(WorkerMetricsFileCreationInterval);
+            }
+
+            Metrics metrics = snapshots[i];
             await FileManager.PublishMetricsAsync(metrics, metrics.InstanceId);
         }
     }
