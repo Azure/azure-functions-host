@@ -4,3 +4,4 @@
 - My change description (#PR)
 -->
 - Update PS 7.6 worker to [v4.0.5641](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5641) (#12197)
+- Replace NUL characters in system log details, summaries, and exception messages with `<NUL>` to prevent field-shifted rows in log ingestion
