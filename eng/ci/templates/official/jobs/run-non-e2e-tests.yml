@@ -9,6 +9,7 @@ jobs:
 
   variables:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
+    CosmosEmulatorPrepared: 'false'
 
   templateContext:
     outputs:
@@ -19,6 +20,8 @@ jobs:
       artifact: cosmos-emulator-$(System.JobName)-$(System.JobAttempt)
 
   steps:
+  - template: /eng/ci/templates/steps/prepare-cosmos-emulator.yml@self
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
@@ -95,7 +98,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'Specialization tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'Specialization'
@@ -106,7 +109,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'WebHost EndToEnd tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'WebHost EndToEnd'
@@ -117,7 +120,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'IIS Express startup timeout test'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'IIS Express startup timeout'
@@ -128,7 +131,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'Timeout tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'Timeout'
@@ -139,7 +142,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'AppInsights & Worker tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'AppInsights & Worker'
@@ -150,7 +153,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'Controllers & Host tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'Controllers & Host'
@@ -161,7 +164,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'Storage & Misc tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'Storage & Misc'
@@ -172,7 +175,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'Ungrouped tests'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: 'Ungrouped'

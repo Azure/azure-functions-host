@@ -1,6 +1,6 @@
 steps:
 - task: PowerShell@2
-  displayName: Diagnose agent and start Cosmos vNext through WSL containers
+  displayName: Start Cosmos vNext through WSL containers
   timeoutInMinutes: 10
   inputs:
     pwsh: true

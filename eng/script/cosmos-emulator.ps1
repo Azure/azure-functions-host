@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('Start', 'Stop')]
+    [ValidateSet('Prepare', 'Start', 'Stop')]
     [string] $Action,
     [Parameter(Mandatory)]
     [string] $ContainerName,
@@ -56,10 +56,47 @@ try {
         return
     }
 
-    Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List
-    Get-CimInstance Win32_ComputerSystem | Select-Object HypervisorPresent, TotalPhysicalMemory | Format-List
-    Get-CimInstance Win32_Processor |
-        Select-Object Name, VirtualizationFirmwareEnabled, SecondLevelAddressTranslationExtensions | Format-List
+    if ($Action -eq 'Prepare') {
+        Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List
+        Get-CimInstance Win32_ComputerSystem | Select-Object HypervisorPresent, TotalPhysicalMemory | Format-List
+        Get-CimInstance Win32_Processor |
+            Select-Object Name, VirtualizationFirmwareEnabled, SecondLevelAddressTranslationExtensions | Format-List
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+        $isAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        Write-Host "Running as $($identity.Name); elevated: $isAdministrator"
+        if (-not $isAdministrator) {
+            throw 'The CI agent must run elevated to update WSL and trust the emulator certificate in LocalMachine\Root.'
+        }
+
+        @('VirtualMachinePlatform', 'Microsoft-Windows-Subsystem-Linux') | ForEach-Object {
+            Get-WindowsOptionalFeature -Online -FeatureName $_
+        } | Select-Object FeatureName, State, RestartNeeded | Format-Table -AutoSize
+
+        & wsl.exe --version
+        Write-Host "wsl --version exit code (before update): $LASTEXITCODE"
+
+        & wsl.exe --update --web-download
+        if ($LASTEXITCODE -ne 0) {
+            throw "wsl --update --web-download failed with exit code $LASTEXITCODE."
+        }
+
+        & wsl.exe --version
+        if ($LASTEXITCODE -ne 0) {
+            throw "wsl --version failed with exit code $LASTEXITCODE after updating WSL. A reboot may be required."
+        }
+
+        if (-not (Test-Path $wslc)) {
+            throw "WSL was updated, but $wslc is missing. WSL containers require WSL 2.9.3 or newer."
+        }
+
+        Invoke-Wslc version
+
+        # Proves a Linux container can run under nested virtualization before any build work happens.
+        Invoke-Wslc run --rm mcr.microsoft.com/azurelinux/base/core:3.0 uname -a
+        Write-Host '##vso[task.setvariable variable=CosmosEmulatorPrepared]true'
+        return
+    }
 
     $windowsEmulator = Join-Path $env:ProgramFiles 'Azure Cosmos DB Emulator\Microsoft.Azure.Cosmos.Emulator.exe'
     if (Test-Path $windowsEmulator) {
@@ -69,8 +106,6 @@ try {
         Write-Host 'The Windows Cosmos DB emulator is not installed.'
     }
 
-    & wsl.exe --version
-    Write-Host "wsl --version exit code: $LASTEXITCODE"
     if (-not (Test-Path $wslc)) {
         throw 'WSL containers are unavailable. The agent image needs WSL 2.9.3 or newer, VirtualMachinePlatform, and virtualization support. No provisioned Cosmos fallback is permitted.'
     }

@@ -11,6 +11,7 @@ jobs:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
+    CosmosEmulatorPrepared: 'false'
 
   templateContext:
     outputs:
@@ -21,6 +22,8 @@ jobs:
       artifact: cosmos-emulator-$(System.JobName)-$(System.JobAttempt)
 
   steps:
+  - template: /eng/ci/templates/steps/prepare-cosmos-emulator.yml@self
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
@@ -106,7 +109,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: C# end to end tests
@@ -115,7 +118,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Node end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Node end to end tests
@@ -124,7 +127,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Direct load end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Direct load end to end tests
@@ -133,7 +136,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: F# end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: F# end to end tests
@@ -142,7 +145,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Language worker end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Language worker end to end tests
@@ -151,7 +154,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Node script host end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Node script host end to end tests
@@ -160,7 +163,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Raw assembly end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Raw assembly end to end tests
@@ -169,7 +172,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Samples end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Samples end to end tests
@@ -178,7 +181,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Drain mode end to end tests
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Drain mode end to end tests
@@ -187,7 +190,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Standby mode end to end tests Windows
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Standby mode end to end tests Windows
@@ -197,7 +200,7 @@ jobs:
   # Disabled to unblock in 202401. Will fix shortly.
   # - task: DotNetCoreCLI@2
   #   displayName: Standby mode end to end tests Linux
-  #   condition: succeededOrFailed()
+  #   condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
   #   inputs:
   #     command: test
   #     testRunTitle: Standby mode end to end tests Linux
@@ -206,7 +209,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Linux container end to end tests Windows
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
     inputs:
       command: test
       testRunTitle: Linux container end to end tests Windows
@@ -215,7 +218,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Release verification tests
-    condition: ${{ eq(variables.is_release, true) }}
+    condition: and(eq(variables['CosmosEmulatorPrepared'], 'true'), ${{ eq(variables.is_release, true) }})
     inputs:
       command: test
       testRunTitle: Release verification tests
