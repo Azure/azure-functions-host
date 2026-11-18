@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Tests.CosmosDB;
 using Microsoft.Azure.WebJobs.Script.Tests.EndToEnd;
-using Microsoft.Extensions.Configuration;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 using Xunit.Abstractions;
@@ -48,23 +48,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             await RunTest(async () =>
             {
-                var config = TestHelpers.GetTestConfiguration();
-                var connStr = config.GetConnectionString("CosmosDB");
-                string cosmosKey = "ConnectionStrings__CosmosDB";
-
                 var envVars = new Dictionary<string, string>
                 {
-                    { cosmosKey, connStr }
+                    { "ConnectionStrings__CosmosDB", CosmosDBEmulator.ConnectionString }
                 };
 
                 _launcher = new HostProcessLauncher("NativeDependencyNoRuntimes", envVars);
-                await _launcher.StartHostAsync();
+                await _launcher.StartHostAsync(_output);
 
                 var client = _launcher.HttpClient;
                 var response = await client.GetAsync($"api/NativeDependencyNoRuntimes");
 
                 // The function does all the validation internally.
-                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+                string result = await response.Content.ReadAsStringAsync();
+                _output.WriteLine(result);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {result}");
             });
         }
 

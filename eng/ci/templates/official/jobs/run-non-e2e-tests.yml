@@ -10,6 +10,14 @@ jobs:
   variables:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
+  templateContext:
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish Cosmos emulator diagnostics
+      condition: always()
+      path: $(Agent.TempDirectory)/cosmos-emulator
+      artifact: cosmos-emulator-$(System.JobName)-$(System.JobAttempt)
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -77,22 +85,13 @@ jobs:
         echo "##vso[task.setvariable variable=ARM_ID_TOKEN]$idToken"
         echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
 
-  - task: PowerShell@2
-    displayName: Start CosmosDB Emulator
-    inputs:
-      targetType: inline
-      script: |
-        Import-Module "$env:ProgramFiles\Azure Cosmos DB Emulator\PSModules\Microsoft.Azure.CosmosDB.Emulator"
-        Start-CosmosDbEmulator -NoFirewall -NoUI
-
-        # [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="public emulator key, not confidential")]
-        Write-Host "##vso[task.setvariable variable=CosmosDB]AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
-
   # This step ensures the azure context defined by the previous task is persisted
   # and available to subsequent steps/tasks.
   - bash: |
       az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) --allow-no-subscriptions --federated-token $(ARM_ID_TOKEN)
     displayName: 'Login to Azure'
+
+  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: 'Specialization tests'
@@ -170,7 +169,6 @@ jobs:
       projects: $(test_projects)
     env:
       AzureWebJobsStorage: $(Storage)
-      ConnectionStrings__CosmosDB: $(CosmosDB)
 
   - task: DotNetCoreCLI@2
     displayName: 'Ungrouped tests'
@@ -186,6 +184,8 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
+
+  - template: /eng/ci/templates/steps/stop-cosmos-emulator.yml@self
 
   - task: AzurePowerShell@5
     condition: and(always(), ne(variables['LeaseBlob'], ''))

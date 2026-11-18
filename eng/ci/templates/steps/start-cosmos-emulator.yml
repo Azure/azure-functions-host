@@ -1,0 +1,8 @@
+steps:
+- task: PowerShell@2
+  displayName: Diagnose agent and start Cosmos vNext through WSL containers
+  timeoutInMinutes: 10
+  inputs:
+    pwsh: true
+    filePath: eng/script/cosmos-emulator.ps1
+    arguments: '-Action Start -ContainerName "cosmos-$(System.JobId)" -DiagnosticsDirectory "$(Agent.TempDirectory)/cosmos-emulator"'

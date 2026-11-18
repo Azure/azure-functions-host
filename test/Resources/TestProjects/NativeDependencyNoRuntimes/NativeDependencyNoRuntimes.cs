@@ -1,5 +1,7 @@
 using System;
-using System.Data.Common;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,19 +29,33 @@ namespace NativeDependencyWithTargetFramework
             try
             {
                 string cosmosConnection = _config.GetConnectionString("CosmosDB");
-                var builder = new DbConnectionStringBuilder()
+                using CosmosClient client = new(cosmosConnection, new CosmosClientOptions { ConnectionMode = ConnectionMode.Gateway });
+                if (!client.Endpoint.IsLoopback)
                 {
-                    ConnectionString = cosmosConnection
-                };
+                    throw new InvalidOperationException("The native dependency test requires a loopback Cosmos DB emulator endpoint.");
+                }
 
-                builder.TryGetValue("AccountEndpoint", out object dbUri);
-                builder.TryGetValue("AccountKey", out object dbKey);
+                Database database = await client.CreateDatabaseIfNotExistsAsync("ItemDb");
+                Container container = await database.CreateContainerIfNotExistsAsync("ItemCollection", "/id");
+                await container.UpsertItemAsync(new { id = "native-query-plan" }, new PartitionKey("native-query-plan"));
 
-                var client = new CosmosClient(dbUri.ToString(), dbKey.ToString());
+                using FeedIterator iterator = container.GetItemQueryStreamIterator("SELECT * FROM c",
+                    requestOptions: new QueryRequestOptions { EnableOptimisticDirectExecution = false });
+                using ResponseMessage response = await iterator.ReadNextAsync();
+                response.EnsureSuccessStatusCode();
 
-                Container container = client.GetDatabase("ItemDb").GetContainer("ItemCollection");
-                FeedIterator iterator = container.GetItemQueryStreamIterator("SELECT * FROM c");
-                await iterator.ReadNextAsync();
+                // Gateway transport must still exercise the Windows native query planner.
+                using Process process = Process.GetCurrentProcess();
+                ProcessModule nativeModule = process.Modules.Cast<ProcessModule>()
+                    .SingleOrDefault(m => string.Equals(m.ModuleName, "Microsoft.Azure.Cosmos.ServiceInterop.dll", StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidOperationException("The query did not load the Cosmos native query planner.");
+                string expectedDirectory = Path.GetDirectoryName(typeof(NativeDependencyNoRuntimes).Assembly.Location);
+                if (!string.Equals(Path.GetDirectoryName(nativeModule.FileName), expectedDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"Native module loaded from '{nativeModule.FileName}', expected directory '{expectedDirectory}'.");
+                }
+
+                return new OkObjectResult($"Native query succeeded. Loaded: {nativeModule.FileName}");
             }
             catch (Exception ex)
             {
@@ -48,8 +64,6 @@ namespace NativeDependencyWithTargetFramework
                     StatusCode = 500
                 };
             }
-
-            return new OkResult();
         }
     }
 }

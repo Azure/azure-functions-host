@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -48,26 +49,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         public async Task InitializeCosmosClient()
         {
-            if (CosmosClient is null)
-            {
-                CosmosClient = new CosmosClient(TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB"));
-            }
+            CosmosClient ??= CosmosDBEmulator.CreateClient();
 
-            // Check connection to the Cosmos DB emulator by listing databases
             try
             {
-                using (var iterator = CosmosClient.GetDatabaseQueryIterator<DatabaseProperties>())
-                {
-                    await iterator.ReadNextAsync();
-                }
+                // Every host loads the trigger function, so its containers must exist before listener startup.
+                await SetUpTriggerContainers();
             }
             catch (CosmosException ex)
             {
                 throw new InvalidOperationException("Failed to connect to the Cosmos DB emulator. Please ensure the emulator is running and accessible.", ex);
             }
+        }
 
-            // this is needed for every test run due to how the TestHost is set up (all functions are loaded, and a listener needs to be started for the trigger)
-            await SetUpTriggerContainers();
+        public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["CosmosDB"] = CosmosDBEmulator.ConnectionString,
+                ["ConnectionStrings:CosmosDB"] = CosmosDBEmulator.ConnectionString,
+                ["AzureFunctionsJobHost:extensions:cosmosDB:connectionMode"] = nameof(ConnectionMode.Gateway)
+            });
         }
 
         public override async Task InitializeAsync()

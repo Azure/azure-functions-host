@@ -12,6 +12,14 @@ jobs:
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
 
+  templateContext:
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish Cosmos emulator diagnostics
+      condition: always()
+      path: $(Agent.TempDirectory)/cosmos-emulator
+      artifact: cosmos-emulator-$(System.JobName)-$(System.JobAttempt)
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -85,19 +93,20 @@ jobs:
     inputs:
       targetType: inline
       script: |
-        Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubPath]testhub"
     env:
       AzureWebJobsStorageSecretMap: $(Storage)
       AzureWebJobsSecondaryStorageSecretMap: $(SecondaryStorage)
-      CosmosDbSecretMap: $(CosmosDb)
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
 
+  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
+
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
+    condition: succeededOrFailed()
     inputs:
       command: test
       testRunTitle: C# end to end tests
@@ -212,6 +221,8 @@ jobs:
       testRunTitle: Release verification tests
       arguments: '--filter "Group=ReleaseTests" $(test_args)'
       projects: $(test_projects)
+
+  - template: /eng/ci/templates/steps/stop-cosmos-emulator.yml@self
 
   - task: AzurePowerShell@5
     condition: and(always(), ne(variables['LeaseBlob'], ''))
