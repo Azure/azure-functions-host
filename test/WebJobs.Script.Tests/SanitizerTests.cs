@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -158,6 +158,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(42, sanitized["items"][2]);
             Assert.True(JToken.DeepEquals(original, input));
             Assert.NotSame(input, sanitized);
+        }
+
+        [Theory]
+        [InlineData("Unexpected token '\0' in JSON", "Unexpected token '<NUL>' in JSON")]
+        [InlineData("\0a\0\0b\0", "<NUL>a<NUL><NUL>b<NUL>")]
+        [InlineData("", "")]
+        [InlineData(null, null)]
+        public void ReplaceNullCharacters_ReplacesEachNullCharacter(string input, string expected)
+        {
+            Assert.Equal(expected, Sanitizer.ReplaceNullCharacters(input));
+        }
+
+        [Fact]
+        public void ReplaceNullCharacters_NoNullCharacters_ReturnsSameInstance()
+        {
+            string input = "MessageId: AMQ QM1 abc";
+
+            Assert.Same(input, Sanitizer.ReplaceNullCharacters(input));
         }
     }
 }

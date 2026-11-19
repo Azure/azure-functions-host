@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         public const string SecretReplacement = "[Hidden Credential]";
         public const string EmailReplacement = "[Hidden Email]";
         internal const string EmailSanitizationTimeoutReplacement = "[Redacted: email sanitization timed out]";
+        internal const string NullCharacterReplacement = "<NUL>";
         private const int EmailRegexTimeoutMilliseconds = 1000;
 
         // Pattern of format : "<local-part>@<domain>.<tld>"
@@ -133,6 +134,18 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
 
             return t;
+        }
+
+        /// <summary>
+        /// Replaces each NUL character with <see cref="NullCharacterReplacement"/>. ETW and Geneva decoders treat NUL
+        /// as a string terminator, so an embedded NUL shifts every later field of an event into the wrong column.
+        /// Returns the same instance, without allocating, when the value contains no NUL characters.
+        /// </summary>
+        internal static string ReplaceNullCharacters(string input)
+        {
+            return input is not null && input.Contains('\0')
+                ? input.Replace("\0", NullCharacterReplacement)
+                : input;
         }
 
         internal static JObject Sanitize(JObject obj, Func<string, bool> selector = null)
