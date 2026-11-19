@@ -97,6 +97,8 @@ jobs:
 
   - template: /eng/ci/templates/steps/wait-cosmos-emulator.yml@self
 
+  - template: /eng/ci/templates/steps/create-cosmos-native-test-resources.yml@self
+
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
     condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
