@@ -616,6 +616,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Fact]
+        public async Task TrySyncTriggers_BackgroundSync_NotifiesPlatformOnlyWhenHashChanges()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
+                .Returns(bool.TrueString);
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).Returns(Task.CompletedTask);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var hashBlob = await syncManager.GetHashBlobAsync();
+                if (hashBlob != null)
+                {
+                    await hashBlob.DeleteIfExistsAsync();
+                }
+
+                // No stored hash: publishes and notifies.
+                var syncResult = await syncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
+                Assert.Equal(1, _mockHttpHandler.RequestCount);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Once());
+
+                // Same payload: neither publishes nor notifies.
+                ResetMockFileSystem();
+                _mockHttpHandler.Reset();
+                syncResult = await syncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(syncResult.Success);
+                Assert.Equal(0, _mockHttpHandler.RequestCount);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Once());
+            }
+        }
         private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue", string durableVersion = "V2")
         {
             var result = VerifyResultCommon(connection, expectedTaskHub, durableVersion);

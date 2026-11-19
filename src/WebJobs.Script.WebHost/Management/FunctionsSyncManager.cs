@@ -145,14 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return result;
                 }
 
-                // Flex Consumption only (see ShouldNotifyPlatformOnSync): notify on every non-background sync with a
-                // payload, independent of the publish result below, so the platform can reconcile its own copy.
-                // The background sync and the deployment validation worker (whose package is not live yet) do not notify.
-                if (!isBackgroundSync && !_environment.IsInValidationMode())
-                {
-                    await NotifyPlatformIfEnabledAsync();
-                }
-
                 bool shouldSyncTriggers = true;
                 string newHash = null;
                 if (isBackgroundSync && hashBlobClient != null)
@@ -163,6 +155,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
+                    // Flex Consumption only (see ShouldNotifyPlatformOnSync): notify whenever the payload is published
+                    // (every foreground sync, and a background sync whose hash changed), independent of the publish
+                    // result, so the platform can reconcile its own copy. The deployment validation worker (whose
+                    // package is not live yet) does not notify.
+                    if (!_environment.IsInValidationMode())
+                    {
+                        await NotifyPlatformIfEnabledAsync();
+                    }
+
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
