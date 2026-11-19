@@ -13,8 +13,11 @@ steps:
       # Use a separate process so installation overlaps restore and build.
       $install = @'
       $ErrorActionPreference = 'Stop'
+      $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+      Write-Output ('Azurite installation started at {0:o}.' -f [DateTime]::UtcNow)
       & npm.cmd install -g azurite
       $exitCode = $LASTEXITCODE
+      Write-Output ('Azurite installation finished at {0:o} after {1:N0} seconds with exit code {2}.' -f [DateTime]::UtcNow, $stopwatch.Elapsed.TotalSeconds, $exitCode)
       $exitCodePath = Join-Path $env:AGENT_TEMPDIRECTORY 'azurite-install.exitcode'
       Set-Content -LiteralPath "$exitCodePath.tmp" -Value $exitCode
       Move-Item -LiteralPath "$exitCodePath.tmp" -Destination $exitCodePath -Force

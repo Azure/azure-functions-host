@@ -13,12 +13,6 @@ jobs:
     test_args: -c release --no-build
 
   steps:
-  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
-
-  - template: /eng/ci/templates/install-dotnet.yml@self
-
-  - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
-
   - task: UseNode@1
     inputs:
       version: 22.x
@@ -28,6 +22,12 @@ jobs:
       workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - template: /eng/ci/templates/steps/install-azurite.yml@self
+
+  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
 
   - task: UsePythonVersion@0
     inputs:
