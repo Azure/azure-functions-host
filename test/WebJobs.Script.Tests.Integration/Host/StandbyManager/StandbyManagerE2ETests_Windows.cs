@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public async Task StandbyModeE2E_Dotnet(bool enableProxies)
+        public async Task StandbyModeE2E_DotnetIsolated(bool enableProxies)
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
             if (enableProxies)
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
@@ -168,8 +168,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting language worker channel specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
             Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
-            Assert.Equal(enableProxies ? 2 : 4, logLines.Count(p => p.Contains($"1 functions loaded")));
-            Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
+            // The precompiled warmup is added only when custom providers are included.
+            Assert.Equal(enableProxies ? 2 : 0, logLines.Count(p => p.Contains("2 functions loaded")));
+            Assert.Equal(enableProxies ? 0 : 2, logLines.Count(p => p.Contains("1 functions loaded")));
+            Assert.Equal(4, logLines.Count(p => p.Contains("0 functions loaded")));
             Assert.Equal(enableProxies ? 3 : 0, logLines.Count(p => p.Contains($"Loading proxies metadata")));
             Assert.Equal(enableProxies ? 3 : 0, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
             Assert.Equal(enableProxies ? 2 : 0, logLines.Count(p => p.Contains($"1 proxies loaded")));
@@ -181,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task StandbyModeE2E_Dotnet_HostIdValidator_DoesNotRunInPlaceholderMode()
+        public async Task StandbyModeE2E_DotnetIsolated_HostIdValidator_DoesNotRunInPlaceholderMode()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
 
@@ -222,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
 
             Assert.False(environment.IsPlaceholderModeEnabled());
@@ -263,8 +265,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting language worker channel specialization")));
             Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
-            Assert.Equal(4, logLines.Count(p => p.Contains($"1 functions loaded")));
-            Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("1 functions loaded")));
+            Assert.Equal(4, logLines.Count(p => p.Contains("0 functions loaded")));
             Assert.Contains("Generating 0 job function(s)", logLines);
 
             // we expect to see host startup logs for both the placeholder site as well as the

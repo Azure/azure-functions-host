@@ -1304,6 +1304,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await client.GetAsync("api/warmup");
             Assert.True(response.IsSuccessStatusCode, _loggerProvider.GetLog());
 
+            _loggerProvider.ClearAllLogMessages();
+
             // Specialize into a custom handler app
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -1314,18 +1316,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // this forces the host through the full specialization + extension loading flow.
             response = await client.GetAsync("api/warmup");
 
-            // Wait for the host to settle after specialization
+            // Verify bundle discovery without requiring credentials to start the trigger listeners.
             await TestHelpers.Await(() =>
                     {
                         var log = _loggerProvider.GetLog();
-                        // Wait until we see evidence that the specialized host has started
-                        return log.Contains("Host started") || log.Contains("function is in error") || log.Contains("No job functions found");
-                    }, timeout: 30000);
+                        return log.Contains("Loaded extension 'EventHubs'", StringComparison.Ordinal)
+                            && log.Contains("Loaded extension 'ServiceBus'", StringComparison.Ordinal);
+                    }, timeout: 30000, userMessageCallback: _loggerProvider.GetLog);
 
             var log = _loggerProvider.GetLog();
 
             // Verify the specialized host found our custom handler functions.
             Assert.Contains("3 functions found (Host)", log);
+            Assert.Contains("3 functions loaded", log);
 
             // The critical check: after IsScriptFileDetermined runs, functions must NOT be excluded.
             // With the bug, we'd see "0 functions loaded" from the ScriptStartupTypeLocator call

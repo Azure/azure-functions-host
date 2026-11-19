@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.WebJobs.Script.Tests;
+using WebJobs.Script.Tests;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     public class FunctionAssemblyLoadContextEndToEndTests : IDisposable
     {
         private readonly ITestOutputHelper _output;
+        private readonly TempDirectory _secretsDirectory = new();
 
         private bool _success = true;
         private HostProcessLauncher _launcher;
@@ -111,10 +113,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             });
         }
 
-        private static HostProcessLauncher CreateExtensionHost(string projectName, IDictionary<string, string> environment = null)
+        private HostProcessLauncher CreateExtensionHost(string projectName, IDictionary<string, string> environment = null)
         {
             environment ??= new Dictionary<string, string>();
             environment[EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
+            environment[EnvironmentSettingNames.AzureWebJobsSecretStorageType] = "Files";
+            environment[EnvironmentSettingNames.FunctionsSecretsPath] = _secretsDirectory.Path;
 
             return new HostProcessLauncher(projectName, environment);
         }
@@ -135,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         public void Dispose()
         {
             _launcher?.Dispose();
+            _secretsDirectory.Dispose();
 
             if (!_success && _launcher is not null)
             {

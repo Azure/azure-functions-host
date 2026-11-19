@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine("TestScripts", "NoFunction"));
             Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine("TestScripts", "NoFunction"));
             Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -1489,7 +1489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine("TestScripts", "NoFunction"));
             Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -1607,7 +1607,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine("TestScripts", "NoFunction"));
             Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
