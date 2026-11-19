@@ -20,6 +20,7 @@ resources:
     ref: refs/tags/release
 
 variables:
+- group: azure-functions-host-ci
 - template: /eng/ci/templates/variables/build.yml@self
 - template: /ci/variables/cfs.yml@eng
 - name: buildNumber
