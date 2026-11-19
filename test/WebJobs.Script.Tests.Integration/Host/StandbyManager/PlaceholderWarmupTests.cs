@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -28,6 +29,8 @@ public class PlaceholderWarmupTests
     {
         StandbyManager.ResetChangeToken();
         using var root = new TempDirectory();
+        string scriptPath = Path.Combine(root.Path, "wwwroot");
+        using var loggerProvider = new TestLoggerProvider();
         var environment = new TestEnvironment(new Dictionary<string, string>
         {
             [EnvironmentSettingNames.AzureWebsitePlaceholderMode] = "1",
@@ -37,6 +40,8 @@ public class PlaceholderWarmupTests
         });
         using var host = Program.CreateHostBuilder()
             .ConfigureWebHost(builder => builder.UseTestServer())
+            .ConfigureLogging(builder => builder.AddProvider(loggerProvider))
+            .ConfigureScriptHostLogging(builder => builder.AddProvider(loggerProvider))
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IEnvironment>(environment);
@@ -44,8 +49,9 @@ public class PlaceholderWarmupTests
                 {
                     if (options.IsStandbyConfiguration)
                     {
-                        options.ScriptPath = root.Path;
+                        options.ScriptPath = scriptPath;
                         options.LogPath = Path.Combine(root.Path, "logs");
+                        options.SecretsPath = Path.Combine(root.Path, "secrets");
                     }
                 });
             })
@@ -63,10 +69,10 @@ public class PlaceholderWarmupTests
             using var response = await host.GetTestClient().SendAsync(request);
 
             Assert.True(response.StatusCode == HttpStatusCode.OK,
-                $"Warmup returned {response.StatusCode}. Host startup error: {host.Services.GetRequiredService<IScriptHostManager>().LastError}");
+                $"Warmup returned {response.StatusCode}. Host startup error: {host.Services.GetRequiredService<IScriptHostManager>().LastError}{Environment.NewLine}{loggerProvider.GetLog()}");
             Assert.Equal("WarmUp complete.", await response.Content.ReadAsStringAsync());
-            Assert.Empty(Directory.GetFiles(root.Path, "*.csx", SearchOption.AllDirectories));
-            Assert.Empty(Directory.GetFiles(root.Path, "function.json", SearchOption.AllDirectories));
+            Assert.Empty(Directory.GetFiles(scriptPath, "*.csx", SearchOption.AllDirectories));
+            Assert.Empty(Directory.GetFiles(scriptPath, "function.json", SearchOption.AllDirectories));
         }
         finally
         {

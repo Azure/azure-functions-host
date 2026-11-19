@@ -172,6 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Fixture.Host.ClearLogMessages();
             Fixture.MetricsLogger.ClearCollections();
 
+            DateTimeOffset invocationStart = DateTimeOffset.UtcNow;
             await Fixture.Host.BeginFunctionAsync("Scenarios", input);
 
             string userCategory = LogCategories.CreateFunctionUserCategory("Scenarios");
@@ -210,8 +211,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify the console log
             Assert.Equal("console log", consoleLog);
 
-            await TestHelpers.Await(() => Fixture.Host.GetScriptHostLogMessages(LogCategories.Aggregator).Any());
-            Assert.Single(Fixture.Host.GetScriptHostLogMessages(LogCategories.Aggregator));
+            IEnumerable<Dictionary<string, object>> GetInvocationAggregates() =>
+                Fixture.Host.GetScriptHostLogMessages(LogCategories.Aggregator)
+                    .Select(message => message.State.ToDictionary(property => property.Key, property => property.Value))
+                    .Where(state => string.Equals(state[LogConstants.NameKey] as string, "Scenarios", StringComparison.Ordinal)
+                        && state[LogConstants.TimestampKey] is DateTimeOffset timestamp && timestamp >= invocationStart);
+
+            await TestHelpers.Await(() => GetInvocationAggregates().Any(), userMessageCallback: Fixture.Host.GetLog);
+            var aggregate = Assert.Single(GetInvocationAggregates());
+            Assert.Equal(1, aggregate[LogConstants.CountKey]);
+            Assert.Equal(1, aggregate[LogConstants.SuccessesKey]);
+            Assert.Equal(0, aggregate[LogConstants.FailuresKey]);
 
             // Make sure that no user logs made it to the EventGenerator (which the SystemLogger writes to)
             IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
