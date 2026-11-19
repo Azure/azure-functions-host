@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
                 .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK });
 
-            await _meshServiceClient.NotifyTriggersChanged();
+            await _meshServiceClient.NotifyTriggersChanged("abc123");
 
             Assert.NotNull(capturedRequest);
             Assert.Equal(MeshInitUri, capturedRequest.RequestUri.AbsoluteUri);
@@ -231,6 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var formData = await capturedRequest.Content.ReadAsFormDataAsync();
             Assert.Equal(MeshServiceClient.UpdateTriggersOperation, formData["operation"]);
+            Assert.Equal("abc123", formData[MeshServiceClient.TriggersHashParameter]);
             Assert.Equal(ContainerName, capturedRequest.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).Single());
         }
 
@@ -243,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.InternalServerError });
 
-            await Assert.ThrowsAsync<HttpRequestException>(() => _meshServiceClient.NotifyTriggersChanged());
+            await Assert.ThrowsAsync<HttpRequestException>(() => _meshServiceClient.NotifyTriggersChanged("abc123"));
         }
 
         [Fact]

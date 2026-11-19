@@ -390,13 +390,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Gets a value indicating whether the host should notify the platform when triggers are synchronized,
-        /// based on the <see cref="FunctionsNotifyPlatformOnSync"/> environment variable.
+        /// based on the <see cref="FunctionsNotifyPlatformOnSync"/> environment variable. Only Flex Consumption apps notify.
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
-        /// <returns><see langword="true"/> if platform notification is enabled; otherwise, <see langword="false"/>.</returns>
+        /// <returns><see langword="true"/> if platform notification is enabled and the app is a Flex Consumption app; otherwise, <see langword="false"/>.</returns>
         public static bool ShouldNotifyPlatformOnSync(this IEnvironment environment)
         {
-            return bool.TryParse(environment.GetEnvironmentVariable(FunctionsNotifyPlatformOnSync), out bool enabled) && enabled;
+            return bool.TryParse(environment.GetEnvironmentVariable(FunctionsNotifyPlatformOnSync), out bool enabled)
+                && enabled
+                && environment.IsFlexConsumptionSku();
         }
 
         /// <summary>

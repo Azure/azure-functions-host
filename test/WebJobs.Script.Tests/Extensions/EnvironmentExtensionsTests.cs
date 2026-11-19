@@ -233,6 +233,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData("true", "FlexConsumption", true)]
+        [InlineData("True", "FlexConsumption", true)]
+        [InlineData("true", "Dynamic", false)]
+        [InlineData("true", "ElasticPremium", false)]
+        [InlineData("false", "FlexConsumption", false)]
+        [InlineData(null, "FlexConsumption", false)]
+        [InlineData("invalid", "FlexConsumption", false)]
+        public void ShouldNotifyPlatformOnSync_RequiresFlagAndFlexConsumption(string flag, string sku, bool expected)
+        {
+            TestEnvironment env = new();
+            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync, flag);
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+
+            Assert.Equal(expected, env.ShouldNotifyPlatformOnSync());
+        }
+
+        [Theory]
         [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
         [InlineData("RandomContainerName", null, null, false, null, true)] // Linux Consumption on Atlas
         [InlineData("RandomContainerName", null, "RandomLegionServiceHostName", false, null, true)] // Flex Consumption on Legion

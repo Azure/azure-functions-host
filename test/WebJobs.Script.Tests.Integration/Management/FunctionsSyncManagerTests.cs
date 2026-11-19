@@ -554,11 +554,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(false)]
         public async Task TrySyncTriggers_NotifiesPlatform_WhenEnabled(bool functionsNotifyPlatformOnSync)
         {
+            _sku = ScriptConstants.FlexConsumptionSku;
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
                 .Returns(functionsNotifyPlatformOnSync.ToString());
 
+            string notifiedHash = null;
             var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
-            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).Returns(Task.CompletedTask);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged(It.IsAny<string>()))
+                .Callback<string>(hash => notifiedHash = hash)
+                .Returns(Task.CompletedTask);
             var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
@@ -567,8 +571,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
                 meshServiceClientMock.Verify(
-                    p => p.NotifyTriggersChanged(),
+                    p => p.NotifyTriggersChanged(It.IsAny<string>()),
                     functionsNotifyPlatformOnSync ? Times.Once() : Times.Never());
+                if (functionsNotifyPlatformOnSync)
+                {
+                    Assert.Equal(FunctionsSyncManager.ComputeHash(_contentBuilder.ToString()), notifiedHash);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_SetTriggersFails_StillNotifiesPlatform()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
+                .Returns(bool.TrueString);
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged(It.IsAny<string>())).Returns(Task.CompletedTask);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
+                var syncResult = await syncManager.TrySyncTriggersAsync();
+
+                Assert.False(syncResult.Success);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(It.IsNotNull<string>()), Times.Once());
             }
         }
 
