@@ -575,27 +575,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task TrySyncTriggers_ValidationWorker_DoesNotNotifyPlatform()
-        {
-            _sku = ScriptConstants.FlexConsumptionSku;
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
-                .Returns(bool.TrueString);
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup))
-                .Returns(FunctionGroups.ValidationWorker);
-
-            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
-            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
-
-            using (var env = new TestScopedEnvironmentVariable(_vars))
-            {
-                var syncResult = await syncManager.TrySyncTriggersAsync();
-
-                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
-                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Never());
-            }
-        }
-
-        [Fact]
         public async Task TrySyncTriggers_SetTriggersFails_StillNotifiesPlatform()
         {
             _sku = ScriptConstants.FlexConsumptionSku;

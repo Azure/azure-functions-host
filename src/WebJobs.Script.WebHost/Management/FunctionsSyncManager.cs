@@ -155,14 +155,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
-                    // Flex Consumption only (see ShouldNotifyPlatformOnSync): notify whenever the payload is published
-                    // (every foreground sync, and a background sync whose hash changed), independent of the publish
-                    // result, so the platform can reconcile its own copy. The deployment validation worker (whose
-                    // package is not live yet) does not notify.
-                    if (!_environment.IsInValidationMode())
-                    {
-                        await NotifyPlatformIfEnabledAsync();
-                    }
+                    // Notify the platform on every publish, whatever its result; the platform decides which workers notify.
+                    await NotifyPlatformIfEnabledAsync();
 
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
