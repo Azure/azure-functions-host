@@ -13,16 +13,8 @@ jobs:
     test_args: -c release --no-build
     CosmosEmulatorPrepared: 'false'
 
-  templateContext:
-    outputs:
-    - output: pipelineArtifact
-      displayName: Publish Cosmos emulator diagnostics
-      condition: always()
-      path: $(Agent.TempDirectory)/cosmos-emulator
-      artifact: cosmos-emulator-$(System.JobName)-$(System.JobAttempt)
-
   steps:
-  - template: /eng/ci/templates/steps/prepare-cosmos-emulator.yml@self
+  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -31,6 +23,12 @@ jobs:
   - task: UseNode@1
     inputs:
       version: 22.x
+
+  - task: npmAuthenticate@0
+    inputs:
+      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
+
+  - template: /eng/ci/templates/steps/install-azurite.yml@self
 
   - task: UsePythonVersion@0
     inputs:
@@ -42,16 +40,6 @@ jobs:
       versionSpec: '11'
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
-
-  - task: npmAuthenticate@0
-    inputs:
-      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
-
-  - script: |
-      npm install -g azurite
-    displayName: Install Azurite
-    env:
-      NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - task: Npm@1
     displayName: npm ci
@@ -105,7 +93,9 @@ jobs:
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
 
-  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
+  - template: /eng/ci/templates/steps/wait-azurite-install.yml@self
+
+  - template: /eng/ci/templates/steps/wait-cosmos-emulator.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
@@ -200,7 +190,7 @@ jobs:
   # Disabled to unblock in 202401. Will fix shortly.
   # - task: DotNetCoreCLI@2
   #   displayName: Standby mode end to end tests Linux
-  #   condition: and(succeededOrFailed(), eq(variables['CosmosEmulatorPrepared'], 'true'))
+  #   condition: succeededOrFailed()
   #   inputs:
   #     command: test
   #     testRunTitle: Standby mode end to end tests Linux
@@ -224,8 +214,6 @@ jobs:
       testRunTitle: Release verification tests
       arguments: '--filter "Group=ReleaseTests" $(test_args)'
       projects: $(test_projects)
-
-  - template: /eng/ci/templates/steps/stop-cosmos-emulator.yml@self
 
   - task: AzurePowerShell@5
     condition: and(always(), ne(variables['LeaseBlob'], ''))

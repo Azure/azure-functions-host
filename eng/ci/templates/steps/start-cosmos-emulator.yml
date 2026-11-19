@@ -1,8 +1,14 @@
 steps:
 - task: PowerShell@2
-  displayName: Start Cosmos vNext through WSL containers
-  timeoutInMinutes: 10
+  displayName: Start Windows Cosmos DB emulator
+  timeoutInMinutes: 5
   inputs:
-    pwsh: true
-    filePath: eng/script/cosmos-emulator.ps1
-    arguments: '-Action Start -ContainerName "cosmos-$(System.JobId)" -DiagnosticsDirectory "$(Agent.TempDirectory)/cosmos-emulator"'
+    targetType: inline
+    script: |
+      Import-Module "$env:ProgramFiles\Azure Cosmos DB Emulator\PSModules\Microsoft.Azure.CosmosDB.Emulator"
+      Get-ChildItem "$env:ProgramFiles\Azure Cosmos DB Emulator" -Filter "*Emulator.exe" |
+        ForEach-Object { $_.VersionInfo } |
+        Select-Object FileName, FileVersion, ProductVersion | Format-List
+
+      # Start early so emulator startup overlaps the build; wait-cosmos-emulator.yml blocks until it is ready.
+      Start-CosmosDbEmulator -NoFirewall -NoUI -NoWait

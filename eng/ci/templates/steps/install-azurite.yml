@@ -1,0 +1,29 @@
+steps:
+- task: PowerShell@2
+  displayName: Start Azurite installation
+  inputs:
+    targetType: inline
+    script: |
+      $exitCodePath = Join-Path $env:AGENT_TEMPDIRECTORY 'azurite-install.exitcode'
+      if (Test-Path -LiteralPath $exitCodePath)
+      {
+          Remove-Item -LiteralPath $exitCodePath
+      }
+
+      # Use a separate process so installation overlaps restore and build.
+      $install = @'
+      $ErrorActionPreference = 'Stop'
+      & npm.cmd install -g azurite
+      $exitCode = $LASTEXITCODE
+      $exitCodePath = Join-Path $env:AGENT_TEMPDIRECTORY 'azurite-install.exitcode'
+      Set-Content -LiteralPath "$exitCodePath.tmp" -Value $exitCode
+      Move-Item -LiteralPath "$exitCodePath.tmp" -Destination $exitCodePath -Force
+      exit $exitCode
+      '@
+      $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($install))
+      $process = Start-Process powershell.exe -ArgumentList "-NoProfile -NonInteractive -OutputFormat Text -EncodedCommand $encodedCommand" `
+          -RedirectStandardOutput (Join-Path $env:AGENT_TEMPDIRECTORY 'azurite-install.log') `
+          -RedirectStandardError (Join-Path $env:AGENT_TEMPDIRECTORY 'azurite-install.error.log') -PassThru
+      Write-Host "##vso[task.setvariable variable=AzuriteInstallProcessId]$($process.Id)"
+  env:
+    NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc

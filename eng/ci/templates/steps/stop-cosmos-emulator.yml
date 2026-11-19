@@ -1,9 +1,0 @@
-steps:
-- task: PowerShell@2
-  displayName: Collect Cosmos emulator diagnostics and clean up
-  condition: always()
-  timeoutInMinutes: 3
-  inputs:
-    pwsh: true
-    filePath: eng/script/cosmos-emulator.ps1
-    arguments: '-Action Stop -ContainerName "cosmos-$(System.JobId)" -DiagnosticsDirectory "$(Agent.TempDirectory)/cosmos-emulator"'

@@ -1,0 +1,22 @@
+steps:
+- task: PowerShell@2
+  displayName: Wait for Windows Cosmos DB emulator
+  timeoutInMinutes: 10
+  inputs:
+    targetType: inline
+    script: |
+      Import-Module "$env:ProgramFiles\Azure Cosmos DB Emulator\PSModules\Microsoft.Azure.CosmosDB.Emulator"
+      $deadline = (Get-Date).AddMinutes(5)
+      while (($status = Get-CosmosDbEmulatorStatus) -ne 'Running')
+      {
+          if ((Get-Date) -gt $deadline)
+          {
+              throw "Cosmos DB emulator did not reach Running within 5 minutes. Last status: '$status'."
+          }
+
+          Write-Host "Cosmos DB emulator status: '$status'. Waiting..."
+          Start-Sleep -Seconds 5
+      }
+
+      Write-Host "Cosmos DB emulator is running."
+      Write-Host "##vso[task.setvariable variable=CosmosEmulatorPrepared]true"

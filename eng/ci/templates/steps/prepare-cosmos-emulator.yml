@@ -1,8 +1,0 @@
-steps:
-- task: PowerShell@2
-  displayName: Update WSL and verify Linux containers for Cosmos emulator
-  timeoutInMinutes: 10
-  inputs:
-    pwsh: true
-    filePath: eng/script/cosmos-emulator.ps1
-    arguments: '-Action Prepare -ContainerName "cosmos-$(System.JobId)" -DiagnosticsDirectory "$(Agent.TempDirectory)/cosmos-emulator"'

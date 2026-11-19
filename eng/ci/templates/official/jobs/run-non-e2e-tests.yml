@@ -11,16 +11,8 @@ jobs:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
     CosmosEmulatorPrepared: 'false'
 
-  templateContext:
-    outputs:
-    - output: pipelineArtifact
-      displayName: Publish Cosmos emulator diagnostics
-      condition: always()
-      path: $(Agent.TempDirectory)/cosmos-emulator
-      artifact: cosmos-emulator-$(System.JobName)-$(System.JobAttempt)
-
   steps:
-  - template: /eng/ci/templates/steps/prepare-cosmos-emulator.yml@self
+  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -30,21 +22,17 @@ jobs:
     inputs:
       version: 22.x
 
+  - task: npmAuthenticate@0
+    inputs:
+      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
+
+  - template: /eng/ci/templates/steps/install-azurite.yml@self
+
   - task: JavaToolInstaller@0
     inputs:
       versionSpec: '11'
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
-
-  - task: npmAuthenticate@0
-    inputs:
-      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
-
-  - script: |
-      npm install -g azurite
-    displayName: Install Azurite
-    env:
-      NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - task: DotNetCoreCLI@2
     displayName: Restore
@@ -94,7 +82,9 @@ jobs:
       az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) --allow-no-subscriptions --federated-token $(ARM_ID_TOKEN)
     displayName: 'Login to Azure'
 
-  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
+  - template: /eng/ci/templates/steps/wait-azurite-install.yml@self
+
+  - template: /eng/ci/templates/steps/wait-cosmos-emulator.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: 'Specialization tests'
@@ -187,8 +177,6 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
-
-  - template: /eng/ci/templates/steps/stop-cosmos-emulator.yml@self
 
   - task: AzurePowerShell@5
     condition: and(always(), ne(variables['LeaseBlob'], ''))
