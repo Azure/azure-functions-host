@@ -145,6 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return result;
                 }
 
+                // Notify the platform on every foreground sync, whatever the publish result; the platform decides which workers notify.
+                if (!isBackgroundSync)
+                {
+                    await NotifyPlatformIfEnabledAsync();
+                }
+
                 bool shouldSyncTriggers = true;
                 string newHash = null;
                 if (isBackgroundSync && hashBlobClient != null)
@@ -155,9 +161,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
-                    // Notify the platform on every publish, whatever its result; the platform decides which workers notify.
-                    await NotifyPlatformIfEnabledAsync();
-
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
