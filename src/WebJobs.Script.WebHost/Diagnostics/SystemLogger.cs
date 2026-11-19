@@ -198,6 +198,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 (innerExceptionType, innerExceptionMessage, details, formattedMessage) = exception.GetSanitizedExceptionDetails(formattedMessage);
             }
 
+            details = Sanitizer.ReplaceNullCharacters(details);
+            formattedMessage = Sanitizer.ReplaceNullCharacters(formattedMessage);
+            innerExceptionMessage = Sanitizer.ReplaceNullCharacters(innerExceptionMessage);
+
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
         }
 

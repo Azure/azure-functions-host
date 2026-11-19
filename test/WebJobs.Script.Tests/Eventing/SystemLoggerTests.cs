@@ -93,6 +93,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void Log_NullCharacters_AreReplaced()
+        {
+            var exception = new InvalidOperationException("Unexpected token '\0'");
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                LogLevel.Error, _subscriptionId, _websiteName, _functionName, string.Empty, _category,
+                It.Is<string>(s => s.Contains("Unexpected token '<NUL>'") && !s.Contains('\0')),
+                It.Is<string>(s => s.Contains("Trigger Details: MessageId: <NUL><NUL>") && !s.Contains('\0')),
+                typeof(InvalidOperationException).ToString(), "Unexpected token '<NUL>'", string.Empty, _hostInstanceId,
+                string.Empty, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            _logger.LogError(exception, "Trigger Details: MessageId: \0\0");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
         public void Log_Verbose_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
