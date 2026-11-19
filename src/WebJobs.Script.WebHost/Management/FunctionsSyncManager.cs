@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The background sync does not notify.
                 if (!isBackgroundSync)
                 {
-                    await NotifyPlatformIfEnabledAsync(payload.Content);
+                    await NotifyPlatformIfEnabledAsync();
                 }
 
                 bool shouldSyncTriggers = true;
@@ -253,7 +253,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // compute the current hash value and compare it with
                 // the last stored value
-                string currentHash = ComputeHash(content);
+                string currentHash = null;
+                using (var sha256 = SHA256.Create())
+                {
+                    byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
+                    currentHash = hash
+                        .Aggregate(new StringBuilder(), (a, b) => a.Append(b.ToString("x2")))
+                        .ToString();
+                }
 
                 // get the last hash value if present
                 string lastHash = null;
@@ -307,11 +314,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <summary>
         /// Performs a best-effort notification to the platform when triggers are synchronized.
         /// </summary>
-        /// <param name="triggersContent">The sync triggers payload; its SHA-256 hash is sent to the platform.</param>
         /// <remarks>
         /// Exposed as <see langword="internal"/> for direct unit testing.
         /// </remarks>
-        internal async Task NotifyPlatformIfEnabledAsync(string triggersContent)
+        internal async Task NotifyPlatformIfEnabledAsync()
         {
             if (!_notifyPlatformOnSync)
             {
@@ -320,18 +326,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             try
             {
-                await _meshServiceClient.NotifyTriggersChanged(ComputeHash(triggersContent));
+                await _meshServiceClient.NotifyTriggersChanged();
             }
             catch (Exception exc) when (!exc.IsFatal())
             {
                 _logger.LogWarning(exc, "Failed to notify platform of triggers change.");
             }
-        }
-
-        internal static string ComputeHash(string content)
-        {
-            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(content));
-            return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
         internal async Task<BlobClient> GetHashBlobAsync()
