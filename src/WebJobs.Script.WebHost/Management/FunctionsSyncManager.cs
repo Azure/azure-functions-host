@@ -147,8 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 // Flex Consumption only (see ShouldNotifyPlatformOnSync): notify on every non-background sync with a
                 // payload, independent of the publish result below, so the platform can reconcile its own copy.
-                // The background sync does not notify.
-                if (!isBackgroundSync)
+                // The background sync and the deployment validation worker (whose package is not live yet) do not notify.
+                if (!isBackgroundSync && !_environment.IsInValidationMode())
                 {
                     await NotifyPlatformIfEnabledAsync();
                 }

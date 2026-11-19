@@ -156,6 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(() => _sku);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns((string)null);
             _mockEnvironment.Setup(p => p.Platform).Returns(System.Runtime.InteropServices.OSPlatform.Windows);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
@@ -570,6 +571,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 meshServiceClientMock.Verify(
                     p => p.NotifyTriggersChanged(),
                     functionsNotifyPlatformOnSync ? Times.Once() : Times.Never());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_ValidationWorker_DoesNotNotifyPlatform()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
+                .Returns(bool.TrueString);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup))
+                .Returns(FunctionGroups.ValidationWorker);
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncResult = await syncManager.TrySyncTriggersAsync();
+
+                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Never());
             }
         }
 
