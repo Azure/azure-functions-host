@@ -152,6 +152,74 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task StartAsync_HostBecomesPrimaryAfterInitialCheck_SyncsTriggers()
+        {
+            _syncService.DueTime = 100;
+            int primaryChecks = 0;
+            _mockPrimaryHostStateProviderMock.Setup(p => p.IsPrimary).Returns(() => Interlocked.Increment(ref primaryChecks) > 2);
+
+            TaskCompletionSource syncTriggers = new();
+            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ReturnsAsync(new TriggersOperationResult { Success = true }).Callback(() => syncTriggers.TrySetResult());
+
+            await _syncService.StartAsync(CancellationToken.None);
+
+            await syncTriggers.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.Delay(500);
+
+            _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Once);
+            Assert.Equal(3, primaryChecks);
+        }
+
+        [Fact]
+        public async Task StartAsync_HostNeverPrimary_StopsCheckingAfterMaxEligibilityChecks()
+        {
+            _syncService.DueTime = 50;
+            _syncService.MaxEligibilityChecks = 3;
+            int primaryChecks = 0;
+            TaskCompletionSource maxChecksReached = new();
+            _mockPrimaryHostStateProviderMock.Setup(p => p.IsPrimary).Returns(() =>
+            {
+                if (Interlocked.Increment(ref primaryChecks) == 3)
+                {
+                    maxChecksReached.TrySetResult();
+                }
+
+                return false;
+            });
+
+            await _syncService.StartAsync(CancellationToken.None);
+
+            await maxChecksReached.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.Delay(500);
+
+            Assert.Equal(3, primaryChecks);
+            _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Never);
+            Assert.Contains(_loggerProvider.GetAllLogMessages(), p => p.FormattedMessage == "Skipping background SyncTriggers operation. Host did not become primary and running after 3 checks.");
+        }
+
+        [Fact]
+        public async Task StopCalledWhileWaitingForPrimary_DoesNotCheckAgain()
+        {
+            _syncService.DueTime = 100;
+            int primaryChecks = 0;
+            TaskCompletionSource firstCheck = new();
+            _mockPrimaryHostStateProviderMock.Setup(p => p.IsPrimary).Returns(() =>
+            {
+                Interlocked.Increment(ref primaryChecks);
+                firstCheck.TrySetResult();
+                return false;
+            });
+
+            await _syncService.StartAsync(CancellationToken.None);
+            await firstCheck.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await _syncService.StopAsync(CancellationToken.None);
+            await Task.Delay(500);
+
+            Assert.Equal(1, primaryChecks);
+            _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Never);
+        }
+
+        [Fact]
         public async Task UnhandledExceptions_HandledInCallback()
         {
             TaskCompletionSource syncTriggers = new TaskCompletionSource();

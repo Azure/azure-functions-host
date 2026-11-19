@@ -22,7 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly IEnvironment _environment;
+        private readonly object _timerLock = new();
         private Timer _syncTimer;
+        private int _eligibilityChecks;
+        private volatile bool _stopped;
         private bool _disposed = false;
 
         public FunctionsSyncService(ILoggerFactory loggerFactory, IScriptHostManager scriptHostManager, IPrimaryHostStateProvider primaryHostStateProvider, IFunctionsSyncManager functionsSyncManager, IEnvironment environment)
@@ -50,9 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        // exposed for testing
+        internal int MaxEligibilityChecks { get; set; } = 10;
+
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            // create a onetime invocation timer
+            // create a onetime invocation timer; it is re-armed only while waiting for the host to become eligible
             _syncTimer = new Timer(OnSyncTimerTick, cancellationToken, DueTime, Timeout.Infinite);
 
             return Task.CompletedTask;
@@ -60,8 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            // cancel the timer if it has been started
-            _syncTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            lock (_timerLock)
+            {
+                _stopped = true;
+
+                // cancel the timer if it has been started
+                _syncTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
 
             return Task.CompletedTask;
         }
@@ -72,10 +83,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 var cancellationToken = (CancellationToken)state;
 
-                if (!cancellationToken.IsCancellationRequested && ShouldSyncTriggers)
+                if (cancellationToken.IsCancellationRequested || _stopped)
+                {
+                    return;
+                }
+
+                if (ShouldSyncTriggers)
                 {
                     _logger.LogDebug("Initiating background SyncTriggers operation");
                     await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                }
+                else if (_environment.IsInValidationMode())
+                {
+                    return;
+                }
+                else if (++_eligibilityChecks < MaxEligibilityChecks)
+                {
+                    // The primary host lease may be acquired (or the host may finish starting) after the
+                    // initial delay, e.g. following a slot swap or restart. Check again rather than skipping
+                    // the startup sync entirely.
+                    ScheduleNextCheck();
+                }
+                else
+                {
+                    _logger.LogDebug("Skipping background SyncTriggers operation. Host did not become primary and running after {eligibilityChecks} checks.", _eligibilityChecks);
                 }
             }
             catch (Exception exc) when (!exc.IsFatal())
@@ -85,12 +116,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        private void ScheduleNextCheck()
+        {
+            lock (_timerLock)
+            {
+                if (!_stopped && !_disposed)
+                {
+                    _syncTimer?.Change(DueTime, Timeout.Infinite);
+                }
+            }
+        }
+
         public void Dispose()
         {
-            if (!_disposed)
+            lock (_timerLock)
             {
-                _syncTimer?.Dispose();
-                _disposed = true;
+                if (!_disposed)
+                {
+                    _syncTimer?.Dispose();
+                    _disposed = true;
+                }
             }
         }
     }
