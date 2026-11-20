@@ -1,0 +1,24 @@
+steps:
+- task: PowerShell@2
+  displayName: Start Windows Cosmos DB emulator
+  timeoutInMinutes: 5
+  inputs:
+    targetType: inline
+    script: |
+      # The emulator connection string is supplied by the pipeline definition's CosmosDbEmulatorConnectionString variable.
+      if ([string]::IsNullOrWhiteSpace($env:COSMOS_EMULATOR_CONNECTION_STRING) -or $env:COSMOS_EMULATOR_CONNECTION_STRING.StartsWith('$('))
+      {
+        Write-Host "##vso[task.logissue type=error]Pipeline variable 'CosmosDbEmulatorConnectionString' is not defined."
+        exit 1
+      }
+
+      Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:COSMOS_EMULATOR_CONNECTION_STRING"
+      Import-Module "$env:ProgramFiles\Azure Cosmos DB Emulator\PSModules\Microsoft.Azure.CosmosDB.Emulator"
+      Get-ChildItem "$env:ProgramFiles\Azure Cosmos DB Emulator" -Filter "*Emulator.exe" |
+        ForEach-Object { $_.VersionInfo } |
+        Select-Object FileName, FileVersion, ProductVersion | Format-List
+
+      # Start early so emulator startup overlaps the build; wait-cosmos-emulator.yml blocks until it is ready.
+      Start-CosmosDbEmulator -NoFirewall -NoUI -NoWait
+  env:
+    COSMOS_EMULATOR_CONNECTION_STRING: $(CosmosDbEmulatorConnectionString)

@@ -1,0 +1,44 @@
+steps:
+- task: PowerShell@2
+  displayName: Wait for Azurite installation
+  timeoutInMinutes: 12
+  inputs:
+    targetType: inline
+    script: |
+      $exitCodePath = Join-Path $env:AGENT_TEMPDIRECTORY 'azurite-install.exitcode'
+      $deadline = (Get-Date).AddMinutes(10)
+      try
+      {
+          while (-not (Test-Path -LiteralPath $exitCodePath))
+          {
+              $process = Get-Process -Id $(AzuriteInstallProcessId) -ErrorAction SilentlyContinue
+              if ($null -eq $process -and -not (Test-Path -LiteralPath $exitCodePath))
+              {
+                  throw 'Azurite installation exited without reporting an exit code.'
+              }
+
+              if ((Get-Date) -gt $deadline)
+              {
+                  throw 'Azurite installation did not complete within 10 minutes.'
+              }
+
+              Start-Sleep -Seconds 5
+          }
+
+          $exitCode = (Get-Content -LiteralPath $exitCodePath -Raw).Trim()
+          if ($exitCode -ne '0')
+          {
+              throw "Azurite installation failed with exit code '$exitCode'."
+          }
+      }
+      finally
+      {
+          foreach ($logName in @('azurite-install.log', 'azurite-install.error.log'))
+          {
+              $logPath = Join-Path $env:AGENT_TEMPDIRECTORY $logName
+              if (Test-Path -LiteralPath $logPath)
+              {
+                  Get-Content -LiteralPath $logPath
+              }
+          }
+      }
