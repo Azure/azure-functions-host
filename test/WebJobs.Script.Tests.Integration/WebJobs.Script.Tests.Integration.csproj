@@ -28,22 +28,6 @@
     <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" />
     <ProjectReference Include="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.csproj" />
     <ProjectReference Include="../Resources/TestProjects/**/*.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Update="../Resources/TestProjects/TestFunctions/TestFunctions.csproj" Private="true" ReferenceOutputAssembly="true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Properties/Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Properties/Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

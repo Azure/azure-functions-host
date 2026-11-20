@@ -8,7 +8,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
@@ -254,11 +256,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+                : base(@"TestScripts\NoFunction", "flex-metrics-extension", RpcWorkerConstants.DotNetIsolatedLanguageWorkerName)
             {
             }
 
             public string MetricsPublishPath { get; private set; }
+
+            protected override Task CreateTestStorageEntities() => Task.CompletedTask;
 
             public override void ConfigureWebHost(IServiceCollection services)
             {
@@ -296,6 +300,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureScriptHost(IServiceCollection services)
             {
                 base.ConfigureScriptHost(services);
+
+                services.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                [
+                    HostInfrastructureTestFunctions.Http("HttpTrigger", nameof(HostInfrastructureTestFunctions.Invoke), "function")
+                ], null));
 
                 // the test host by default registers a mock, but we want the actual logger for these tests
                 services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();

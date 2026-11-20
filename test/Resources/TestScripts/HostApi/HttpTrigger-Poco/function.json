@@ -1,0 +1,9 @@
+{
+  "scriptFile": "../hostApi.js",
+  "entryPoint": "poco",
+  "bindings": [
+    { "type": "httpTrigger", "name": "req", "direction": "in", "authLevel": "function", "methods": [ "get", "post" ] },
+    { "type": "http", "name": "res", "direction": "out" },
+    { "type": "blob", "name": "outBlob", "direction": "out", "path": "samples-output/{Id}" }
+  ]
+}

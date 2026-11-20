@@ -29,6 +29,8 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
@@ -41,14 +43,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json.Linq;
 using Xunit;
 using Xunit.Abstractions;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait(TestTraits.Group, TestTraits.NonE2ESpecialization)]
-    public class SpecializationE2ETests
+    public class SpecializationE2ETests : IClassFixture<AzuriteFixture>
     {
         private static readonly SemaphoreSlim _pauseBeforeHostBuild = new(1, 1);
         private static readonly SemaphoreSlim _pauseAfterStandbyHostBuild = new(1, 1);
@@ -68,16 +72,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static Action<IServiceCollection> _customizeScriptHostServices;
 
-        private const string _specializedScriptRoot = @"TestScripts\CSharp";
+        private const string _specializedScriptRoot = @"TestScripts\NoFunction";
 
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
         private TestLoggerProvider _scriptHostLoggerProvider;
         private readonly TestMetricsLogger _testMetricsLogger = new();
+        private readonly AzuriteFixture _azurite;
 
         private readonly ITestOutputHelper _testOutputHelper;
 
-        public SpecializationE2ETests(ITestOutputHelper testOutputHelper)
+        public SpecializationE2ETests(ITestOutputHelper testOutputHelper, AzuriteFixture azurite)
         {
             StandbyManager.ResetChangeToken();
 
@@ -91,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerProvider = new TestLoggerProvider();
 
             _testOutputHelper = testOutputHelper;
+            _azurite = azurite;
 
             // allow each test to override this
             _customizeScriptHostServices = null;
@@ -209,7 +215,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = "some_key"
+                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = "some_key",
+                        ["AzureWebJobsStorage"] = _azurite.GetConnectionString()
                     });
                 });
 
@@ -877,7 +884,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_LoadWebHookProviderAndRetrieveSecrets()
         {
-            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+            var storageValue = _azurite.GetConnectionString();
 
             // We can't assume the placeholder has any environment variables specified by the customer.
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
@@ -929,7 +936,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_CustomStartupRemovesAzureWebJobsStorage()
         {
-            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+            var storageValue = _azurite.GetConnectionString();
 
             // We can't assume the placeholder has any environment variables specified by the customer.
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
@@ -983,7 +990,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_CustomStartupAddsWebJobsStorage()
         {
-            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+            var storageValue = _azurite.GetConnectionString();
 
             // No AzureWebJobsStorage set in environment variables (App Settings from portal)
             using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
@@ -1045,7 +1052,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_JobHostInternalStorageOptionsUpdatesWithActiveHost()
         {
-            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+            var storageValue = _azurite.GetConnectionString();
 
             var blobServiceClient = new BlobServiceClient(storageValue);
             var containerClient = blobServiceClient.GetBlobContainerClient("test-sas-container");
@@ -1297,6 +1304,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await client.GetAsync("api/warmup");
             Assert.True(response.IsSuccessStatusCode, _loggerProvider.GetLog());
 
+            _loggerProvider.ClearAllLogMessages();
+
             // Specialize into a custom handler app
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -1307,18 +1316,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // this forces the host through the full specialization + extension loading flow.
             response = await client.GetAsync("api/warmup");
 
-            // Wait for the host to settle after specialization
+            // Verify bundle discovery without requiring credentials to start the trigger listeners.
             await TestHelpers.Await(() =>
                     {
                         var log = _loggerProvider.GetLog();
-                        // Wait until we see evidence that the specialized host has started
-                        return log.Contains("Host started") || log.Contains("function is in error") || log.Contains("No job functions found");
-                    }, timeout: 30000);
+                        return log.Contains("Loaded extension 'EventHubs'", StringComparison.Ordinal)
+                            && log.Contains("Loaded extension 'ServiceBus'", StringComparison.Ordinal);
+                    }, timeout: 30000, userMessageCallback: _loggerProvider.GetLog);
 
             var log = _loggerProvider.GetLog();
 
             // Verify the specialized host found our custom handler functions.
             Assert.Contains("3 functions found (Host)", log);
+            Assert.Contains("3 functions loaded", log);
 
             // The critical check: after IsScriptFileDetermined runs, functions must NOT be excluded.
             // With the bug, we'd see "0 functions loaded" from the ScriptStartupTypeLocator call
@@ -2042,6 +2052,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureScriptHostServices(s =>
                 {
+                    s.AddSingleton<IFunctionProvider>(services =>
+                    {
+                        var metadata = new List<FunctionMetadata>();
+                        string rootPath = services.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value.RootScriptPath;
+                        if (string.Equals(rootPath, _specializedScriptRoot, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (functions.Contains("FunctionExecutionContext", StringComparer.OrdinalIgnoreCase))
+                            {
+                                metadata.Add(HostInfrastructureTestFunctions.Http("FunctionExecutionContext",
+                                    nameof(HostInfrastructureTestFunctions.GetExecutionContext)));
+                            }
+
+                            if (functions.Contains(nameof(OneSecondTimer), StringComparer.OrdinalIgnoreCase))
+                            {
+                                var timer = HostInfrastructureTestFunctions.Create(nameof(OneSecondTimer), nameof(OneSecondTimer),
+                                    new JObject
+                                    {
+                                        ["type"] = "timerTrigger", ["direction"] = "in", ["name"] = "timerInfo",
+                                        ["schedule"] = "*/1 * * * * *"
+                                    });
+                                timer.EntryPoint = $"{typeof(SpecializationE2ETests).FullName}.{nameof(OneSecondTimer)}";
+                                metadata.Add(timer);
+                            }
+                        }
+
+                        return new TestCodelessFunctionProvider(metadata, null);
+                    });
                     s.AddLogging(logging =>
                     {
                         logging.AddProvider(_scriptHostLoggerProvider ?? loggerProvider);
@@ -2060,6 +2097,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             return builder;
+        }
+
+        /// <summary>Emits telemetry from the extension-owned specialization timer.</summary>
+        public static void OneSecondTimer(TimerInfo timerInfo, ILogger logger)
+        {
+            logger.LogInformation("OneSecondTimer fired!");
         }
 
         private void AssertLanguageWorkerOptionsSetupCount(int expected)

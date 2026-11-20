@@ -1,10 +1,12 @@
 ﻿using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
         private static readonly TimeSpan SemaphoreWaitTimeout = TimeSpan.FromSeconds(30);
 
         private TestFunctionHost _testHost;
+        private TestScopedEnvironmentVariable _workerRuntime;
         private static SemaphoreSlim _hostSetup;
         private static SemaphoreSlim _hostBuild;
 
@@ -31,11 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
         [Fact]
         public async Task TestWarmupEndPoint_WhenHostStarts()
         {
-            string testScriptPath = Path.Combine("TestScripts", "CSharp");
+            _workerRuntime = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
+            string testScriptPath = Path.Combine("TestScripts", "HostApi");
             string testLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
             var settings = new Dictionary<string, string>()
             {
-                ["WEBSITE_SKU"] = "ElasticPremium"
+                ["WEBSITE_SKU"] = "ElasticPremium",
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.NodeLanguageWorkerName
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -47,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
                 services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>
                 {
                     b.UseHostId("1234");
-                    b.Services.Configure<ScriptJobHostOptions>(o => o.Functions = new[] { "ManualTrigger", "Scenarios" });
+                    b.Services.Configure<ScriptJobHostOptions>(o => o.Functions = new[] { "HttpTrigger" });
                 }));
             });
 
@@ -61,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
 
             // Better be successful
             Assert.True(response.IsSuccessStatusCode, "Warmup endpoint did not return a success status. " +
-                $"Instead found {response.StatusCode}");
+                $"Instead found {response.StatusCode}. " +
+                string.Join(Environment.NewLine, _testHost.GetScriptHostLogMessages().Select(p => $"{p.FormattedMessage} {p.Exception}")));
         }
 
         public Task InitializeAsync() => Task.CompletedTask;
@@ -72,6 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
             {
                 await _testHost.DisposeAsync();
             }
+
+            _workerRuntime?.Dispose();
         }
 
         private class PausingScriptHostBuilder : IScriptHostBuilder

@@ -1,13 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -36,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         public async Task ExternalStartup_Succeeds()
         {
             // We need different fixture setup for each test.
-            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars);
+            var fixture = new PrecompiledExtensionEndToEndTestFixture(_projectName, _envVars);
             try
             {
                 await fixture.InitializeAsync();
@@ -52,30 +59,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
-        [Fact]
-        public async Task InProcAppsWorkWithDotnetIsolatedAsFunctionWorkerRuntimeValue()
+        [Theory]
+        [InlineData("dotnet-isolated", null)]
+        [InlineData("dotnet-isolated", "workflowapp")]
+        [InlineData("dotnet", "workflowapp")]
+        public async Task InProcApps_AreRejected(string workerRuntime, string appKind)
         {
-            // test uses an in-proc app, but we are setting "dotnet-isolated" as functions worker runtime value.
-            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars, functionWorkerRuntime: RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            EnvironmentExtensions.ClearCache();
+            var environment = new TestEnvironment(new Dictionary<string, string>
+            {
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime,
+                [EnvironmentSettingNames.AppKind] = appKind
+            });
+            using var host = Program.CreateHostBuilder()
+                .ConfigureWebHost(webHost => webHost.UseTestServer())
+                .ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    [ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath))]
+                        = Path.GetFullPath(Path.Combine("TestScripts", "DirectLoad")),
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime,
+                    [EnvironmentSettingNames.AppKind] = appKind
+                }))
+                .ConfigureServices(services => services.AddSingleton<IEnvironment>(environment))
+                .Build();
+
             try
             {
-                await fixture.InitializeAsync();
+                await host.StartAsync();
+                var manager = host.Services.GetRequiredService<IScriptHostManager>();
+                await TestHelpers.Await(() => manager.State == ScriptHostState.Error);
 
-                var (response, lastException) = await GetWithRetryAsync(fixture, "api/Function1");
+                using var response = await host.GetTestClient().GetAsync("api/Function1");
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 
-                // The function does all the validation internally.
-                Assert.True(response is not null && response.StatusCode == HttpStatusCode.OK, await BuildHttpFailureMessageAsync(response, lastException, fixture));
-
-                const string expectedLogEntry =
-                    "The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', " +
-                    "which does not match the worker runtime metadata found in the deployed function app artifacts. " +
-                    "The deployed artifacts are for 'dotnet'. See https://aka.ms/functions-invalid-worker-runtime " +
-                    "for more information. The application will continue to run, but may throw an exception in the future.";
-                Assert.Single(fixture.Host.GetScriptHostLogMessages().Where(a => a.Level == Microsoft.Extensions.Logging.LogLevel.Warning), p => p.FormattedMessage != null && p.FormattedMessage.EndsWith(expectedLogEntry));
+                Assert.Equal(ScriptHostState.Error, manager.State);
+                var exception = Assert.IsType<HostInitializationException>(manager.LastError);
+                Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message, StringComparison.Ordinal);
             }
             finally
             {
-                await fixture.DisposeAsync();
+                await host.StopAsync();
+                EnvironmentExtensions.ClearCache();
             }
         }
 
@@ -86,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             _envVars[EnvironmentSettingNames.FunctionsExtensionVersion] = "~4";
 
             // We need different fixture setup for each test.
-            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars); // Startup.cs will change this.
+            var fixture = new PrecompiledExtensionEndToEndTestFixture(_projectName, _envVars); // Startup.cs will change this.
             try
             {
                 await fixture.InitializeAsync();
@@ -135,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             _envVars[EnvironmentSettingNames.FunctionsExtensionVersion] = "~4";
 
             // We need different fixture setup for each test.
-            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars);
+            var fixture = new PrecompiledExtensionEndToEndTestFixture(_projectName, _envVars);
             try
             {
                 await fixture.InitializeAsync();
@@ -178,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         // doesn't fail the test on its first call. The last response (if any) and last transient
         // exception (if any) are both returned so the failure-message helper can include whichever
         // signal is more informative.
-        private static async Task<(HttpResponseMessage Response, Exception LastException)> GetWithRetryAsync(CSharpPrecompiledEndToEndTestFixture fixture, string requestUri)
+        private static async Task<(HttpResponseMessage Response, Exception LastException)> GetWithRetryAsync(EndToEndTestFixture fixture, string requestUri)
         {
             var client = fixture.Host.HttpClient;
             HttpResponseMessage response = null;
@@ -211,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             return (response, lastException);
         }
 
-        private static async Task<string> BuildHttpFailureMessageAsync(HttpResponseMessage response, Exception lastException, CSharpPrecompiledEndToEndTestFixture fixture)
+        private static async Task<string> BuildHttpFailureMessageAsync(HttpResponseMessage response, Exception lastException, EndToEndTestFixture fixture)
         {
             var manager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
             string state = manager?.State.ToString() ?? "(no manager)";
@@ -239,5 +263,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             sb.Append($"Host log:{Environment.NewLine}{fixture.Host.GetLog()}");
             return sb.ToString();
         }
+
     }
 }

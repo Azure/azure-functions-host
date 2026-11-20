@@ -11,10 +11,13 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -22,22 +25,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.NonE2ETimeout)]
     public class EndToEndTimeoutTests
     {
-        private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
         private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
 
         [Fact]
-        public async Task TimeoutTest_SyncFunction_CSharp()
+        public async Task TimeoutTest_SyncFunction_Extension()
         {
-            await TimeoutTest_SyncFunction("CSharp");
-        }
-
-        private async Task TimeoutTest_SyncFunction(string scriptLang)
-        {
-            await RunTimeoutTest(scriptLang, "TimeoutSync");
+            await RunTimeoutTest(nameof(HostInfrastructureTestFunctions.TimeoutSync));
         }
 
         [Fact]
-        public async Task TimeoutTest_UsingToken_CSharp()
+        public async Task TimeoutTest_UsingToken_Extension()
         {
             await RunTokenTest("useToken", async () =>
              {
@@ -51,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task TimeoutTest_IgnoringToken_CSharp()
+        public async Task TimeoutTest_IgnoringToken_Extension()
         {
             await RunTokenTest("ignoreToken", () =>
              {
@@ -67,7 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             string functionName = "TimeoutToken";
             TestHelpers.ClearFunctionLogs(functionName);
-            IHostBuilder builder = CreateTimeoutHostBuilder(@"TestScripts\CSharp", TimeSpan.FromSeconds(3), functionName);
+            using var environment = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            IHostBuilder builder = CreateTimeoutHostBuilder(TimeSpan.FromSeconds(3), functionName);
             using (var host = builder.Build())
             {
                 await host.StartAsync();
@@ -93,11 +91,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 .Select(t => t.FormattedMessage);
         }
 
-        private async Task RunTimeoutTest(string scriptLang, string functionName)
+        private async Task RunTimeoutTest(string functionName)
         {
+            using var environment = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             TestHelpers.ClearFunctionLogs(functionName);
             TimeSpan testTimeout = TimeSpan.FromSeconds(3);
-            IHostBuilder builder = CreateTimeoutHostBuilder($@"TestScripts\{scriptLang}", testTimeout, functionName);
+            IHostBuilder builder = CreateTimeoutHostBuilder(testTimeout, functionName);
             using (var host = builder.Build())
             {
                 await host.StartAsync();
@@ -126,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
-        private IHostBuilder CreateTimeoutHostBuilder(string scriptPath, TimeSpan timeout, string functionName)
+        private IHostBuilder CreateTimeoutHostBuilder(TimeSpan timeout, string functionName)
         {
             var builder = new HostBuilder()
                .ConfigureDefaultTestWebScriptHost(b =>
@@ -139,8 +138,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                },
                options =>
                {
-                   options.ScriptPath = scriptPath;
-               }, runStartupHostedServices: true)
+                   options.ScriptPath = @"TestScripts\NoFunction";
+               }, runStartupHostedServices: true,
+               configureRootServices: services =>
+               {
+                   var manager = new Mock<IScriptHostManager>();
+                   manager.As<IServiceProvider>()
+                       .Setup(provider => provider.GetService(typeof(IEnumerable<IFunctionProvider>)))
+                       .Returns(new IFunctionProvider[]
+                       {
+                           new TestCodelessFunctionProvider([HostInfrastructureTestFunctions.Timeout(functionName)], null)
+                       });
+                   services.AddSingleton(manager.Object);
+               })
                .ConfigureLogging(b =>
                {
                    b.AddProvider(_loggerProvider);

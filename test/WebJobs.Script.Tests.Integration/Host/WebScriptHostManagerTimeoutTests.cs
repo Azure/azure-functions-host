@@ -9,6 +9,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
@@ -24,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         [Fact]
         public async Task OnTimeoutException_IgnoreToken_StopsManager()
         {
+            using var environment = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             await using (var host = await RunTimeoutExceptionTest(handleCancellation: false))
             {
                 var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
@@ -43,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         [Fact]
         public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
         {
+            using var environment = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             await using (var host = await RunTimeoutExceptionTest(handleCancellation: true))
             {
                 var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
@@ -84,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             }
         }
 
-        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation, string timeoutFunctionName = "TimeoutToken", string path = @"TestScripts\CSharp")
+        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation, string timeoutFunctionName = "TimeoutToken", string path = null)
         {
             TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
             var host = CreateAndStartWebScriptHost(timeoutFunctionName, path);
@@ -108,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             var functions = new Collection<string> { timeoutFunctionName };
 
             return new TestFunctionHost(
-                 path,
+                 path ?? @"TestScripts\NoFunction",
                  Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions"),
                  configureWebHostServices: b =>
                  {
@@ -116,6 +120,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                  },
                  configureScriptHostWebJobsBuilder: b =>
                  {
+                     if (path is null)
+                     {
+                         b.Services.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                             [HostInfrastructureTestFunctions.Timeout(timeoutFunctionName)], null));
+                     }
+
                      b.Services.Configure<ScriptJobHostOptions>(o =>
                      {
                          o.Functions = functions;

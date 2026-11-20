@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Linq;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensions

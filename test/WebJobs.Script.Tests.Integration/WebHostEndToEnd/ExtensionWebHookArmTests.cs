@@ -351,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             private TestScopedEnvironmentVariable _scopedEnvironment;
 
             public TestFixture()
-                : base(@"TestScripts\CSharp", "armwebhooks", RpcWorkerConstants.DotNetLanguageWorkerName, addTestSettings: false)
+                : base(@"TestScripts\NoFunction", "armwebhooks", null, addTestSettings: false)
             {
                 byte[] testKeyBytes = TestHelpers.GenerateKeyBytes();
                 string testKey = TestHelpers.GenerateKeyHexString(testKeyBytes);

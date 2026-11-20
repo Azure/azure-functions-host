@@ -1,5 +1,7 @@
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -81,13 +83,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         public DrainTestFixture()
-            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "CSharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+            : base(@"TestScripts\NoFunction", "drain", null)
         {
         }
 
         public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
         {
             base.ConfigureScriptHost(webJobsBuilder);
+            webJobsBuilder.Services.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+            [
+                HostInfrastructureTestFunctions.Http("HttpTrigger", nameof(HostInfrastructureTestFunctions.Invoke), "function"),
+                HostInfrastructureTestFunctions.Http("HttpTrigger-Cancellation", nameof(HostInfrastructureTestFunctions.Cancellation), "function")
+            ], null));
         }
     }
 }

@@ -309,6 +309,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
+                    InProcessFunctionValidator.ValidateRuntime(workerRuntime, isPlaceholder: false,
+                        isMultiLanguage: _environment.IsMultiLanguageRuntimeEnvironment());
                     string runtimeStack = workerRuntime;
 
                     if (!string.IsNullOrEmpty(runtimeStack))
@@ -350,7 +352,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool GetIsFunctionDataCacheEnabled(string workerRuntime)
         {
             if (Utility.IsDotNetLanguageFunction(workerRuntime) ||
-                ContainsDotNetFunctionDescriptorProvider() ||
                 _functionDataCache == null)
             {
                 return false;
@@ -461,6 +462,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (!_metadataOptions.Value.UseWorkerRuntimeFromMetadata)
             {
+                InProcessFunctionValidator.ValidateRuntime(_workerRuntimeResolver.GetWorkerRuntime(), _environment.IsPlaceholderModeEnabled(),
+                    isMultiLanguage: _environment.IsMultiLanguageRuntimeEnvironment());
                 ValidateFunctionsWorkerRuntime(_workerRuntimeResolver, _hostingConfigOptions, _logger);
             }
 
@@ -568,6 +571,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            InProcessFunctionValidator.ValidateRuntime(workerRuntime, _environment.IsPlaceholderModeEnabled(),
+                isMultiLanguage: _environment.IsMultiLanguageRuntimeEnvironment());
             AddFunctionDescriptors(functionMetadata, workerRuntime);
 
             Collection<FunctionDescriptor> functions;
@@ -582,11 +587,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime)
         {
+            AddCodelessDescriptors(functionMetadata);
+
             if (_environment.IsPlaceholderModeEnabled())
             {
                 _logger.HostIsInPlaceholderMode();
-                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
             else if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
@@ -594,11 +599,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var descriptorProvider = _descriptorProviderFactory.CreateMultiWorkerDescriptorProvider(this, _bindingProviders);
                 _descriptorProviders.Add(descriptorProvider);
-            }
-            else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
             else
             {
@@ -608,24 +608,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 var descriptorProvider = _descriptorProviderFactory.CreateWorkerDescriptorProvider(this, workerRuntime, _bindingProviders);
                 _descriptorProviders.Add(descriptorProvider);
             }
-
-            // Codeless functions run side by side with regular functions.
-            // In addition to descriptors already added here, we need to ensure all codeless functions
-            // also have associated descriptors.
-            AddCodelessDescriptors(functionMetadata);
         }
 
         /// <summary>
-        /// Checks if the list of descriptors contains any <see cref="DotNetFunctionDescriptorProvider"/>.
-        /// </summary>
-        /// <returns><see cref="true"/> if <see cref="DotNetFunctionDescriptorProvider"/> found, <see cref="false"/> otherwise.</returns>
-        private bool ContainsDotNetFunctionDescriptorProvider()
-        {
-            return _descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider);
-        }
-
-        /// <summary>
-        /// Adds a DotNetFunctionDescriptorProvider to the list of descriptors if any function metadata has language set to "codeless" in it.
+        /// Adds extension descriptors before worker descriptors so custom handlers cannot claim extension functions.
         /// </summary>
         private void AddCodelessDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
@@ -634,12 +620,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
             }
 
-            // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
-            // At the moment, we are assuming that all codeless functions will have language as DotNetAssembly
-            if (!_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider)
-                && functionMetadata.Any(m => m.IsCodeless() && !m.IsProxy()))
+            if (functionMetadata.Any(m => m.IsExtensionFunction() && m.IsCodeless() && !m.IsProxy()))
             {
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+                _descriptorProviders.Add(new CodelessFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
             }
         }
 
@@ -818,42 +801,28 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = !_environment.IsLogicApp();
 
-                // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
+                InProcessFunctionValidator.ValidateRuntime(workerRuntime, _environment.IsPlaceholderModeEnabled(),
+                    isMultiLanguage: _environment.IsMultiLanguageRuntimeEnvironment());
+                foreach (var metadata in functions)
+                {
+                    InProcessFunctionValidator.ValidateMetadata(metadata);
+                }
+
                 if (!_environment.IsLogicApp() && string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !_environment.IsPlaceholderModeEnabled())
                 {
-                    bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
-                    if (!payloadMatchesWorkerRuntime)
-                    {
-                        UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
-                        throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
-                    }
+                    ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                 }
 
                 var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
                 Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _metadataOptions.Value.SkipRuntimeValidation, cancellationToken, throwOnMismatch: throwOnWorkerRuntimeAndPayloadMetadataMismatch);
 
-                var inProcIndexingSupported = _environment.IsPlaceholderModeEnabled()
-                                              || (_environment.IsDotNetInProcSupported()
-                                                  && !_hostingConfigOptions.Value.IsDotNetInProcDisabled);
-
                 foreach (FunctionMetadata metadata in functions)
                 {
                     try
                     {
-                        // If this is metadata represents a function that requires direct type indexing (in-proc), and that is not supported,
-                        // throw an exception with detailed information.
-                        // This is temporary and will be removed in a future release, along with all other logic to support the in-proc model.
-                        if (metadata.IsDotNetInProc())
+                        if (metadata.IsExtensionFunction() && metadata.IsCodeless())
                         {
-                            if (!inProcIndexingSupported)
-                            {
-                                throw new HostInitializationException(".NET In-process function detected. This model is not supported by the host in the current environment." +
-                                                                      " See https://aka.ms/azure-functions-retirements/in-process-model for more information.");
-                            }
-
-                            // If this is metadata represents a function that supports direct type indexing,
-                            // set that type in the function metadata
                             TrySetDirectType(metadata);
                         }
 
@@ -883,17 +852,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 VerifyPrecompileStatus(functionDescriptors);
             }
             return functionDescriptors;
-        }
-
-        private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime)
-        {
-            foreach (var function in functions)
-            {
-                if (function.Language == DotNetScriptTypes.DotNetAssembly)
-                {
-                    function.Language = workerRuntime;
-                }
-            }
         }
 
         internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions, IEnvironment environment)

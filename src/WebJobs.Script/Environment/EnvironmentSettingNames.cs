@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string InitializedFromPlaceholder = "INITIALIZED_FROM_PLACEHOLDER";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
-        public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
         public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
         public const string TypeScriptCompilerPath = "AzureWebJobs_TypeScriptPath";
         public const string AzureWebsiteAppCountersName = "WEBSITE_COUNTERS_APP";
@@ -86,7 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsWebsiteTimeZone = "WEBSITE_TIME_ZONE";
         public const string FunctionsTargetGroup = "FUNCTIONS_TARGET_GROUP";
         public const string WebsiteArmResourceId = "WEBSITE_ARM_RESOURCE_ID";
-        public const string FunctionsDisableInProc = "FUNCTIONS_DISABLE_INPROC";
         public const string ResourceGroup = "WEBSITE_RESOURCE_GROUP";
         public const string WebsiteOwnerName = "WEBSITE_OWNER_NAME";
 

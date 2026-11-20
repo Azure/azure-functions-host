@@ -74,15 +74,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
             var options = new LanguageWorkerOptions();
 
+            if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                var exception = Assert.Throws<HostInitializationException>(() => setup.Configure(options));
+                Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message);
+                return;
+            }
+
             setup.Configure(options);
 
             if (string.IsNullOrEmpty(workerRuntime))
             {
                 Assert.Equal(5, options.WorkerConfigs.Count);
-            }
-            else if (workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                Assert.Empty(options.WorkerConfigs);
             }
             else
             {

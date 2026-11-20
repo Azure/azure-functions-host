@@ -38,7 +38,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Description/DotNet/TestFiles/**/*.proj" />
     <None Update="Description/DotNet/TestFiles/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestFixture/**/*.json" CopyToOutputDirectory="PreserveNewest" />

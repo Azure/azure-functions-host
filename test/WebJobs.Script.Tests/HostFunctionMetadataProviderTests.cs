@@ -55,6 +55,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("18 functions found (Host)", traces[1].FormattedMessage);
         }
 
+        [Theory]
+        [InlineData("run.csx", null, "{}")]
+        [InlineData("run.cs", "dotnet-isolated", "{\"bindings\":[]}")]
+        [InlineData("app.dll", null, "{\"disabled\":true}")]
+        [InlineData("app.dll", "dotnet-isolated", "{\"configurationSource\":\"attributes\"}")]
+        public void ReadFunctionsMetadata_RetiredPayloadIsFatal(string scriptFile, string runtime, string config)
+        {
+            string root = Path.Combine(Path.GetTempPath(), "RetiredFunctions");
+            string functionRoot = Path.Combine(root, "Retired");
+            var json = JObject.Parse(config);
+            json["scriptFile"] = scriptFile;
+            var files = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
+                [Path.Combine(functionRoot, "function.json")] = new MockFileData(json.ToString()),
+                [Path.Combine(functionRoot, scriptFile)] = new MockFileData(string.Empty)
+            });
+            var runtimeResolver = new Mock<IWorkerRuntimeResolver>();
+            runtimeResolver.Setup(r => r.GetWorkerRuntime()).Returns(runtime);
+            var directory = new Mock<DirectoryBase>();
+            directory.Setup(d => d.Exists(root)).Returns(true);
+            directory.Setup(d => d.EnumerateDirectories(root)).Returns([functionRoot]);
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.SetupGet(f => f.Directory).Returns(directory.Object);
+            fileSystem.SetupGet(f => f.File).Returns(files.File);
+            fileSystem.SetupGet(f => f.Path).Returns(files.Path);
+            var provider = new HostFunctionMetadataProvider(
+                TestHelpers.CreateOptionsMonitor(new ScriptApplicationHostOptions { ScriptPath = root }),
+                NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, runtimeResolver.Object);
+
+            var exception = Assert.Throws<HostInitializationException>(() =>
+                provider.ReadFunctionsMetadata(TestHelpers.GetTestWorkerConfigs(), fileSystem.Object));
+            Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message);
+        }
+
         [Fact]
         public void ReadFunctionMetadata_For_WorkerIndexingFormatApp_Fails()
         {
@@ -349,6 +383,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (functionsWorkerRuntime != "dotnet")
             {
                 workerConfigs = TestHelpers.GetTestWorkerConfigs(includeDllWorker: true);
+            }
+
+            if (string.Equals(expectedLanguage, DotNetScriptTypes.DotNetAssembly, StringComparison.Ordinal))
+            {
+                var exception = Assert.Throws<HostInitializationException>(() =>
+                    HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs, functionsWorkerRuntime));
+                Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message);
+                return;
             }
 
             var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs, functionsWorkerRuntime);

@@ -65,9 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
                 string invocationId = await ValidateEndToEndTestAsync(functionName, functionTrace, true);
 
-                // TODO: Remove this check when metrics are supported in Node:
-                // https://github.com/Azure/azure-functions-host/issues/2189
-                if (this is ApplicationInsightsCSharpEndToEndTests)
+                // The test extension exercises the Host ILogger metric path; worker telemetry is separate.
+                if (this is ApplicationInsightsExtensionEndToEndTests)
                 {
                     // Do some additional metric validation
                     MetricTelemetry metric = _fixture.Channel.Telemetries
@@ -274,11 +273,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.Contains("Skipping WorkerConfig for language") && !t.Message.Contains("Skipping WorkerConfig for stack")
             ).ToArray();
 
-            int expectedCount = 16;
+            bool extensionOnly = this is ApplicationInsightsExtensionEndToEndTests;
+            int expectedCount = extensionOnly ? 17 : 16;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
-            ValidateTrace(traces[idx++], "0 functions found", LogCategories.Startup);
+            ValidateTrace(traces[idx++], extensionOnly ? "2 functions found (Custom)" : "0 functions found", LogCategories.Startup);
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
             ValidateTrace(traces[idx++], "A function allow list has been specified", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);
@@ -295,6 +295,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[idx++], "Loading functions metadata", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Reading functions metadata", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Starting Host (HostId=", LogCategories.Startup);
+            if (extensionOnly)
+            {
+                ValidateTrace(traces[idx++], $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' setting is required.",
+                    LogCategories.Startup, expectedLevel: SeverityLevel.Warning);
+            }
         }
 
         [Fact]

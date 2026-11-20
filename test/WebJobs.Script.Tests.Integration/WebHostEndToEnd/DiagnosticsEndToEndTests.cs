@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class DiagnosticsEndToEndTests
     {
-        private const string _scriptRoot = @"TestScripts\CSharp";
+        private const string _scriptRoot = @"TestScripts\NoFunction";
         private readonly string _testLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         private TestEventGenerator _eventGenerator = new TestEventGenerator();
@@ -40,6 +41,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => _eventGenerator);
+                    s.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                    [
+                        HostInfrastructureTestFunctions.Http("HttpTrigger-Scenarios", nameof(HostInfrastructureTestFunctions.HttpScenarios))
+                    ], null));
                 },
                 configureScriptHostServices: s =>
                 {

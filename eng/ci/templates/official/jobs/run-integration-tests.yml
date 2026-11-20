@@ -97,38 +97,12 @@ jobs:
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
 
   - task: DotNetCoreCLI@2
-    displayName: C# end to end tests
-    inputs:
-      command: test
-      testRunTitle: C# end to end tests
-      arguments: '--filter "Group=CSharpEndToEndTests" $(test_args)'
-      projects: $(test_projects)
-
-  - task: DotNetCoreCLI@2
     displayName: Node end to end tests
     condition: succeededOrFailed()
     inputs:
       command: test
       testRunTitle: Node end to end tests
       arguments: '--filter "Group=NodeEndToEndTests" $(test_args)'
-      projects: $(test_projects)
-
-  - task: DotNetCoreCLI@2
-    displayName: Direct load end to end tests
-    condition: succeededOrFailed()
-    inputs:
-      command: test
-      testRunTitle: Direct load end to end tests
-      arguments: '--filter "Group=DirectLoadEndToEndTests" $(test_args)'
-      projects: $(test_projects)
-
-  - task: DotNetCoreCLI@2
-    displayName: F# end to end tests
-    condition: succeededOrFailed()
-    inputs:
-      command: test
-      testRunTitle: F# end to end tests
-      arguments: '--filter "Group=FSharpEndToEndTests" $(test_args)'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -147,15 +121,6 @@ jobs:
       command: test
       testRunTitle: Node script host end to end tests
       arguments: '--filter "Group=NodeScriptHostTests" $(test_args)'
-      projects: $(test_projects)
-
-  - task: DotNetCoreCLI@2
-    displayName: Raw assembly end to end tests
-    condition: succeededOrFailed()
-    inputs:
-      command: test
-      testRunTitle: Raw assembly end to end tests
-      arguments: '--filter "Group=RawAssemblyEndToEndTests" $(test_args)'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2

@@ -497,6 +497,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             s.AddSingleton<IEnvironment>(environment);
                         })
                         .Build();
+                    if (string.Equals(functionsWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var exception = Assert.Throws<HostInitializationException>(() => host.GetScriptHost());
+                        Assert.Contains(InProcessFunctionValidator.ErrorMessage, exception.Message);
+                        return;
+                    }
+
                     var scriptHost = host.GetScriptHost();
                     await scriptHost.InitializeAsync();
                     Assert.Single(metricsLogger.LoggedEvents, e => e.Equals($"host.startup.runtime.language.{expectedRuntimeStack}"));
@@ -1645,8 +1652,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         [Theory]
         [InlineData("python", "main.py", "python", "python")]
-        [InlineData("dotnet", "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)]
-        [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
         public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string functionsWorkerRuntime, string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
         {
             string workersDirPath = Path.Combine(AppContext.BaseDirectory, RpcWorkerConstants.DefaultWorkersDirectoryName);

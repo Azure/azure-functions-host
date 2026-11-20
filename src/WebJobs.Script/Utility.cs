@@ -36,10 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
-        // Prefix that uniquely identifies our assemblies
-        // i.e.: "f-<functionname>"
-        private const string AssemblyPrefix = "f-";
-        private const string AssemblySeparator = "__";
         private const string BlobServiceDomain = "blob";
         private const string SasVersionQueryParam = "sv";
         private const string SasTokenExpirationDate = "se";
@@ -568,11 +564,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 return value.ToString();
             }
             return null;
-        }
-
-        public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
-        {
-            return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
 
         internal static void AddFunctionError(IDictionary<string, ICollection<string>> functionErrors, string functionName, string error, bool isFunctionShortName = false)

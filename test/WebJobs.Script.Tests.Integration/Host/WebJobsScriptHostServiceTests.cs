@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
     [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class WebJobsScriptHostServiceTests : IAsyncLifetime
     {
-        private readonly string TestScriptPath = @"TestScripts\CSharp";
+        private readonly string TestScriptPath = @"TestScripts\NoFunction";
         private readonly string TestLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         private readonly WebJobsScriptHostService _scriptHostService;
@@ -88,6 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 },
                 configureScriptHostWebJobsBuilder: builder =>
                 {
+                    builder.Services.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                    [
+                        HostInfrastructureTestFunctions.Manual(),
+                        HostInfrastructureTestFunctions.Create("ManualTrigger", nameof(HostInfrastructureTestFunctions.CustomTrigger),
+                            new JObject { ["type"] = "manualTrigger", ["direction"] = "in", ["name"] = "input" })
+                    ], null));
                     builder.AddExtension<TestWebHookExtension>();
                 });
 

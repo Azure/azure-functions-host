@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -131,7 +132,7 @@ public class WebHostStartupEndToEndTests
             {
                 c.AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { _scriptRootConfigPath, @"TestScripts\CSharp" }
+                    { _scriptRootConfigPath, @"TestScripts\NoFunction" }
                 });
             })
             .ConfigureLogging(b =>
@@ -145,6 +146,10 @@ public class WebHostStartupEndToEndTests
             })
             .ConfigureScriptHostServices(s =>
             {
+                s.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                [
+                    HostInfrastructureTestFunctions.Http("FunctionExecutionContext", nameof(HostInfrastructureTestFunctions.GetExecutionContext))
+                ], null));
                 s.AddLogging(logging =>
                 {
                     logging.AddProvider(loggerProvider);

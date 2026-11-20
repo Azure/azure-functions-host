@@ -1,0 +1,11 @@
+{
+  "scriptFile": "../hostApi.js",
+  "entryPoint": "route",
+  "bindings": [
+    {
+      "type": "httpTrigger", "name": "req", "direction": "in", "authLevel": "function",
+      "methods": [ "get" ], "route": "csharp/products/{category:alpha?}/{id:int?}/{extra?}"
+    },
+    { "type": "http", "name": "$return", "direction": "out" }
+  ]
+}

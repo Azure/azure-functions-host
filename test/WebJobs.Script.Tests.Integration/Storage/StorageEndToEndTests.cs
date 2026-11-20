@@ -1,8 +1,10 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
@@ -37,8 +39,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 
         public class StorageTestFixture : EndToEndTestFixture
         {
-            public StorageTestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName)
+            public StorageTestFixture() : base(@"TestScripts\NoFunction", "extension-storage", null)
             {
+            }
+
+            public override void ConfigureWebHost(IServiceCollection services)
+            {
+                services.AddSingleton<IFunctionProvider>(new TestCodelessFunctionProvider(
+                [
+                    HostInfrastructureTestFunctions.Create("QueueTriggerToBlobRichTypes", nameof(HostInfrastructureTestFunctions.QueueToBlob),
+                        new JObject
+                        {
+                            ["type"] = "queueTrigger", ["name"] = "input", ["direction"] = "in",
+                            ["queueName"] = "test-input-extension-storage"
+                        },
+                        new JObject
+                        {
+                            ["type"] = "blob", ["name"] = "output", ["direction"] = "out",
+                            ["path"] = "test-output-extension-storage/{id}"
+                        })
+                ], null));
             }
 
             // TODO: Metadata installation of storage packages does not currently work as expected as the 

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -11,7 +10,6 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -134,66 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IDictionary<string, object> properties = new Dictionary<string, object>(PrimaryHostLogProperties);
 
             FunctionLogger.Log(level, 0, properties, exception, (state, ex) => message);
-        }
-
-        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All, bool isInvocation = false)
-        {
-            if (logTarget == LogTargets.None)
-            {
-                return;
-            }
-
-            // build the log state based on inputs
-            Dictionary<string, object> logState = new Dictionary<string, object>();
-            if (!isInvocation)
-            {
-                // generally we only want to trace compilation diagnostics on the single primary
-                // host, to avoid duplicate log statements in the case of file save operations.
-                // however if the function is being invoked, we always want to output detailed
-                // information.
-                logState.Add(ScriptConstants.LogPropertyPrimaryHostKey, true);
-            }
-            if (!logTarget.HasFlag(LogTargets.User))
-            {
-                logState.Add(ScriptConstants.LogPropertyIsSystemLogKey, true);
-            }
-            else if (!logTarget.HasFlag(LogTargets.System))
-            {
-                logState.Add(ScriptConstants.LogPropertyIsUserLogKey, true);
-            }
-
-            // log the diagnostics
-            foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
-            {
-                FunctionLogger.Log(diagnostic.Severity.ToLogLevel(), 0, logState, null, (s, e) => diagnostic.ToString());
-            }
-
-            // log structured logs
-            if (Host.InDebugMode && (Host.IsPrimary || isInvocation))
-            {
-                Host.EventManager.Publish(new StructuredLogEntryEvent(() =>
-                {
-                    var logEntry = new StructuredLogEntry("codediagnostic");
-                    logEntry.AddProperty("functionName", Metadata.Name);
-                    logEntry.AddProperty("diagnostics", diagnostics.Select(d =>
-                    {
-                        FileLinePositionSpan span = d.Location.GetMappedLineSpan();
-                        return new
-                        {
-                            code = d.Id,
-                            message = d.GetMessage(),
-                            source = Path.GetFileName(d.Location.SourceTree?.FilePath ?? span.Path ?? string.Empty),
-                            severity = d.Severity,
-                            startLineNumber = span.StartLinePosition.Line + 1,
-                            startColumn = span.StartLinePosition.Character + 1,
-                            endLine = span.EndLinePosition.Line + 1,
-                            endColumn = span.EndLinePosition.Character + 1,
-                        };
-                    }));
-
-                    return logEntry;
-                }));
-            }
         }
 
         protected virtual void Dispose(bool disposing)

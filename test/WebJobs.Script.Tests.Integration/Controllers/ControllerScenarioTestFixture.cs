@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         private ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
         private TemporaryScriptRoot _scriptRoot;
+        private TestScopedEnvironmentVariable _workerRuntime;
 
         public ScriptApplicationHostOptions HostOptions { get; private set; }
 
@@ -35,8 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         {
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
+            _workerRuntime = new TestScopedEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
 
-            string sourcePath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "csharp");
+            string sourcePath = Path.Combine(Environment.CurrentDirectory, "TestScripts", "HostApi");
             _scriptRoot = new TemporaryScriptRoot(sourcePath, "FunctionsControllerScenarios");
 
             var webHostBuilder = Program.CreateHostBuilder()
@@ -95,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             }
 
             _scriptRoot?.Dispose();
+            _workerRuntime?.Dispose();
         }
     }
 }

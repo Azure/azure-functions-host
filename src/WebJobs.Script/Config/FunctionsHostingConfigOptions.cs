@@ -182,14 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
-        internal bool IsDotNetInProcDisabled
-        {
-            get
-            {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigDotNetInProcDisabled, false);
-            }
-        }
-
         /// <summary>
         /// Gets the ARM webhook opt-in enforcement specification. Enforcement is enabled
         /// when this property returns a non-empty value; the value itself is a '|'-delimited list

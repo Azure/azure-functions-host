@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="FileProvisioning\PowerShell\profile.ps1" />
     <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
     <None Remove="runtimeassemblies-relaxed.json" />
@@ -32,17 +36,19 @@
     <PackageReference Include="Microsoft.Azure.WebJobs" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" />
+    <!-- The proxy expression engine compiles C# even when customer in-process execution is disabled. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
     <PackageReference Include="Microsoft.Extensions.Azure" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
-    <PackageReference Include="NuGet.ProjectModel" />
+    <PackageReference Include="NuGet.Packaging" />
+    <PackageReference Include="NuGet.Versioning" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />

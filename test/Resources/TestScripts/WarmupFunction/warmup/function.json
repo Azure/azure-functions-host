@@ -1,4 +1,5 @@
 ﻿{
+    "scriptFile": "index.js",
     "bindings": [
         {
             "type": "warmupTrigger",

@@ -12,6 +12,14 @@ Azure Functions Host
 
 This repo contains code for the runtime host used by the [Azure Functions](https://docs.microsoft.com/en-us/azure/azure-functions/) service. The Azure Functions runtime builds upon the [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) to provide a hosting platform for functions written in many different [languages](https://docs.microsoft.com/en-us/azure/azure-functions/supported-languages) and supporting a wide variety of [triggers and bindings](https://docs.microsoft.com/en-us/azure/azure-functions/functions-triggers-bindings?tabs=csharp#supported-bindings).
 
+### .NET execution model
+
+Customer .NET functions must use the isolated worker model. This Host no longer executes C# scripts (`.csx`/`.cs`), customer assemblies in-process, or customer functions indexed directly from WebJobs attributes. Retired payloads fail startup with a migration diagnostic; setting `FUNCTIONS_WORKER_RUNTIME=dotnet-isolated` does not convert an in-process payload.
+
+Host-side binding extensions and extension-provided precompiled codeless functions remain supported. Placeholder warmup uses a Host-owned precompiled function. Neither path requires the Host's former Roslyn scripting engine. The separately packaged Functions Proxies expression engine still requires the Roslyn C# compiler, so the Host retains that dependency without the scripting packages. Extension installation still uses the .NET SDK, and extension bundles still require NuGet packaging/versioning APIs.
+
+Multi-language hosts continue to select execution from each function's metadata, even when their runtime setting is `dotnet`. This does not restore customer in-process execution or extension-provided CSX execution; providers emitting scripts must migrate to precompiled functions or an out-of-process worker.
+
 ### License
 
 This project is under the benevolent umbrella of the [.NET Foundation](http://www.dotnetfoundation.org/) and is licensed under [the MIT License](LICENSE.txt)

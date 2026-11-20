@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         private readonly Process _process = new Process();
         private readonly IList<string> _outputLogs = new List<string>();
         private readonly IList<string> _errorLogs = new List<string>();
+        private bool _started;
 
         private Lazy<HttpClient> _lazyClient = new Lazy<HttpClient>(() =>
         {
@@ -45,6 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         internal HttpClient HttpClient => _lazyClient.Value;
+
+        internal string ScriptRootPath => _testPath;
 
         internal IEnumerable<string> OutputLogs => _outputLogs;
 
@@ -83,14 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             foreach (var envVar in _envVars)
             {
-                _process.StartInfo.Environment.Add(envVar.Key, envVar.Value);
+                _process.StartInfo.Environment[envVar.Key] = envVar.Value;
             }
 
             _process.EnableRaisingEvents = true;
             _process.OutputDataReceived += Process_OutputDataReceived;
             _process.ErrorDataReceived += Process_ErrorDataReceived;
 
-            _process.Start();
+            _started = _process.Start();
             _process.BeginOutputReadLine();
             _process.BeginErrorReadLine();
 
@@ -134,8 +137,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         public void Dispose()
         {
-            _process?.Kill();
-            _process?.WaitForExit();
+            if (_started)
+            {
+                if (!_process.HasExited)
+                {
+                    _process.Kill(entireProcessTree: true);
+                }
+
+                _process.WaitForExit();
+            }
+
+            _process.Dispose();
+            if (_lazyClient.IsValueCreated)
+            {
+                _lazyClient.Value.Dispose();
+            }
         }
     }
 }

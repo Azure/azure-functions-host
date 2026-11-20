@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
-using NuGet.Protocol.Plugins;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {

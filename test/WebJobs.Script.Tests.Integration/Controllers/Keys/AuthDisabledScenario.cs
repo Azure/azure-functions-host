@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Keys
         [Fact(DisplayName = "Function Invoke returns 200 (OK).")]
         public void FunctionInvoke_Returns200()
         {
-            var response = _fixture.HttpClient.GetAsync("http://localhost/api/httptrigger-csharp?name=Mathew").Result;
+            var response = _fixture.HttpClient.GetAsync("http://localhost/api/httptrigger?name=Mathew").Result;
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 

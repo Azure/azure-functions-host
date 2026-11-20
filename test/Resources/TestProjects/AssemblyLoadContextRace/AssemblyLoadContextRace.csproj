@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.3.*" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,4 +15,5 @@
     <None Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
+  <Import Project="..\TestExtension.targets" />
 </Project>
