@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -223,8 +223,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
                 .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK });
 
-            await _meshServiceClient.NotifyTriggersChanged();
+            var status = await _meshServiceClient.NotifyTriggersChanged();
 
+            Assert.Equal(PlatformTriggersStoreStatus.NotConfirmed, status);
             Assert.NotNull(capturedRequest);
             Assert.Equal(MeshInitUri, capturedRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, capturedRequest.Method);
@@ -232,6 +233,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var formData = await capturedRequest.Content.ReadAsFormDataAsync();
             Assert.Equal(MeshServiceClient.UpdateTriggersOperation, formData["operation"]);
             Assert.Equal(ContainerName, capturedRequest.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).Single());
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.OK, "OK", PlatformTriggersStoreStatus.NotConfirmed)]
+        [InlineData(HttpStatusCode.OK, "{\"timestamp\":1,\"status\":\"stored\"}", PlatformTriggersStoreStatus.Stored)]
+        [InlineData(HttpStatusCode.OK, "{\"timestamp\":1,\"status\":\"skipped\"}", PlatformTriggersStoreStatus.Skipped)]
+        [InlineData(HttpStatusCode.OK, "{\"timestamp\":1,\"status\":\"failed\"}", PlatformTriggersStoreStatus.Failed)]
+        [InlineData(HttpStatusCode.GatewayTimeout, "{\"timestamp\":1,\"status\":\"timeout\"}", PlatformTriggersStoreStatus.Timeout)]
+        public async Task NotifyTriggersChanged_ReturnsPlatformStoreStatus(HttpStatusCode statusCode, string body, PlatformTriggersStoreStatus expected)
+        {
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage { StatusCode = statusCode, Content = new StringContent(body) });
+
+            Assert.Equal(expected, await _meshServiceClient.NotifyTriggersChanged());
         }
 
         [Fact]

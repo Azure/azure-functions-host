@@ -28,11 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         public async Task NotifyPlatformIfEnabledAsync_Enabled_CallsMesh()
         {
             var mockMesh = new Mock<IMeshServiceClient>(MockBehavior.Strict);
-            mockMesh.Setup(m => m.NotifyTriggersChanged()).Returns(Task.CompletedTask);
+            mockMesh.Setup(m => m.NotifyTriggersChanged()).ReturnsAsync(PlatformTriggersStoreStatus.Stored);
 
             var syncManager = CreateSyncManager(notifyPlatformOnSync: true, mockMesh.Object);
 
-            await syncManager.NotifyPlatformIfEnabledAsync();
+            Assert.Equal(PlatformTriggersStoreStatus.Stored, await syncManager.NotifyPlatformIfEnabledAsync());
 
             mockMesh.Verify(m => m.NotifyTriggersChanged(), Times.Once);
         }
@@ -58,8 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var syncManager = CreateSyncManager(notifyPlatformOnSync: true, mockMesh.Object);
 
-            // Should NOT throw; failure must be swallowed so the front-end result is preserved.
-            await syncManager.NotifyPlatformIfEnabledAsync();
+            // Should NOT throw; a failure to notify isn't reported as a failed store.
+            Assert.Equal(PlatformTriggersStoreStatus.NotConfirmed, await syncManager.NotifyPlatformIfEnabledAsync());
 
             mockMesh.Verify(m => m.NotifyTriggersChanged(), Times.Once);
         }

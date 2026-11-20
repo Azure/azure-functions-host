@@ -145,11 +145,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return result;
                 }
 
-                // Notify the platform on every foreground sync, whatever the publish result; the platform decides which workers notify.
-                if (!isBackgroundSync)
-                {
-                    await NotifyPlatformIfEnabledAsync();
-                }
+                // Notify the platform on every foreground sync, in parallel with the publish and whatever its result; the
+                // platform decides which workers notify, and may hold the call until it has stored the payload.
+                var notifyTask = isBackgroundSync
+                    ? Task.FromResult(PlatformTriggersStoreStatus.NotConfirmed)
+                    : NotifyPlatformIfEnabledAsync();
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
@@ -168,6 +168,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     }
                     result.Success = success;
                     result.Error = error;
+                }
+
+                var notifyStatus = await notifyTask;
+                if (result.Success && notifyStatus is PlatformTriggersStoreStatus.Failed or PlatformTriggersStoreStatus.Timeout)
+                {
+                    result.Success = false;
+                    result.Error = $"Platform triggers store {notifyStatus.ToString().ToLowerInvariant()}.";
                 }
             }
             catch (Exception ex)
@@ -310,25 +317,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// Performs a best-effort notification to the platform when triggers are synchronized.
+        /// Notifies the platform that triggers were synchronized and returns its report of the triggers store.
+        /// A failure to notify is logged and reported as <see cref="PlatformTriggersStoreStatus.NotConfirmed"/>.
         /// </summary>
         /// <remarks>
         /// Exposed as <see langword="internal"/> for direct unit testing.
         /// </remarks>
-        internal async Task NotifyPlatformIfEnabledAsync()
+        internal async Task<PlatformTriggersStoreStatus> NotifyPlatformIfEnabledAsync()
         {
             if (!_notifyPlatformOnSync)
             {
-                return;
+                return PlatformTriggersStoreStatus.NotConfirmed;
             }
 
             try
             {
-                await _meshServiceClient.NotifyTriggersChanged();
+                var status = await _meshServiceClient.NotifyTriggersChanged();
+                if (status is PlatformTriggersStoreStatus.Failed or PlatformTriggersStoreStatus.Timeout)
+                {
+                    _logger.LogWarning("Platform triggers store {status}.", status);
+                }
+                else
+                {
+                    _logger.LogInformation("Platform triggers store {status}.", status);
+                }
+
+                return status;
             }
             catch (Exception exc) when (!exc.IsFatal())
             {
                 _logger.LogWarning(exc, "Failed to notify platform of triggers change.");
+                return PlatformTriggersStoreStatus.NotConfirmed;
             }
         }
 
