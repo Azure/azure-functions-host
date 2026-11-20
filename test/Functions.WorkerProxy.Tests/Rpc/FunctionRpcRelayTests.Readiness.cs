@@ -196,10 +196,16 @@ public partial class FunctionRpcRelayTests
             }
 
             WorkerPodState failed = Assert.IsType<WorkerPodState>((await poll).State);
+            bool runtimeRemovalExpected = string.Equals(trigger, "runtime-close", StringComparison.Ordinal) ||
+                string.Equals(trigger, "runtime-cancel", StringComparison.Ordinal);
+            bool removalExpected = !string.Equals(trigger, "shutdown", StringComparison.Ordinal);
             Assert.False(failed.IsWorkerReady);
             Assert.False(failed.IsWorkerAttached);
             Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
-            Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+            Assert.Equal(removalExpected, failed.RemovalRequested);
+            Assert.Equal(
+                runtimeRemovalExpected ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed,
+                failed.AssignmentState);
             Assert.Equal(assigned.Revision + 1, failed.Revision);
             Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
             Assert.False(runtimeTask.IsCompleted);
@@ -216,52 +222,8 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(4, manager.State.Revision);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Relay_ReplacementReadinessRespectsTerminalAssignment(bool assigned)
-    {
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
-        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        WorkerAssignment assignment = CreateWorkerAssignment();
-        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(runtime, worker, "original", timeout.Token);
-        Assert.True(manager.State.IsWorkerReady);
-
-        if (assigned)
-        {
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-
-        await worker.CompleteRequestAsync(timeout.Token);
-        await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
-        await WaitForReleaseAsync(relay, timeout.Token);
-        WorkerPodState terminated = manager.State;
-        Assert.False(terminated.IsWorkerReady);
-
-        await using RelayClient replacementRuntime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        await using RelayClient replacementWorker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
-
-        if (assigned)
-        {
-            Assert.Same(terminated, manager.State);
-            Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(assignment));
-        }
-        else
-        {
-            Assert.True(manager.State.IsWorkerReady);
-            Assert.True(manager.State.SessionId > terminated.SessionId);
-            Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
-        }
-    }
-
     [Fact]
-    public async Task Relay_RuntimeOnlyTerminationDoesNotPreventNextWorkerSession()
+    public async Task Relay_RuntimeOnlyTerminationRequestsRemovalAndRejectsNextWorkerSession()
     {
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
@@ -273,16 +235,15 @@ public partial class FunctionRpcRelayTests
         Assert.Same(initial, manager.State);
 
         runtimeCancellation.Cancel();
-        FunctionRpcRelayTerminalState terminated = await runtimeTask.WaitAsync(timeout.Token);
-        Assert.Same(initial, manager.State);
+        await runtimeTask.WaitAsync(timeout.Token);
+        Assert.NotSame(initial, manager.State);
+        Assert.True(manager.State.RemovalRequested);
+        Assert.Equal(initial.Revision + 1, manager.State.Revision);
 
-        Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
-            new SingleMessageThenBlockStreamReader(CreateStartStream()), new TestServerStreamWriter(), timeout.Token);
-        Assert.True(manager.State.IsWorkerReady);
-        Assert.True(manager.State.SessionId > terminated.SessionId);
-        Assert.Equal(2, manager.State.Revision);
-        await relay.StopAsync(timeout.Token);
-        await workerTask.WaitAsync(timeout.Token);
+        FunctionRpcRelayAttachmentException exception = await Assert.ThrowsAsync<FunctionRpcRelayAttachmentException>(() =>
+            relay.AttachAsync(FunctionRpcRelaySide.Worker,
+                new SingleMessageThenBlockStreamReader(CreateStartStream()), new TestServerStreamWriter(), timeout.Token));
+        Assert.Equal(FunctionRpcRelayAttachmentFailure.Shutdown, exception.Failure);
     }
 
     [Fact]
@@ -291,7 +252,7 @@ public partial class FunctionRpcRelayTests
         WorkerPodStateManager manager = CreatePodStateManager();
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
         using CancellationTokenSource timeout = new(TestTimeout);
-        using CancellationTokenSource runtimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        using CancellationTokenSource workerCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
         TaskCompletionSource<bool> delayedRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> currentRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
         PumpingSynchronizationContext readContext = new();
@@ -309,7 +270,7 @@ public partial class FunctionRpcRelayTests
         {
             SynchronizationContext.SetSynchronizationContext(readContext);
             oldWorker = relay.AttachAsync(FunctionRpcRelaySide.Worker,
-                oldReader.Object, new TestServerStreamWriter(), timeout.Token);
+                oldReader.Object, new TestServerStreamWriter(), workerCancellation.Token);
         }
         finally
         {
@@ -317,11 +278,11 @@ public partial class FunctionRpcRelayTests
         }
 
         Task<FunctionRpcRelayTerminalState> oldRuntime = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
-            new BlockingStreamReader(), new TestServerStreamWriter(), runtimeCancellation.Token);
+            new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
 
         try
         {
-            runtimeCancellation.Cancel();
+            workerCancellation.Cancel();
             await readContext.RunUntilAsync(Task.WhenAll(oldRuntime, oldWorker), timeout.Token);
             Assert.False(manager.State.IsWorkerReady);
 
@@ -347,9 +308,18 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group")
-        => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
-            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
+    private static WorkerAssignment CreateWorkerAssignment(
+        string functionGroupName = "test-group",
+        bool isAlwaysReady = false,
+        int? maxHttpConcurrency = null)
+        => new(
+            WorkerStartupMode.SpecializationRequired,
+            "test-app",
+            functionGroupName,
+            isAlwaysReady,
+            environment: new Dictionary<string, string>(),
+            functionAppDirectory: "/home/site/wwwroot",
+            maxHttpConcurrency: maxHttpConcurrency);
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

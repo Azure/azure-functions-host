@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Channels;
@@ -31,6 +32,10 @@ internal sealed partial class FunctionRpcRelay
         TokenServiceProxyService? tokenServiceProxy)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
+        private const string IsAlwaysReadyCapability = "IsAlwaysReady";
+        private const string MaxHttpConcurrencyCapability = "MaxHttpConcurrency";
+        private const string WorkerAssignmentMetadataVersionCapability = "WorkerAssignmentMetadataVersion";
+        private const string WorkerAssignmentMetadataVersion = "1";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
@@ -46,6 +51,8 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+        private int _shutdownRequested;
+        private bool _workerHandlerAdmitted;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -104,13 +111,18 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
-                SetAttachedLocked(side, value: true);
-                if (side == FunctionRpcRelaySide.Worker)
+                if (side == FunctionRpcRelaySide.Runtime && !stateManager.TryAcceptRuntimeLink())
                 {
-                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
-                    stateManager.OnWorkerAttached(id);
+                    return FunctionRpcRelayAttachResult.Terminated;
                 }
 
+                if (side == FunctionRpcRelaySide.Worker &&
+                    !stateManager.OnWorkerAttached(id) && stateManager.State.RemovalRequested)
+                {
+                    return FunctionRpcRelayAttachResult.Terminated;
+                }
+
+                SetAttachedLocked(side, value: true);
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -197,10 +209,19 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
+        /// Marks application shutdown before host cancellation can race with terminal classification.
+        /// </summary>
+        public void MarkShutdownRequested()
+        {
+            Interlocked.Exchange(ref _shutdownRequested, 1);
+        }
+
+        /// <summary>
         /// Records application shutdown as the terminal state for this session.
         /// </summary>
         public void RequestShutdown()
         {
+            MarkShutdownRequested();
             TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
@@ -286,7 +307,12 @@ internal sealed partial class FunctionRpcRelay
                         throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
                     }
 
-                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                    if (!stateManager.OnWorkerStartStream(id, startStream.WorkerId))
+                    {
+                        throw new InvalidDataException("The worker StartStream arrived after worker admission closed.");
+                    }
+
+                    _workerHandlerAdmitted = true;
                 }
             }
 
@@ -313,7 +339,7 @@ internal sealed partial class FunctionRpcRelay
             if (capabilities is null)
             {
                 Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
-                ApplyFunctionGroupCapability(finalized.WorkerInitResponse.Capabilities);
+                ApplyAssignmentCapabilities(finalized.WorkerInitResponse.Capabilities);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -337,23 +363,37 @@ internal sealed partial class FunctionRpcRelay
         }
 
         /// <summary>
-        /// Advertises the function group assigned to this session's worker, replacing any worker-supplied value.
+        /// Advertises platform-owned assignment capabilities, replacing any worker-supplied values.
         /// </summary>
         /// <remarks>
-        /// Only WorkerProxy sets this capability, so any worker-supplied value is always discarded.
+        /// Only WorkerProxy sets these capabilities, so worker-supplied values are always discarded.
         /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
-        /// the capability is omitted so the runtime never receives an unassigned or stale group.
+        /// the capabilities are omitted so the runtime never receives unassigned or stale scale-in metadata.
         /// </remarks>
-        private void ApplyFunctionGroupCapability(IDictionary<string, string> capabilities)
+        private void ApplyAssignmentCapabilities(IDictionary<string, string> capabilities)
         {
-            // Only WorkerProxy sets this capability; discard any worker-supplied value.
             capabilities.Remove(FunctionGroupNameCapability);
+            capabilities.Remove(IsAlwaysReadyCapability);
+            capabilities.Remove(MaxHttpConcurrencyCapability);
+            capabilities.Remove(WorkerAssignmentMetadataVersionCapability);
 
             WorkerPodState state = stateManager.State;
             if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
                 && state.SessionId == id)
             {
+                capabilities[WorkerAssignmentMetadataVersionCapability] = WorkerAssignmentMetadataVersion;
                 capabilities[FunctionGroupNameCapability] = functionGroupName;
+                if (state.IsAlwaysReady is { } isAlwaysReady)
+                {
+                    capabilities[IsAlwaysReadyCapability] = isAlwaysReady.ToString();
+                }
+
+                if (state.MaxHttpConcurrency is > 0 and { } maxHttpConcurrency)
+                {
+                    capabilities[MaxHttpConcurrencyCapability] =
+                        maxHttpConcurrency.ToString(CultureInfo.InvariantCulture);
+                }
+
                 return;
             }
 
@@ -437,9 +477,26 @@ internal sealed partial class FunctionRpcRelay
                     return false;
                 }
 
+                bool runtimePeerTerminated = Volatile.Read(ref _shutdownRequested) == 0 &&
+                    terminalState.Side == FunctionRpcRelaySide.Runtime &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
+                bool workerPeerTerminated = _workerHandlerAdmitted &&
+                    terminalState.Side == FunctionRpcRelaySide.Worker &&
+                    terminalState.Reason is FunctionRpcRelayTerminationReason.PeerClosed
+                        or FunctionRpcRelayTerminationReason.Canceled
+                        or FunctionRpcRelayTerminationReason.Faulted;
                 _terminalState = terminalState;
                 // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
-                stateManager.OnSessionTerminated(id);
+                if (runtimePeerTerminated)
+                {
+                    stateManager.RequestRemoval();
+                }
+                else
+                {
+                    stateManager.OnSessionTerminated(id, workerPeerTerminated);
+                }
                 _completion.SetResult(terminalState);
             }
 

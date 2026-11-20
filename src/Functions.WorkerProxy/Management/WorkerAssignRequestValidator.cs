@@ -65,7 +65,8 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory);
+            functionAppDirectory,
+            request.MaxHttpConcurrency);
 
         return true;
     }

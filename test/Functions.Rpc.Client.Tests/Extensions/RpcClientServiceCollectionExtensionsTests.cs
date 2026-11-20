@@ -192,7 +192,14 @@ public sealed class RpcClientServiceCollectionExtensionsTests
     private static void AssertRegistryServices(IServiceCollection services)
     {
         AssertSingleton<WorkerChannelRegistry, WorkerChannelRegistry>(services);
-        foreach (Type serviceType in new[] { typeof(IWorkerChannelRegistry), typeof(IHostConfigurationSourceProvider) })
+        foreach (Type serviceType in new[]
+        {
+            typeof(IWorkerChannelRegistry),
+            typeof(IHostConfigurationSourceProvider),
+            typeof(IHostStateCoordinator),
+            typeof(IHttpWorkerScaleInManager),
+            typeof(IRuntimeWorkerAdmissionGate),
+        })
         {
             ServiceDescriptor descriptor = Assert.Single(services.Where(service => service.ServiceType == serviceType));
             Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
