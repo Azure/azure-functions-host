@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reactive.Linq;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly IHost _webHost;
+        private readonly IHostApplicationLifetime _applicationLifetime;
+        private readonly Task _shutdownTask;
         private readonly string _appRoot;
         private readonly bool _allowOffline;
         private readonly string _webHostInstanceId = Guid.NewGuid().ToString()[..8];
@@ -59,11 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
         private readonly string _createdStack;
         private readonly string _id = Guid.NewGuid().ToString();
+        private readonly Lock _disposeLock = new();
 
         private TestLoggerProvider _webHostLoggerProvider;
         private bool _timerFired = false;
-        private bool _isDisposed = false;
-        private bool _webHostDisposed;
+        private Task _disposeTask;
 
         public TestFunctionHost(string scriptPath,
             Action<IServiceCollection> configureWebHostServices = null,
@@ -244,6 +247,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // TestServer (registered via UseTestServer) initializes its application pipeline.
             _webHost.StartAsync().GetAwaiter().GetResult();
 
+            _applicationLifetime = _webHost.Services.GetRequiredService<IHostApplicationLifetime>();
+            // This task owns host shutdown for both StopApplication and fixture disposal.
+            _shutdownTask = _webHost.WaitForShutdownAsync();
+
             HttpClient = _webHost.GetTestClient();
             HttpClient.Timeout = TimeSpan.FromMinutes(5);
 
@@ -257,20 +264,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var manager = _webHost.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
-
-            // Wire up StopApplication calls as they behave in hosted scenarios
-            var lifetime = WebHostServices.GetService<IHostApplicationLifetime>();
-            lifetime.ApplicationStopping.Register(async () =>
-            {
-                try
-                {
-                    await _webHost.StopAsync();
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Host may already be disposed during test cleanup.
-                }
-            });
 
             StartAsync().GetAwaiter().GetResult();
 
@@ -524,35 +517,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
-        /// <summary>
-        /// Stops and disposes the internal WebHost. This is idempotent so repeated disposal calls are safe.
-        /// </summary>
         private async Task StopAndDisposeWebHostAsync()
         {
-            if (_webHostDisposed)
-            {
-                return;
-            }
+            Exception shutdownException = null;
 
             try
             {
-                if (_webHost is not null)
-                {
-                    try
-                    {
-                        await _webHost.StopAsync();
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // In case dispose has already run from elsewhere.
-                    }
-                    catch (AggregateException ex) when (ex.InnerExceptions.Count > 0 && ex.InnerExceptions.All(e => e is ObjectDisposedException))
-                    {
-                        // In case dispose has already run from elsewhere.
-                    }
-                }
+                _applicationLifetime.StopApplication();
+                await _shutdownTask;
             }
-            finally
+            catch (Exception ex)
+            {
+                shutdownException = ex;
+            }
+
+            try
             {
                 if (_webHost is IAsyncDisposable asyncDisposable)
                 {
@@ -563,8 +542,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     _webHost?.Dispose();
                 }
             }
+            catch (Exception ex) when (shutdownException is not null)
+            {
+                throw new AggregateException("Test host shutdown and disposal both failed.", shutdownException, ex);
+            }
 
-            _webHostDisposed = true;
+            if (shutdownException is not null)
+            {
+                ExceptionDispatchInfo.Capture(shutdownException).Throw();
+            }
         }
 
         public void Dispose()
@@ -572,28 +558,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             DisposeAsync().GetAwaiter().GetResult();
         }
 
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
-            if (!_isDisposed)
+            lock (_disposeLock)
             {
-                _stillRunningTimer?.Change(-1, -1);
-                _stillRunningTimer?.Dispose();
+                _disposeTask ??= DisposeAsyncCore();
+                return new(_disposeTask);
+            }
+        }
 
-                try
+        private async Task DisposeAsyncCore()
+        {
+            _stillRunningTimer?.Change(-1, -1);
+            _stillRunningTimer?.Dispose();
+
+            try
+            {
+                await StopAndDisposeWebHostAsync();
+            }
+            finally
+            {
+                _hostStartSubscription.Dispose();
+                HttpClient.Dispose();
+
+                if (_timerFired)
                 {
-                    await StopAndDisposeWebHostAsync();
-                }
-                finally
-                {
-                    _hostStartSubscription.Dispose();
-                    HttpClient.Dispose();
-
-                    if (_timerFired)
-                    {
-                        Console.WriteLine($"The test host with id {_id} is now disposed.");
-                    }
-
-                    _isDisposed = true;
+                    Console.WriteLine($"The test host with id {_id} is now disposed.");
                 }
             }
         }
