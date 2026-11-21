@@ -65,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IMeshServiceClient _meshServiceClient;
-        private readonly bool _notifyPlatformOnSync;
 
         private BlobClient _hashBlobClient;
 
@@ -83,7 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _azureBlobStorageProvider = azureBlobStorageProvider;
             _scriptHostManager = scriptHostManager;
             _meshServiceClient = meshServiceClient ?? NullMeshServiceClient.Instance;
-            _notifyPlatformOnSync = environment?.ShouldNotifyPlatformOnSync() ?? false;
         }
 
         internal bool ArmCacheEnabled
@@ -145,6 +143,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return result;
                 }
 
+                // Flex: the platform stores the payload and confirms the store; notify on every foreground sync, in
+                // parallel with the publish. The sync fails when the platform can't confirm a store it should have
+                // made.
+                var storeFlexSyncTriggers = !isBackgroundSync && _environment.ShouldStoreFlexSyncTriggers();
+                var triggersStoreTask = storeFlexSyncTriggers ? NotifyPlatformTriggersStoreAsync() : null;
+
                 bool shouldSyncTriggers = true;
                 string newHash = null;
                 if (isBackgroundSync && hashBlobClient != null)
@@ -160,12 +164,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         await UpdateHashAsync(hashBlobClient, newHash);
                     }
-                    if (success)
-                    {
-                        await NotifyPlatformIfEnabledAsync();
-                    }
                     result.Success = success;
                     result.Error = error;
+                }
+
+                if (triggersStoreTask != null)
+                {
+                    var storeStatus = await triggersStoreTask;
+
+                    // Stored and Skipped (the platform deliberately doesn't store, e.g. storage off or the worker isn't
+                    // on the live package; a retry wouldn't change it) are success. Failed, Timeout and NotConfirmed
+                    // fail the sync (explicit synctriggers returns 500) so the caller retries.
+                    if (result.Success
+                        && storeStatus != PlatformTriggersStoreStatus.Stored
+                        && storeStatus != PlatformTriggersStoreStatus.Skipped)
+                    {
+                        result.Success = false;
+                        result.Error = $"Platform triggers store {DescribeTriggersStoreStatus(storeStatus)}.";
+                    }
                 }
             }
             catch (Exception ex)
@@ -308,27 +324,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// Performs a best-effort notification to the platform when triggers are synchronized.
+        /// Notifies the platform that triggers were synchronized and returns its report of the triggers store.
+        /// A failure to notify is logged and reported as <see cref="PlatformTriggersStoreStatus.NotConfirmed"/>.
         /// </summary>
         /// <remarks>
         /// Exposed as <see langword="internal"/> for direct unit testing.
         /// </remarks>
-        internal async Task NotifyPlatformIfEnabledAsync()
+        internal async Task<PlatformTriggersStoreStatus> NotifyPlatformTriggersStoreAsync()
         {
-            if (!_notifyPlatformOnSync)
-            {
-                return;
-            }
-
             try
             {
-                await _meshServiceClient.NotifyTriggersChanged();
+                var status = await _meshServiceClient.NotifyTriggersChanged();
+                if (status == PlatformTriggersStoreStatus.Stored)
+                {
+                    _logger.LogInformation("Platform triggers store {status}.", status);
+                }
+                else
+                {
+                    _logger.LogWarning("Platform triggers store {status}.", status);
+                }
+
+                return status;
             }
             catch (Exception exc) when (!exc.IsFatal())
             {
                 _logger.LogWarning(exc, "Failed to notify platform of triggers change.");
+                return PlatformTriggersStoreStatus.NotConfirmed;
             }
         }
+
+        private static string DescribeTriggersStoreStatus(PlatformTriggersStoreStatus status) => status switch
+        {
+            PlatformTriggersStoreStatus.NotConfirmed => "not confirmed",
+            PlatformTriggersStoreStatus.Timeout => "timed out",
+            _ => status.ToString().ToLowerInvariant(),
+        };
 
         internal async Task<BlobClient> GetHashBlobAsync()
         {

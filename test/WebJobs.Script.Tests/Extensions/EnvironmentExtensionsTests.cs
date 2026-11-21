@@ -212,6 +212,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData("true", "FlexConsumption", true)]
+        [InlineData("true", "Dynamic", false)]
+        [InlineData("false", "FlexConsumption", false)]
+        [InlineData(null, "FlexConsumption", false)]
+        public void ShouldStoreFlexSyncTriggers_RequiresSettingAndFlexConsumption(string setting, string sku, bool expected)
+        {
+            TestEnvironment env = new();
+            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore, setting);
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+
+            Assert.Equal(expected, env.ShouldStoreFlexSyncTriggers());
+        }
+
+        [Theory]
         [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
         [InlineData("FlexConsumption", "", "", "", true)] // not a valid configuration, but testing for thoroughness
         [InlineData(null, "", "container-name", "1", true)] // simulate placeholder mode where SKU not available yet

@@ -5,11 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -129,16 +131,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             httpResponseMessage.EnsureSuccessStatusCode();
         }
 
-        public async Task NotifyTriggersChanged()
+        public async Task<PlatformTriggersStoreStatus> NotifyTriggersChanged()
         {
             _logger.LogDebug("Performing platform triggers changed notification.");
 
-            var response = await SendAsync(new[]
+            using var response = await SendAsync(new[]
             {
                 new KeyValuePair<string, string>(Operation, UpdateTriggersOperation),
             });
 
+            // Where the platform confirms the store, it holds the call until it reports the outcome, or 504 on timeout.
+            if (response.StatusCode == HttpStatusCode.GatewayTimeout)
+            {
+                return PlatformTriggersStoreStatus.Timeout;
+            }
+
             response.EnsureSuccessStatusCode();
+
+            var body = await response.Content.ReadAsStringAsync();
+            try
+            {
+                var status = JObject.Parse(body)["status"]?.Value<string>();
+                return Enum.TryParse(status, ignoreCase: true, out PlatformTriggersStoreStatus parsed)
+                    ? parsed
+                    : PlatformTriggersStoreStatus.NotConfirmed;
+            }
+            catch (JsonReaderException)
+            {
+                // A plain "OK" comes from a platform that doesn't confirm the store: not a confirmation, so the sync
+                // manager fails the sync.
+                return PlatformTriggersStoreStatus.NotConfirmed;
+            }
         }
 
         private async Task PublishActivities(IEnumerable<ContainerFunctionExecutionActivity> activities)
