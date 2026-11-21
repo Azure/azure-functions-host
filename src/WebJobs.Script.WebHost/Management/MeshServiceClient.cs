@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -158,7 +158,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (JsonReaderException)
             {
-                // Without confirmation the platform answers "OK".
+                // A plain "OK" comes from a platform that doesn't confirm the store: not a confirmation, so the sync
+                // manager fails the sync.
                 return PlatformTriggersStoreStatus.NotConfirmed;
             }
         }
