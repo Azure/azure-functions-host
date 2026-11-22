@@ -736,4 +736,94 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(1, selected.DisposeCount);
         Assert.Equal(1, Volatile.Read(ref unlinkOutcomes));
     }
+
+    [Fact]
+    public async Task RuntimeDrain_PhasedMarksHttpAndAlwaysReadyWorkersRetiringAtStartWhileDeferringNonHttpOnDemand()
+    {
+        FakeTimeProvider time = new();
+        RegistryHarness harness = new(linkTimeout: TestTimeout, timeProvider: time);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateHttpFunction();
+        ChannelControl batchZeroOnDemand = new("a-non-http-0", functionGroupName: FunctionGroups.Durable, isAlwaysReady: false);
+        ChannelControl batchOneAlwaysReady = new("b-non-http-ar-1", functionGroupName: FunctionGroups.Durable, isAlwaysReady: true);
+        ChannelControl batchTwoOnDemand = new("c-non-http-od-2", functionGroupName: FunctionGroups.Durable, isAlwaysReady: false);
+        ChannelControl httpOnDemand = CreateHttpWorker("http-on-demand", false, 10);
+        ChannelControl httpAlwaysReady = CreateHttpWorker("http-always-ready", true, 10);
+        await LinkAndReadyWorkersAsync(
+            harness,
+            registry,
+            function,
+            batchZeroOnDemand,
+            batchOneAlwaysReady,
+            batchTwoOnDemand,
+            httpOnDemand,
+            httpAlwaysReady);
+
+        await using RuntimeDrainManager manager = new(
+            registry, Mock.Of<IHostApplicationLifetime>(), time, NullLogger<RuntimeDrainManager>.Instance);
+        manager.Accept(RuntimeDrainMode.Phased);
+
+        await batchZeroOnDemand.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        Assert.True(batchZeroOnDemand.Channel.IsRetiring);
+        Assert.True(batchZeroOnDemand.Channel.IsDraining);
+        Assert.False(batchZeroOnDemand.Channel.IsReadyForInvocations);
+
+        await batchOneAlwaysReady.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerRetiring);
+        Assert.True(batchOneAlwaysReady.Channel.IsRetiring);
+        Assert.False(batchOneAlwaysReady.Channel.IsDraining);
+        Assert.True(batchOneAlwaysReady.Channel.IsReadyForInvocations);
+        Assert.False(batchOneAlwaysReady.Transport.Requests.TryRead(out _));
+
+        Assert.False(batchTwoOnDemand.Channel.IsRetiring);
+        Assert.False(batchTwoOnDemand.Channel.IsDraining);
+        Assert.True(batchTwoOnDemand.Channel.IsReadyForInvocations);
+        Assert.False(batchTwoOnDemand.Transport.Requests.TryRead(out _));
+
+        await httpOnDemand.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerRetiring);
+        await httpAlwaysReady.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerRetiring);
+        Assert.All(new[] { httpOnDemand, httpAlwaysReady }, worker =>
+        {
+            Assert.True(worker.Channel.IsRetiring);
+            Assert.False(worker.Channel.IsDraining);
+            Assert.True(worker.Channel.IsReadyForInvocations);
+            Assert.False(worker.Transport.Requests.TryRead(out _));
+        });
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        await batchOneAlwaysReady.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        Assert.True(batchOneAlwaysReady.Channel.IsDraining);
+        Assert.False(batchTwoOnDemand.Channel.IsRetiring);
+        Assert.False(batchTwoOnDemand.Channel.IsDraining);
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        await batchTwoOnDemand.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        Assert.True(batchTwoOnDemand.Channel.IsRetiring);
+        Assert.True(batchTwoOnDemand.Channel.IsDraining);
+        Assert.All(new[] { httpOnDemand, httpAlwaysReady }, worker => Assert.False(worker.Channel.IsDraining));
+
+        time.Advance(TimeSpan.FromSeconds(15));
+        await httpOnDemand.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        await httpAlwaysReady.ReadRequestAsync(StreamingMessage.ContentOneofCase.WorkerDraining);
+        Assert.All(new[] { httpOnDemand, httpAlwaysReady }, worker => Assert.True(worker.Channel.IsDraining));
+    }
+
+    [Fact]
+    public async Task RuntimeDrain_RetiringNotificationWriteFailureUnlinksWorker()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        FunctionMetadata function = CreateHttpFunction();
+        ChannelControl httpWorker = CreateHttpWorker("http-faulted-writer", false, 10);
+        await LinkAndReadyWorkersAsync(harness, registry, function, httpWorker);
+        Assert.True(httpWorker.Transport.Writer.TryComplete(new System.IO.IOException("Outbound stream closed.")));
+        Assert.False(httpWorker.Channel.IsTerminated);
+
+        IRuntimeDrainWorkerManager workers = registry;
+        RuntimeDrainStart snapshot = workers.CloseAdmission();
+        Assert.Equal([httpWorker.Id], snapshot.HttpWorkerIds);
+
+        await httpWorker.DisposeStarted.WaitAsync(TestTimeout);
+        await WaitUntilAsync(() => httpWorker.DisposeCount == 1);
+        Assert.False(registry.TryGetInitializedChannel(httpWorker.Id, out _));
+    }
 }

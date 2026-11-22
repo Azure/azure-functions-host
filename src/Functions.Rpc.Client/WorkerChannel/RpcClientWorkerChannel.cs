@@ -72,6 +72,7 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
     private long? _idleSince;
     private int _ongoingRequests;
     private bool _hasReceivedRequest;
+    private bool _retiring;
     private bool _draining;
 
     public RpcClientWorkerChannel(
@@ -181,6 +182,17 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     internal bool IsTerminated => Interlocked.CompareExchange(ref _lifecycleState, default, default) is LifecycleState.Disposed
         || Completion.IsCompleted || FunctionLoadFailure.IsCompleted;
+
+    internal bool IsRetiring
+    {
+        get
+        {
+            lock (_lifecycleLock)
+            {
+                return _retiring;
+            }
+        }
+    }
 
     internal bool IsDraining
     {
@@ -319,11 +331,28 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
 
     private Task BeginDrainLocked()
     {
+        _retiring = true;
         _draining = true;
         Task drainTask = DrainInvocationsAsync();
         Task notificationTask = NotifyWorkerProxyDrainingAsync();
         _drainTask = Task.WhenAll(drainTask, notificationTask);
         return _drainTask;
+    }
+
+    internal bool TryBeginRuntimeRetirement(out Task notificationTask)
+    {
+        lock (_lifecycleLock)
+        {
+            if (_retiring || _draining || IsTerminated)
+            {
+                notificationTask = null;
+                return false;
+            }
+
+            _retiring = true;
+            notificationTask = NotifyWorkerProxyRetiringAsync();
+            return true;
+        }
     }
 
     internal async Task TerminateWorkerAsync()
@@ -380,10 +409,16 @@ internal sealed partial class RpcClientWorkerChannel : WorkerChannel
         }
     }
 
+    private async Task NotifyWorkerProxyRetiringAsync()
+    {
+        await SendStreamingMessageAsync(new() { WorkerRetiring = new() }).ConfigureAwait(false);
+    }
+
     internal void StopAcceptingInvocations()
     {
         lock (_lifecycleLock)
         {
+            _retiring = true;
             _draining = true;
         }
     }

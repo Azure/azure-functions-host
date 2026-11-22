@@ -599,7 +599,8 @@ public partial class FunctionRpcRelayTests
             "revisionId",
             "status",
             "link",
-            "isUnhealthy");
+            "isUnhealthy",
+            "isRetiring");
         Assert.Equal(JsonValueKind.Null, wireRoot.GetProperty("functionGroup").ValueKind);
         Assert.False(wireRoot.TryGetProperty("staticState", out _));
         Assert.False(wireRoot.TryGetProperty("dynamicState", out _));

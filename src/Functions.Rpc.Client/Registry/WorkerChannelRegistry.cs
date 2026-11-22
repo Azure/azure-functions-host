@@ -281,6 +281,8 @@ internal sealed partial class WorkerChannelRegistry :
     /// <inheritdoc />
     RuntimeDrainStart IRuntimeDrainWorkerManager.CloseAdmission()
     {
+        List<(string WorkerId, RpcClientWorkerChannel Channel, Task Notification)> retiringSelections;
+        RuntimeDrainStart drainStart;
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -291,6 +293,7 @@ internal sealed partial class WorkerChannelRegistry :
 
             List<string> nonHttpWorkerIds = [];
             List<string> httpWorkerIds = [];
+            retiringSelections = [];
             foreach ((string workerId, WorkerSlot slot) in _slots)
             {
                 if (slot.Channel is not { IsTerminated: false } channel)
@@ -299,13 +302,49 @@ internal sealed partial class WorkerChannelRegistry :
                 }
 
                 (channel.IsHttpFunctionGroup ? httpWorkerIds : nonHttpWorkerIds).Add(workerId);
+                if ((channel.IsHttpFunctionGroup || channel.IsAlwaysReady is true) &&
+                    channel.TryBeginRuntimeRetirement(out Task notification))
+                {
+                    retiringSelections.Add((workerId, channel, notification));
+                }
             }
 
             nonHttpWorkerIds.Sort(StringComparer.Ordinal);
             httpWorkerIds.Sort(StringComparer.Ordinal);
             _drainStart = new(nonHttpWorkerIds.AsReadOnly(), httpWorkerIds.AsReadOnly());
+            drainStart = _drainStart;
+        }
 
-            return _drainStart;
+        foreach (var selection in retiringSelections)
+        {
+            _ = ObserveRuntimeRetirementNotificationAsync(
+                selection.WorkerId,
+                selection.Channel,
+                selection.Notification);
+        }
+
+        return drainStart;
+    }
+
+    private async Task ObserveRuntimeRetirementNotificationAsync(
+        string workerId,
+        RpcClientWorkerChannel channel,
+        Task notification)
+    {
+        try
+        {
+            await notification;
+        }
+        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Log.RetiringNotificationFailed(_logger, exception, workerId);
+            if (!channel.IsTerminated)
+            {
+                await UnlinkAsync(workerId, channel, CancellationToken.None);
+            }
         }
     }
 
@@ -1687,5 +1726,9 @@ internal sealed partial class WorkerChannelRegistry :
             "Host configuration source evaluated for worker {WorkerId}. Outcome: {Outcome}. Candidate source: {CandidateSource}. Active source: {ActiveSource}.")]
         public static partial void HostConfigurationSourceEvaluated(
             ILogger logger, string workerId, string outcome, string candidateSource, string activeSource);
+
+        [LoggerMessage(15, LogLevel.Warning,
+            "Failed to notify WorkerProxy that worker {WorkerId} is retiring; closing the Runtime link.")]
+        public static partial void RetiringNotificationFailed(ILogger logger, Exception exception, string workerId);
     }
 }

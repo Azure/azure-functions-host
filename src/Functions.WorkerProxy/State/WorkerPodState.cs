@@ -19,6 +19,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="FunctionGroupName">The assigned function group name.</param>
 /// <param name="IsAlwaysReady">Whether the assignment belongs to an always-ready allocation.</param>
 /// <param name="StartupTime">The worker proxy startup time, retained across state revisions.</param>
+/// <param name="IsRetiring">Whether the Host has committed this worker to Runtime retirement.</param>
 /// <param name="HttpProxyEndpoint">The accepted externally mapped HTTPS origin, when supplied.</param>
 /// <param name="MaxHttpConcurrency">The assigned maximum HTTP concurrency, when specified.</param>
 /// <param name="ConfigLastModifiedTime">The requested configuration version, when supplied.</param>
@@ -35,6 +36,7 @@ internal sealed record WorkerPodState(
     string? FunctionGroupName,
     bool? IsAlwaysReady,
     DateTimeOffset StartupTime,
+    bool IsRetiring,
     Uri? HttpProxyEndpoint = null,
     int? MaxHttpConcurrency = null,
     long? ConfigLastModifiedTime = null,
@@ -100,5 +102,6 @@ internal sealed record WorkerPodState(
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null,
-            StartupTime: startupTime);
+            StartupTime: startupTime,
+            IsRetiring: false);
 }

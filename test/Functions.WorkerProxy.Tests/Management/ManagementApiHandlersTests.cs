@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
@@ -677,7 +678,38 @@ public class ManagementApiHandlersTests
         Assert.Equal(WorkerLinkState.Unlinked, link.State);
         Assert.Null(link.Runtime);
         Assert.Equal(expected.IsUnhealthy, response.IsUnhealthy);
+        Assert.Equal(expected.IsRetiring, response.IsRetiring);
         return response;
+    }
+
+    [Fact]
+    public async Task GetInstanceStateAsync_OmittedIsRetiringFromOlderAgentWaitsAtEqualRevisionWithoutBusyPolling()
+    {
+        PollClock clock = new();
+        WorkerPodStateManager manager = CreateManager(clock.Provider);
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        Assert.True(manager.OnWorkerRetiring(1));
+
+        string currentJson = JsonSerializer.Serialize(
+            WorkerOriginState.FromState(manager.State),
+            WorkerProxyJsonContext.Default.WorkerOriginState);
+        System.Text.Json.Nodes.JsonObject legacyNode = System.Text.Json.Nodes.JsonNode.Parse(currentJson)!.AsObject();
+        Assert.True(legacyNode.Remove("isRetiring"));
+        WorkerOriginState legacyPollBody = Assert.IsType<WorkerOriginState>(
+            JsonSerializer.Deserialize(legacyNode.ToJsonString(), WorkerProxyJsonContext.Default.WorkerOriginState));
+        Assert.Null(legacyPollBody.IsRetiring);
+
+        Task<IResult> poll = ManagementApiHandlers.GetInstanceStateAsync(legacyPollBody, manager);
+        Assert.False(poll.IsCompleted);
+        Assert.Equal(1, manager.PendingWaiterCount);
+
+        Assert.True(manager.OnWorkerDraining(1));
+        WorkerOriginState updated = Assert.IsType<JsonHttpResult<WorkerOriginState>>(await poll.WaitAsync(TestTimeout)).Value!;
+        Assert.Equal(WorkerStatus.Draining, updated.Status);
+        Assert.Equal(true, updated.IsRetiring);
+        await clock.VerifyTimersDisposedAsync();
     }
 
     private static WorkerOriginState LastState(int revision, WorkerPodStateManager manager) =>

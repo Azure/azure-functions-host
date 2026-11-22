@@ -20,6 +20,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <param name="Status">The platform-visible worker proxy lifecycle status.</param>
 /// <param name="Link">The worker proxy's runtime link state.</param>
 /// <param name="IsUnhealthy">Whether authentication configuration or an explicit Worker failure indicates unhealthy state.</param>
+/// <param name="IsRetiring">Whether the Host has committed this worker to Runtime retirement; optional on inbound polls from older platform agents.</param>
 internal sealed record WorkerOriginState(
     [property: JsonRequired, JsonPropertyOrder(-1)] string FunctionsContainerType,
     [property: JsonRequired] PodIdentity Self,
@@ -31,7 +32,8 @@ internal sealed record WorkerOriginState(
     [property: JsonRequired, JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] int RevisionId,
     [property: JsonRequired] WorkerStatus Status,
     [property: JsonRequired] WorkerLink Link,
-    [property: JsonRequired] bool IsUnhealthy)
+    [property: JsonRequired] bool IsUnhealthy,
+    bool? IsRetiring)
 {
     /// <summary>
     /// Identifies worker proxy checkpoints in the platform's instance-state contract.
@@ -65,6 +67,7 @@ internal sealed record WorkerOriginState(
             checked((int)state.Revision),
             status,
             state.IsRuntimeInitialized ? new(WorkerLinkState.Linked, state.RuntimeIdentity) : Unlinked,
-            state.IsUnhealthy);
+            state.IsUnhealthy,
+            IsRetiring: state.IsRetiring);
     }
 }

@@ -104,7 +104,14 @@ message StreamingMessage {
     ExtensionPayloadRequest extension_payload_request = 37;
     // Worker sends ordered ZIP chunks followed by one terminal result while connected.
     ExtensionPayloadResponse extension_payload_response = 38;
+
+    // Host tells WorkerProxy that this assigned worker is committed to Runtime retirement.
+    WorkerRetiring worker_retiring = 39;
   }
+}
+
+// Indicates that the Host has committed the worker to Runtime retirement before invocation drain begins.
+message WorkerRetiring {
 }
 
 // All messages for one extension transfer use the same StreamingMessage.request_id.
