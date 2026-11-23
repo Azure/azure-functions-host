@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Identity;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -17,17 +19,61 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.TokenServiceProxy;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
 
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
 /// Builds the WorkerProxy management and FunctionRpc application.
 /// </summary>
-internal static class WorkerProxyApplication
+internal static partial class WorkerProxyApplication
 {
     private const string ReadyPath = "/admin/instance/ready";
+
+    /// <summary>
+    /// Runs the proxy, recording startup failures before releasing its logging resources.
+    /// </summary>
+    /// <param name="args">The command-line arguments supplied to WorkerProxy.</param>
+    /// <returns>A task that completes when the application stops.</returns>
+    public static async Task RunAsync(string[] args)
+    {
+        WebApplication? app = null;
+        try
+        {
+            try
+            {
+                app = Build(args);
+                await app.StartAsync();
+            }
+            catch (Exception exception) when (exception is not HostAbortedException)
+            {
+                LogStartupFailure(exception, Console.Out);
+                throw;
+            }
+
+            await app.WaitForShutdownAsync();
+        }
+        finally
+        {
+            if (app is not null)
+            {
+                await app.DisposeAsync();
+            }
+        }
+    }
+
+    internal static void LogStartupFailure(Exception exception, TextWriter output)
+    {
+        // Startup may fail before application logging exists. Do not copy invalid configuration values.
+        using WorkerPodEventGenerator generator = new(output, TimeProvider.System);
+        generator.LogEvent(LogLevel.Critical, "WorkerProxyStartupFailed", WorkerProxyLogExporter.ApplicationCategory,
+            details: string.Empty, summary: $"WorkerProxy failed to start ({exception.GetType().FullName}).",
+            exceptionType: string.Empty, exceptionMessage: string.Empty);
+    }
 
     /// <summary>
     /// Creates the configured WorkerProxy application.
@@ -49,6 +95,21 @@ internal static class WorkerProxyApplication
             .ValidateOnStart();
         builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
+        builder.Services.AddSingleton<IWorkerSystemEventGenerator, WorkerPodEventGenerator>();
+        builder.Logging.AddOpenTelemetry(ConfigureOpenTelemetry);
+        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(null, LogLevel.None);
+        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
+            WorkerProxyLogExporter.ReadinessProbeCategory,
+            LogLevel.Information);
+        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
+            WorkerProxyLogExporter.RelayCategory,
+            LogLevel.Information);
+        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
+            WorkerProxyLogExporter.ApplicationCategory,
+            LogLevel.Information);
+        builder.Logging.AddFilter<OpenTelemetryLoggerProvider>(
+            WorkerProxyLogExporter.AssignmentCategory,
+            LogLevel.Information);
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyOptionsValidator<TokenServiceProxyWorkerOptions>>();
         builder.Services.AddSingleton<IValidateOptions<TokenServiceProxyWorkerOptions>, TokenServiceProxyWorkerOptionsValidator>();
@@ -74,6 +135,7 @@ internal static class WorkerProxyApplication
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
+        RegisterLifecycleEvents(app);
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
@@ -85,9 +147,27 @@ internal static class WorkerProxyApplication
         return app;
     }
 
+    private static void ConfigureOpenTelemetry(OpenTelemetryLoggerOptions options)
+    {
+        options.IncludeFormattedMessage = true;
+        options.IncludeScopes = true;
+        options.AddProcessor(services => new SimpleLogRecordExportProcessor(
+            new WorkerProxyLogExporter(services.GetRequiredService<IWorkerSystemEventGenerator>())));
+    }
+
+    private static void RegisterLifecycleEvents(WebApplication app)
+    {
+        ILogger logger = app.Services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger(typeof(WorkerProxyApplication).FullName!);
+        app.Lifetime.ApplicationStarted.Register(() => Log.WorkerProxyStarted(logger));
+        app.Lifetime.ApplicationStopping.Register(() => Log.WorkerProxyShutdownStarted(logger));
+        app.Lifetime.ApplicationStopped.Register(() => Log.WorkerProxyStopped(logger));
+    }
+
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
     {
         app.UseRouting();
+        app.UseMiddleware<WorkerAssignmentLoggingMiddleware>();
         app.UseEndpoints(static endpoints =>
         {
             endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
@@ -156,5 +236,17 @@ internal static class WorkerProxyApplication
 
         builder.Services.AddSingleton<WorkerHttpForwarder>();
         builder.Services.AddSingleton<WorkerHttpForwardingMiddleware>();
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Information, "WorkerProxy started.", EventName = "WorkerProxyStarted")]
+        public static partial void WorkerProxyStarted(ILogger logger);
+
+        [LoggerMessage(1, LogLevel.Information, "WorkerProxy shutdown started.", EventName = "WorkerProxyShutdownStarted")]
+        public static partial void WorkerProxyShutdownStarted(ILogger logger);
+
+        [LoggerMessage(2, LogLevel.Information, "WorkerProxy stopped.", EventName = "WorkerProxyStopped")]
+        public static partial void WorkerProxyStopped(ILogger logger);
     }
 }
