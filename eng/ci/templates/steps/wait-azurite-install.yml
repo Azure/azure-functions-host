@@ -42,3 +42,11 @@ steps:
               }
           }
       }
+
+      $version = & azurite.cmd --version
+      if ($LASTEXITCODE -ne 0)
+      {
+          throw "Failed to get the Azurite version (exit code $LASTEXITCODE)."
+      }
+
+      Write-Output "Installed Azurite version: $version"
