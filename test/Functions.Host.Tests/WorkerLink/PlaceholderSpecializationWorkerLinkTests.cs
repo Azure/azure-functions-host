@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -52,6 +53,9 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         registry.Setup(value => value.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken token) => new TaskCompletionSource<WorkerChannel>().Task.WaitAsync(token));
         registry.Setup(value => value.GetInitializedChannels()).Returns(Array.Empty<WorkerChannel>());
+        registry.Setup(value => value.GetChangeTask()).Returns(new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+        registry.Setup(value => value.GetReadyChannelsAsync()).Returns(
+            new ValueTask<IReadOnlyList<WorkerChannel>>(new TaskCompletionSource<IReadOnlyList<WorkerChannel>>(TaskCreationOptions.RunContinuationsAsynchronously).Task));
 
         using IHost host = CreateHost(registry.Object);
         await host.StartAsync();
