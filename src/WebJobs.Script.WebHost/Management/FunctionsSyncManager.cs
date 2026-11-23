@@ -123,6 +123,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await _syncSemaphore.WaitAsync();
 
+                // Flex only (every other plan gets Sql and keeps the code path below unchanged): the platform stores the
+                // payload and confirms the store. Only foreground syncs (ARM operations and explicit synctriggers) notify,
+                // SqlAndCosmos in parallel with the publish. The sync fails when the platform can't confirm a store it
+                // should have made. Cosmos doesn't publish to SQL, so its background syncs do nothing.
+                var storeMode = _environment.GetFlexSyncTriggersStoreMode();
+                if (isBackgroundSync && storeMode == FlexSyncTriggersStoreMode.Cosmos)
+                {
+                    return result;
+                }
+
                 var hashBlobClient = await GetHashBlobAsync();
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsAnyKubernetesEnvironment())
                 {
@@ -143,11 +153,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return result;
                 }
 
-                // Flex: the platform stores the payload and confirms the store; notify on every foreground sync, in
-                // parallel with the publish. The sync fails when the platform can't confirm a store it should have
-                // made.
-                var storeFlexSyncTriggers = !isBackgroundSync && _environment.ShouldStoreFlexSyncTriggers();
-                var triggersStoreTask = storeFlexSyncTriggers ? NotifyPlatformTriggersStoreAsync() : null;
+                var triggersStoreTask = storeMode != FlexSyncTriggersStoreMode.Sql && !isBackgroundSync
+                    ? NotifyPlatformTriggersStoreAsync()
+                    : null;
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
@@ -157,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     shouldSyncTriggers = newHash != null;
                 }
 
-                if (shouldSyncTriggers)
+                if (shouldSyncTriggers && storeMode != FlexSyncTriggersStoreMode.Cosmos)
                 {
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)

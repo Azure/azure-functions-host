@@ -212,17 +212,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData("true", "FlexConsumption", true)]
-        [InlineData("true", "Dynamic", false)]
-        [InlineData("false", "FlexConsumption", false)]
-        [InlineData(null, "FlexConsumption", false)]
-        public void ShouldStoreFlexSyncTriggers_RequiresSettingAndFlexConsumption(string setting, string sku, bool expected)
+        [InlineData("Cosmos", "FlexConsumption", FlexSyncTriggersStoreMode.Cosmos)]
+        [InlineData("cosmos", "FlexConsumption", FlexSyncTriggersStoreMode.Cosmos)]
+        [InlineData("SqlAndCosmos", "FlexConsumption", FlexSyncTriggersStoreMode.SqlAndCosmos)]
+        [InlineData("true", "FlexConsumption", FlexSyncTriggersStoreMode.SqlAndCosmos)]
+        [InlineData("false", "FlexConsumption", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData("Blob", "FlexConsumption", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData(null, "FlexConsumption", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData("Cosmos", "Dynamic", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData("true", "Dynamic", FlexSyncTriggersStoreMode.Sql)]
+        public void GetFlexSyncTriggersStoreMode_ReturnsModeOnlyForFlexConsumption(string setting, string sku, FlexSyncTriggersStoreMode expected)
         {
             TestEnvironment env = new();
             env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore, setting);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
 
-            Assert.Equal(expected, env.ShouldStoreFlexSyncTriggers());
+            Assert.Equal(expected, env.GetFlexSyncTriggersStoreMode());
         }
 
         [Theory]
