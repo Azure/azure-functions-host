@@ -389,14 +389,33 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the host should notify the platform when triggers are synchronized,
-        /// based on the <see cref="FunctionsNotifyPlatformOnSync"/> environment variable.
+        /// Gets where this Flex Consumption app's sync triggers payload is stored, based on the
+        /// <see cref="FunctionsFlexSyncTriggersStore"/> environment variable: <c>Cosmos</c> has the platform store it in Cosmos
+        /// only, <c>SqlAndCosmos</c> (or <c>true</c>) also publishes it to SQL. Any other value, or an app that isn't
+        /// Flex Consumption, publishes to SQL only.
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
-        /// <returns><see langword="true"/> if platform notification is enabled; otherwise, <see langword="false"/>.</returns>
-        public static bool ShouldNotifyPlatformOnSync(this IEnvironment environment)
+        /// <returns>The store mode; <see cref="FlexSyncTriggersStoreMode.Sql"/> unless the app is Flex Consumption and the setting selects the platform.</returns>
+        public static FlexSyncTriggersStoreMode GetFlexSyncTriggersStoreMode(this IEnvironment environment)
         {
-            return bool.TryParse(environment.GetEnvironmentVariable(FunctionsNotifyPlatformOnSync), out bool enabled) && enabled;
+            if (!environment.IsFlexConsumptionSku())
+            {
+                return FlexSyncTriggersStoreMode.Sql;
+            }
+
+            string value = environment.GetEnvironmentVariable(FunctionsFlexSyncTriggersStore);
+            if (string.Equals(value, nameof(FlexSyncTriggersStoreMode.Cosmos), StringComparison.OrdinalIgnoreCase))
+            {
+                return FlexSyncTriggersStoreMode.Cosmos;
+            }
+
+            if (string.Equals(value, nameof(FlexSyncTriggersStoreMode.SqlAndCosmos), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+            {
+                return FlexSyncTriggersStoreMode.SqlAndCosmos;
+            }
+
+            return FlexSyncTriggersStoreMode.Sql;
         }
 
         /// <summary>

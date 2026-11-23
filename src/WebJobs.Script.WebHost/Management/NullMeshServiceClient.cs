@@ -53,9 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return Task.CompletedTask;
         }
 
-        public Task NotifyTriggersChanged()
+        public Task<PlatformTriggersStoreStatus> NotifyTriggersChanged()
         {
-            return Task.CompletedTask;
+            return Task.FromResult(PlatformTriggersStoreStatus.NotConfirmed);
         }
     }
 }

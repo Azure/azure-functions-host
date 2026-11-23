@@ -212,6 +212,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData("Cosmos", "FlexConsumption", FlexSyncTriggersStoreMode.Cosmos)]
+        [InlineData("cosmos", "FlexConsumption", FlexSyncTriggersStoreMode.Cosmos)]
+        [InlineData("SqlAndCosmos", "FlexConsumption", FlexSyncTriggersStoreMode.SqlAndCosmos)]
+        [InlineData("true", "FlexConsumption", FlexSyncTriggersStoreMode.SqlAndCosmos)]
+        [InlineData("false", "FlexConsumption", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData("Blob", "FlexConsumption", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData(null, "FlexConsumption", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData("Cosmos", "Dynamic", FlexSyncTriggersStoreMode.Sql)]
+        [InlineData("true", "Dynamic", FlexSyncTriggersStoreMode.Sql)]
+        public void GetFlexSyncTriggersStoreMode_ReturnsModeOnlyForFlexConsumption(string setting, string sku, FlexSyncTriggersStoreMode expected)
+        {
+            TestEnvironment env = new();
+            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore, setting);
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+
+            Assert.Equal(expected, env.GetFlexSyncTriggersStoreMode());
+        }
+
+        [Theory]
         [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
         [InlineData("FlexConsumption", "", "", "", true)] // not a valid configuration, but testing for thoroughness
         [InlineData(null, "", "container-name", "1", true)] // simulate placeholder mode where SKU not available yet

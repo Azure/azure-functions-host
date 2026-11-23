@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(() => _sku);
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore)).Returns((string)null);
             _mockEnvironment.Setup(p => p.Platform).Returns(System.Runtime.InteropServices.OSPlatform.Windows);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
@@ -549,16 +549,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task TrySyncTriggers_NotifiesPlatform_WhenEnabled(bool functionsNotifyPlatformOnSync)
+        [Fact]
+        public async Task TrySyncTriggers_FlexSyncTriggersStoreDisabled_DoesNotNotifyPlatform()
         {
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
-                .Returns(functionsNotifyPlatformOnSync.ToString());
+            _sku = ScriptConstants.FlexConsumptionSku;
 
             var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
-            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).Returns(Task.CompletedTask);
             var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
@@ -566,9 +562,160 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var syncResult = await syncManager.TrySyncTriggersAsync();
 
                 Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
-                meshServiceClientMock.Verify(
-                    p => p.NotifyTriggersChanged(),
-                    functionsNotifyPlatformOnSync ? Times.Once() : Times.Never());
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Never());
+            }
+        }
+
+        [Theory]
+        [InlineData(PlatformTriggersStoreStatus.Stored, null)]
+        [InlineData(PlatformTriggersStoreStatus.Skipped, null)]
+        [InlineData(PlatformTriggersStoreStatus.Failed, "Platform triggers store failed.")]
+        [InlineData(PlatformTriggersStoreStatus.Timeout, "Platform triggers store timed out.")]
+        [InlineData(PlatformTriggersStoreStatus.NotConfirmed, "Platform triggers store not confirmed.")]
+        public async Task TrySyncTriggers_FlexSyncTriggersStore_FailsOnlyWhenStoreNotConfirmed(PlatformTriggersStoreStatus status, string expectedError)
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore))
+                .Returns(bool.TrueString);
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).ReturnsAsync(status);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncResult = await syncManager.TrySyncTriggersAsync();
+
+                Assert.Equal(1, _mockHttpHandler.RequestCount);
+                Assert.Equal(expectedError == null, syncResult.Success);
+                Assert.Equal(expectedError, syncResult.Error);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Once());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_FlexSyncTriggersStore_NotifiesInParallelWithPublish()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore))
+                .Returns(bool.TrueString);
+
+            var notification = new TaskCompletionSource<PlatformTriggersStoreStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).Returns(notification.Task);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncTask = syncManager.TrySyncTriggersAsync();
+
+                // The SQL publish happens while the platform is still holding the notification.
+                await TestHelpers.Await(() => _mockHttpHandler.RequestCount == 1, timeout: 5000);
+                Assert.False(syncTask.IsCompleted);
+
+                notification.SetResult(PlatformTriggersStoreStatus.Stored);
+                var syncResult = await syncTask;
+                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_FlexSyncTriggersStore_PublishFails_ReportsPublishError()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore))
+                .Returns(bool.TrueString);
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).ReturnsAsync(PlatformTriggersStoreStatus.Stored);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
+                var syncResult = await syncManager.TrySyncTriggersAsync();
+
+                Assert.False(syncResult.Success);
+                Assert.Equal("SyncTriggers call failed (StatusCode=InternalServerError).", syncResult.Error);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Once());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_FlexSyncTriggersStore_BackgroundSyncDoesNotNotify()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore))
+                .Returns(bool.TrueString);
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                // No stored hash, so the background sync publishes.
+                var hashBlob = await syncManager.GetHashBlobAsync();
+                if (hashBlob != null)
+                {
+                    await hashBlob.DeleteIfExistsAsync();
+                }
+
+                var syncResult = await syncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+
+                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
+                Assert.Equal(1, _mockHttpHandler.RequestCount);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Never());
+            }
+        }
+
+        [Theory]
+        [InlineData(PlatformTriggersStoreStatus.Stored, null)]
+        [InlineData(PlatformTriggersStoreStatus.Skipped, null)]
+        [InlineData(PlatformTriggersStoreStatus.Failed, "Platform triggers store failed.")]
+        [InlineData(PlatformTriggersStoreStatus.Timeout, "Platform triggers store timed out.")]
+        public async Task TrySyncTriggers_FlexSyncTriggersStoreCosmos_NotifiesWithoutSqlPublish(PlatformTriggersStoreStatus status, string expectedError)
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore))
+                .Returns(nameof(FlexSyncTriggersStoreMode.Cosmos));
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).ReturnsAsync(status);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncResult = await syncManager.TrySyncTriggersAsync();
+
+                Assert.Equal(0, _mockHttpHandler.RequestCount);
+                Assert.Equal(expectedError == null, syncResult.Success);
+                Assert.Equal(expectedError, syncResult.Error);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Once());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_FlexSyncTriggersStoreCosmos_BackgroundSyncDoesNothing()
+        {
+            _sku = ScriptConstants.FlexConsumptionSku;
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFlexSyncTriggersStore))
+                .Returns(nameof(FlexSyncTriggersStoreMode.Cosmos));
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                // No stored hash, so a background sync would normally publish; with Cosmos it neither publishes nor notifies.
+                var hashBlob = await syncManager.GetHashBlobAsync();
+                await hashBlob.DeleteIfExistsAsync();
+
+                var syncResult = await syncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+
+                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
+                Assert.Equal(0, _mockHttpHandler.RequestCount);
+                meshServiceClientMock.Verify(p => p.NotifyTriggersChanged(), Times.Never());
+                Assert.False(await hashBlob.ExistsAsync());
             }
         }
 
