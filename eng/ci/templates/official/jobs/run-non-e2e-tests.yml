@@ -11,6 +11,8 @@ jobs:
     IntegrationProject: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
   steps:
+  - template: /eng/ci/templates/steps/start-cosmos-emulator.yml@self
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
@@ -74,6 +76,8 @@ jobs:
       az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) --allow-no-subscriptions --federated-token $(ARM_ID_TOKEN)
     displayName: 'Login to Azure'
 
+  - template: /eng/ci/templates/steps/wait-cosmos-emulator.yml@self
+
   - task: DotNetCoreCLI@2
     displayName: Non-E2E integration tests
     inputs:
@@ -84,7 +88,6 @@ jobs:
     env:
       AzureWebJobsStorage: $(Storage)
       AzureWebJobsSecondaryStorage: $(SecondaryStorage)
-      ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
