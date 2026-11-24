@@ -1,7 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Script.Tests.EndToEnd;
 using Microsoft.Extensions.Configuration;
 using Microsoft.WebJobs.Script.Tests;
@@ -46,10 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             // Test that we load the correct native assembly when built against a rid, which removed
             // the runtimes folder. We should be finding the assembly in the bin dir directly.
 
+            var config = TestHelpers.GetTestConfiguration();
+            var connStr = config.GetConnectionString("CosmosDB");
+            var builder = new DbConnectionStringBuilder { ConnectionString = connStr };
+            using DocumentClient documentClient = new(new Uri(builder["AccountEndpoint"].ToString()), builder["AccountKey"].ToString());
+            await documentClient.CreateDatabaseIfNotExistsAsync(new Database { Id = "ItemDb" });
+            await documentClient.CreateDocumentCollectionIfNotExistsAsync(UriFactory.CreateDatabaseUri("ItemDb"), new DocumentCollection { Id = "ItemCollection" });
+
             await RunTest(async () =>
             {
-                var config = TestHelpers.GetTestConfiguration();
-                var connStr = config.GetConnectionString("CosmosDB");
                 string cosmosKey = "ConnectionStrings__CosmosDB";
 
                 var envVars = new Dictionary<string, string>
