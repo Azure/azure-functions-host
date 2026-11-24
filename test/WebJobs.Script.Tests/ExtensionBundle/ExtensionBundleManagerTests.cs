@@ -31,6 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         private const string BundleId = "Microsoft.Azure.Functions.ExtensionBundle";
         private string _downloadPath;
 
+        private static readonly Dictionary<string, string> BundleZipEntries = new()
+        {
+            ["bundle.json"] = "{ \"id\": \"Microsoft.Azure.Functions.ExtensionBundle\" }",
+            ["bin/Extension.dll"] = "extension assembly content",
+            ["bin/Dependency.dll"] = "dependency assembly content"
+        };
+
         public ExtensionBundleManagerTests()
         {
             // using temp path because not all windows build machines would have d drive
@@ -289,6 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             directoryBase.Setup(d => d.Exists(options.DownloadPath)).Returns(true);
             directoryBase.Setup(d => d.EnumerateDirectories(options.DownloadPath)).Returns(new[] { downloadPath });
             fileBase.Setup(f => f.Exists(Path.Combine(downloadPath, "bundle.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(downloadPath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile))).Returns(true);
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
@@ -638,6 +646,147 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Contains(capturingLogger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("Unexpected error downloading extension bundle Zip content", StringComparison.Ordinal));
         }
 
+        [Fact]
+        public async Task GetExtensionBundle_DownloadsBundle_WritesInstallMarkerAndRemovesStaging()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var handler = new BundleZipHandler("2.0.1", BundleZipEntries);
+
+            var path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            Assert.Equal(Path.Combine(_downloadPath, "2.0.1"), path);
+            Assert.True(File.Exists(Path.Combine(path, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile)));
+            Assert.Equal(BundleZipEntries["bin/Extension.dll"], File.ReadAllText(Path.Combine(path, "bin", "Extension.dll")));
+            Assert.Single(Directory.GetDirectories(_downloadPath));
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_UnmarkedBundleAtDownloadLocation_RepairsSameVersion()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string bundlePath = Path.Combine(_downloadPath, "2.0.0");
+            Directory.CreateDirectory(Path.Combine(bundlePath, "bin"));
+            File.WriteAllText(Path.Combine(bundlePath, "bundle.json"), BundleZipEntries["bundle.json"]);
+            File.WriteAllText(Path.Combine(bundlePath, "bin", "Extension.dll"), "trunc");
+            File.WriteAllText(Path.Combine(bundlePath, "customer.txt"), "keep");
+
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var handler = new BundleZipHandler("2.0.0", BundleZipEntries);
+
+            var path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            // The locally found version is repaired; the newer 2.0.1 listed in index.json is not selected.
+            Assert.Equal(bundlePath, path);
+            Assert.Equal(0, handler.IndexRequests);
+            Assert.Equal(1, handler.ZipRequests);
+            Assert.Equal(BundleZipEntries["bin/Extension.dll"], File.ReadAllText(Path.Combine(bundlePath, "bin", "Extension.dll")));
+            Assert.Equal(BundleZipEntries["bin/Dependency.dll"], File.ReadAllText(Path.Combine(bundlePath, "bin", "Dependency.dll")));
+            Assert.Equal("keep", File.ReadAllText(Path.Combine(bundlePath, "customer.txt")));
+            Assert.True(File.Exists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile)));
+            Assert.Single(Directory.GetDirectories(_downloadPath));
+
+            path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            Assert.Equal(bundlePath, path);
+            Assert.Equal(1, handler.ZipRequests);
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_PartialBundleWithoutMetadataAtDownloadLocation_CompletesInstall()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string bundlePath = Path.Combine(_downloadPath, "2.0.1");
+            Directory.CreateDirectory(Path.Combine(bundlePath, "bin"));
+            File.WriteAllText(Path.Combine(bundlePath, "bin", "Extension.dll"), "trunc");
+
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var handler = new BundleZipHandler("2.0.1", BundleZipEntries);
+
+            var path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            Assert.Equal(bundlePath, path);
+            Assert.True(File.Exists(Path.Combine(bundlePath, "bundle.json")));
+            Assert.Equal(BundleZipEntries["bin/Extension.dll"], File.ReadAllText(Path.Combine(bundlePath, "bin", "Extension.dll")));
+            Assert.True(File.Exists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile)));
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_UnmarkedBundleVerificationFails_UsesExistingBundleAndDoesNotRetry()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string bundlePath = Path.Combine(_downloadPath, "2.0.0");
+            Directory.CreateDirectory(bundlePath);
+            File.WriteAllText(Path.Combine(bundlePath, "bundle.json"), BundleZipEntries["bundle.json"]);
+
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var handler = new BundleZipHandler("2.0.0", BundleZipEntries, zipStatusCode: HttpStatusCode.NotFound);
+
+            var path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            Assert.Equal(bundlePath, path);
+            Assert.Equal(1, handler.ZipRequests);
+            Assert.True(File.Exists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleVerificationAttemptedMarkerFile)));
+            Assert.False(File.Exists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile)));
+
+            path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            Assert.Equal(bundlePath, path);
+            Assert.Equal(1, handler.ZipRequests);
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_UnmarkedBundleVerificationStalls_UsesExistingBundleAfterTimeout()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string bundlePath = Path.Combine(_downloadPath, "2.0.0");
+            Directory.CreateDirectory(bundlePath);
+            File.WriteAllText(Path.Combine(bundlePath, "bundle.json"), BundleZipEntries["bundle.json"]);
+
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            manager.UnverifiedBundleVerificationTimeout = TimeSpan.FromMilliseconds(200);
+
+            var path = await manager.GetExtensionBundlePath(new HttpClient(new StalledBodyHandler())).WaitAsync(TimeSpan.FromSeconds(30));
+
+            Assert.Equal(bundlePath, path);
+            Assert.True(File.Exists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleVerificationAttemptedMarkerFile)));
+            Assert.False(File.Exists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile)));
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_RepairDisabled_UsesUnmarkedBundleWithoutDownload()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string bundlePath = Path.Combine(_downloadPath, "2.0.0");
+            Directory.CreateDirectory(bundlePath);
+            File.WriteAllText(Path.Combine(bundlePath, "bundle.json"), BundleZipEntries["bundle.json"]);
+
+            var hostingConfiguration = new FunctionsHostingConfigOptions();
+            hostingConfiguration.Features.Add(ScriptConstants.HostingConfigExtensionBundleRepairDisabled, "1");
+            var manager = new ExtensionBundleManager(options, GetTestAppServiceEnvironment(), MockNullLoggerFactory.CreateLoggerFactory(), hostingConfiguration, new Mock<IHttpClientFactory>().Object);
+            var handler = new BundleZipHandler("2.0.0", BundleZipEntries);
+
+            var path = await manager.GetExtensionBundlePath(new HttpClient(handler));
+
+            Assert.Equal(bundlePath, path);
+            Assert.Equal(0, handler.IndexRequests);
+            Assert.Equal(0, handler.ZipRequests);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_IgnoresStagingDirectories()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var directories = new[]
+            {
+                Path.Combine(_downloadPath, "2.0.0"),
+                Path.Combine(_downloadPath, ScriptConstants.ExtensionBundleStagingDirectoryPrefix + Guid.NewGuid().ToString("N"))
+            };
+
+            Assert.Equal("2.0.0", manager.FindBestVersionMatch(options.Version, directories, BundleId, new FunctionsHostingConfigOptions()));
+        }
+
         private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null, Mock<ILoggerFactory> mockLoggerFactory = null)
         {
             environment = environment ?? new TestEnvironment();
@@ -841,6 +990,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 }
                 ms.Seek(0, SeekOrigin.Begin);
                 return new StreamContent(ms);
+            }
+        }
+
+        private sealed class StalledBodyHandler : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StalledStream()) });
+            }
+
+            private sealed class StalledStream : MemoryStream
+            {
+                public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+                {
+                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                    return 0;
+                }
+
+                public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+                {
+                    return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+                }
+            }
+        }
+
+        private sealed class BundleZipHandler(string version, IDictionary<string, string> entries, HttpStatusCode zipStatusCode = HttpStatusCode.OK) : HttpMessageHandler
+        {
+            public int IndexRequests { get; private set; }
+
+            public int ZipRequests { get; private set; }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var path = request.RequestUri.AbsolutePath;
+                if (path.EndsWith("index.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    IndexRequests++;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[ \"2.0.0\", \"2.0.1\" ]")
+                    });
+                }
+
+                if (path.Contains($"{BundleId}.{version}_", StringComparison.OrdinalIgnoreCase))
+                {
+                    ZipRequests++;
+                    if (zipStatusCode != HttpStatusCode.OK)
+                    {
+                        return Task.FromResult(new HttpResponseMessage(zipStatusCode));
+                    }
+
+                    var stream = new MemoryStream();
+                    using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, true))
+                    {
+                        foreach (var entry in entries)
+                        {
+                            using var writer = new StreamWriter(zip.CreateEntry(entry.Key).Open());
+                            writer.Write(entry.Value);
+                        }
+                    }
+
+                    stream.Seek(0, SeekOrigin.Begin);
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
             }
         }
 

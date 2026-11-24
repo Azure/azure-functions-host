@@ -80,6 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=foo|bar", "foo|bar"];
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), string.Empty, "workflow"]; // default when not configured
 
+                yield return [nameof(FunctionsHostingConfigOptions.ExtensionBundleRepairDisabled), "ExtensionBundleRepairDisabled=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.ExtensionBundleRepairDisabled), "ExtensionBundleRepairDisabled=0", false];
+                yield return [nameof(FunctionsHostingConfigOptions.ExtensionBundleRepairDisabled), string.Empty, false];
+
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly
             }

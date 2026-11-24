@@ -212,6 +212,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a value indicating whether repairing downloaded extension bundles that lack an install completion marker is disabled.
+        /// When disabled, a downloaded bundle is considered complete when its bundle.json file is present.
+        /// </summary>
+        internal bool ExtensionBundleRepairDisabled
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigExtensionBundleRepairDisabled, false);
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

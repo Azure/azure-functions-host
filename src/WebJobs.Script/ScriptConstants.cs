@@ -152,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostingConfigDotNetInProcDisabled = "DotNetInProcDisabled";
         public const string HostingConfigArmWebhookOptInEnforcement = "ArmWebhookOptInEnforcement";
         public const string DefaultArmWebhookOptInExemptExtensions = "workflow";
+        public const string HostingConfigExtensionBundleRepairDisabled = "ExtensionBundleRepairDisabled";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
@@ -208,6 +209,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionBundleDirectory = "ExtensionBundles";
         public const string ExtensionBundleDefaultSourceUri = "https://cdn.functions.azure.com/public";
         public const string ExtensionBundleMetadataFile = "bundle.json";
+        public const string ExtensionBundleInstallCompleteMarkerFile = ".bundle-install-complete";
+        public const string ExtensionBundleVerificationAttemptedMarkerFile = ".bundle-verification-attempted";
+        public const string ExtensionBundleStagingDirectoryPrefix = ".staging-";
         public const string ExtensionBundleVersionIndexFile = "index.json";
         public const string ExtensionBundleBindingMetadataFile = "bindings.json";
         public const string ExtensionBundleTemplatesFile = "templates.json";
