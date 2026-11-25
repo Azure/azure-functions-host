@@ -87,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _disposed;
         private IDisposable _functionLoadRequestResponseEvent;
         private WorkerInitResponse _initMessage;
+        private volatile WorkerRuntimeInfo _reportedRuntimeInfo;
         private IDictionary<string, Exception> _functionLoadErrors = new ConcurrentDictionary<string, Exception>();
         private IDictionary<string, Exception> _metadataRequestErrors = new ConcurrentDictionary<string, Exception>();
         private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
@@ -193,6 +194,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         /// <inheritdoc />
         public RpcWorkerConfig WorkerConfig => _workerConfig;
+
+        /// <inheritdoc />
+        public WorkerRuntimeInfo ReportedRuntimeInfo =>
+            !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.Initialized) ? _reportedRuntimeInfo : null;
 
         /// <summary>
         /// Gets the current script job host options.
@@ -564,6 +569,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", WorkerProcessId);
 
+            // The reload response describes the specialized app, so it replaces any placeholder-time report.
+            _reportedRuntimeInfo = CreateReportedRuntimeInfo(res.WorkerMetadata);
             res.WorkerMetadata?.UpdateWorkerMetadata(_workerConfig);
 
             Utility.ExecuteAfterColdStartDelay(_environment, () => LogWorkerMetadata(res.WorkerMetadata));
@@ -598,6 +605,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage = initMessage.WorkerInitResponse;
             _workerChannelLogger.LogDebug("Worker capabilities: {capabilities}", _initMessage.Capabilities);
 
+            // Capture before UpdateWorkerMetadata so configured defaults are never reported as observed values.
+            _reportedRuntimeInfo = CreateReportedRuntimeInfo(_initMessage.WorkerMetadata);
             _initMessage.WorkerMetadata?.UpdateWorkerMetadata(_workerConfig);
 
             Utility.ExecuteAfterColdStartDelay(_environment, () => LogWorkerMetadata(_initMessage.WorkerMetadata));
@@ -632,6 +641,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 StringComparison.OrdinalIgnoreCase);
 
             return enableUserCodeExceptionCapability;
+        }
+
+        private static WorkerRuntimeInfo CreateReportedRuntimeInfo(WorkerMetadata workerMetadata)
+        {
+            if (workerMetadata is null)
+            {
+                return null;
+            }
+
+            string runtimeName = NullIfEmpty(workerMetadata.RuntimeName);
+            string runtimeVersion = NullIfEmpty(workerMetadata.RuntimeVersion);
+            string workerVersion = NullIfEmpty(workerMetadata.WorkerVersion);
+
+            return runtimeName is null && runtimeVersion is null && workerVersion is null
+                ? null
+                : new WorkerRuntimeInfo(runtimeName, runtimeVersion, workerVersion);
+
+            static string NullIfEmpty(string value) => string.IsNullOrEmpty(value) ? null : value;
         }
 
         private void LogWorkerMetadata(WorkerMetadata workerMetadata)

@@ -109,10 +109,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 status.Errors.Add(Sanitizer.Sanitize(Utility.FlattenException(lastError)));
             }
 
+            status.LanguageWorkers = GetLanguageWorkers(scriptHostManager, serviceProvider);
+
             string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
             _logger.LogInformation(message);
 
             return Ok(status);
+        }
+
+        private static Collection<LanguageWorkerStatus> GetLanguageWorkers(IScriptHostManager scriptHostManager, IServiceProvider serviceProvider)
+        {
+            if (!Utility.TryGetHostService(scriptHostManager, out IScriptHostWorkerManager workerManager))
+            {
+                return null;
+            }
+
+            string workerRuntime = serviceProvider?.GetService<IWorkerRuntimeResolver>()?.GetWorkerRuntime();
+            IReadOnlyList<WorkerRuntimeInfo> runtimes = workerManager.GetWorkerRuntimeInfo(workerRuntime);
+            if (runtimes is not { Count: > 0 })
+            {
+                return null;
+            }
+
+            var languageWorkers = new Collection<LanguageWorkerStatus>();
+            foreach (WorkerRuntimeInfo runtime in runtimes)
+            {
+                languageWorkers.Add(new LanguageWorkerStatus
+                {
+                    RuntimeName = runtime.RuntimeName,
+                    RuntimeVersion = runtime.RuntimeVersion,
+                    WorkerVersion = runtime.WorkerVersion
+                });
+            }
+
+            return languageWorkers;
         }
 
         /// <summary>

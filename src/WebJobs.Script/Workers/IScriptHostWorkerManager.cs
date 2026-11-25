@@ -16,4 +16,14 @@ public interface IScriptHostWorkerManager
     Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception);
 
     Task<IEnumerable<WorkerProcessInfo>> GetWorkerProcessInfoAsync(string workerRuntime);
+
+    /// <summary>
+    /// Gets the runtime information reported by currently initialized language workers.
+    /// </summary>
+    /// <param name="workerRuntime">The configured worker runtime.</param>
+    /// <returns>The distinct worker-reported runtime information. Workers that have not reported metadata are excluded.</returns>
+    IReadOnlyList<WorkerRuntimeInfo> GetWorkerRuntimeInfo(string workerRuntime)
+    {
+        return Array.Empty<WorkerRuntimeInfo>();
+    }
 }

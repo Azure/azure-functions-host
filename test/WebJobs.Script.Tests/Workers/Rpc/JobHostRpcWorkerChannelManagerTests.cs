@@ -185,6 +185,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(_jobHostRpcWorkerChannelManager.GetChannels().Contains(_workerChannelJs2.Object), "Job Manager doesn't contains 'js2'");
         }
 
+        [Fact]
+        public async Task TestGetChannels_ConcurrentShutdown()
+        {
+            using var start = new ManualResetEventSlim();
+            Task reader = Task.Run(() =>
+            {
+                start.Wait();
+                for (int i = 0; i < 10000; i++)
+                {
+                    _jobHostRpcWorkerChannelManager.GetChannels();
+                }
+            });
+            Task writer = Task.Run(() =>
+            {
+                start.Wait();
+                for (int i = 0; i < 10000; i++)
+                {
+                    _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJs1.Object, "node");
+                    _jobHostRpcWorkerChannelManager.ShutdownChannels();
+                }
+            });
+
+            start.Set();
+            await Task.WhenAll(reader, writer);
+            Assert.Empty(_jobHostRpcWorkerChannelManager.GetChannels());
+        }
+
         /// <summary>
         /// Tests <see cref="JobHostRpcWorkerChannelManager.GetChannels(string)"/>.
         /// </summary>

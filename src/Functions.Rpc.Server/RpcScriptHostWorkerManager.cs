@@ -69,6 +69,28 @@ internal class RpcScriptHostWorkerManager : IScriptHostWorkerManager
         return processes;
     }
 
+    public IReadOnlyList<WorkerRuntimeInfo> GetWorkerRuntimeInfo(string workerRuntime)
+    {
+        IEnumerable<IRpcWorkerChannel> channels = _jobHostManager.GetChannels();
+
+        // Only completed WebHost channels are inspected; status reads must never wait for worker startup.
+        var webHostChannels = _webHostManager.GetChannels(workerRuntime)?.Values
+            .Select(tcs => tcs.Task)
+            .Where(task => task.IsCompletedSuccessfully)
+            .Select(task => task.Result);
+
+        if (webHostChannels is not null)
+        {
+            channels = channels.Union(webHostChannels);
+        }
+
+        return channels
+            .Select(channel => channel?.ReportedRuntimeInfo)
+            .Where(info => info is not null)
+            .Distinct()
+            .ToList();
+    }
+
     public Task GetWorkerStatusesAsync()
     {
         // This is only called from one place (HostPerformanceManager) and the original contract was that

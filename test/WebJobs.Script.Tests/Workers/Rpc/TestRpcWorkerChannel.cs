@@ -54,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public RpcWorkerConfig WorkerConfig => _workerConfig;
 
+        public WorkerRuntimeInfo ReportedRuntimeInfo { get; set; }
+
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; set; }
 
         public List<Task> ExecutionContexts => _executionContexts;
