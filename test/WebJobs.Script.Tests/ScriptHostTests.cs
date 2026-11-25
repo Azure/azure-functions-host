@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -26,6 +27,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -1667,6 +1669,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await host.GetScriptHost().InitializeFunctionDescriptorsAsync([], runtime, CancellationToken.None);
 
             Assert.Equal(expectSignal ? 1 : 0, _loggerProvider.GetAllLogMessages().Count(m => string.Equals(m.EventId.Name, "InProcessRetirementRuntime", StringComparison.Ordinal)));
+        }
+
+        [Fact]
+        public async Task InProcessRetirementExtensionRouting_CountsOnlyRetainedAssembliesClaimedByTheHttpProvider()
+        {
+            using var directory = new TempDirectory();
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_loggerProvider));
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(o => o.ScriptPath = directory.Path)
+                .ConfigureServices(s => s.AddSingleton<ILoggerFactory>(loggerFactory))
+                .Build();
+            var scriptHost = host.GetScriptHost();
+            var http = new HttpFunctionDescriptorProvider(scriptHost, scriptHost.ScriptOptions, host.Services.GetServices<IScriptBindingProvider>().ToArray(),
+                Mock.Of<IFunctionInvocationDispatcher>(), loggerFactory, Mock.Of<IScriptApplicationLifetime>(), TimeSpan.FromSeconds(5));
+            var proxy = new ProxyFunctionDescriptorProvider(scriptHost, scriptHost.ScriptOptions, [], loggerFactory);
+            var functions = new[] { "Extension1", "Extension2", "WorkerSupplied" }.Select(name =>
+            {
+                var metadata = new FunctionMetadata { Name = name, ScriptFile = "functions.dll", Language = DotNetScriptTypes.DotNetAssembly };
+                metadata.SetIsCodeless(true);
+                metadata.Bindings.Add(BindingMetadata.Create(JObject.Parse("""{"name":"req","type":"httpTrigger","direction":"in"}""")));
+                return metadata;
+            }).ToArray();
+            InProcessRetirementTelemetry.ObserveMetadata(NullLogger.Instance, functions.Take(2), fromExtension: true);
+            InProcessRetirementTelemetry.ObserveMetadata(NullLogger.Instance, functions.Skip(2), fromExtension: false);
+
+            var descriptors = await scriptHost.GetFunctionDescriptorsAsync(functions, [proxy, http], "custom", CancellationToken.None);
+
+            Assert.Equal(3, descriptors.Count);
+            var trace = Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementExtensionRouting", StringComparison.Ordinal));
+            Assert.Contains("Runtime=custom, Provider=HttpFunctionDescriptorProvider, Count=2.", trace.FormattedMessage);
         }
 
         [Fact]

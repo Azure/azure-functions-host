@@ -14,12 +14,17 @@ internal static partial class InProcessRetirementTelemetry
     // The proposed file parser lets custom handlers claim their script files regardless of
     // extension. Don't change the language used by today's host to model that exception.
     private static readonly ConditionalWeakTable<FunctionMetadata, object> CustomHandlerFiles = new();
+    private static readonly ConditionalWeakTable<FunctionMetadata, object> RetainedExtensionAssemblies = new();
 
     internal static void TrackCustomHandlerFile(FunctionMetadata metadata) => CustomHandlerFiles.GetOrCreateValue(metadata);
 
-    internal static void LogMetadata(ILogger logger, IEnumerable<FunctionMetadata> functions, bool fromExtension)
+    internal static bool IsRetainedExtensionAssembly(FunctionMetadata metadata) => RetainedExtensionAssemblies.TryGetValue(metadata, out _);
+
+    internal static void ObserveMetadata(ILogger logger, IEnumerable<FunctionMetadata> functions, bool fromExtension)
     {
-        if (!logger.IsEnabled(LogLevel.Debug))
+        // The descriptor pass may use a different logger and may rewrite the language.
+        // Remember extension ownership at discovery, independently of the discovery logger.
+        if (!fromExtension && !logger.IsEnabled(LogLevel.Debug))
         {
             return;
         }
@@ -38,6 +43,7 @@ internal static partial class InProcessRetirementTelemetry
             bool isAssembly = string.Equals(function.Language, DotNetScriptTypes.DotNetAssembly, StringComparison.OrdinalIgnoreCase);
             if (fromExtension && function.IsCodeless() && isAssembly)
             {
+                RetainedExtensionAssemblies.GetOrCreateValue(function);
                 continue;
             }
 
@@ -77,4 +83,10 @@ internal static partial class InProcessRetirementTelemetry
 
     [LoggerMessage(423, LogLevel.Debug, "The dotnet-isolated payload mismatch compatibility path was used.")]
     internal static partial void InProcessRetirementIsolatedFallback(ILogger logger);
+
+    [LoggerMessage(424, LogLevel.Debug, "Host metadata parsing skipped a function declaring configurationSource=attributes. Runtime={runtime}.")]
+    internal static partial void InProcessRetirementSkippedAttributes(ILogger logger, string runtime);
+
+    [LoggerMessage(425, LogLevel.Debug, "Retained precompiled extension descriptors: Runtime={runtime}, Provider={provider}, Count={count}.")]
+    internal static partial void InProcessRetirementExtensionRouting(ILogger logger, string runtime, string provider, int count);
 }

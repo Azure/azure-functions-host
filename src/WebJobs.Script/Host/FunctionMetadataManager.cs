@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadataList.AddRange(immutableFunctionMetadata);
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
-                    InProcessRetirementTelemetry.LogMetadata(_logger, immutableFunctionMetadata, fromExtension: false);
+                    InProcessRetirementTelemetry.ObserveMetadata(_logger, immutableFunctionMetadata, fromExtension: false);
                 }
             }
 
@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     if (!_environment.IsPlaceholderModeEnabled())
                     {
-                        InProcessRetirementTelemetry.LogMetadata(_logger, metadataArray, fromExtension: true);
+                        InProcessRetirementTelemetry.ObserveMetadata(_logger, metadataArray, fromExtension: true);
                     }
                 }
             }
