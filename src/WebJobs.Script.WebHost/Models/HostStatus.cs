@@ -78,5 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "extensionBundle", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public ExtensionBundle ExtensionBundle { get; set; }
+
+        /// <summary>
+        /// Gets or sets the runtimes reported by currently initialized language workers.
+        /// This is omitted when no worker has reported runtime information.
+        /// </summary>
+        [JsonProperty(PropertyName = "languageWorkers", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public Collection<LanguageWorkerStatus> LanguageWorkers { get; set; }
     }
 }

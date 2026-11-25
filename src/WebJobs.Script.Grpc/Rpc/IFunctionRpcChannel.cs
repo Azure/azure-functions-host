@@ -21,6 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         RpcWorkerConfig WorkerConfig { get; }
 
         /// <summary>
+        /// Gets the runtime information most recently reported by the initialized worker.
+        /// </summary>
+        /// <value>The worker-reported runtime information, or <see langword="null"/> when unavailable.</value>
+        WorkerRuntimeInfo ReportedRuntimeInfo { get; }
+
+        /// <summary>
         /// Gets the invocation input buffers keyed by function identifier.
         /// </summary>
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }

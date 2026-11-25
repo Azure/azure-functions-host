@@ -21,10 +21,13 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -138,6 +141,71 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Contains(Sanitizer.SecretReplacement, error);
             Assert.DoesNotContain(secret, error);
+        }
+
+        [Fact]
+        public async Task GetHostStatus_IncludesWorkerReportedRuntimeInfo()
+        {
+            var mockWorkerManager = new Mock<IScriptHostWorkerManager>(MockBehavior.Strict);
+            mockWorkerManager.Setup(p => p.GetWorkerRuntimeInfo("node")).Returns(
+            [
+                new WorkerRuntimeInfo("node", "22.11.0", "3.10.1"),
+                new WorkerRuntimeInfo("node", null, null)
+            ]);
+
+            HostStatus status = await GetHostStatusWithWorkerManagerAsync(mockWorkerManager.Object, "node");
+
+            Assert.Collection(status.LanguageWorkers,
+                worker =>
+                {
+                    Assert.Equal("node", worker.RuntimeName);
+                    Assert.Equal("22.11.0", worker.RuntimeVersion);
+                    Assert.Equal("3.10.1", worker.WorkerVersion);
+                },
+                worker =>
+                {
+                    Assert.Equal("node", worker.RuntimeName);
+                    Assert.Null(worker.RuntimeVersion);
+                    Assert.Null(worker.WorkerVersion);
+                });
+
+            JArray languageWorkers = (JArray)JObject.FromObject(status)["languageWorkers"];
+            Assert.Equal("""{"runtimeName":"node","runtimeVersion":"22.11.0","workerVersion":"3.10.1"}""", languageWorkers[0].ToString(Formatting.None));
+            Assert.Equal("""{"runtimeName":"node"}""", languageWorkers[1].ToString(Formatting.None));
+        }
+
+        [Fact]
+        public async Task GetHostStatus_NoWorkerReportedRuntimeInfo_OmitsLanguageWorkers()
+        {
+            var mockWorkerManager = new Mock<IScriptHostWorkerManager>(MockBehavior.Strict);
+            mockWorkerManager.Setup(p => p.GetWorkerRuntimeInfo("node")).Returns([]);
+
+            HostStatus status = await GetHostStatusWithWorkerManagerAsync(mockWorkerManager.Object, "node");
+
+            Assert.Null(status.LanguageWorkers);
+            Assert.False(JObject.FromObject(status).ContainsKey("languageWorkers"));
+        }
+
+        private async Task<HostStatus> GetHostStatusWithWorkerManagerAsync(IScriptHostWorkerManager workerManager, string workerRuntime)
+        {
+            var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            mockScriptHostManager.SetupGet(p => p.State).Returns(ScriptHostState.Running);
+            mockScriptHostManager.SetupGet(p => p.LastError).Returns((Exception)null);
+            mockScriptHostManager.As<IServiceProvider>().Setup(p => p.GetService(typeof(IScriptHostWorkerManager))).Returns(workerManager);
+
+            var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
+            mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("test123");
+
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(p => p.GetWorkerRuntime(null)).Returns(workerRuntime);
+
+            var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
+            mockServiceProvider.Setup(p => p.GetService(typeof(IExtensionBundleManager))).Returns(null);
+            mockServiceProvider.Setup(p => p.GetService(typeof(IWorkerRuntimeResolver))).Returns(mockRuntimeResolver.Object);
+
+            var result = Assert.IsType<OkObjectResult>(
+                await _hostController.GetHostStatus(mockScriptHostManager.Object, mockHostIdProvider.Object, mockServiceProvider.Object));
+            return Assert.IsType<HostStatus>(result.Value);
         }
 
         [Theory]

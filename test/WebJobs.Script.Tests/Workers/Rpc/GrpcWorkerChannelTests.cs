@@ -510,6 +510,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task ReportedRuntimeInfo_UsesWorkerMetadataFromInitAndReload()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.WorkerInitRequest,
+                _ => _testFunctionRpcService.PublishWorkerInitResponseEvent(workerMetadata: new WorkerMetadata
+                {
+                    RuntimeName = "node",
+                    RuntimeVersion = "22.11.0",
+                    WorkerVersion = "3.10.1"
+                }));
+
+            await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            Assert.Equal(new WorkerRuntimeInfo("node", "22.11.0", "3.10.1"), _workerChannel.ReportedRuntimeInfo);
+
+            Task<bool> reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization: true);
+            Assert.True(await reloadTask.WaitAsync(TimeSpan.FromSeconds(5)));
+
+            Assert.Equal(new WorkerRuntimeInfo(".NET", "7.0", "1.0.0"), _workerChannel.ReportedRuntimeInfo);
+
+            _workerChannel.Dispose();
+
+            Assert.Null(_workerChannel.ReportedRuntimeInfo);
+        }
+
+        [Fact]
+        public async Task ReportedRuntimeInfo_WithoutWorkerMetadata_DoesNotUseConfiguredDefaults()
+        {
+            _testWorkerConfig.Description.DefaultRuntimeName = "configuredName";
+            _testWorkerConfig.Description.DefaultRuntimeVersion = "configuredVersion";
+            await CreateDefaultWorkerChannel(autoStart: false);
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.WorkerInitRequest,
+                _ => _testFunctionRpcService.PublishWorkerInitResponseEvent(workerMetadata: new WorkerMetadata()));
+
+            await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            Assert.Null(_workerChannel.ReportedRuntimeInfo);
+        }
+
+        [Fact]
+        public async Task ReportedRuntimeInfo_ReloadWithoutWorkerMetadata_ClearsInitMetadata()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.WorkerInitRequest,
+                _ => _testFunctionRpcService.PublishWorkerInitResponseEvent(workerMetadata: new WorkerMetadata { RuntimeName = "placeholder" }));
+            await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            Assert.NotNull(_workerChannel.ReportedRuntimeInfo);
+
+            Task<bool> reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization: false);
+            Assert.True(await reloadTask.WaitAsync(TimeSpan.FromSeconds(5)));
+
+            Assert.Null(_workerChannel.ReportedRuntimeInfo);
+        }
+
+        [Fact]
         public async Task WorkerInitResponse_WithEmptyAppCapabilities_DoesNotRegisterInStore()
         {
             await CreateDefaultWorkerChannel(autoStart: false);
