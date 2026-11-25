@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Text.Json.Serialization;
+using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
@@ -11,6 +12,7 @@ namespace Azure.Functions.WorkerProxy.Management;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(WorkerAssignRequest))]
 [JsonSerializable(typeof(WorkerInstanceState))]
+[JsonSerializable(typeof(SplitWorkerOriginState))]
 [JsonSerializable(typeof(WorkerApiErrorResponse))]
 [JsonSerializable(typeof(RequestValidationResponse))]
 internal sealed partial class WorkerProxyJsonContext : JsonSerializerContext;

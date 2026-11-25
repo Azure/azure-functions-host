@@ -9,8 +9,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// Identity fields are required. The directory may be empty for Preconfigured but must be nonblank
+/// for SpecializationRequired. HTTP concurrency is optional. Configuration is currently retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -30,6 +30,12 @@ internal sealed class WorkerAssignRequest
     public string? FunctionGroupName { get; init; }
 
     public bool? IsAlwaysReady { get; init; }
+
+    /// <summary>
+    /// Gets the optional platform-owned maximum number of concurrent HTTP requests for this worker.
+    /// Missing or nonpositive values leave autonomous Host scale-in disabled for this worker.
+    /// </summary>
+    public int? MaxHttpConcurrency { get; init; }
 
     public Dictionary<string, string?>? Environment { get; init; }
 

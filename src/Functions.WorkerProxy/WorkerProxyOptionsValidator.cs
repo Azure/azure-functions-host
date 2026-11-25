@@ -20,6 +20,12 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
     public ValidateOptionsResult Validate(string? name, WorkerProxyOptions options)
     {
         List<string> failures = [];
+        if (options.NeverLinkedTimeout <= TimeSpan.Zero ||
+            options.NeverLinkedTimeout.TotalMilliseconds > uint.MaxValue - 1)
+        {
+            failures.Add($"{nameof(options.NeverLinkedTimeout)} must be positive and within the supported timer range.");
+        }
+
         if (string.IsNullOrWhiteSpace(options.PodName))
         {
             failures.Add($"{nameof(options.PodName)} must specify a nonempty platform-provided pod name.");

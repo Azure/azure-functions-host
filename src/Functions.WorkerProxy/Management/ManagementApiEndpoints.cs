@@ -30,6 +30,8 @@ internal static class ManagementApiEndpoints
             .AllowAnonymous();
         endpoints.MapGet("/admin/worker/state", ManagementApiHandlers.GetWorkerStateAsync)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
+        endpoints.MapPost("/admin/infra/instanceState", ManagementApiHandlers.PostInfraInstanceStateAsync)
+            .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
     }
 
     private static ValueTask<object?> DisableResponseCaching(EndpointFilterInvocationContext context, EndpointFilterDelegate next)

@@ -51,6 +51,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
+    <InternalsVisibleTo Include="Azure.Functions.Rpc.Client.Tests" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Identity;
 using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script.Composition;
@@ -61,6 +62,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
                 ActivityHeadersPropagator = null
             });
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
+        services.AddHttpOnDemandWorkerScaleIn();
 
         // Compute separation does not run a placeholder ScriptHost. The ScriptHost starts after the first worker
         // links, so specialization must not wait to restart it.
