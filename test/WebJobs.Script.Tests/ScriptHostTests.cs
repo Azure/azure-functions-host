@@ -1644,6 +1644,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("DOTNET", false, false, true)]
+        [InlineData("dotnet", true, false, false)]
+        [InlineData("dotnet", false, true, false)]
+        [InlineData("dotnet-isolated", false, false, false)]
+        public async Task InProcessRetirementRuntime_ReportsOnlySingleLanguageDotNetSelection(string runtime, bool placeholder, bool multiLanguage, bool expectSignal)
+        {
+            using var directory = new TempDirectory();
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, placeholder ? "1" : "0");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multiLanguage ? ScriptConstants.WorkFlowAppKind : "functionapp");
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_loggerProvider));
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = directory.Path, configureRootServices: s => s.AddSingleton<IEnvironment>(_testEnvironment))
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IEnvironment>(_testEnvironment);
+                    s.AddSingleton<ILoggerFactory>(loggerFactory);
+                    s.AddSingleton(Mock.Of<IWorkerFunctionDescriptorProviderFactory>());
+                })
+                .Build();
+
+            await host.GetScriptHost().InitializeFunctionDescriptorsAsync([], runtime, CancellationToken.None);
+
+            Assert.Equal(expectSignal ? 1 : 0, _loggerProvider.GetAllLogMessages().Count(m => string.Equals(m.EventId.Name, "InProcessRetirementRuntime", StringComparison.Ordinal)));
+        }
+
+        [Fact]
+        public async Task InProcessRetirementIsolatedFallback_ReportsMismatchWithoutPreventingRewrite()
+        {
+            using var directory = new TempDirectory();
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_loggerProvider));
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(o => o.ScriptPath = directory.Path)
+                .ConfigureServices(s => s.AddSingleton<ILoggerFactory>(loggerFactory))
+                .Build();
+            var metadata = new FunctionMetadata { Name = "Assembly", Language = DotNetScriptTypes.DotNetAssembly };
+            var scriptHost = host.GetScriptHost();
+
+            await scriptHost.GetFunctionDescriptorsAsync([metadata], [], "dotnet-isolated", CancellationToken.None);
+            Assert.Equal("dotnet-isolated", metadata.Language);
+            await scriptHost.GetFunctionDescriptorsAsync([metadata], [], "dotnet-isolated", CancellationToken.None);
+            Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementIsolatedFallback", StringComparison.Ordinal));
+        }
+
+        [Theory]
         [InlineData("python", "main.py", "python", "python")]
         [InlineData("dotnet", "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)]
         [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet

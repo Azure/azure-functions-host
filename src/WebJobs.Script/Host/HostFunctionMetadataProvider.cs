@@ -162,6 +162,11 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
             {
                 functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionsWorkerRuntime);
+                if (string.Equals(functionsWorkerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
+                    && functionMetadata.IsDotNetInProc() && !functionMetadata.IsDirect())
+                {
+                    InProcessRetirementTelemetry.TrackCustomHandlerFile(functionMetadata);
+                }
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 

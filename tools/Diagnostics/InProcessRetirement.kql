@@ -1,0 +1,27 @@
+// Set the exact instrumented host version and rollout window. Run both results together.
+let instrumentedVersion = "<host version>";
+let since = ago(7d);
+let startup = FunctionsLogs
+    | where HostVersion == instrumentedVersion
+    | where EventName in ("DescriptorsCreated", "InProcessRetirementRuntime", "InProcessRetirementMetadata", "InProcessRetirementIsolatedFallback")
+    | extend ObservedAt = todatetime(EventTimestamp)
+    | where ObservedAt >= since;
+// Positive control for collection of Debug Host.Startup events on this release.
+startup
+| where EventName == "DescriptorsCreated"
+| distinct SubscriptionId, AppName, SlotName
+| count;
+// One row per potentially affected app/slot, regardless of restarts or refreshes.
+startup
+| where EventName != "DescriptorsCreated"
+| summarize FirstSeen=min(ObservedAt), LastSeen=max(ObservedAt),
+            Signals=make_set(EventName), Evidence=make_set(Summary, 32) by SubscriptionId, AppName, SlotName
+| order by LastSeen desc
+
+// Runtime: the single-language host selected dotnet (configured or inferred).
+// Metadata: counts per provider read, before the allowlist and isolated fallback.
+// Fallback: the host tolerated a dotnet-isolated payload mismatch; this alone
+// does not establish that a customer function executed in-process.
+// Restarts and metadata refreshes repeat evidence. Do not sum counts across rows.
+// No hits with no observed starts is inconclusive; the control is not proof of fleet coverage.
+// Files rejected by today's parser before it returns metadata are not counted.

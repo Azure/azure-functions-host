@@ -185,6 +185,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void InProcessRetirementMetadata_ReportsAffectedModelsBeforeAllowListAndPreservesProviderFunctions()
+        {
+            var assembly = new FunctionMetadata { Name = "Customer", Language = DotNetScriptTypes.DotNetAssembly };
+            assembly.SetIsCodeless(true);
+            assembly.SetIsDisabled(true);
+            var direct = new FunctionMetadata { Name = "Direct", Language = "dotnet-isolated" };
+            direct.SetIsDirect(true);
+            var isolated = new FunctionMetadata { Name = "Isolated", Language = "dotnet-isolated", ScriptFile = "app.dll" };
+            _mockFunctionMetadataProvider.Setup(p => p.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
+                .ReturnsAsync([assembly, direct, isolated]);
+
+            var extension = new Mock<IFunctionProvider>();
+            extension.Setup(p => p.GetFunctionMetadataAsync()).ReturnsAsync([
+                new FunctionMetadata { Name = "RetainedAssembly", Language = DotNetScriptTypes.DotNetAssembly },
+                new FunctionMetadata { Name = "ProviderScript", Language = DotNetScriptTypes.CSharp },
+                new FunctionMetadata { Name = "ProviderRaw", Language = DotNetScriptTypes.RawDotNetAssembly },
+                new ProxyFunctionMetadata(null) { Name = "Proxy" }
+            ]);
+
+            _scriptJobHostOptions.Functions = [isolated.Name];
+            var loggerProvider = new TestLoggerProvider();
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(loggerProvider));
+            using var manager = TestFunctionMetadataManager.GetFunctionMetadataManager(Options.Create(_scriptJobHostOptions),
+                _mockFunctionMetadataProvider.Object, [extension.Object], loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            Assert.Same(isolated, Assert.Single(manager.GetFunctionMetadata(false)));
+            Assert.Equal(7, manager.GetFunctionMetadata(false, applyAllowList: false).Length);
+            var traces = loggerProvider.GetAllLogMessages().Where(m => string.Equals(m.EventId.Name, "InProcessRetirementMetadata", StringComparison.Ordinal));
+            Assert.Collection(traces,
+                m => Assert.Contains("App function metadata: Direct=1, CSharp=0, DotNetAssembly=1, RawDotNetAssembly=0", m.FormattedMessage),
+                m => Assert.Contains("Extension function metadata: Direct=0, CSharp=1, DotNetAssembly=0, RawDotNetAssembly=1", m.FormattedMessage));
+        }
+
+        [Fact]
+        public void InProcessRetirementMetadata_DoesNotCountPlaceholderWarmup()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var warmup = new FunctionMetadata { Name = "WarmUp", Language = DotNetScriptTypes.CSharp };
+            _mockFunctionMetadataProvider.Setup(p => p.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false)).ReturnsAsync([warmup]);
+            var loggerProvider = new TestLoggerProvider();
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(loggerProvider));
+            using var manager = new FunctionMetadataManager(Options.Create(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, _mockScriptHostManager.Object,
+                loggerFactory, environment, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), Options.Create(new FunctionMetadataOptions()));
+
+            Assert.Same(warmup, Assert.Single(manager.GetFunctionMetadata(false)));
+            Assert.DoesNotContain(loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementMetadata", StringComparison.Ordinal));
+        }
+
+        [Fact]
         public void FunctionMetadataManager_LoadFunctionMetadata_Throws_WhenFunctionProviderThrows()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();

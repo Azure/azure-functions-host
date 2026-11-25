@@ -597,6 +597,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
+                InProcessRetirementTelemetry.InProcessRetirementRuntime(_logger);
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
@@ -824,6 +825,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                     if (!payloadMatchesWorkerRuntime)
                     {
+                        InProcessRetirementTelemetry.InProcessRetirementIsolatedFallback(_logger);
                         UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
                         throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
                     }

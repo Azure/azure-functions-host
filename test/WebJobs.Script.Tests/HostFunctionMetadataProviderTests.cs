@@ -356,6 +356,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void InProcessRetirementMetadata_CustomHandlerOwnsScriptFilesButNotDirectIndexing()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "CustomHandler");
+            var files = new MockFileSystem(new Dictionary<string, MockFileData> { [Path.Combine(root, "run.csx")] = new MockFileData(string.Empty) });
+            var json = JObject.Parse("""{"scriptFile":"run.csx","bindings":[{"name":"req","type":"httpTrigger"}]}""");
+            var logger = new TestLogger("Host.Startup");
+            var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Handler", json, root, files, [], "CUSTOM");
+
+            InProcessRetirementTelemetry.LogMetadata(logger, [metadata], fromExtension: false);
+            Assert.Empty(logger.GetLogMessages());
+            Assert.Equal(DotNetScriptTypes.CSharp, metadata.Language);
+
+            json["configurationSource"] = "attributes";
+            metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Direct", json, root, files, [], "CUSTOM");
+            InProcessRetirementTelemetry.LogMetadata(logger, [metadata], fromExtension: false);
+            Assert.Contains("Direct=1", Assert.Single(logger.GetLogMessages()).FormattedMessage);
+        }
+
+        [Fact]
         public void ParseFunctionMetadata_MasksSensitiveDataInBindings()
         {
             const string functionJson = @"{

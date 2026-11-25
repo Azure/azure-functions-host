@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -165,6 +166,10 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!immutableFunctionMetadata.IsDefaultOrEmpty)
             {
                 functionMetadataList.AddRange(immutableFunctionMetadata);
+                if (!_environment.IsPlaceholderModeEnabled())
+                {
+                    InProcessRetirementTelemetry.LogMetadata(_logger, immutableFunctionMetadata, fromExtension: false);
+                }
             }
 
             if (!_functionMetadataProvider.FunctionErrors?.IsEmpty ?? false)
@@ -283,6 +288,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         distinctFunctionNames.Add(metadata.Name);
                         functionMetadataList.Add(metadata);
+                    }
+
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        InProcessRetirementTelemetry.LogMetadata(_logger, metadataArray, fromExtension: true);
                     }
                 }
             }
