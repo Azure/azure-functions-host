@@ -381,6 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, provider.FunctionErrors.Count);
             Assert.Contains("At least one binding must be declared.", Assert.Single(provider.FunctionErrors["Stale"]));
             var trace = Assert.Single(logger.GetLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementSkippedAttributes", StringComparison.Ordinal));
+            Assert.Equal(903, trace.EventId.Id);
             Assert.Contains("Runtime=node.", trace.FormattedMessage);
         }
 

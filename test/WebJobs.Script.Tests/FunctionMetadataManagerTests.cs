@@ -214,8 +214,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(7, manager.GetFunctionMetadata(false, applyAllowList: false).Length);
             var traces = loggerProvider.GetAllLogMessages().Where(m => string.Equals(m.EventId.Name, "InProcessRetirementMetadata", StringComparison.Ordinal));
             Assert.Collection(traces,
-                m => Assert.Contains("App function metadata: Direct=1, CSharp=0, DotNetAssembly=1, RawDotNetAssembly=0", m.FormattedMessage),
-                m => Assert.Contains("Extension function metadata: Direct=0, CSharp=1, DotNetAssembly=0, RawDotNetAssembly=1", m.FormattedMessage));
+                m =>
+                {
+                    Assert.Equal(901, m.EventId.Id);
+                    Assert.Contains("App function metadata: Direct=1, CSharp=0, DotNetAssembly=1, RawDotNetAssembly=0", m.FormattedMessage);
+                },
+                m =>
+                {
+                    Assert.Equal(901, m.EventId.Id);
+                    Assert.Contains("Extension function metadata: Direct=0, CSharp=1, DotNetAssembly=0, RawDotNetAssembly=1", m.FormattedMessage);
+                });
         }
 
         [Fact]

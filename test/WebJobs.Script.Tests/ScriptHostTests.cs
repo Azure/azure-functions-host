@@ -1668,7 +1668,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await host.GetScriptHost().InitializeFunctionDescriptorsAsync([], runtime, CancellationToken.None);
 
-            Assert.Equal(expectSignal ? 1 : 0, _loggerProvider.GetAllLogMessages().Count(m => string.Equals(m.EventId.Name, "InProcessRetirementRuntime", StringComparison.Ordinal)));
+            var traces = _loggerProvider.GetAllLogMessages().Where(m => string.Equals(m.EventId.Name, "InProcessRetirementRuntime", StringComparison.Ordinal)).ToArray();
+            Assert.Equal(expectSignal ? 1 : 0, traces.Length);
+            Assert.All(traces, trace => Assert.Equal(900, trace.EventId.Id));
         }
 
         [Fact]
@@ -1698,6 +1700,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(3, descriptors.Count);
             var trace = Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementExtensionRouting", StringComparison.Ordinal));
+            Assert.Equal(904, trace.EventId.Id);
             Assert.Contains("Runtime=custom, Provider=HttpFunctionDescriptorProvider, Count=2.", trace.FormattedMessage);
         }
 
@@ -1716,7 +1719,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await scriptHost.GetFunctionDescriptorsAsync([metadata], [], "dotnet-isolated", CancellationToken.None);
             Assert.Equal("dotnet-isolated", metadata.Language);
             await scriptHost.GetFunctionDescriptorsAsync([metadata], [], "dotnet-isolated", CancellationToken.None);
-            Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementIsolatedFallback", StringComparison.Ordinal));
+            var trace = Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementIsolatedFallback", StringComparison.Ordinal));
+            Assert.Equal(902, trace.EventId.Id);
         }
 
         [Theory]

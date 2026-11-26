@@ -75,18 +75,19 @@ internal static partial class InProcessRetirementTelemetry
         }
     }
 
-    [LoggerMessage(421, LogLevel.Debug, "In-process retirement would reject the selected dotnet runtime.")]
+    // EventId range is 900-999
+    [LoggerMessage(900, LogLevel.Debug, "In-process retirement would reject the selected dotnet runtime.")]
     internal static partial void InProcessRetirementRuntime(ILogger logger);
 
-    [LoggerMessage(422, LogLevel.Debug, "In-process retirement would reject {source} function metadata: Direct={direct}, CSharp={script}, DotNetAssembly={assembly}, RawDotNetAssembly={rawAssembly}.")]
+    [LoggerMessage(901, LogLevel.Debug, "In-process retirement would reject {source} function metadata: Direct={direct}, CSharp={script}, DotNetAssembly={assembly}, RawDotNetAssembly={rawAssembly}.")]
     private static partial void InProcessRetirementMetadata(ILogger logger, string source, int direct, int script, int assembly, int rawAssembly);
 
-    [LoggerMessage(423, LogLevel.Debug, "The dotnet-isolated payload mismatch compatibility path was used.")]
+    [LoggerMessage(902, LogLevel.Debug, "The dotnet-isolated payload mismatch compatibility path was used.")]
     internal static partial void InProcessRetirementIsolatedFallback(ILogger logger);
 
-    [LoggerMessage(424, LogLevel.Debug, "Host metadata parsing skipped a function declaring configurationSource=attributes. Runtime={runtime}.")]
+    [LoggerMessage(903, LogLevel.Debug, "Host metadata parsing skipped a function declaring configurationSource=attributes. Runtime={runtime}.")]
     internal static partial void InProcessRetirementSkippedAttributes(ILogger logger, string runtime);
 
-    [LoggerMessage(425, LogLevel.Debug, "Retained precompiled extension descriptors: Runtime={runtime}, Provider={provider}, Count={count}.")]
+    [LoggerMessage(904, LogLevel.Debug, "Retained precompiled extension descriptors: Runtime={runtime}, Provider={provider}, Count={count}.")]
     internal static partial void InProcessRetirementExtensionRouting(ILogger logger, string runtime, string provider, int count);
 }
