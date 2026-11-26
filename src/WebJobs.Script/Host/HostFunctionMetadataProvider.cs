@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -92,6 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.ReadFunctionMetadata, functionDirectory)))
             {
                 string functionName = null;
+                JObject functionConfig = null;
+                string workerRuntime = null;
 
                 try
                 {
@@ -106,15 +109,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     Utility.ValidateName(functionName);
 
-                    JObject functionConfig = JObject.Parse(json);
+                    functionConfig = JObject.Parse(json);
+                    workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
 
-                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem,
-                        workerConfigs, _workerRuntimeResolver.GetWorkerRuntime());
+                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem, workerConfigs, workerRuntime);
                 }
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
                     Utility.AddFunctionError(_functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                    if (string.Equals(functionConfig?.GetValue("configurationSource", StringComparison.OrdinalIgnoreCase)?.ToString(), "attributes", StringComparison.OrdinalIgnoreCase))
+                    {
+                        InProcessRetirementTelemetry.InProcessRetirementSkippedAttributes(_logger, Sanitizer.Sanitize(workerRuntime ?? "(unset)"));
+                    }
                 }
                 return null;
             }
@@ -162,6 +169,11 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
             {
                 functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionsWorkerRuntime);
+                if (string.Equals(functionsWorkerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
+                    && functionMetadata.IsDotNetInProc() && !functionMetadata.IsDirect())
+                {
+                    InProcessRetirementTelemetry.TrackCustomHandlerFile(functionMetadata);
+                }
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 

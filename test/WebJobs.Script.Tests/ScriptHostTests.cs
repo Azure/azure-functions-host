@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -26,6 +27,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -1641,6 +1643,84 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We should have a warning for host id in the start up logger
             var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
             Assert.Single(logger.GetLogMessages(), x => x.FormattedMessage.Contains("Host id explicitly set in configuration."));
+        }
+
+        [Theory]
+        [InlineData("DOTNET", false, false, true)]
+        [InlineData("dotnet", true, false, false)]
+        [InlineData("dotnet", false, true, false)]
+        [InlineData("dotnet-isolated", false, false, false)]
+        public async Task InProcessRetirementRuntime_ReportsOnlySingleLanguageDotNetSelection(string runtime, bool placeholder, bool multiLanguage, bool expectSignal)
+        {
+            using var directory = new TempDirectory();
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, placeholder ? "1" : "0");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multiLanguage ? ScriptConstants.WorkFlowAppKind : "functionapp");
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_loggerProvider));
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = directory.Path, configureRootServices: s => s.AddSingleton<IEnvironment>(_testEnvironment))
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IEnvironment>(_testEnvironment);
+                    s.AddSingleton<ILoggerFactory>(loggerFactory);
+                    s.AddSingleton(Mock.Of<IWorkerFunctionDescriptorProviderFactory>());
+                })
+                .Build();
+
+            await host.GetScriptHost().InitializeFunctionDescriptorsAsync([], runtime, CancellationToken.None);
+
+            var traces = _loggerProvider.GetAllLogMessages().Where(m => string.Equals(m.EventId.Name, "InProcessRetirementRuntime", StringComparison.Ordinal)).ToArray();
+            Assert.Equal(expectSignal ? 1 : 0, traces.Length);
+            Assert.All(traces, trace => Assert.Equal(900, trace.EventId.Id));
+        }
+
+        [Fact]
+        public async Task InProcessRetirementExtensionRouting_CountsOnlyRetainedAssembliesClaimedByTheHttpProvider()
+        {
+            using var directory = new TempDirectory();
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_loggerProvider));
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(o => o.ScriptPath = directory.Path)
+                .ConfigureServices(s => s.AddSingleton<ILoggerFactory>(loggerFactory))
+                .Build();
+            var scriptHost = host.GetScriptHost();
+            var http = new HttpFunctionDescriptorProvider(scriptHost, scriptHost.ScriptOptions, host.Services.GetServices<IScriptBindingProvider>().ToArray(),
+                Mock.Of<IFunctionInvocationDispatcher>(), loggerFactory, Mock.Of<IScriptApplicationLifetime>(), TimeSpan.FromSeconds(5));
+            var proxy = new ProxyFunctionDescriptorProvider(scriptHost, scriptHost.ScriptOptions, [], loggerFactory);
+            var functions = new[] { "Extension1", "Extension2", "WorkerSupplied" }.Select(name =>
+            {
+                var metadata = new FunctionMetadata { Name = name, ScriptFile = "functions.dll", Language = DotNetScriptTypes.DotNetAssembly };
+                metadata.SetIsCodeless(true);
+                metadata.Bindings.Add(BindingMetadata.Create(JObject.Parse("""{"name":"req","type":"httpTrigger","direction":"in"}""")));
+                return metadata;
+            }).ToArray();
+            InProcessRetirementTelemetry.ObserveMetadata(NullLogger.Instance, functions.Take(2), fromExtension: true);
+            InProcessRetirementTelemetry.ObserveMetadata(NullLogger.Instance, functions.Skip(2), fromExtension: false);
+
+            var descriptors = await scriptHost.GetFunctionDescriptorsAsync(functions, [proxy, http], "custom", CancellationToken.None);
+
+            Assert.Equal(3, descriptors.Count);
+            var trace = Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementExtensionRouting", StringComparison.Ordinal));
+            Assert.Equal(904, trace.EventId.Id);
+            Assert.Contains("Runtime=custom, Provider=HttpFunctionDescriptorProvider, Count=2.", trace.FormattedMessage);
+        }
+
+        [Fact]
+        public async Task InProcessRetirementIsolatedFallback_ReportsMismatchWithoutPreventingRewrite()
+        {
+            using var directory = new TempDirectory();
+            using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_loggerProvider));
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(o => o.ScriptPath = directory.Path)
+                .ConfigureServices(s => s.AddSingleton<ILoggerFactory>(loggerFactory))
+                .Build();
+            var metadata = new FunctionMetadata { Name = "Assembly", Language = DotNetScriptTypes.DotNetAssembly };
+            var scriptHost = host.GetScriptHost();
+
+            await scriptHost.GetFunctionDescriptorsAsync([metadata], [], "dotnet-isolated", CancellationToken.None);
+            Assert.Equal("dotnet-isolated", metadata.Language);
+            await scriptHost.GetFunctionDescriptorsAsync([metadata], [], "dotnet-isolated", CancellationToken.None);
+            var trace = Assert.Single(_loggerProvider.GetAllLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementIsolatedFallback", StringComparison.Ordinal));
+            Assert.Equal(902, trace.EventId.Id);
         }
 
         [Theory]

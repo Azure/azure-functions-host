@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -353,6 +354,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs, functionsWorkerRuntime);
             Assert.Equal(expectedLanguage, metadata.Language);
+        }
+
+        [Fact]
+        public void InProcessRetirementSkippedAttributes_OnlyReportsDiscardedAttributeDeclarations()
+        {
+            using var directory = new TempDirectory();
+            void WriteFunction(string name, string config)
+            {
+                string path = Directory.CreateDirectory(Path.Combine(directory.Path, name)).FullName;
+                File.WriteAllText(Path.Combine(path, "function.json"), config);
+            }
+
+            WriteFunction("Stale", """{"ConfigurationSource":"ATTRIBUTES","bindings":[]}""");
+            WriteFunction("Unrelated", """{"configurationSource":"config","bindings":[]}""");
+            WriteFunction("Valid", """{"configurationSource":"attributes","bindings":[{"name":"req","type":"httpTrigger"}]}""");
+            var logger = new TestLogger<HostFunctionMetadataProvider>();
+            var resolver = new Mock<IWorkerRuntimeResolver>();
+            resolver.Setup(r => r.GetWorkerRuntime()).Returns("node");
+            _scriptApplicationHostOptions.ScriptPath = directory.Path;
+            var provider = new HostFunctionMetadataProvider(TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions), logger, _testMetricsLogger, resolver.Object);
+
+            var metadata = provider.ReadFunctionsMetadata(TestHelpers.GetTestWorkerConfigs());
+
+            Assert.True(Assert.Single(metadata).IsDirect());
+            Assert.Equal(2, provider.FunctionErrors.Count);
+            Assert.Contains("At least one binding must be declared.", Assert.Single(provider.FunctionErrors["Stale"]));
+            var trace = Assert.Single(logger.GetLogMessages(), m => string.Equals(m.EventId.Name, "InProcessRetirementSkippedAttributes", StringComparison.Ordinal));
+            Assert.Equal(903, trace.EventId.Id);
+            Assert.Contains("Runtime=node.", trace.FormattedMessage);
+        }
+
+        [Fact]
+        public void InProcessRetirementMetadata_CustomHandlerOwnsScriptFilesButNotDirectIndexing()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "CustomHandler");
+            var files = new MockFileSystem(new Dictionary<string, MockFileData> { [Path.Combine(root, "run.csx")] = new MockFileData(string.Empty) });
+            var json = JObject.Parse("""{"scriptFile":"run.csx","bindings":[{"name":"req","type":"httpTrigger"}]}""");
+            var logger = new TestLogger("Host.Startup");
+            var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Handler", json, root, files, [], "CUSTOM");
+
+            InProcessRetirementTelemetry.ObserveMetadata(logger, [metadata], fromExtension: false);
+            Assert.Empty(logger.GetLogMessages());
+            Assert.Equal(DotNetScriptTypes.CSharp, metadata.Language);
+
+            json["configurationSource"] = "attributes";
+            metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Direct", json, root, files, [], "CUSTOM");
+            InProcessRetirementTelemetry.ObserveMetadata(logger, [metadata], fromExtension: false);
+            Assert.Contains("Direct=1", Assert.Single(logger.GetLogMessages()).FormattedMessage);
         }
 
         [Fact]

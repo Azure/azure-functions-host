@@ -597,6 +597,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
+                InProcessRetirementTelemetry.InProcessRetirementRuntime(_logger);
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
@@ -824,6 +825,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                     if (!payloadMatchesWorkerRuntime)
                     {
+                        InProcessRetirementTelemetry.InProcessRetirementIsolatedFallback(_logger);
                         UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
                         throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
                     }
@@ -837,6 +839,8 @@ namespace Microsoft.Azure.WebJobs.Script
                                               || (_environment.IsDotNetInProcSupported()
                                                   && !_hostingConfigOptions.Value.IsDotNetInProcDisabled);
 
+                bool traceExtensionRouting = !_environment.IsPlaceholderModeEnabled() && _logger.IsEnabled(LogLevel.Debug);
+                Dictionary<string, int> extensionClaims = null;
                 foreach (FunctionMetadata metadata in functions)
                 {
                     try
@@ -863,6 +867,13 @@ namespace Microsoft.Azure.WebJobs.Script
                             (bool created, descriptor) = await provider.TryCreate(metadata);
                             if (created)
                             {
+                                if (traceExtensionRouting && descriptor is not null && InProcessRetirementTelemetry.IsRetainedExtensionAssembly(metadata))
+                                {
+                                    extensionClaims ??= new(StringComparer.Ordinal);
+                                    string providerName = provider.GetType().Name;
+                                    extensionClaims[providerName] = extensionClaims.GetValueOrDefault(providerName) + 1;
+                                }
+
                                 break;
                             }
                         }
@@ -877,6 +888,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         // log any unhandled exceptions and continue
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
+                    }
+                }
+
+                if (extensionClaims is not null)
+                {
+                    foreach (var (provider, count) in extensionClaims)
+                    {
+                        InProcessRetirementTelemetry.InProcessRetirementExtensionRouting(_logger, Sanitizer.Sanitize(workerRuntime ?? "(unset)"), provider, count);
                     }
                 }
 

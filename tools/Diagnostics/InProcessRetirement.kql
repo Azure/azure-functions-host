@@ -1,0 +1,39 @@
+// Set the exact instrumented host version and rollout window. Run all three results together.
+let instrumentedVersion = "<host version>";
+let since = ago(7d);
+let startup = FunctionsLogs
+    | where HostVersion == instrumentedVersion
+    | where EventName in ("DescriptorsCreated", "InProcessRetirementRuntime", "InProcessRetirementMetadata",
+                          "InProcessRetirementIsolatedFallback", "InProcessRetirementSkippedAttributes", "InProcessRetirementExtensionRouting")
+    | extend ObservedAt = todatetime(EventTimestamp)
+    | where ObservedAt >= since;
+// Positive control for collection of Debug Host.Startup events on this release.
+startup
+| where EventName == "DescriptorsCreated"
+| distinct SubscriptionId, AppName, SlotName
+| count;
+// One row per potentially affected app/slot, regardless of restarts or refreshes.
+startup
+| where EventName !in ("DescriptorsCreated", "InProcessRetirementExtensionRouting")
+| summarize FirstSeen=min(ObservedAt), LastSeen=max(ObservedAt),
+            Signals=make_set(EventName), Evidence=make_set(Summary, 32) by SubscriptionId, AppName, SlotName
+| order by LastSeen desc;
+// Supported precompiled extension functions, not retirement rejections. Report the largest
+// observed descriptor count per pass, not a sum across host instances, restarts, or refreshes.
+startup
+| where EventName == "InProcessRetirementExtensionRouting"
+| parse Summary with "Retained precompiled extension descriptors: Runtime=" Runtime ", Provider=" Provider ", Count=" Claimed:long "."
+| summarize PeakClaimedPerPass=max(Claimed), LastSeen=max(ObservedAt) by SubscriptionId, AppName, SlotName, Runtime, Provider
+| order by LastSeen desc
+
+// Runtime: the single-language host selected dotnet (configured or inferred).
+// Metadata: counts per provider read, before the allowlist and isolated fallback.
+// Fallback: the host tolerated a dotnet-isolated payload mismatch; this alone
+// does not establish that a customer function executed in-process.
+// Restarts and metadata refreshes repeat evidence. Do not sum counts across rows.
+// No hits with no observed starts is inconclusive; the control is not proof of fleet coverage.
+// SkippedAttributes: the file reader saw an explicit attributes declaration but returned a
+// per-function error. This is evidence of a declaration, not of a working in-process function.
+// Other files rejected before the parser returns metadata are not counted.
+// ExtensionRouting identifies the first provider to return a descriptor, not invocation or
+// successful startup. HttpFunctionDescriptorProvider identifies the HTTP worker route.
