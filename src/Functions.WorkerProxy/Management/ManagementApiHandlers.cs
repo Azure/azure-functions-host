@@ -64,7 +64,10 @@ internal static class ManagementApiHandlers
         }
 
         WorkerOriginState currentOriginState = WorkerOriginState.FromState(current);
-        if (currentOriginState.Status == WorkerStatus.RemovalRequested || originState != currentOriginState)
+        WorkerOriginState comparableOriginState = originState.IsRetiring is null
+            ? originState with { IsRetiring = currentOriginState.IsRetiring }
+            : originState;
+        if (currentOriginState.Status == WorkerStatus.RemovalRequested || comparableOriginState != currentOriginState)
         {
             return StateResponse(current);
         }

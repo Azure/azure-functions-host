@@ -887,7 +887,8 @@ public partial class RpcClientScriptHostStartupIntegrationTests
                             response.WorkerStatusResponse = new();
                             break;
                         case StreamingMessage.ContentOneofCase.WorkerDraining:
-                            // Drain notifications are one-way control messages; the Host expects no response.
+                        case StreamingMessage.ContentOneofCase.WorkerRetiring:
+                            // Retirement and drain notifications are one-way control messages; the Host expects no response.
                             continue;
                         default:
                             throw new InvalidOperationException($"Unexpected worker request: {request.ContentCase}.");

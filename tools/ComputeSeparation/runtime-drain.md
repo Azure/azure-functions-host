@@ -39,6 +39,8 @@ Phased drain selects:
 - non-HTTP Workers at 0, 10, 20, 30, and 40 seconds;
 - HTTP Workers at 35 seconds.
 
+When admission closes, HTTP Workers and Always Ready Workers not yet draining are immediately marked retiring and sent `WorkerRetiring` so WorkerProxy can publish `isRetiring: true` while keeping `status: "Running"` until their scheduled drain selection. Non-HTTP on-demand Workers remain unflagged until their batch is selected.
+
 Escalation to immediate selects every remaining Worker without changing the first-selection time of Workers already selected.
 
 Root Host shutdown cancels the remaining phased selections. Disposing the coordinator cancels asynchronously without holding its operation lock while cancellation callbacks complete, then waits for its schedule to finish. Expected shutdown cancellation or registry-disposal races do not produce schedule-failure errors; unexpected scheduling failures still do.

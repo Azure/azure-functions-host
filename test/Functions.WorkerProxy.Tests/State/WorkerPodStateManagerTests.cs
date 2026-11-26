@@ -143,12 +143,53 @@ public partial class WorkerPodStateManagerTests
         WorkerPodState draining = Assert.IsType<WorkerPodState>((await poll.WaitAsync(TestTimeout)).State);
 
         Assert.Equal(ready.Revision + 1, draining.Revision);
+        Assert.True(draining.IsRetiring);
         Assert.True(draining.IsDraining);
         Assert.Equal(WorkerPodStatus.Draining, draining.PodStatus);
         Assert.Equal(WorkerStatus.Draining, WorkerOriginState.FromState(draining).Status);
+        Assert.True(WorkerOriginState.FromState(draining).IsRetiring);
         Assert.False(manager.OnWorkerDraining(1));
         Assert.False(manager.OnWorkerDraining(2));
         Assert.Same(draining, manager.State);
+    }
+
+    [Fact]
+    public async Task WorkerRetiring_PublishesOnceWhileKeepingRunningUntilWorkerDraining()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        PodIdentity runtime = new("ns", "runtime-pod", new(manager.State.FunctionAppName!, 42, "stamp"));
+        Assert.True(manager.OnRuntimeAttached(1, runtime));
+        Assert.True(manager.OnRuntimeInitialized(1));
+        WorkerPodState running = manager.State;
+        Assert.False(running.IsRetiring);
+        Assert.Equal(WorkerStatus.Running, WorkerOriginState.FromState(running).Status);
+        Assert.Equal(false, WorkerOriginState.FromState(running).IsRetiring);
+
+        Task<WorkerStatePollResult> retiringPoll = manager.WaitForChangeAsync(running.Revision);
+        Assert.True(manager.OnWorkerRetiring(1));
+        WorkerPodState retiring = Assert.IsType<WorkerPodState>((await retiringPoll.WaitAsync(TestTimeout)).State);
+
+        Assert.Equal(running.Revision + 1, retiring.Revision);
+        Assert.True(retiring.IsRetiring);
+        Assert.False(retiring.IsDraining);
+        Assert.Equal(WorkerPodStatus.Running, retiring.PodStatus);
+        WorkerOriginState retiringOrigin = WorkerOriginState.FromState(retiring);
+        Assert.Equal(WorkerStatus.Running, retiringOrigin.Status);
+        Assert.Equal(WorkerLinkState.Linked, retiringOrigin.Link.State);
+        Assert.Equal(true, retiringOrigin.IsRetiring);
+        Assert.False(manager.OnWorkerRetiring(1));
+        Assert.False(manager.OnWorkerRetiring(2));
+
+        Task<WorkerStatePollResult> drainingPoll = manager.WaitForChangeAsync(retiring.Revision);
+        Assert.True(manager.OnWorkerDraining(1));
+        WorkerPodState draining = Assert.IsType<WorkerPodState>((await drainingPoll.WaitAsync(TestTimeout)).State);
+
+        Assert.Equal(retiring.Revision + 1, draining.Revision);
+        Assert.True(draining.IsRetiring);
+        Assert.True(draining.IsDraining);
+        Assert.Equal(WorkerStatus.Draining, WorkerOriginState.FromState(draining).Status);
+        Assert.Equal(true, WorkerOriginState.FromState(draining).IsRetiring);
     }
 
     [Fact]

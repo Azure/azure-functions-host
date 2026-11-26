@@ -83,15 +83,57 @@ public partial class FunctionRpcRelayTests
         Assert.False(workerOutbound.Reader.TryRead(out _));
         Assert.Equal(3, manager.State.Revision);
 
+        Task<WorkerStatePollResult> retiringPoll = manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
+        await runtimeInbound.Writer.WriteAsync(new() { WorkerRetiring = new() }, timeout.Token);
+        WorkerPodState retiring = Assert.IsType<WorkerPodState>((await retiringPoll).State);
+        Assert.True(retiring.IsRetiring);
+        Assert.False(retiring.IsDraining);
+        Assert.Equal(WorkerPodStatus.Running, retiring.PodStatus);
+        Assert.Equal(true, WorkerOriginState.FromState(retiring).IsRetiring);
+        Assert.False(workerOutbound.Reader.TryRead(out _));
+
         Task<WorkerStatePollResult> drainingPoll = manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
         await runtimeInbound.Writer.WriteAsync(new() { WorkerDraining = new() }, timeout.Token);
         WorkerPodState draining = Assert.IsType<WorkerPodState>((await drainingPoll).State);
+        Assert.True(draining.IsRetiring);
         Assert.Equal(WorkerPodStatus.Draining, draining.PodStatus);
         Assert.Equal(WorkerStatus.Draining, WorkerOriginState.FromState(draining).Status);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         await relay.StopAsync(timeout.Token);
         await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
+    }
+
+    [Fact]
+    public async Task Relay_WorkerSentRetiringControlFaultsSessionWithoutSettingRetiring()
+    {
+        WorkerPodStateManager manager = CreatePodStateManager();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        Channel<StreamingMessage> workerInbound = Channel.CreateUnbounded<StreamingMessage>();
+        Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(
+            FunctionRpcRelaySide.Runtime,
+            new BlockingStreamReader(),
+            new TestServerStreamWriter(),
+            timeout.Token);
+        Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(
+            FunctionRpcRelaySide.Worker,
+            CreateMessageReader(workerInbound.Reader),
+            new TestServerStreamWriter(),
+            timeout.Token);
+
+        await workerInbound.Writer.WriteAsync(CreateStartStream(), timeout.Token);
+        await workerInbound.Writer.WriteAsync(new() { WorkerRetiring = new() }, timeout.Token);
+        FunctionRpcRelayTerminalState[] terminalStates = await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
+
+        Assert.All(terminalStates, state =>
+        {
+            Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, state.Reason);
+            Assert.Equal(FunctionRpcRelaySide.Worker, state.Side);
+            Assert.IsType<InvalidDataException>(state.Exception);
+        });
+        Assert.False(manager.State.IsRetiring);
     }
 
     [Theory]

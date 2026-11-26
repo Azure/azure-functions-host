@@ -304,6 +304,26 @@ internal sealed partial class FunctionRpcRelay
             while (await requestStream.MoveNext(cancellationToken))
             {
                 StreamingMessage current = requestStream.Current;
+                if (current.WorkerRetiring is not null)
+                {
+                    if (side is not FunctionRpcRelaySide.Runtime)
+                    {
+                        throw new InvalidDataException("Worker retiring controls are only accepted from the Host stream.");
+                    }
+
+                    lock (_stateLock)
+                    {
+                        if (_terminalState is not null || !_runtimeAttached)
+                        {
+                            return;
+                        }
+                    }
+
+                    LogProtocolMessage(current, forwarded: false);
+                    stateManager.OnWorkerRetiring(id);
+                    continue;
+                }
+
                 if (current.WorkerDraining is not null)
                 {
                     if (side is not FunctionRpcRelaySide.Runtime)
@@ -735,6 +755,7 @@ internal sealed partial class FunctionRpcRelay
                 StreamingMessage.ContentOneofCase.FunctionLoadResponse => ("FunctionLoad", true, message.FunctionLoadResponse.Result),
                 StreamingMessage.ContentOneofCase.WorkerTerminate => ("WorkerTerminate", false, null),
                 StreamingMessage.ContentOneofCase.WorkerDraining => ("WorkerDraining", false, null),
+                StreamingMessage.ContentOneofCase.WorkerRetiring => ("WorkerRetiring", false, null),
                 _ => null
             };
             if (operation is not { } value)

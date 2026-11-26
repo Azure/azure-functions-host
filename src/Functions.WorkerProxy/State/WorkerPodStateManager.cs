@@ -272,6 +272,32 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Records that the Host has committed the current worker to Runtime retirement.
+    /// </summary>
+    /// <param name="sessionId">The relay session that received the retirement notification.</param>
+    /// <returns>Whether the current pod snapshot changed.</returns>
+    public bool OnWorkerRetiring(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (_state.SessionId != sessionId || !_state.IsWorkerReady ||
+                _state.AssignmentState != WorkerAssignmentState.Ready || _state.IsRetiring)
+            {
+                return false;
+            }
+
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                IsRetiring = true
+            });
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Records that the Host has removed the current worker from its invocation rotation.
     /// </summary>
     /// <param name="sessionId">The relay session that received the drain notification.</param>
@@ -291,6 +317,7 @@ internal sealed class WorkerPodStateManager
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
+                IsRetiring = true,
                 IsDraining = true
             });
             return true;
