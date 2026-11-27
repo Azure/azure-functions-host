@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
     public class ExtensionBundleManager : IExtensionBundleManager
     {
         private const string ExtensionBundleClientName = nameof(ExtensionBundleManager);
+        private static readonly TimeSpan StaleStagingDirectoryAge = TimeSpan.FromHours(1);
         private readonly IEnvironment _environment;
         private readonly ExtensionBundleOptions _options;
         private readonly FunctionsHostingConfigOptions _configOption;
@@ -43,6 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
+
+        /// <summary>
+        /// Gets or sets the total time allowed to verify an existing unmarked bundle, including retries and the zip body transfer.
+        /// When it expires, the existing bundle is used as-is so that startup is never blocked by a slow or stalled download.
+        /// </summary>
+        internal TimeSpan UnverifiedBundleVerificationTimeout { get; set; } = TimeSpan.FromMinutes(1);
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
         {
@@ -99,29 +106,43 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         private async Task<string> GetBundle(HttpClient httpClient)
         {
-            bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
+            bool bundleFound = TryLocateExtensionBundle(out string bundlePath, out bool requiresVerification);
 
-            if ((_environment.IsAppService()
+            if (_environment.IsAppService()
                 || _environment.IsCoreTools()
                 || _environment.IsAnyLinuxConsumption()
                 || _environment.IsContainer())
-                && (!bundleFound || _options.EnsureLatest))
             {
-                string latestBundleVersion = await GetLatestMatchingBundleVersionAsync(httpClient);
-                if (string.IsNullOrEmpty(latestBundleVersion))
+                if (!bundleFound || _options.EnsureLatest)
                 {
-                    return null;
-                }
+                    string latestBundleVersion = await GetLatestMatchingBundleVersionAsync(httpClient);
+                    if (string.IsNullOrEmpty(latestBundleVersion))
+                    {
+                        return null;
+                    }
 
-                _extensionBundleVersion = latestBundleVersion;
-                bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
+                    _extensionBundleVersion = latestBundleVersion;
+                    bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
+                }
+                else if (requiresVerification)
+                {
+                    // Verify the same version that was found locally, so repairing never changes the bundle version in use.
+                    bundlePath = await DownloadExtensionBundleAsync(Path.GetFileName(bundlePath), httpClient);
+                }
             }
+
             return bundlePath;
         }
 
         internal bool TryLocateExtensionBundle(out string bundlePath)
         {
+            return TryLocateExtensionBundle(out bundlePath, out _);
+        }
+
+        private bool TryLocateExtensionBundle(out string bundlePath, out bool requiresVerification)
+        {
             bundlePath = null;
+            requiresVerification = false;
             string bundleMetatdataFile = null;
             var paths = new List<string>(_options.ProbingPaths)
                 {
@@ -143,6 +164,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                         bundleMetatdataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile);
                         if (!string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile))
                         {
+                            // Only the download path is written by the host, so only bundles there carry an install completion marker.
+                            bool isDownloadPath = i == paths.Count - 1;
+                            requiresVerification = isDownloadPath && !IsBundleUsable(bundlePath);
                             _logger.ExtensionBundleFound(bundlePath);
                             break;
                         }
@@ -156,34 +180,268 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return bundlePath != null;
         }
 
+        private bool IsBundleInstallationComplete(string bundlePath)
+        {
+            return FileUtility.FileExists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile))
+                && (_configOption.ExtensionBundleRepairDisabled
+                    || FileUtility.FileExists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile)));
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether a downloaded bundle can be used without verifying it against a fresh download.
+        /// A bundle whose verification was already attempted and failed (for example, because the CDN is unreachable)
+        /// is used as-is, matching the behavior of earlier hosts, so that verification is not retried on every start.
+        /// </summary>
+        private bool IsBundleUsable(string bundlePath)
+        {
+            return IsBundleInstallationComplete(bundlePath)
+                || (FileUtility.FileExists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile))
+                    && FileUtility.FileExists(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleVerificationAttemptedMarkerFile)));
+        }
+
         private async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)
         {
             string bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
             string bundlePath = Path.Combine(_options.DownloadPath, version);
-            if (FileUtility.FileExists(bundleMetatdataFile))
+            if (IsBundleUsable(bundlePath))
             {
                 _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
                 return bundlePath;
             }
 
-            string zipDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            FileUtility.EnsureDirectoryExists(zipDirectoryPath);
+            // A bundle without a completion marker was either installed by an earlier host version or only partially extracted.
+            // Previous hosts used such bundles as-is, so any failure to verify it falls back to the existing bundle.
+            bool unverifiedBundleExists = FileUtility.FileExists(bundleMetatdataFile);
+            if (unverifiedBundleExists)
+            {
+                _logger.ExtensionBundleInstallIncomplete(bundlePath);
+            }
 
+            string zipDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             string zipFilePath = Path.Combine(zipDirectoryPath, $"{_options.Id}.{version}.zip");
 
-            // construct a string based on os type
-            string bundleFlavor = GetBundleFlavorForCurrentEnvironment();
-            var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{_options.Id}.{version}_{bundleFlavor}.zip");
+            using var verificationTimeout = unverifiedBundleExists ? new CancellationTokenSource(UnverifiedBundleVerificationTimeout) : null;
 
-            if (await TryDownloadZipFileAsync(zipUri, zipFilePath, httpClient))
+            try
             {
-                FileUtility.EnsureDirectoryExists(bundlePath);
+                // construct a string based on os type
+                string bundleFlavor = GetBundleFlavorForCurrentEnvironment();
+                var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{_options.Id}.{version}_{bundleFlavor}.zip");
 
-                _logger.ExtractingBundleZip(bundlePath);
-                ZipFile.ExtractToDirectory(zipFilePath, bundlePath);
-                _logger.ZipExtractionComplete();
+                FileUtility.EnsureDirectoryExists(zipDirectoryPath);
+                if (await TryDownloadZipFileAsync(zipUri, zipFilePath, httpClient, verificationTimeout?.Token ?? CancellationToken.None))
+                {
+                    InstallExtensionBundle(zipFilePath, bundlePath, version);
+                }
             }
-            return FileUtility.FileExists(bundleMetatdataFile) ? bundlePath : null;
+            catch (Exception ex) when (unverifiedBundleExists)
+            {
+                _logger.ExtensionBundleRepairFailed(bundlePath, ex);
+                WriteVerificationAttemptedMarker(bundlePath);
+                return bundlePath;
+            }
+            finally
+            {
+                TryDeleteDirectory(zipDirectoryPath);
+            }
+
+            if (IsBundleInstallationComplete(bundlePath))
+            {
+                return bundlePath;
+            }
+
+            if (unverifiedBundleExists)
+            {
+                _logger.ExtensionBundleRepairFailed(bundlePath);
+                WriteVerificationAttemptedMarker(bundlePath);
+                return bundlePath;
+            }
+
+            return null;
+        }
+
+        private void WriteVerificationAttemptedMarker(string bundlePath)
+        {
+            try
+            {
+                File.WriteAllText(Path.Combine(bundlePath, ScriptConstants.ExtensionBundleVerificationAttemptedMarkerFile), DateTime.UtcNow.ToString("O"));
+            }
+            catch (Exception ex)
+            {
+                _logger.ExtensionBundleFileOperationFailed(bundlePath, ex);
+            }
+        }
+
+        /// <summary>
+        /// Extracts the bundle into a staging directory next to the final bundle directory and then publishes it.
+        /// A new bundle is published with a single directory rename, so other instances sharing the file system never
+        /// observe a partially extracted bundle. An existing incomplete bundle is repaired in place by restoring missing or
+        /// incomplete files; existing files are never deleted because other instances may be loading assemblies from them.
+        /// The install completion marker is always written last.
+        /// </summary>
+        private void InstallExtensionBundle(string zipFilePath, string bundlePath, string version)
+        {
+            FileUtility.EnsureDirectoryExists(_options.DownloadPath);
+            CleanupStaleStagingDirectories();
+
+            // The staging directory name is not a valid version, so it is never selected as a bundle by this or earlier hosts.
+            string stagingPath = Path.Combine(_options.DownloadPath, ScriptConstants.ExtensionBundleStagingDirectoryPrefix + Guid.NewGuid().ToString("N"));
+            try
+            {
+                _logger.ExtractingBundleZip(bundlePath);
+                ZipFile.ExtractToDirectory(zipFilePath, stagingPath);
+                _logger.ZipExtractionComplete();
+
+                WriteInstallCompleteMarker(stagingPath, version);
+
+                if (!Directory.Exists(bundlePath) && TryPublishStagingDirectory(stagingPath, bundlePath))
+                {
+                    return;
+                }
+
+                if (IsBundleInstallationComplete(bundlePath))
+                {
+                    _logger.ExtensionBundleInstalledByAnotherInstance(bundlePath);
+                    return;
+                }
+
+                RepairExtensionBundle(stagingPath, bundlePath);
+            }
+            finally
+            {
+                TryDeleteDirectory(stagingPath);
+            }
+        }
+
+        private static bool TryPublishStagingDirectory(string stagingPath, string bundlePath)
+        {
+            try
+            {
+                Directory.Move(stagingPath, bundlePath);
+                return true;
+            }
+            catch (IOException) when (Directory.Exists(bundlePath))
+            {
+                // Another instance published the bundle directory first.
+                return false;
+            }
+        }
+
+        private void RepairExtensionBundle(string stagingPath, string bundlePath)
+        {
+            int restoredFileCount = 0;
+            foreach (string sourceFile in Directory.EnumerateFiles(stagingPath, "*", SearchOption.AllDirectories))
+            {
+                // Another instance sharing the file system finished the repair; its files are already in place.
+                if (IsBundleInstallationComplete(bundlePath))
+                {
+                    _logger.ExtensionBundleInstalledByAnotherInstance(bundlePath);
+                    return;
+                }
+
+                string relativePath = Path.GetRelativePath(stagingPath, sourceFile);
+                if (string.Equals(relativePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // An interrupted extraction leaves files missing or truncated, so a matching length means the file is intact.
+                var destinationFile = new FileInfo(Path.Combine(bundlePath, relativePath));
+                if (destinationFile.Exists && destinationFile.Length == new FileInfo(sourceFile).Length)
+                {
+                    continue;
+                }
+
+                Directory.CreateDirectory(destinationFile.DirectoryName);
+                ReplaceFileAtomically(sourceFile, destinationFile.FullName);
+                restoredFileCount++;
+            }
+
+            File.Copy(
+                Path.Combine(stagingPath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile),
+                Path.Combine(bundlePath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile),
+                overwrite: true);
+
+            _logger.ExtensionBundleRepaired(bundlePath, restoredFileCount);
+        }
+
+        /// <summary>
+        /// Copies the file next to its destination and then renames it over the destination, so a concurrent repair or an
+        /// interrupted copy never leaves a partially written file at a path that readers trust once the bundle is marked complete.
+        /// </summary>
+        private static void ReplaceFileAtomically(string sourceFile, string destinationFile)
+        {
+            // The temporary name does not end with the original extension, so it is never picked up as an assembly or metadata file.
+            string temporaryFile = Path.Combine(Path.GetDirectoryName(destinationFile), $".{Path.GetFileName(destinationFile)}.{Guid.NewGuid():N}.repair");
+            try
+            {
+                File.Copy(sourceFile, temporaryFile);
+                File.Move(temporaryFile, destinationFile, overwrite: true);
+            }
+            finally
+            {
+                try
+                {
+                    File.Delete(temporaryFile);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+            }
+        }
+
+        private void WriteInstallCompleteMarker(string directoryPath, string version)
+        {
+            var marker = new
+            {
+                id = _options.Id,
+                version,
+                hostVersion = ScriptHost.Version,
+                installedAtUtc = DateTime.UtcNow
+            };
+
+            File.WriteAllText(
+                Path.Combine(directoryPath, ScriptConstants.ExtensionBundleInstallCompleteMarkerFile),
+                System.Text.Json.JsonSerializer.Serialize(marker));
+        }
+
+        private void CleanupStaleStagingDirectories()
+        {
+            // Staging directories left behind by an instance that stopped mid-install. The age threshold avoids
+            // deleting a directory that another instance is still extracting into.
+            try
+            {
+                DateTime threshold = DateTime.UtcNow - StaleStagingDirectoryAge;
+                foreach (string directory in Directory.EnumerateDirectories(_options.DownloadPath, ScriptConstants.ExtensionBundleStagingDirectoryPrefix + "*"))
+                {
+                    if (Directory.GetLastWriteTimeUtc(directory) < threshold)
+                    {
+                        TryDeleteDirectory(directory);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ExtensionBundleFileOperationFailed(_options.DownloadPath, ex);
+            }
+        }
+
+        private void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ExtensionBundleFileOperationFailed(path, ex);
+            }
         }
 
         private string GetBundleFlavorForCurrentEnvironment()

@@ -104,6 +104,61 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(114, nameof(ErrorDownloadingExtensionBundleZipIO)),
             "IO error downloading extension bundle Zip content {zip}. FilePath:{filePath}, Disk:{diskUsage}, AzureRef:{azureRef}");
 
+        private static readonly Action<ILogger, string, Exception> _extensionBundleInstallIncomplete =
+            LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(115, nameof(ExtensionBundleInstallIncomplete)),
+            "Extension bundle at {bundlePath} does not have an install completion marker. The bundle will be verified against a fresh download.");
+
+        private static readonly Action<ILogger, string, int, Exception> _extensionBundleRepaired =
+            LoggerMessage.Define<string, int>(
+            LogLevel.Information,
+            new EventId(116, nameof(ExtensionBundleRepaired)),
+            "Verified extension bundle at {bundlePath}. Restored {restoredFileCount} missing or incomplete file(s).");
+
+        private static readonly Action<ILogger, string, Exception> _extensionBundleRepairFailed =
+            LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(117, nameof(ExtensionBundleRepairFailed)),
+            "Unable to verify extension bundle at {bundlePath}. The existing bundle will be used.");
+
+        private static readonly Action<ILogger, string, Exception> _extensionBundleInstalledByAnotherInstance =
+            LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(118, nameof(ExtensionBundleInstalledByAnotherInstance)),
+            "Extension bundle at {bundlePath} was installed concurrently by another instance.");
+
+        private static readonly Action<ILogger, string, Exception> _extensionBundleFileOperationFailed =
+            LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(119, nameof(ExtensionBundleFileOperationFailed)),
+            "Extension bundle file operation failed for path {path}.");
+
+        public static void ExtensionBundleInstallIncomplete(this ILogger logger, string bundlePath)
+        {
+            _extensionBundleInstallIncomplete(logger, bundlePath, null);
+        }
+
+        public static void ExtensionBundleRepaired(this ILogger logger, string bundlePath, int restoredFileCount)
+        {
+            _extensionBundleRepaired(logger, bundlePath, restoredFileCount, null);
+        }
+
+        public static void ExtensionBundleRepairFailed(this ILogger logger, string bundlePath, Exception ex = null)
+        {
+            _extensionBundleRepairFailed(logger, bundlePath, ex);
+        }
+
+        public static void ExtensionBundleInstalledByAnotherInstance(this ILogger logger, string bundlePath)
+        {
+            _extensionBundleInstalledByAnotherInstance(logger, bundlePath, null);
+        }
+
+        public static void ExtensionBundleFileOperationFailed(this ILogger logger, string path, Exception ex)
+        {
+            _extensionBundleFileOperationFailed(logger, path, ex);
+        }
+
         public static void ContentProviderNotConfigured(this ILogger logger, string path)
         {
             _contentProviderNotConfigured(logger, path, null);
